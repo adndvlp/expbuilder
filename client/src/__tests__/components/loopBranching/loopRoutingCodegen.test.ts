@@ -15,8 +15,6 @@ const generateNestedLoop = (targetName = "Target") => {
     stimuliOrders: [],
     categories: false,
     categoryData: [],
-    branches: [],
-    branchConditions: [],
     repeatConditions: [],
     items: [
       {
@@ -33,8 +31,6 @@ const generateNestedLoop = (targetName = "Target") => {
   return generateLoopCode({
     id: "outer",
     parentLoopId: null,
-    branches: [],
-    branchConditions: [],
     repetitions: 1,
     randomize: false,
     orders: false,
@@ -155,9 +151,9 @@ describe("nested loop route generation", () => {
   it("[TG-07] preserves domain IDs while sanitizing generated names", () => {
     const code = generateNestedLoop("Target / punctuation");
 
-    expect(code).toContain("const loop_inner_DescendantIds = [42];");
+    expect(code).toContain("const loop_inner_DescendantTrialIds = [42];");
     expect(code).toContain(
-      'const loop_outer_DescendantIds = ["inner", ...loop_inner_DescendantIds];',
+      'const loop_outer_DescendantTrialIds = [...loop_inner_DescendantTrialIds];',
     );
     expect(code).toContain("const currentId = 42;");
   });

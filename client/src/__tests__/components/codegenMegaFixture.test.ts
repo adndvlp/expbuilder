@@ -208,7 +208,6 @@ describe("codegen mega regression fixture", () => {
       name: "Child Loop",
       trials: [20],
       parentLoopId: "loop_parent",
-      branches: [30],
       repetitions: 1,
       randomize: false,
     });
@@ -272,7 +271,7 @@ describe("codegen mega regression fixture", () => {
     expect(combined).toContain("window.ExpBuilderNavigation.requestJump(");
 
     expect(combined).toContain("loop_loop_parent_NextTrialId = nextTrialId;");
-    expect(combined).toContain("loop_loop_parent_NextTrialId = branches[0];");
+    expect(combined).toContain("loop_loop_parent_NextTrialId = pendingBranchTarget;");
     expect(combined).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(combined).not.toContain(
       "const branches = [30]; if (branches.length > 0) { window.nextTrialId = branches[0];",

@@ -4,7 +4,7 @@ export const isLoopData = (item: TimelineItem): item is LoopData =>
   "isLoop" in item && item.isLoop === true;
 
 export const getLoopId = (loop: LoopData): string | number | null =>
-  loop.loopId || loop.id || null;
+  loop.loopId ?? loop.id ?? null;
 
 export const getTimelineItemId = (
   item: TimelineItem,
@@ -29,8 +29,7 @@ export const generateDescendantIdEntries = (
 
       const nestedId = sanitizeName(String(itemId));
       return [
-        JSON.stringify(itemId),
-        `...loop_${nestedId}_DescendantIds`,
+        `...loop_${nestedId}_DescendantTrialIds`,
       ];
     })
     .join(", ");

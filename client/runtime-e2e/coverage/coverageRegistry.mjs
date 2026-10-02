@@ -7,6 +7,9 @@ export const acceptanceCoverage = {
 };
 
 export const verticalCapabilities = {
+  "RUNTIME-LOOP-SIBLING-ENTRY": "loop-trial-routing-runtime.spec.ts",
+  "RUNTIME-LOOP-CSV-REPETITIONS": "loop-iteration-runtime.spec.ts",
+  "RUNTIME-LOOP-CSV-BRANCH": "loop-iteration-runtime.spec.ts",
   "RUNTIME-BRANCH-MATCH": "branching-runtime.spec.ts",
   "RUNTIME-LOOP-ROOT-EXIT": "branching-runtime.spec.ts",
   "RUNTIME-LOOP-PARALLEL-LEVEL": "loop-placement-runtime.spec.ts",

@@ -37,9 +37,9 @@ describe("generateOnFinishCode merge points", () => {
     );
 
     expect(loopCode).toContain("const repeatConditionsArray =");
-    expect(loopCode).toContain("loop_1_ShouldBranchOnFinish = true;");
+    expect(loopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
     expect(mergeLoopCode).toContain("loop_1_NextTrialId = null;");
-    expect(mergeLoopCode).toContain("loop_1_ShouldBranchOnFinish = false;");
+    expect(mergeLoopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
   it("combines repeat-only global merge code with custom code", () => {

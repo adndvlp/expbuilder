@@ -39,14 +39,13 @@ export function generateItemWrappers({
   if (trials.length === 0) return "";
 
   return trials
-    .map((item, index) => {
+    .map((item) => {
       const {
         itemNameSanitized,
         nestedLoopIdSanitized,
         rawId,
         timelineRef,
       } = getItemIdentity(item);
-      const isLastItem = index === trials.length - 1;
       const isMergePointItem =
         rawId !== null &&
         mergePointIds.some(
@@ -72,14 +71,18 @@ const ${itemNameSanitized}_wrapper = {
     
     // If loopSkipRemaining is active, check if this is the target item
     if (loop_${loopIdSanitized}_SkipRemaining) {
-      if (String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
-        // Found the target item inside the loop
+      if (loop_${loopIdSanitized}_TargetExecuted) return false;
+      ${!nestedLoopIdSanitized ? `if (String(currentId) === String(loop_${loopIdSanitized}_NextTrialId)) {
         loop_${loopIdSanitized}_TargetExecuted = true;
+        if (loop_${loopIdSanitized}_RouteInherited &&
+            String(currentId) === String(loop_${loopIdSanitized}_InheritedTrialId)) {
+          loop_${loopIdSanitized}_InheritedTrialExecuted = true;
+        }
         return true;
-      }
+      }` : ""}
       ${
         nestedLoopIdSanitized
-          ? `if (loop_${nestedLoopIdSanitized}_DescendantIds.some(
+          ? `if (loop_${nestedLoopIdSanitized}_DescendantTrialIds.some(
         (descendantId) => String(descendantId) === String(loop_${loopIdSanitized}_NextTrialId),
       )) {
         return true;
@@ -114,40 +117,11 @@ const ${itemNameSanitized}_wrapper = {
       loop_${loopIdSanitized}_BranchingActive = false;
       loop_${loopIdSanitized}_BranchCustomParameters = null;
       loop_${loopIdSanitized}_RouteInherited = false;
-      loop_${loopIdSanitized}_IterationComplete = false;
-      loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
       return;
     }`
         : ""
     }
-    ${
-      isLastItem
-        ? `
-    // Preserve an exit whose target belongs to an enclosing scope.
-    const targetBelongsToLoop = loop_${loopIdSanitized}_NextTrialId !== null &&
-      loop_${loopIdSanitized}_DescendantIds.some(
-        (descendantId) => String(descendantId) === String(loop_${loopIdSanitized}_NextTrialId),
-      );
-    const hasUnresolvedExit = loop_${loopIdSanitized}_BranchingActive &&
-      !loop_${loopIdSanitized}_TargetExecuted &&
-      loop_${loopIdSanitized}_NextTrialId !== null &&
-      !targetBelongsToLoop;
-    const hasResolvedExit = loop_${loopIdSanitized}_BranchingActive &&
-      loop_${loopIdSanitized}_TargetExecuted &&
-      loop_${loopIdSanitized}_NextTrialId !== null &&
-      !targetBelongsToLoop;
-    if (!loop_${loopIdSanitized}_RouteInherited &&
-        !hasUnresolvedExit && !hasResolvedExit) {
-      loop_${loopIdSanitized}_NextTrialId = null;
-      loop_${loopIdSanitized}_SkipRemaining = false;
-      loop_${loopIdSanitized}_TargetExecuted = false;
-      loop_${loopIdSanitized}_BranchingActive = false;
-      loop_${loopIdSanitized}_BranchCustomParameters = null;
-      loop_${loopIdSanitized}_RouteInherited = false;
-      loop_${loopIdSanitized}_IterationComplete = false;
-    }`
-        : ""
-    }
+
   }
 };`;
     })

@@ -4,6 +4,9 @@ const q = value => JSON.stringify(value)
 
 export function generateLoopState(loop, children) {
   const loopId = sanitizeId(loop.id)
+  const trialDescendants = children.map(child => child.type === 'loop'
+    ? `...loop_${sanitizeId(child.id)}_DescendantTrialIds`
+    : q(child.id))
   const descendants = children.flatMap(child => {
     const entries = [q(child.id)]
     if (child.type === 'loop') {
@@ -12,15 +15,17 @@ export function generateLoopState(loop, children) {
     return entries
   })
 
-  return `// Branching state for loop ${loop.id}
+  return `// Trial routing state for loop ${loop.id}
 let loop_${loopId}_NextTrialId = null;
 let loop_${loopId}_SkipRemaining = false;
 let loop_${loopId}_TargetExecuted = false;
 let loop_${loopId}_BranchingActive = false;
 let loop_${loopId}_BranchCustomParameters = null;
-let loop_${loopId}_IterationComplete = false;
-let loop_${loopId}_ShouldBranchOnFinish = false;
+let loop_${loopId}_InheritedTrialId = null;
+let loop_${loopId}_InheritedTrialExecuted = false;
+let loop_${loopId}_RouteInherited = false;
 const loop_${loopId}_DescendantIds = [${descendants.join(', ')}];
+const loop_${loopId}_DescendantTrialIds = [${trialDescendants.join(', ')}];
 `
 }
 
@@ -40,7 +45,7 @@ export function generateChildWrapper(child, parentLoopId) {
     : ''
   const nestedBranch = child.type === 'loop'
     ? `
-      if (loop_${childId}_DescendantIds.some(
+      if (loop_${childId}_DescendantTrialIds.some(
         descendantId => String(descendantId) === String(loop_${loopId}_NextTrialId)
       )) return true;`
     : ''
@@ -61,10 +66,15 @@ const ${childId}_wrapper = {
       return false;
     }
     if (loop_${loopId}_SkipRemaining) {
-      if (String(currentId) === String(loop_${loopId}_NextTrialId)) {
+      if (loop_${loopId}_TargetExecuted) return false;
+      ${child.type === 'trial' ? `if (String(currentId) === String(loop_${loopId}_NextTrialId)) {
         loop_${loopId}_TargetExecuted = true;
+        if (loop_${loopId}_RouteInherited &&
+            String(currentId) === String(loop_${loopId}_InheritedTrialId)) {
+          loop_${loopId}_InheritedTrialExecuted = true;
+        }
         return true;
-      }${nestedBranch}
+      }` : ''}${nestedBranch}
       return false;
     }
     if (loop_${loopId}_TargetExecuted) return false;
@@ -75,21 +85,42 @@ const ${childId}_wrapper = {
   }
 }
 
+export function generateLoopIteration(loopId, timelineRefs) {
+  const id = sanitizeId(loopId)
+  return `
+const ${id}_iteration = {
+  timeline: [${timelineRefs.join(', ')}],
+  on_timeline_finish: function() {
+    const targetBelongsToLoop = loop_${id}_NextTrialId !== null &&
+      loop_${id}_DescendantTrialIds.some(
+        descendantId => String(descendantId) === String(loop_${id}_NextTrialId)
+      );
+    const hasScopeExit = loop_${id}_BranchingActive &&
+      loop_${id}_NextTrialId !== null && !targetBelongsToLoop;
+    if (!loop_${id}_RouteInherited && !hasScopeExit) {
+      loop_${id}_NextTrialId = null;
+      loop_${id}_SkipRemaining = false;
+      loop_${id}_TargetExecuted = false;
+      loop_${id}_BranchingActive = false;
+      loop_${id}_BranchCustomParameters = null;
+    }
+  }
+};
+`
+}
+
 export function generateLoopRoutingProperties(loop, parentLoopId) {
   const loopId = sanitizeId(loop.id)
-  const parentId = parentLoopId ? sanitizeId(parentLoopId) : null
+  const parentId = parentLoopId != null ? sanitizeId(parentLoopId) : null
   const active = parentId ? `loop_${parentId}_SkipRemaining` : 'window.skipRemaining'
   const target = parentId ? `loop_${parentId}_NextTrialId` : 'window.nextTrialId'
   const parameters = parentId
     ? `loop_${parentId}_BranchCustomParameters`
     : 'window.branchCustomParameters'
-  const directTarget = parentId
-    ? `loop_${parentId}_TargetExecuted = true;`
-    : `window.nextTrialId = null;
-      window.skipRemaining = false;`
   const propagate = parentId
     ? `loop_${parentId}_NextTrialId = pendingBranchTarget;
       loop_${parentId}_SkipRemaining = true;
+      loop_${parentId}_TargetExecuted = false;
       loop_${parentId}_BranchingActive = true;
       loop_${parentId}_BranchCustomParameters = pendingBranchParameters;`
     : `window.nextTrialId = pendingBranchTarget;
@@ -97,12 +128,15 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
       window.branchingActive = true;
       window.branchCustomParameters = pendingBranchParameters;`
   const complete = parentId
-    ? `if (targetWasExecuted && loop_${parentId}_BranchingActive &&
-        String(loop_${parentId}_NextTrialId) === String(pendingBranchTarget)) {
+    ? `if (inheritedTrialWasExecuted && loop_${parentId}_BranchingActive &&
+        String(loop_${parentId}_NextTrialId) === String(inheritedTrialId)) {
       loop_${parentId}_TargetExecuted = true;
+      if (String(loop_${parentId}_InheritedTrialId) === String(inheritedTrialId)) {
+        loop_${parentId}_InheritedTrialExecuted = true;
+      }
     }`
-    : `if (targetWasExecuted && window.branchingActive &&
-        String(window.nextTrialId) === String(pendingBranchTarget)) {
+    : `if (inheritedTrialWasExecuted && window.branchingActive &&
+        String(window.nextTrialId) === String(inheritedTrialId)) {
       window.nextTrialId = null;
       window.skipRemaining = false;
       window.branchingActive = false;
@@ -122,11 +156,7 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
       );
     }
     if (${active}) {
-      if (String(currentId) === String(${target})) {
-        ${directTarget}
-        return true;
-      }
-      return loop_${loopId}_DescendantIds.some(
+      return loop_${loopId}_DescendantTrialIds.some(
         descendantId => String(descendantId) === String(${target})
       );
     }
@@ -134,22 +164,24 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
   },
   on_timeline_start: function() {
     const inheritedTarget = ${active} && ${target} !== null &&
-      loop_${loopId}_DescendantIds.some(
+      loop_${loopId}_DescendantTrialIds.some(
         descendantId => String(descendantId) === String(${target})
       );
     loop_${loopId}_NextTrialId = inheritedTarget ? ${target} : null;
     loop_${loopId}_SkipRemaining = inheritedTarget;
     loop_${loopId}_BranchingActive = inheritedTarget;
+    loop_${loopId}_InheritedTrialId = inheritedTarget ? ${target} : null;
+    loop_${loopId}_InheritedTrialExecuted = false;
+    loop_${loopId}_RouteInherited = inheritedTarget;
     loop_${loopId}_BranchCustomParameters = inheritedTarget ? ${parameters} : null;
     loop_${loopId}_TargetExecuted = false;
-    loop_${loopId}_IterationComplete = false;
-    loop_${loopId}_ShouldBranchOnFinish = false;
   },
   on_timeline_finish: function() {
     const pendingBranchTarget = loop_${loopId}_NextTrialId;
     const pendingBranchParameters = loop_${loopId}_BranchCustomParameters;
-    const targetWasExecuted = loop_${loopId}_BranchingActive &&
-      loop_${loopId}_TargetExecuted && pendingBranchTarget !== null;
+    const inheritedTrialId = loop_${loopId}_InheritedTrialId;
+    const inheritedTrialWasExecuted = loop_${loopId}_RouteInherited &&
+      loop_${loopId}_InheritedTrialExecuted;
     const hasUnresolvedExit = loop_${loopId}_BranchingActive &&
       !loop_${loopId}_TargetExecuted && pendingBranchTarget !== null;
     ${complete}
@@ -160,7 +192,10 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
     loop_${loopId}_SkipRemaining = false;
     loop_${loopId}_TargetExecuted = false;
     loop_${loopId}_BranchCustomParameters = null;
-    loop_${loopId}_IterationComplete = true;
+    loop_${loopId}_BranchingActive = false;
+    loop_${loopId}_InheritedTrialId = null;
+    loop_${loopId}_InheritedTrialExecuted = false;
+    loop_${loopId}_RouteInherited = false;
   },
 `
 }

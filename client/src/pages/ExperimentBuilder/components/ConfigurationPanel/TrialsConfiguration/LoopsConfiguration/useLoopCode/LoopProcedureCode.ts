@@ -1,3 +1,4 @@
+import { generateLoopIteration } from "./services/generateLoopIteration";
 import { LoopCondition } from "./types";
 import { generateConditionalLoopFunction } from "./services/generateConditionalLoopFunction";
 import { generateLoopFinishLifecycle } from "./services/generateLoopFinishLifecycle";
@@ -9,53 +10,50 @@ type Props = {
   itemDefinitions: string;
   loopIdSanitized: string;
   id: string | undefined;
-  hasBranchesLoop: boolean | undefined;
   itemWrappers: string;
   timelineRefs: string;
   repetitions: number;
   randomize: boolean;
   isConditionalLoop?: boolean | undefined;
   loopConditions?: LoopCondition[] | undefined;
-  branches: (string | number)[] | undefined;
   descendantIdEntries: string;
 };
 
-export default function BranchingLogicCode({
+export default function LoopProcedureCode({
   code,
   parentLoopIdSanitized,
   itemDefinitions,
   loopIdSanitized,
   id,
-  hasBranchesLoop,
   itemWrappers,
   timelineRefs,
   randomize,
   repetitions,
   isConditionalLoop,
   loopConditions,
-  branches,
   descendantIdEntries,
 }: Props) {
   code += `
     
     ${itemDefinitions}
 
-// --- Branching logic variables for loop ${id || "main"} ---
+// --- Trial routing state for loop ${id || "main"} ---
 let loop_${loopIdSanitized}_NextTrialId = null;
 let loop_${loopIdSanitized}_SkipRemaining = false;
 let loop_${loopIdSanitized}_BranchingActive = false;
 let loop_${loopIdSanitized}_BranchCustomParameters = null; // Store custom parameters for branching within loops
 let loop_${loopIdSanitized}_TargetExecuted = false; // Indicates if the target trial has already been executed in this iteration
+let loop_${loopIdSanitized}_InheritedTrialId = null;
+let loop_${loopIdSanitized}_InheritedTrialExecuted = false;
 let loop_${loopIdSanitized}_RouteInherited = false; // Preserve inherited routes until their completion propagates outward
-let loop_${loopIdSanitized}_IterationComplete = false; // Indicates that the current iteration is complete
-const loop_${loopIdSanitized}_HasBranches = ${hasBranchesLoop ? "true" : "false"};
-let loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
-const loop_${loopIdSanitized}_DescendantIds = [${descendantIdEntries}];
+const loop_${loopIdSanitized}_DescendantTrialIds = [${descendantIdEntries}];
 
 ${itemWrappers}
 
+${generateLoopIteration(loopIdSanitized, timelineRefs)}
+
 const ${loopIdSanitized}_procedure = {
-  timeline: [${timelineRefs}],
+  timeline: [${loopIdSanitized}_iteration],
   timeline_variables: test_stimuli_${loopIdSanitized},
   repetitions: ${repetitions},
   randomize_order: ${randomize},
@@ -68,7 +66,6 @@ const ${loopIdSanitized}_procedure = {
     resetGlobalBranching: Boolean(loopConditions?.length),
   })}
   ${generateLoopFinishLifecycle({
-    branches,
     loopIdSanitized,
     parentLoopIdSanitized,
   })}

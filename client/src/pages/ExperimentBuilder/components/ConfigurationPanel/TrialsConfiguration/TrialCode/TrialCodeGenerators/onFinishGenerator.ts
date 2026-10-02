@@ -39,7 +39,6 @@ export function generateOnFinishCode(options: {
       ${getVarName("TargetExecuted")} = false;
       ${getVarName("BranchingActive")} = false;
       ${getVarName("BranchCustomParameters")} = null;
-      ${getVarName("ShouldBranchOnFinish")} = false;
     },`;
       }
 
@@ -55,14 +54,9 @@ export function generateOnFinishCode(options: {
 
     if (isInLoop) {
       return `on_finish: function(data) {${customBlock}
-      if (${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) {
-        ${getVarName("ShouldBranchOnFinish")} = false;
-      } else if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
-        ${getVarName("ShouldBranchOnFinish")} = true;
-      } else if (!${getVarName("HasBranches")}) {
-        if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
-        }
+      if (!(${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) &&
+          window.branchingActive) {
+        jsPsych.abortExperiment('', {});
       }
     },`;
     } else {
@@ -89,19 +83,13 @@ export function generateOnFinishCode(options: {
       ${getVarName("TargetExecuted")} = false;
       ${getVarName("BranchingActive")} = false;
       ${getVarName("BranchCustomParameters")} = null;
-      ${getVarName("ShouldBranchOnFinish")} = false;
     },`;
     }
 
     return `on_finish: function(data) {${repeatConditionsCode}${customBlock}
-      if (${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) {
-        ${getVarName("ShouldBranchOnFinish")} = false;
-      } else if (typeof ${getVarName("HasBranches")} !== 'undefined' && ${getVarName("HasBranches")}) {
-        ${getVarName("ShouldBranchOnFinish")} = true;
-      } else if (!${getVarName("HasBranches")}) {
-        if (window.branchingActive) {
-          jsPsych.abortExperiment('', {});
-        }
+      if (!(${getVarName("BranchingActive")} && ${getVarName("TargetExecuted")}) &&
+          window.branchingActive) {
+        jsPsych.abortExperiment('', {});
       }
     },`;
   }

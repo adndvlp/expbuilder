@@ -5,8 +5,6 @@ describe("useLoopCode composition", () => {
   it("generates a loop procedure with trial wrappers and unified stimuli", () => {
     const genLoopCode = useLoopCode({
       id: "loop_1",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 2,
       randomize: true,
       orders: false,
@@ -55,8 +53,6 @@ describe("useLoopCode composition", () => {
   it("generates conditional loop_function rules and orders/categories filtering", () => {
     const genLoopCode = useLoopCode({
       id: "loop_2",
-      branches: ["loop_3"],
-      branchConditions: [],
       repetitions: 1,
       randomize: false,
       orders: true,
@@ -94,14 +90,12 @@ describe("useLoopCode composition", () => {
     );
     expect(code).toContain("window.nextTrialId = null;");
     expect(code).toContain("window.skipRemaining = false;");
-    expect(code).toContain("window.nextTrialId = branches[0];");
+    expect(code).not.toContain("window.nextTrialId = branches[0];");
   });
 
   it("generates loop repeat/jump conditions in on_finish", () => {
     const genLoopCode = useLoopCode({
       id: "loop_repeat",
-      branches: undefined,
-      branchConditions: undefined,
       repeatConditions: [
         {
           id: 1,

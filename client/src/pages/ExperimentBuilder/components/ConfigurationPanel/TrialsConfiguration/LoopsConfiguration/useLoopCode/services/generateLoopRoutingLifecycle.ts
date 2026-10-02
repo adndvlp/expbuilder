@@ -22,10 +22,6 @@ export function generateLoopRoutingLifecycle({
   const routeCustomParameters = parentLoopIdSanitized
     ? `loop_${parentLoopIdSanitized}_BranchCustomParameters`
     : "window.branchCustomParameters";
-  const consumeDirectLoopTarget = parentLoopIdSanitized
-    ? `loop_${parentLoopIdSanitized}_TargetExecuted = true;`
-    : `window.skipRemaining = false;
-        window.nextTrialId = null;`;
   const conditionalReset =
     isConditionalLoop && resetGlobalBranching
       ? `
@@ -44,11 +40,7 @@ export function generateLoopRoutingLifecycle({
     }
 
     if (${routeIsActive}) {
-      if (String(currentId) === String(${routeTarget})) {
-        ${consumeDirectLoopTarget}
-        return true;
-      }
-      return loop_${loopIdSanitized}_DescendantIds.some(
+      return loop_${loopIdSanitized}_DescendantTrialIds.some(
         (descendantId) => String(descendantId) === String(${routeTarget}),
       );
     }
@@ -58,7 +50,7 @@ export function generateLoopRoutingLifecycle({
   on_timeline_start: function() {
     const hasInheritedBranchTarget = ${routeIsActive} &&
       ${routeTarget} !== null &&
-      loop_${loopIdSanitized}_DescendantIds.some(
+      loop_${loopIdSanitized}_DescendantTrialIds.some(
         (descendantId) => String(descendantId) === String(${routeTarget}),
       );
 
@@ -68,18 +60,18 @@ export function generateLoopRoutingLifecycle({
       loop_${loopIdSanitized}_BranchingActive = true;
       loop_${loopIdSanitized}_BranchCustomParameters = ${routeCustomParameters};
       loop_${loopIdSanitized}_TargetExecuted = false;
+      loop_${loopIdSanitized}_InheritedTrialId = ${routeTarget};
+      loop_${loopIdSanitized}_InheritedTrialExecuted = false;
       loop_${loopIdSanitized}_RouteInherited = true;
-      loop_${loopIdSanitized}_IterationComplete = false;
-      loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     } else {
       loop_${loopIdSanitized}_NextTrialId = null;
       loop_${loopIdSanitized}_SkipRemaining = false;
       loop_${loopIdSanitized}_BranchingActive = false;
       loop_${loopIdSanitized}_BranchCustomParameters = null;
       loop_${loopIdSanitized}_TargetExecuted = false;
+      loop_${loopIdSanitized}_InheritedTrialId = null;
+      loop_${loopIdSanitized}_InheritedTrialExecuted = false;
       loop_${loopIdSanitized}_RouteInherited = false;
-      loop_${loopIdSanitized}_IterationComplete = false;
-      loop_${loopIdSanitized}_ShouldBranchOnFinish = false;
     }${conditionalReset}
   },`;
 }

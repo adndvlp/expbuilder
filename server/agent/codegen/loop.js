@@ -1,23 +1,27 @@
-import { sanitizeId } from './helpers.js'
+import { jsStr, sanitizeId } from './helpers.js'
 import { generateTrialCode } from './trial.js'
 import {
   generateChildWrapper,
+  generateLoopIteration,
   generateLoopRoutingProperties,
   generateLoopState,
 } from './loopRouting.js'
+
+const serializeStimuli = rows => `[${rows.map(row => `{${Object.entries(row)
+  .map(([key, value]) => `${JSON.stringify(key)}:${jsStr(value)}`)
+  .join(',')}}`).join(',')}]`
 
 /* istanbul ignore next -- loop code generation is covered by output-focused fixture tests. */
 export function generateLoopCode(loop, doc, parentLoopId) {
   if (!loop.trials?.length) return ''
 
   const loopId = sanitizeId(loop.id)
-  const csvData = loop.csvJson?.length ? loop.csvJson : [{}]
   const rep = loop.repetitions ?? 1
 
   const children = []
   for (const tid of loop.trials) {
-    const t = doc.trials.find(tr => tr.id === tid)
-    const l = doc.loops.find(lp => lp.id === tid)
+    const t = doc.trials.find(tr => String(tr.id) === String(tid))
+    const l = doc.loops.find(lp => String(lp.id) === String(tid))
     if (t) children.push({ ...generateTrialCode(t, true, loop.csvJson, loop.id), id: tid, name: t.name, type: 'trial' })
     else if (l) children.push({ code: generateLoopCode(l, doc, loop.id), timelineRef: '', procedureRef: `${sanitizeId(tid)}_procedure`, id: tid, name: l.name, type: 'loop', hasCsv: false })
   }
@@ -25,13 +29,18 @@ export function generateLoopCode(loop, doc, parentLoopId) {
 
   if (!validChildren.length) return ''
 
+  const csvData = (loop.csvJson?.length ? loop.csvJson : [{}]).map((row, index) => ({
+    ...row,
+    ...Object.assign({}, ...validChildren.map(child => child.loopVariables?.[index] || {})),
+  }))
+
   let preCode = ''
   if (loop.orders || loop.categories) {
     preCode += `\nlet test_stimuli_${loopId} = [];\n`
     preCode += `if (typeof participantNumber === "number" && !isNaN(participantNumber)) {\n`
     preCode += `  const _stimuliOrders = ${JSON.stringify(loop.stimuliOrders || [])};\n`
     preCode += `  const _categoryData = ${JSON.stringify(loop.categoryData || [])};\n`
-    preCode += `  const _allStimuli = ${JSON.stringify(csvData)};\n`
+    preCode += `  const _allStimuli = ${serializeStimuli(csvData)};\n`
     preCode += `  if (_categoryData.length > 0) {\n`
     preCode += `    const _allCats = [...new Set(_categoryData)];\n`
     preCode += `    const _catIdx = (participantNumber - 1) % _allCats.length;\n`
@@ -48,10 +57,10 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     preCode += `    test_stimuli_${loopId} = _stimuliOrders[_idx].filter(i => i >= 0 && i < _allStimuli.length).map(i => _allStimuli[i]);\n`
     preCode += `  }\n`
     preCode += `} else {\n`
-    preCode += `  test_stimuli_${loopId} = ${JSON.stringify(csvData)};\n`
+    preCode += `  test_stimuli_${loopId} = ${serializeStimuli(csvData)};\n`
     preCode += `}\n`
   } else {
-    preCode += `\nconst test_stimuli_${loopId} = ${JSON.stringify(csvData)};\n`
+    preCode += `\nconst test_stimuli_${loopId} = ${serializeStimuli(csvData)};\n`
   }
 
   let childCode = ''
@@ -67,10 +76,11 @@ export function generateLoopCode(loop, doc, parentLoopId) {
   childCode += generateLoopState(loop, validChildren)
 
   let procedure = childCode
+  procedure += generateLoopIteration(loop.id, timelineRefs)
   procedure += `\nconst ${loopId}_procedure = {\n`
-  procedure += `  timeline: [${timelineRefs.join(', ')}],\n`
+  procedure += `  timeline: [${loopId}_iteration],\n`
   procedure += `  timeline_variables: test_stimuli_${loopId},\n`
-  procedure += `  sample: { type: "with-replacement", size: ${rep}${csvData.length > 1 ? ` * ${csvData.length}` : ''} },\n`
+  procedure += `  repetitions: ${rep},\n`
   if (loop.randomize) procedure += `  randomize_order: true,\n`
   procedure += generateLoopRoutingProperties(loop, parentLoopId)
 
@@ -94,9 +104,8 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     procedure += `  },\n`
   }
 
-  const hasBranch = loop.branchConditions?.length
   const hasRepeat = loop.repeatConditions?.length
-  if (hasBranch || hasRepeat) {
+  if (hasRepeat) {
     procedure += `  on_finish: function(data) {\n`
     if (hasRepeat) {
       procedure += `    const _rConditions = ${JSON.stringify(loop.repeatConditions)};\n`
@@ -119,31 +128,13 @@ export function generateLoopCode(loop, doc, parentLoopId) {
       procedure += `      }\n`
       procedure += `    }\n`
     }
-    if (hasBranch) {
-      procedure += `    if (loop_${loopId}_ShouldBranchOnFinish) {\n`
-      if (parentLoopId) {
-        const pid = sanitizeId(parentLoopId)
-        procedure += `      loop_${pid}_NextTrialId = loop_${loopId}_NextTrialId || ${JSON.stringify(loop.branches?.[0])};\n`
-        procedure += `      loop_${pid}_SkipRemaining = true;\n`
-      } else {
-        procedure += `      window.nextTrialId = loop_${loopId}_NextTrialId || ${JSON.stringify(loop.branches?.[0])};\n`
-        procedure += `      window.skipRemaining = true;\n`
-      }
-      procedure += `    }\n`
-    }
-    procedure += `    loop_${loopId}_NextTrialId = null;\n`
-    procedure += `    loop_${loopId}_SkipRemaining = false;\n`
-    procedure += `    loop_${loopId}_TargetExecuted = false;\n`
-    procedure += `    loop_${loopId}_BranchingActive = false;\n`
-    procedure += `    loop_${loopId}_BranchCustomParameters = null;\n`
-    procedure += `    loop_${loopId}_IterationComplete = false;\n`
     procedure += `  },\n`
   }
 
   procedure += `  data: { loop_id: "${loop.id}" }\n`
   procedure += `};\n`
 
-  if (!parentLoopId) {
+  if (parentLoopId == null) {
     procedure += `timeline.push(${loopId}_procedure);\n`
   }
 

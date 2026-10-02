@@ -1,5 +1,5 @@
-import BranchesCode from "./BranchesCode";
-import BranchingLogicCode from "./BranchingLogicCode";
+import { generateLoopRepeatLifecycle } from "./services/generateLoopRepeatLifecycle";
+import LoopProcedureCode from "./LoopProcedureCode";
 import { LoopCondition, RepeatCondition, TimelineItem } from "./types";
 import { generateItemWrappers } from "./services/generateItemWrappers";
 import {
@@ -25,7 +25,6 @@ type Props = {
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // Parent loop ID if this is a nested loop
   mergePointIds?: (string | number)[];
-  isMergePoint?: boolean;
 };
 
 export default function useLoopCode({
@@ -43,7 +42,6 @@ export default function useLoopCode({
   isConditionalLoop,
   parentLoopId,
   mergePointIds = [],
-  isMergePoint = false,
 }: Props) {
   const sanitizeName = toCodeIdentifier;
 
@@ -190,26 +188,22 @@ export default function useLoopCode({
     const test_stimuli_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};`;
     }
 
-    const hasBranchesLoop = false;
-
-    const branchingResult = BranchingLogicCode({
+    const procedureResult = LoopProcedureCode({
       code,
       parentLoopIdSanitized,
       itemDefinitions,
       loopIdSanitized,
-      hasBranchesLoop,
       id,
       itemWrappers,
       timelineRefs,
       repetitions,
       randomize,
-      branches: undefined,
       descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
       isConditionalLoop,
       loopConditions,
     });
 
-    code = branchingResult.code;
+    code = procedureResult.code;
 
     // Always add loop_id to the data (without branches/branchConditions to avoid conflicts)
     code += `
@@ -217,19 +211,7 @@ export default function useLoopCode({
     loop_id: "${id}"
   },`;
 
-    const branchesResult = BranchesCode({
-      code,
-      hasBranchesLoop,
-      branches: undefined,
-      branchConditions: undefined,
-      repeatConditions,
-      id,
-      loopIdSanitized,
-      parentLoopIdSanitized,
-      isMergePoint,
-    });
-
-    code = branchesResult.code;
+    code += generateLoopRepeatLifecycle({ id, repeatConditions });
 
     const appendRootProcedure = parentLoopId
       ? ""

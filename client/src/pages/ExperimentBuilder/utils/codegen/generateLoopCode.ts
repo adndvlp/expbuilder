@@ -18,7 +18,6 @@ export async function generateLoopCode(
   getTrial: GetTrialFn,
   getLoopTimeline: GetLoopTimelineFn,
   getLoop: GetLoopFn,
-  parentScopeMergePointIds: Set<string> = new Set(),
   codegenOptions: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<string> {
   try {
@@ -98,7 +97,6 @@ export async function generateLoopCode(
             getTrial,
             getLoopTimeline,
             getLoop,
-            loopMergePointIds,
             codegenOptions,
           );
 
@@ -126,13 +124,12 @@ export async function generateLoopCode(
       const row: Record<string, unknown> = {};
 
       trialsWithCode.forEach((trial) => {
-        if (
-          trial.mappedJson &&
-          Array.isArray(trial.mappedJson) &&
-          trial.mappedJson[i]
-        ) {
-          // Merge all properties from this trial's mappedJson[i] into the row
-          Object.assign(row, trial.mappedJson[i]);
+        if (trial.mappedJson && Array.isArray(trial.mappedJson)) {
+          // A trial with fixed data participates in every row of the loop.
+          const trialRow = trial.mappedJson.length === 1
+            ? trial.mappedJson[0]
+            : trial.mappedJson[i];
+          if (trialRow) Object.assign(row, trialRow);
         }
       });
 
@@ -164,7 +161,6 @@ export async function generateLoopCode(
         ? String(fullLoop.parentLoopId)
         : null,
       mergePointIds: Array.from(loopMergePointIds),
-      isMergePoint: isMergePoint(parentScopeMergePointIds, fullLoop.id),
     });
 
     return genLoopCode();

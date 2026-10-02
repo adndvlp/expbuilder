@@ -61,8 +61,8 @@ describe("generateOnFinishCode merge points", () => {
     expect(topLevelCode).toContain("data.saved = true;");
     expect(topLevelCode).toContain("if (window.branchingActive)");
     expect(topLevelCode).toContain("jsPsych.abortExperiment('', {});");
-    expect(loopCode).toContain("loop_1_ShouldBranchOnFinish = true;");
-    expect(loopCode).toContain("else if (!loop_1_HasBranches)");
+    expect(loopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
+    expect(loopCode).toContain("window.branchingActive");
   });
 
   it("appends branch condition code in the final on_finish path", () => {

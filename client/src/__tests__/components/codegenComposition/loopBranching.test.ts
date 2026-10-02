@@ -5,8 +5,6 @@ describe("useLoopCode composition", () => {
   it("checks a newly requested loop branch target before suppressing remaining wrappers", () => {
     const genLoopCode = useLoopCode({
       id: "loop_chain",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -56,8 +54,6 @@ describe("useLoopCode composition", () => {
   it("resets loop branch state after a shared terminal target so later wrappers continue", () => {
     const genLoopCode = useLoopCode({
       id: "loop_merge",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -107,7 +103,7 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("loop_loop_merge_NextTrialId = null;");
     expect(code).toContain("loop_loop_merge_SkipRemaining = false;");
     expect(code).toContain("loop_loop_merge_TargetExecuted = false;");
-    expect(code).toContain("loop_loop_merge_ShouldBranchOnFinish = false;");
+    expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
   it("preserves repeat conditions without generating loop branch decisions", () => {

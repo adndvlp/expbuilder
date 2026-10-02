@@ -1,5 +1,5 @@
+import { generateTrialBranching } from './trialBranching.js'
 import {
-  generateConditionEval,
   generateExtensionCode,
   generateRuleEvalJS,
   jsStr,
@@ -23,7 +23,8 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   const trialIdStr = sanitizeId(trialId)
   const pluginGlobal = toJsPsychGlobal(trial.plugin)
 
-  const csvJson = trial.csvFromLoop && loopCsvJson?.length ? loopCsvJson : (trial.csvJson || [])
+  const usesLoopCsv = Boolean(isInLoop && trial.csvFromLoop && loopCsvJson?.length)
+  const csvJson = usesLoopCsv ? loopCsvJson : (trial.csvJson || [])
   const rows = csvJson.length > 0 ? csvJson : [{}]
   const hasCsv = csvJson.length > 1
 
@@ -108,76 +109,8 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   }
 
   let onFinishCode = ''
-  const hasBranches = trial.branchConditions?.length
   const hasRepeats = trial.repeatConditions?.length
-
-  if (hasBranches) {
-    onFinishCode += `    // -- Branch conditions --\n`
-    onFinishCode += `    const _bConditions = ${JSON.stringify(trial.branchConditions)};\n`
-    onFinishCode += `    for (const _bc of _bConditions) {\n`
-    onFinishCode += `      if (${generateConditionEval({ rules: trial.branchConditions[0].rules })}) {\n`
-    onFinishCode += `        if (_bc.nextTrialId) {\n`
-    if (trial.branchConditions.some(bc => bc.customParameters && Object.keys(bc.customParameters).length > 0)) {
-      onFinishCode += `          jsPsych.data.get().push({ next_trial_params: _bc.customParameters || {} });\n`
-    }
-    if (isInLoop) {
-      const lid = sanitizeId(loopId)
-      onFinishCode += `          loop_${lid}_NextTrialId = _bc.nextTrialId;\n`
-      onFinishCode += `          loop_${lid}_SkipRemaining = true;\n`
-      onFinishCode += `          loop_${lid}_BranchingActive = true;\n`
-      onFinishCode += `          if (_bc.customParameters) loop_${lid}_BranchCustomParameters = _bc.customParameters;\n`
-    } else {
-      onFinishCode += `          window.nextTrialId = _bc.nextTrialId;\n`
-      onFinishCode += `          window.skipRemaining = true;\n`
-      onFinishCode += `          window.branchingActive = true;\n`
-      onFinishCode += `          if (_bc.customParameters) window.branchCustomParameters = _bc.customParameters;\n`
-    }
-    onFinishCode += `          return;\n`
-    onFinishCode += `        }\n      }\n    }\n`
-
-    if (trial.branchConditions.length > 1) {
-      onFinishCode = `    // -- Branch conditions --\n`
-      onFinishCode += `    const _bConditions = ${JSON.stringify(trial.branchConditions)};\n`
-      onFinishCode += `    for (const _bc of _bConditions) {\n`
-      onFinishCode += `      if (!_bc.rules) continue;\n`
-      onFinishCode += `      const _allMatch = _bc.rules.every(_r => {\n`
-      onFinishCode += `        return (function() {\n`
-      onFinishCode += `          const _v = data[_r.column || _r.prop];\n`
-      onFinishCode += `          const _cv = _r.value;\n`
-      onFinishCode += `          const _nv = parseFloat(_v);\n`
-      onFinishCode += `          const _ncv = parseFloat(_cv);\n`
-      onFinishCode += `          const _isNum = !isNaN(_nv) && !isNaN(_ncv);\n`
-      onFinishCode += `          switch (_r.op) {\n`
-      onFinishCode += `            case '==': return _isNum ? _nv === _ncv : _v == _cv;\n`
-      onFinishCode += `            case '!=': return _isNum ? _nv !== _ncv : _v != _cv;\n`
-      onFinishCode += `            case '>':  return _isNum && _nv > _ncv;\n`
-      onFinishCode += `            case '<':  return _isNum && _nv < _ncv;\n`
-      onFinishCode += `            case '>=': return _isNum && _nv >= _ncv;\n`
-      onFinishCode += `            case '<=': return _isNum && _nv <= _ncv;\n`
-      onFinishCode += `            case 'includes': return Array.isArray(_v) ? _v.includes(_cv) : String(_v).includes(String(_cv));\n`
-      onFinishCode += `            default: return _v == _cv;\n`
-      onFinishCode += `          }\n`
-      onFinishCode += `        })();\n`
-      onFinishCode += `      });\n`
-      onFinishCode += `      if (_allMatch && _bc.nextTrialId) {\n`
-      if (trial.branchConditions.some(bc => bc.customParameters && Object.keys(bc.customParameters).length > 0)) {
-        onFinishCode += `        if (_bc.customParameters) jsPsych.data.get().push({ next_trial_params: _bc.customParameters });\n`
-      }
-      if (isInLoop) {
-        const lid = sanitizeId(loopId)
-        onFinishCode += `        loop_${lid}_NextTrialId = _bc.nextTrialId;\n`
-        onFinishCode += `        loop_${lid}_SkipRemaining = true;\n`
-        onFinishCode += `        loop_${lid}_BranchingActive = true;\n`
-        onFinishCode += `        if (_bc.customParameters) loop_${lid}_BranchCustomParameters = _bc.customParameters;\n`
-      } else {
-        onFinishCode += `        window.nextTrialId = _bc.nextTrialId;\n`
-        onFinishCode += `        window.skipRemaining = true;\n`
-        onFinishCode += `        window.branchingActive = true;\n`
-        onFinishCode += `        if (_bc.customParameters) window.branchCustomParameters = _bc.customParameters;\n`
-      }
-      onFinishCode += `        return;\n      }\n    }\n`
-    }
-  }
+  onFinishCode += generateTrialBranching(trial, isInLoop ? loopId : null)
 
   if (hasRepeats) {
     onFinishCode += `    // -- Repeat/Jump conditions --\n`
@@ -220,7 +153,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
 
     for (const [key, val] of Object.entries(rowMapped)) {
       if (useTimelineVar) {
-        obj += `    ${key}: jsPsych.timelineVariable("${key}"),\n`
+        obj += `    ${key}: jsPsych.timelineVariable("${usesLoopCsv ? `${trialIdStr}_${key}` : key}"),\n`
       } else {
         obj += `    ${key}: ${jsStr(val)},\n`
       }
@@ -239,7 +172,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     return obj
   }
 
-  if (hasCsv) {
+  if (hasCsv && !usesLoopCsv) {
     code += `const test_stimuli_${trialIdStr} = ${JSON.stringify(rowsMapped)};\n\n`
     code += `const ${trialIdStr}_timeline = {\n`
     code += buildTrialObj(rowsMapped[0], true)
@@ -251,7 +184,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     if (!isInLoop) code += `timeline.push(${trialIdStr}_procedure);\n`
   } else if (isInLoop) {
     code += `const ${trialIdStr}_timeline = {\n`
-    code += buildTrialObj(rowsMapped[0], false)
+    code += buildTrialObj(rowsMapped[0], usesLoopCsv)
     code += `\n};\n`
   } else {
     code += `timeline.push({\n`
@@ -262,7 +195,10 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   return {
     code,
     timelineRef: hasCsv || isInLoop ? `${trialIdStr}_timeline` : '',
-    procedureRef: hasCsv ? `${trialIdStr}_procedure` : '',
+    procedureRef: hasCsv && !usesLoopCsv ? `${trialIdStr}_procedure` : '',
+    loopVariables: usesLoopCsv ? rowsMapped.map(row => Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [`${trialIdStr}_${key}`, value]),
+    )) : undefined,
     hasCsv,
   }
 }

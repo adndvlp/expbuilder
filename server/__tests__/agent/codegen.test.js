@@ -506,10 +506,6 @@ describe('agent codegen', () => {
           loopConditions: [
             { id: 1, rules: [{ trialId: 1, column: 'response', op: '==', value: 'again' }] },
           ],
-          branches: ['done'],
-          branchConditions: [
-            { id: 2, rules: [{ column: 'response', op: '==', value: 'skip' }], nextTrialId: 'done' },
-          ],
           repeatConditions: [
             { id: 3, rules: [{ column: 'response', op: '==', value: 'restart' }], jumpToTrialId: 'loop_outer' },
           ],
@@ -582,8 +578,6 @@ describe('agent codegen', () => {
           repetitions: 1,
           randomize: false,
           csvJson: [{ stimulus: 'A' }, { stimulus: 'B' }],
-          branchConditions: [{ id: 10, rules: [{ column: 'response', op: '==', value: 'branch' }], nextTrialId: 'after' }],
-          branches: ['after'],
         },
         {
           id: 'loop_child',
@@ -593,8 +587,6 @@ describe('agent codegen', () => {
           orders: true,
           stimuliOrders: [[0]],
           csvJson: [{ stimulus: 'C' }],
-          branchConditions: [{ id: 11, rules: [{ column: 'response', op: '==', value: 'child' }], nextTrialId: 'after' }],
-          branches: ['after'],
         },
         { id: 'loop_empty', name: 'Empty', trials: [], repetitions: 1 },
         { id: 'loop_invalid', name: 'Invalid', trials: [3], repetitions: 1 },
@@ -615,9 +607,10 @@ describe('agent codegen', () => {
     expect(result.code).toContain('const id_1_wrapper = {')
     expect(result.code).toContain('on_timeline_finish: function()')
     expect(result.code).toContain('const loop_child_wrapper = {')
-    expect(result.code).toContain('loop_loop_parent_NextTrialId = loop_loop_child_NextTrialId || "after"')
-    expect(result.code).toContain('window.nextTrialId = loop_loop_parent_NextTrialId || "after"')
-    expect(result.code).toContain('sample: { type: "with-replacement", size: 1 * 2 }')
+    expect(result.code).toContain('loop_loop_parent_NextTrialId = pendingBranchTarget')
+    expect(result.code).toContain('window.nextTrialId = pendingBranchTarget')
+    expect(result.code).toContain('repetitions: 1')
+    expect(result.code).not.toContain('sample:')
     expect(result.code).not.toContain('loop_empty_procedure')
     expect(result.code).not.toContain('loop_invalid_procedure')
   })

@@ -5,8 +5,6 @@ describe("useLoopCode composition", () => {
   it("recursively generates nested loop items without precomputed timeline props", () => {
     const genLoopCode = useLoopCode({
       id: "parent_loop",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -59,8 +57,6 @@ describe("useLoopCode composition", () => {
   it("uses main and Loop fallbacks when the loop id is absent", () => {
     const genLoopCode = useLoopCode({
       id: undefined,
-      branches: [],
-      branchConditions: [],
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -73,7 +69,7 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("Branching logic variables for loop main");
+    expect(code).toContain("Trial routing state for loop main");
     expect(code).toContain("let loop_Loop_NextTrialId = null;");
   });
 });

@@ -6,8 +6,6 @@ const generateLoop = (parentLoopId: string | null) =>
   generateLoopCode({
     id: "inner",
     parentLoopId,
-    branches: [],
-    branchConditions: [],
     repetitions: 1,
     randomize: false,
     orders: false,
@@ -59,21 +57,19 @@ describe("loop exit code generation", () => {
     );
   });
 
-  it("does not erase an unresolved exit in the last wrapper", () => {
+  it("does not erase an unresolved exit at the row boundary", () => {
     const code = generateLoop("parent");
-    const wrapperStart = code.indexOf("const Later$20$Trial_wrapper =");
+    const wrapperStart = code.indexOf("const inner_iteration =");
     const loopStart = code.indexOf("const inner_procedure =");
     const wrapperCode = code.slice(wrapperStart, loopStart);
 
     expect(wrapperCode).toContain(
-      "const hasUnresolvedExit = loop_inner_BranchingActive &&",
+      "const hasScopeExit = loop_inner_BranchingActive &&",
     );
     expect(wrapperCode).toContain(
       "if (!loop_inner_RouteInherited &&",
     );
-    expect(wrapperCode).toContain(
-      "!hasUnresolvedExit && !hasResolvedExit)",
-    );
+    expect(wrapperCode).toContain("!hasScopeExit)");
   });
 
   it("clears a resolved same-loop branch before a conditional repeat", () => {
@@ -92,7 +88,7 @@ describe("loop exit code generation", () => {
           loop_inner_BranchingActive = true;
           loop_inner_TargetExecuted = true;
         },
-        finishIteration: () => Later$20$Trial_wrapper.on_timeline_finish(),
+        finishIteration: () => inner_iteration.on_timeline_finish(),
         state: () => ({
           target: loop_inner_NextTrialId,
           active: loop_inner_BranchingActive,
@@ -124,15 +120,13 @@ describe("loop exit code generation", () => {
     expect(code).toContain(
       "loop_scope_BranchingActive && loop_scope_TargetExecuted",
     );
-    expect(code).toContain("loop_scope_ShouldBranchOnFinish = false;");
+    expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
   it("does not abort a root exit while its exact target is being propagated", () => {
     const code = generateLoop(null);
 
-    expect(code).toContain(
-      "if (window.branchingActive && !loop_inner_BranchingActive)",
-    );
+    expect(code).not.toContain("jsPsych.abortExperiment");
   });
 
   it("transfers an exit from a non-terminal source without losing its payload", () => {

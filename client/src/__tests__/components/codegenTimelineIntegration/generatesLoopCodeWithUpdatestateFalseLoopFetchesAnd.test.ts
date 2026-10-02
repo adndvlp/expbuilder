@@ -161,7 +161,6 @@ describe("generateTrialLoopCodes integration", () => {
       id: "loop_child",
       name: "Child Loop",
       trials: [20],
-      branches: [99],
       parentLoopId: "loop_parent",
       repetitions: 1,
       randomize: false,
@@ -202,7 +201,7 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
       mode: "query",
     });
-    expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
+    expect(code).toContain("loop_loop_parent_NextTrialId = pendingBranchTarget;");
     expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
     expect(code).toContain("loop_loop_parent_BranchingActive = true;");
     expect(code).not.toContain(

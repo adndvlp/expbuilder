@@ -15,6 +15,7 @@ export function generateLoopBranchConditionsCode({
       if (nextTrialId !== null && nextTrialId !== undefined) {
         ${getVarName("NextTrialId")} = nextTrialId;
         ${getVarName("SkipRemaining")} = true;
+        ${getVarName("TargetExecuted")} = false;
         ${getVarName("BranchingActive")} = true;
         ${getVarName("BranchCustomParameters")} =
           branchDecision.customParameters;

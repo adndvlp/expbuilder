@@ -5,7 +5,7 @@
 - Fecha: 2026-10-01.
 - Rama de trabajo: `loop-branches`.
 - HEAD al cerrar la revisión: `5c9ae40` (`case for testing`).
-- Estado: puntos 1, 2, 3 y 4 implementados y verificados. El usuario creó los commits de los puntos 1, 2 y 3 (`99c5d4e`, `b35b07a`, `97a17a0`). Siguiente entrega: punto 5, limpieza de ambos generadores de código.
+- Estado: puntos 1 a 5 implementados y verificados. El usuario creó los commits de los puntos 1 a 4 (`99c5d4e`, `b35b07a`, `97a17a0`, `9c2cac5`). Siguiente entrega: punto 6, revisión final de pruebas, fixtures y documentación.
 - Este documento conserva las decisiones del usuario y el resultado de la revisión para continuar el trabajo después de perder contexto.
 
 ## Objetivo
@@ -89,11 +89,11 @@ El usuario aclaró: «no hay experimentos que guardar».
 
 El commit `43f9e04e9d348a90e385bf698ec3e93257028daf` (`fix(loop): ignore legacy loop branches so CSV loops always iterate`) hizo un parche para ignorar las ramas propias del loop mediante `hasBranchesLoop = false`.
 
-Ese parche conserva los campos y los mecanismos legacy. La rama `loop-branches` revisada no contiene ese commit: su generador todavía calcula `hasBranchesLoop` a partir de `branches.length`. El commit de referencia y esta rama comparten como base `a2af702`.
+Ese parche conserva los campos y los mecanismos legacy. En la revisión inicial, la rama `loop-branches` no contenía ese commit y su generador calculaba `hasBranchesLoop` a partir de `branches.length`. El commit de referencia y esta rama comparten como base `a2af702`.
 
 También existe una limpieza parcial del canvas en `eafe8a5`: se quitó el botón de agregar ramas en loops y se excluyeron loops de los destinos de `Move Item`. Esto no elimina los caminos internos que todavía producen ramas desde o hacia loops.
 
-## Hallazgos y archivos afectados
+## Hallazgos de la revisión inicial y archivos afectados
 
 ### Modelo y proyecciones
 
@@ -171,7 +171,7 @@ Después de retirar el movimiento de loops, la revisión no ha identificado otra
 - **Ejecución:** preservar las decisiones de los trials. No interpretar «recorrido normal del CSV» como una orden de ignorar una rama del trial que selecciona otro destino.
 - **Herramientas del agente:** aplicar el mismo contrato; no conservar una excepción para su implementación paralela.
 
-El principal riesgo técnico pendiente está en la generación de código: el estado asociado al scope del loop participa en la ejecución de ramas de trials, además de contener mecanismos legacy. Separar esos usos antes de eliminar flags o callbacks.
+El principal riesgo técnico identificado estaba en la generación de código: el estado asociado al scope del loop transporta decisiones de trials. El punto 5 retiró las decisiones propias del contenedor y verificó ese transporte con pruebas de ejecución real.
 
 Verificar específicamente el recorrido normal de varias filas y repeticiones, las rutas dentro del mismo scope, las conexiones entre niveles anidados, las condiciones y parámetros, y la continuación tras destinos compartidos. Las pruebas revisadas incluyen rutas desde trials no terminales a destinos externos; esa cobertura no sustituye la verificación de escenarios con varias filas y repeticiones. Estos son trabajos de implementación y validación, no motivos para inventar otra política de conexiones.
 
@@ -189,9 +189,9 @@ Verificar específicamente el recorrido normal de varias filas y repeticiones, l
 - [x] Crear y desagrupar loops sigue funcionando, incluyendo contenedores anidados.
 - [x] Expandir y colapsar un loop conserva la identidad real de los extremos de sus conexiones.
 - [x] El canvas no depende de `loop.branches` para representar el flujo.
-- [ ] La generación de código no contiene decisiones ni fallbacks basados en ramas propias de loops.
-- [ ] El recorrido normal de los loops respeta todas las filas de CSV, iteraciones y repeticiones; se prueba con ejecución real además de inspección de código generado.
-- [ ] Se conservan los destinos concretos y los parámetros de ramas entre trials.
+- [x] La generación de código no contiene decisiones ni fallbacks basados en ramas propias de loops.
+- [x] El recorrido normal de los loops respeta todas las filas de CSV, iteraciones y repeticiones; se prueba con ejecución real además de inspección de código generado.
+- [x] Se conservan los destinos concretos y los parámetros de ramas entre trials.
 
 ## Verificación realizada y estado para retomar
 
@@ -321,11 +321,41 @@ Reportes fuera del repositorio: `/tmp/loop-branches-point4-client-verified.json`
 
 Título previsto: `refactor(canvas): project loop connections from trial branches`.
 
-#### Siguiente punto: generación de código
+#### Punto 5: generación de código y ejecución — implementado
 
-Completar el punto 5 en el cliente y el agente del servidor: retirar decisiones, flags y fallbacks basados en ramas propias del loop. Revisar `BranchesCode.ts`, `BranchingLogicCode.ts`, `generateLoopFinishLifecycle.ts`, los callbacks de trials y `server/agent/codegen/loop.js` y `loopRouting.js`. Conservar el transporte de decisiones de trials por la jerarquía de scopes, los destinos concretos y sus parámetros.
+Base de esta entrega: `9c2cac5` (`refactor(canvas): project loop connections from trial branches`), creado por el usuario.
 
-El punto 5 sigue pendiente. Las pruebas y documentación se actualizan dentro de cada punto; el punto 6 agrupa la revisión final de la cobertura restante, incluyendo fixtures legacy que todavía existan fuera de las suites adaptadas. Las verificaciones de los puntos 3 y 4 no sustituyen las pruebas de ejecución real con varias filas de CSV y repeticiones previstas en el punto 5.
+- Se eliminaron `BranchesCode.ts`, `BranchingLogicCode.ts`, el parche `hasBranchesLoop = false`, `HasBranches`, `ShouldBranchOnFinish` y el estado sin lectores `IterationComplete`. `LoopProcedureCode.ts` construye el contenedor y su estado de transporte; `generateLoopRepeatLifecycle.ts` conserva únicamente las reglas existentes de repetición/navegación del callback del loop.
+- Ambos generadores dejaron de leer `loop.branches` y `loop.branchConditions`, de decidir rutas propias al finalizar el contenedor y de recurrir a su primera rama como fallback. También se retiró el parámetro que trataba al ID del loop como un destino estructural compartido.
+- La admisión de ramas en contenedores consulta `DescendantTrialIds`, que contiene exclusivamente trials. Se retiró la comparación directa con el ID del loop, tanto en la entrada del procedimiento como en los wrappers de hijos. La navegación existente conserva su mecanismo; en el agente usa por separado los IDs de descendientes necesarios para esa función.
+- Los callbacks de trials ya no dependen de los flags retirados. Cada decisión de un trial conserva su destino y parámetros, y marca ese nuevo destino como pendiente. Los contenedores transportan la decisión exacta al padre o root al finalizar.
+- Cada fila tiene un objeto de iteración que limpia las decisiones locales al terminar. Esa limpieza se ejecuta aunque la rama haya omitido el último trial; no borra una salida pendiente hacia otro scope ni una ruta recibida del padre.
+- Se conserva por separado el ID del trial recibido y si se ejecutó. Esto permite reconocer su ejecución aunque ese trial encadene otra rama. La confirmación se propaga por los ancestros sin sustituir el siguiente destino; se evita repetir la entrada en las demás filas/repeticiones.
+- El cliente combina el único registro de un trial con datos fijos con todas las filas del loop. Antes se agotaba ese registro en la segunda fila y jsPsych fallaba por una variable ausente.
+- El agente genera `repetitions` y recorre las filas del contenedor en orden cuando no se solicita randomización. Se retiró el muestreo con reemplazo. Los trials con `csvFromLoop` reciben las variables de la fila actual, con nombres propios por trial; ya no crean un segundo procedimiento que recorra otra vez el mismo CSV. La serialización conserva los parámetros de función de los plugins, incluido `button_html`.
+- El agente concentra las decisiones de trials en `trialBranching.js`: evalúa las reglas de cada condición correspondiente, conserva los parámetros, admite fallthrough a la primera rama y usa el destino por defecto si ninguna condición coincide. Se eliminó la generación duplicada que aplicaba las reglas de la primera condición a otras condiciones o ignoraba ramas sin condiciones.
+- Se conserva la generación de loops anidados con un padre de ID numérico cero, sin añadir indebidamente el procedimiento hijo al timeline raíz.
+- Las expectativas afectadas de generación y el fixture compuesto usan transporte de destinos concretos, sin exigir ramas propias del contenedor. Los casos que inyectan explícitamente campos legacy comprueban que no generan decisiones del loop; no implementan migración de documentos.
+
+Verificación de esta entrega:
+
+- **Regresiones iniciales:** los primeros casos reprodujeron 5 fallos del cliente y 4 del agente: flags/fallbacks presentes, IDs de loops admitidos como destinos e iteración CSV duplicada. Las tres primeras pruebas de Chromium fallaron: variable ausente del trial fijo, parámetro de función serializado como texto en el agente y estado de rama conservado en la siguiente fila. Dos casos adicionales reprodujeron la repetición de una entrada que encadenaba otra rama, en ambos generadores.
+- **Cliente:** 144 pruebas pasaron en 41 archivos de generación, composición, integración, runtime, fixture compuesto y regresiones de rutas de loops.
+- **Servidor:** 26 pruebas pasaron en 3 archivos de generación del agente. Cubren destinos y parámetros, condiciones distintas, fallthrough/default, contenedores sin ramas, IDs reales y control de CSV/repeticiones.
+- **Ejecución real:** 20 escenarios pasaron en Chromium. Incluyen 8 casos nuevos que ejecutan la salida de ambos generadores: tres filas con dos repeticiones; una rama por fila/repetición que omite el último trial; entrada a un trial no inicial de un loop hermano/anidado con parámetros; y esa entrada encadenando otra rama. Los casos existentes verifican salidas al padre, ancestro y root, condiciones de loops, destinos paralelos/secuenciales, overrides, movimiento de trials y el escenario compuesto con jump/resume.
+- Los artefactos del agente de los nuevos escenarios se construyen con sus generadores de loops/trials y el mismo constructor de artefactos, y se ejecutan con jsPsych real. Los escenarios usan bases temporales; Chromium se instaló en `/tmp` y se eliminó al terminar.
+- **Tipos:** `node node_modules/typescript/bin/tsc -b --pretty false` desde `client` pasó.
+- **ESLint:** sin errores ni advertencias de código en los módulos de producción modificados y los helpers/escenarios de ejecución nuevos. La instalación del servidor informa la limitación preexistente de la regla `no-unused-modules` del plugin; se comprobaron los consumidores retirados mediante búsqueda.
+- **Registro de cobertura:** `node runtime-e2e/coverage/checkCoverage.mjs` pasó; las capacidades nuevas están registradas.
+- **Diff:** `git diff --check` pasó. No se hizo staging ni se crearon commits. Se conservaron los cambios locales del usuario en la base de datos y las carpetas de experimentos.
+
+Reportes fuera del repositorio: `/tmp/loop-branches-point5-client-final.json`, `/tmp/loop-branches-point5-server-final.json`, `/tmp/loop-branches-point5-types-fourth.log`, `/tmp/loop-branches-point5-client-lint-final.log` y `/tmp/loop-branches-point5-server-lint-final.log`. Ejecución real: `/tmp/loop-branches-point5-runtime-fourth.log`; artefactos: `/tmp/loop-branches-point5-runtime-fourth-artifacts`.
+
+Título previsto: `refactor(codegen): remove loop branching and preserve trial routing`.
+
+#### Siguiente punto: revisión final
+
+Completar el punto 6: revisar fixtures y documentación que todavía describan ramas propias de loops o el movimiento de contenedores, y cerrar la verificación conjunta de los criterios de aceptación. Las pruebas y documentación se han actualizado dentro de cada punto. Quedan fixtures anteriores en otras suites del provider que aún simulan la sustitución de destinos por IDs de loops o la transferencia de ramas del contenedor; esas expectativas no definen comportamientos a conservar.
 
 Cambios locales existentes antes de crear este documento:
 
