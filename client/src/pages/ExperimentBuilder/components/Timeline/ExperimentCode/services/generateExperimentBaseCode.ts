@@ -1,4 +1,4 @@
-import type { CanvasStyles } from "../../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import type { ExperimentAppearance } from "../../../../appearance";
 import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
 import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";
 import type {
@@ -14,7 +14,7 @@ export type ExperimentBaseCodeOptions = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
-  canvasStyles?: CanvasStyles;
+  appearance?: ExperimentAppearance;
   apiBaseUrl?: string;
   fetchImpl?: typeof fetch;
 };
@@ -25,7 +25,7 @@ export async function generateExperimentBaseCode({
   getTrial,
   getLoopTimeline,
   getLoop,
-  canvasStyles,
+  appearance,
   apiBaseUrl,
   fetchImpl,
 }: ExperimentBaseCodeOptions) {
@@ -46,16 +46,16 @@ export async function generateExperimentBaseCode({
   );
   return [
     generateExecutionAddressManifestCode(graph),
-    renderExperimentBaseCode(codes, uploadedFiles, canvasStyles),
+    renderExperimentBaseCode(codes, uploadedFiles, appearance),
   ].join("\n");
 }
 
 export function renderExperimentBaseCode(
   codes: string[],
   uploadedFiles: UploadedFile[] = [],
-  canvasStyles?: CanvasStyles,
+  appearance?: ExperimentAppearance,
 ) {
-  const fullScreen = canvasStyles?.fullScreen ?? true;
+  const fullScreen = appearance?.fullScreen ?? true;
   const getMediaUrls = (type: "img" | "aud" | "vid") =>
     uploadedFiles.flatMap((file) =>
       file?.type === type && file.url ? [file.url] : [],

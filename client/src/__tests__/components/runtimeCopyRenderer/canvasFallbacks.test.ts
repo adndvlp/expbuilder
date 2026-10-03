@@ -10,7 +10,7 @@ import {
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/runtimePreviewDom";
 import imagePlaceholder from "../../../assets/image.png";
 import {
-  canvasStyles,
+  previewViewport,
   component,
   installCanvasContext,
   installImageStub,
@@ -93,7 +93,7 @@ describe("runtime copy: canvas-backed component fallbacks", () => {
         inputFontSize: 20,
         inputWidth: 180,
       } as TrialComponent,
-      canvasStyles,
+      previewViewport,
     );
 
     expect(input.element.querySelector("input")).not.toBeNull();
@@ -108,7 +108,7 @@ describe("runtime copy: canvas-backed component fallbacks", () => {
         width: 300,
         height: 120,
       },
-      canvasStyles,
+      previewViewport,
       (value) => `/assets/${value}`,
     );
 
@@ -157,7 +157,7 @@ describe("runtime copy: canvas-backed component fallbacks", () => {
       component("ImageComponent", {
         stimulus: { source: "csv", value: "image_column" },
       }),
-      canvasStyles,
+      previewViewport,
       resolveAsset,
     );
 

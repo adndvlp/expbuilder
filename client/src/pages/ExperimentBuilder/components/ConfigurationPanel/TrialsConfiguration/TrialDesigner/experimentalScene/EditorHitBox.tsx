@@ -12,7 +12,7 @@ function numberOr(value: any, fallback: number): number {
 
 export default function EditorHitBox({
   shapeProps,
-  canvasStyles,
+  previewViewport,
   isSelected,
   onSelect,
   onChange,
@@ -28,7 +28,7 @@ export default function EditorHitBox({
   const dragFrameRef = useRef<number | null>(null);
   const node = getHtmlSceneNode(
     shapeProps,
-    canvasStyles,
+    previewViewport,
     metric ? { [shapeProps.id]: metric } : undefined,
   );
 

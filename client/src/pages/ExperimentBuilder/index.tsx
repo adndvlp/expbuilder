@@ -10,7 +10,7 @@ import Timeline from "./components/Timeline";
 import { useFileUpload } from "./components/Timeline/useFileUpload";
 import useDevMode from "./hooks/useDevMode";
 import { usePanelResize } from "./hooks/usePanelResize";
-import CanvasStylesProvider from "./providers/CanvasStylesProvider";
+import ExperimentAppearanceProvider from "./providers/ExperimentAppearanceProvider";
 import TrialsProvider from "./providers/TrialsProvider";
 import UrlProvider from "./providers/UrlProvider";
 import { getApiBaseUrl } from "../../lib/apiBaseUrl";
@@ -44,7 +44,7 @@ function ExperimentBuilder() {
     <ErrorBoundary>
       <TrialsProvider>
         <UrlProvider>
-          <CanvasStylesProvider experimentID={id}>
+          <ExperimentAppearanceProvider experimentID={id}>
             <div className="app-container">
               <div
                 style={{
@@ -142,7 +142,7 @@ function ExperimentBuilder() {
                 </SidePanel>
               )}
             </div>
-          </CanvasStylesProvider>
+          </ExperimentAppearanceProvider>
         </UrlProvider>
       </TrialsProvider>
     </ErrorBoundary>

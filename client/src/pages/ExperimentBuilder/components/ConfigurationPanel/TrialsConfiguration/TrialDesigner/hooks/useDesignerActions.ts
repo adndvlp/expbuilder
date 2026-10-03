@@ -18,14 +18,14 @@ import { getDefaultConfig } from "../utils/getDefaultConfig";
 import renderComponent from "../renderComponent";
 import handleDrop from "../useHandleDrop";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   ComponentType,
   KonvaTrialDesignerProps,
   TrialComponent,
 } from "../types";
 
 interface Args {
-  canvasStyles: CanvasStyles;
+  previewViewport: PreviewViewport;
   components: TrialComponent[];
   editingTextId: string | null;
   generateConfig: (components: TrialComponent[]) => Record<string, any>;
@@ -71,8 +71,8 @@ export function useDesignerActions(args: Args) {
   );
 
   const handleSnap = useCallback(
-    (box: SnapBox) => snapComponentBox(box, args.components, args.canvasStyles),
-    [args.components, args.canvasStyles],
+    (box: SnapBox) => snapComponentBox(box, args.components, args.previewViewport),
+    [args.components, args.previewViewport],
   );
 
   const patchTextComponent = useCallback(
@@ -122,7 +122,7 @@ export function useDesignerActions(args: Args) {
       setSelectedId: args.setSelectedId,
       components: args.components,
       uploadedFiles: args.uploadedFiles,
-      canvasStyles: args.canvasStyles,
+      previewViewport: args.previewViewport,
       htmlSceneMetrics,
       setActiveDomId,
       editingTextId: args.editingTextId,

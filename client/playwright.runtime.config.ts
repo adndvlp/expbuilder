@@ -26,7 +26,10 @@ export default defineConfig({
   projects: [
     {
       name: "runtime-chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: process.env.RUNTIME_BROWSER_CHANNEL,
+      },
     },
   ],
   webServer: {

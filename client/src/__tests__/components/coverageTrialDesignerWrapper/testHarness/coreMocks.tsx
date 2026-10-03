@@ -47,6 +47,7 @@ vi.mock(
   async () => {
     const React = await vi.importActual<typeof import("react")>("react");
     return {
+      getInitialCanvasSize: () => ({ width: 1000, height: 700 }),
       default: ({ isOpen, setComponents, setSelectedId }: any) => {
         React.useEffect(() => {
           if (!isOpen) return;
@@ -70,7 +71,7 @@ vi.mock(
               ? wrapperMocks.initialSelectedId
               : (loadedComponents[0]?.id ?? null),
           );
-        }, [isOpen, setComponents, setSelectedId]);
+        }, [isOpen]);
       },
     };
   },
@@ -91,19 +92,17 @@ vi.mock(
 );
 
 vi.mock(
-  "../../../../pages/ExperimentBuilder/hooks/useCanvasStyles",
+  "../../../../pages/ExperimentBuilder/hooks/useExperimentAppearance",
   async () => {
     const React = await vi.importActual<typeof import("react")>("react");
     return {
       default: () => {
-        const [canvasStyles, setCanvasStyles] = React.useState({
+        const [appearance, setAppearance] = React.useState({
           backgroundColor: "#ffffff",
-          width: 500,
-          height: 400,
           fullScreen: false,
           progressBar: false,
         });
-        return { canvasStyles, setCanvasStyles };
+        return { appearance, setAppearance };
       },
     };
   },

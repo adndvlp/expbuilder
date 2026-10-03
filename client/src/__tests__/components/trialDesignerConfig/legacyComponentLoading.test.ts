@@ -1,5 +1,4 @@
 import {
-  DEFAULT_CANVAS_STYLES,
   React,
   describe,
   expect,
@@ -10,21 +9,12 @@ import {
   vi,
   waitFor,
 } from "./testHarness";
-import type { CanvasStyles, TrialComponent } from "./testHarness";
+import type { TrialComponent } from "./testHarness";
 
 describe("useLoadComponents", () => {
   it("loads single legacy component entries and non-editor-sized components", async () => {
     const setComponents = vi.fn();
     const setSelectedId = vi.fn();
-    let currentCanvasStyles: CanvasStyles = {
-      ...DEFAULT_CANVAS_STYLES,
-      backgroundColor: "#404040",
-      fullScreen: false,
-    };
-    const setCanvasStyles = vi.fn((updater) => {
-      currentCanvasStyles =
-        typeof updater === "function" ? updater(currentCanvasStyles) : updater;
-    });
 
     renderHook(() =>
       useLoadComponents({
@@ -35,6 +25,7 @@ describe("useLoadComponents", () => {
             value: {
               type: "HtmlComponent",
               stimulus: { source: "typed", value: "<p>Hello</p>" },
+
               width: 50,
               height: 10,
               rotation: 0,
@@ -57,7 +48,6 @@ describe("useLoadComponents", () => {
         CANVAS_HEIGHT: 700,
         setComponents,
         setSelectedId,
-        setCanvasStyles,
       }),
     );
 
@@ -72,12 +62,14 @@ describe("useLoadComponents", () => {
         type: "HtmlComponent",
         x: 500,
         y: 350,
-        width: 0,
-        height: 0,
+        width: 500,
+        height: 100,
         rotation: 0,
         zIndex: 0,
         config: {
           stimulus: { source: "typed", value: "<p>Hello</p>" },
+          width: { source: "typed", value: 50 },
+          height: { source: "typed", value: 10 },
         },
       }),
     );
@@ -95,25 +87,11 @@ describe("useLoadComponents", () => {
       }),
     );
     expect(setSelectedId).not.toHaveBeenCalled();
-    expect(currentCanvasStyles).toEqual(
-      expect.objectContaining({
-        backgroundColor: "#404040",
-        fullScreen: false,
-      }),
-    );
   });
 
   it("keeps loading idempotent in StrictMode and restores response rotation", async () => {
     const setComponents = vi.fn();
     const setSelectedId = vi.fn();
-    const setCanvasStyles = vi.fn((updater) => {
-      const previous: CanvasStyles = {
-        ...DEFAULT_CANVAS_STYLES,
-        backgroundColor: "#505050",
-        fullScreen: false,
-      };
-      return typeof updater === "function" ? updater(previous) : updater;
-    });
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.StrictMode, null, children);
 
@@ -145,7 +123,6 @@ describe("useLoadComponents", () => {
           CANVAS_HEIGHT: 700,
           setComponents,
           setSelectedId,
-          setCanvasStyles,
         }),
       { wrapper },
     );

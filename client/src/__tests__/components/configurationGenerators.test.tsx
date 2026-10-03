@@ -68,10 +68,7 @@ const defaultProps = {
   getTrial: vi.fn(),
   getLoopTimeline: vi.fn(),
   getLoop: vi.fn(),
-  canvasStyles: {
-    width: 1024,
-    height: 768,
-    backgroundColor: "#ffffff",
+  appearance: {    backgroundColor: "#ffffff",
     fullScreen: true,
     progressBar: true,
   },
@@ -190,7 +187,7 @@ describe("experiment configuration generators", () => {
     globalThis.fetch = vi.fn(async () => ({ ok: false }) as Response);
 
     const { result } = renderHook(() =>
-      LocalConfiguration({ ...defaultProps, canvasStyles: undefined }),
+      LocalConfiguration({ ...defaultProps, appearance: undefined }),
     );
     const code = await result.current.generateLocalExperiment();
 

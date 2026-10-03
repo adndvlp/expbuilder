@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { CanvasStyles, TrialComponent } from "../types";
+import type { PreviewViewport, TrialComponent } from "../types";
 import {
   getHtmlSceneNodes,
   type HtmlSceneMetrics,
@@ -10,7 +10,7 @@ import { RUNTIME_COPY_STYLES } from "./runtimeCopy/styles";
 
 type Props = {
   components: TrialComponent[];
-  canvasStyles: CanvasStyles;
+  previewViewport: PreviewViewport;
   stageScale: number;
   metrics: HtmlSceneMetrics;
   uploadedFiles?: any[];
@@ -22,7 +22,7 @@ type Props = {
 
 export default function ExperimentalHtmlSceneLayer({
   components,
-  canvasStyles,
+  previewViewport,
   stageScale,
   metrics,
   uploadedFiles = [],
@@ -34,8 +34,8 @@ export default function ExperimentalHtmlSceneLayer({
   const metricsRef = useRef(metrics);
   metricsRef.current = metrics;
   const nodes = useMemo(
-    () => getHtmlSceneNodes(components, canvasStyles, metrics),
-    [components, canvasStyles, metrics],
+    () => getHtmlSceneNodes(components, previewViewport, metrics),
+    [components, previewViewport, metrics],
   );
   const handleMeasure = useCallback(
     (id: string, metric: HtmlSceneNodeMetric) => {
@@ -75,8 +75,8 @@ export default function ExperimentalHtmlSceneLayer({
         position: "absolute",
         left: 0,
         top: 0,
-        width: canvasStyles.width,
-        height: canvasStyles.height,
+        width: previewViewport.width,
+        height: previewViewport.height,
         transform: `scale(${stageScale})`,
         transformOrigin: "top left",
         pointerEvents: "none",

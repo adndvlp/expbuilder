@@ -82,7 +82,7 @@ vi.mock("../../../pages/ExperimentBuilder/providers/UrlProvider", () => ({
 }));
 
 vi.mock(
-  "../../../pages/ExperimentBuilder/providers/CanvasStylesProvider",
+  "../../../pages/ExperimentBuilder/providers/ExperimentAppearanceProvider",
   () => ({
     default: ({
       children,

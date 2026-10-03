@@ -17,7 +17,7 @@ describe("compileLocalExperiment", () => {
       getTrial: vi.fn(),
       getLoopTimeline: vi.fn(),
       getLoop: vi.fn(),
-      canvasStyles: { fullScreen: false },
+      appearance: { fullScreen: false },
       baseCodeOverride: `
         const timeline = [];
         if (window.branchCustomParameters) {

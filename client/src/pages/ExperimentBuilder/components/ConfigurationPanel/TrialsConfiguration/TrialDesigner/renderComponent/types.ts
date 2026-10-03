@@ -1,7 +1,7 @@
 import type React from "react";
 import type { CanvasGuide, SnapBox, SnapResult } from "../editorGuides";
 import type { HtmlSceneMetrics } from "../experimentalScene/sceneModel";
-import type { CanvasStyles, TrialComponent } from "../types";
+import type { PreviewViewport, TrialComponent } from "../types";
 
 export type RenderComponentProps = {
   comp: TrialComponent;
@@ -16,7 +16,7 @@ export type RenderComponentProps = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   uploadedFiles?: any[];
-  canvasStyles?: CanvasStyles;
+  previewViewport?: PreviewViewport;
   htmlSceneMetrics?: HtmlSceneMetrics;
   setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>;
   editingTextId?: string | null;

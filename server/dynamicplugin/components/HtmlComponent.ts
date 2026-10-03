@@ -1,5 +1,6 @@
 import { ParameterType } from "jspsych";
 import { scheduleStimulusVisibility } from "../utils/PrecisionTiming";
+import { positionElement } from "../layout/domLayout";
 
 var version = "2.1.0";
 
@@ -16,7 +17,7 @@ const info = {
       type: ParameterType.HTML_STRING,
       default: void 0,
     },
-    /** Position coordinates for the HTML content. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the HTML content. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -81,13 +82,6 @@ class HtmlComponent {
    * @returns The rendered stimulus element
    */
   render(container: HTMLElement, config: any): HTMLElement {
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
-
     // Create stimulus element with coordinates
     const stimulusElement = document.createElement("div");
     stimulusElement.id = config.name
@@ -97,10 +91,8 @@ class HtmlComponent {
     stimulusElement.style.position = "absolute";
     stimulusElement.style.zIndex = String(config.zIndex ?? 0);
 
-    // Size: honor an explicit design box (width/height arrive as vw
-    // percentages of the canvas width). Without one, hug the content but
-    // never exceed the canvas — long unbroken text used to spill out of it.
-    const canvasWidth = Number(config.__canvasStyles?.width) || 1024;
+    // Both relative dimensions use the current presentation area's width.
+    // Without an explicit box, hug the content and cap it to that area.
     const explicitWidth = Number(config.width);
     const explicitHeight = Number(config.height);
     const hasExplicitWidth =
@@ -109,22 +101,19 @@ class HtmlComponent {
       Number.isFinite(explicitHeight) && explicitHeight > 0;
 
     if (hasExplicitWidth) {
-      stimulusElement.style.width = `${(explicitWidth / 100) * canvasWidth}px`;
+      stimulusElement.style.width = `${explicitWidth}cqw`;
     } else {
       stimulusElement.style.width = "max-content";
-      stimulusElement.style.maxWidth = `${canvasWidth}px`;
+      stimulusElement.style.maxWidth = "100cqw";
     }
     if (hasExplicitHeight) {
-      stimulusElement.style.minHeight = `${(explicitHeight / 100) * canvasWidth}px`;
+      stimulusElement.style.minHeight = `${explicitHeight}cqw`;
     }
     // Wrap long words inside the (capped or explicit) box instead of letting
     // them widen it past the canvas.
     stimulusElement.style.overflowWrap = "break-word";
 
-    const xVw = mapValue(config.coordinates.x);
-    const yVh = mapValue(config.coordinates.y);
-    stimulusElement.style.left = `calc(50% + ${xVw}vw)`;
-    stimulusElement.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(stimulusElement, config.coordinates);
     stimulusElement.style.transform = "translate(-50%, -50%)";
 
     // Isolate the pasted markup inside a shadow root: its <style> rules and

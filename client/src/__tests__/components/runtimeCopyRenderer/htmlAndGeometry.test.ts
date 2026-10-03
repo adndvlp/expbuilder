@@ -4,7 +4,7 @@ import {
   renderRuntimeCopy,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/runtimePreviewDom";
 import { getHtmlSceneNode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/sceneModel";
-import { canvasStyles, component } from "./testHarness";
+import { previewViewport, component } from "./testHarness";
 
 describe("runtime copy: HTML, sliders and geometry", () => {
   it("renders real HTML and the native runtime slider", () => {
@@ -17,7 +17,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
           value: "<button data-testid='real-html'>Real HTML</button>",
         },
       }),
-      canvasStyles,
+      previewViewport,
     );
 
     const htmlHost = host.querySelector(
@@ -42,7 +42,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
         slider_start: { source: "typed", value: 50 },
         labels: { source: "typed", value: ["0", "100"] },
       }),
-      canvasStyles,
+      previewViewport,
     );
 
     const input = host.querySelector("input[type='range']") as HTMLInputElement;
@@ -63,7 +63,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
           "<style>body { touch-action: none; }</style><div>Inside</div>",
         coordinates: {},
       },
-      { coordinateMode: "canvas", canvasStyles },
+      { coordinateMode: "canvas", previewViewport },
     );
 
     expect(rendered.shadowRoot).not.toBeNull();
@@ -80,7 +80,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
       width: 400,
       height: 200,
     };
-    const node = getHtmlSceneNode(trialComponent, canvasStyles, {
+    const node = getHtmlSceneNode(trialComponent, previewViewport, {
       [trialComponent.id]: { width: 321, height: 123 },
     });
 
@@ -101,7 +101,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
         width: 50, // vw: 50% of the 1000px canvas
         height: 20,
       },
-      { coordinateMode: "canvas", canvasStyles },
+      { coordinateMode: "canvas", previewViewport },
     );
 
     expect(sized.style.width).toBe("500px");
@@ -111,7 +111,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
     const auto = renderPreviewHtmlComponent(
       host,
       { name: "auto", stimulus: "<div>Auto</div>", coordinates: {} },
-      { coordinateMode: "canvas", canvasStyles },
+      { coordinateMode: "canvas", previewViewport },
     );
 
     // Without an explicit box, hug the content but never exceed the canvas.
@@ -123,7 +123,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
     const trialComponent = component("HtmlComponent", {
       stimulus: { source: "typed", value: "<div>HTML</div>" },
     });
-    const node = getHtmlSceneNode(trialComponent, canvasStyles, {
+    const node = getHtmlSceneNode(trialComponent, previewViewport, {
       [trialComponent.id]: { width: 321, height: 123 },
     });
 
@@ -142,7 +142,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
         show_clear_button: { source: "typed", value: true },
         show_undo_button: { source: "typed", value: true },
       }),
-      canvasStyles,
+      previewViewport,
     );
 
     expect(host.querySelector("#sketchpad-clear")).not.toBeNull();
@@ -161,13 +161,13 @@ describe("runtime copy: HTML, sliders and geometry", () => {
         coordinates: {},
         zIndex: null,
       },
-      { coordinateMode: "canvas" },
+      { coordinateMode: "canvas", previewViewport: { width: 960, height: 540 } },
     );
 
     expect(html.id).toBe("jspsych-dynamic-html-stimulus");
     expect(html.style.position).toBe("absolute");
-    expect(html.style.left).toBe("512px");
-    expect(html.style.top).toBe("384px");
+    expect(html.style.left).toBe("480px");
+    expect(html.style.top).toBe("270px");
     expect(html.style.zIndex).toBe("0");
 
     const positioned = renderPreviewHtmlComponent(
@@ -178,7 +178,7 @@ describe("runtime copy: HTML, sliders and geometry", () => {
         coordinates: { x: 50, y: -50 },
         zIndex: 4,
       },
-      { coordinateMode: "canvas", canvasStyles: { width: 200, height: 100 } },
+      { coordinateMode: "canvas", previewViewport: { width: 200, height: 100 } },
     );
 
     expect(positioned.id).toBe("jspsych-dynamic-named-stimulus");

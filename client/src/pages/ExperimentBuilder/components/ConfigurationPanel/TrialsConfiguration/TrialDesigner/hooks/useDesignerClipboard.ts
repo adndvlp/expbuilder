@@ -1,3 +1,7 @@
+import {
+  normalizeComponents,
+  projectComponents,
+} from "./useDesignerComponents";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 import {
@@ -49,13 +53,19 @@ export function useDesignerClipboard({
     setHistoryCount(0);
   }, [isOpen]);
 
-  const pushHistory = useCallback((snapshot = componentsRef.current) => {
-    historyRef.current = [
-      ...historyRef.current,
-      cloneTrialComponents(snapshot),
-    ].slice(-MAX_HISTORY_ENTRIES);
-    setHistoryCount(historyRef.current.length);
-  }, []);
+  const pushHistory = useCallback(
+    (snapshot = componentsRef.current) => {
+      historyRef.current = [
+        ...historyRef.current,
+        normalizeComponents(cloneTrialComponents(snapshot), {
+          width: canvasWidth,
+          height: canvasHeight,
+        }),
+      ].slice(-MAX_HISTORY_ENTRIES);
+      setHistoryCount(historyRef.current.length);
+    },
+    [canvasWidth, canvasHeight],
+  );
 
   const setWithHistory = useCallback(
     (value: React.SetStateAction<TrialComponent[]>, autoSave: boolean) => {
@@ -67,7 +77,7 @@ export function useDesignerClipboard({
       setComponents(next);
       if (autoSave) autoSaveComponents(next);
     },
-    [autoSaveComponents, pushHistory],
+    [autoSaveComponents, pushHistory, setComponents],
   );
 
   const setComponentsWithHistory = useCallback(
@@ -88,11 +98,14 @@ export function useDesignerClipboard({
       selectedIds,
     );
     if (selected.length === 0) return false;
-    clipboardComponentsRef.current = cloneTrialComponents(selected);
+    clipboardComponentsRef.current = normalizeComponents(
+      cloneTrialComponents(selected),
+      { width: canvasWidth, height: canvasHeight },
+    );
     pasteCountRef.current = 0;
     setClipboardCount(selected.length);
     return true;
-  }, [selectedIds]);
+  }, [selectedIds, canvasWidth, canvasHeight]);
 
   const deleteSelectedComponents = useCallback(() => {
     if (selectedIds.length === 0) return false;
@@ -107,7 +120,7 @@ export function useDesignerClipboard({
     setEditingTextId(null);
     autoSaveComponents(next);
     return true;
-  }, [autoSaveComponents, pushHistory, selectedIds]);
+  }, [autoSaveComponents, pushHistory, selectedIds, setComponents]);
 
   const pasteClipboardComponents = useCallback(
     (pasteAt?: { x: number; y: number }) => {
@@ -115,7 +128,10 @@ export function useDesignerClipboard({
       pasteCountRef.current += 1;
       const previous = componentsRef.current;
       const pasted = buildPastedComponents({
-        clipboardComponents: clipboardComponentsRef.current,
+        clipboardComponents: projectComponents(clipboardComponentsRef.current, {
+          width: canvasWidth,
+          height: canvasHeight,
+        }),
         existingComponents: previous,
         canvasWidth,
         canvasHeight,
@@ -141,6 +157,7 @@ export function useDesignerClipboard({
       canvasWidth,
       pushHistory,
       toJsPsychCoords,
+      setComponents,
     ],
   );
 
@@ -160,7 +177,10 @@ export function useDesignerClipboard({
   const undoLastChange = useCallback(() => {
     const previous = historyRef.current.pop();
     if (!previous) return false;
-    const restored = cloneTrialComponents(previous);
+    const restored = projectComponents(cloneTrialComponents(previous), {
+      width: canvasWidth,
+      height: canvasHeight,
+    });
     historyRef.current = [...historyRef.current];
     setHistoryCount(historyRef.current.length);
     componentsRef.current = restored;
@@ -172,7 +192,7 @@ export function useDesignerClipboard({
     setEditingTextId(null);
     autoSaveComponents(restored);
     return true;
-  }, [autoSaveComponents]);
+  }, [autoSaveComponents, canvasWidth, canvasHeight, setComponents]);
 
   return {
     clipboardCount,

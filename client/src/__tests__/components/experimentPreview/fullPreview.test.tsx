@@ -23,12 +23,12 @@ describe("ExperimentPreview full previews", () => {
         uploadedFiles={[
           { name: "image.png", url: "uploads/img/image.png", type: "img" },
         ]}
-        canvasStyles={{
+        appearance={{
           backgroundColor: "#111111",
-          width: 800,
-          height: 600,
           fullScreen: false,
+          progressBar: false,
         }}
+        previewViewport={{ width: 800, height: 600 }}
       />,
     );
 
@@ -44,9 +44,8 @@ describe("ExperimentPreview full previews", () => {
       generatedCode: "local-preview-code",
       canvasStyles: {
         backgroundColor: "#111111",
-        width: 800,
-        height: 600,
         fullScreen: false,
+        progressBar: false,
       },
     });
     expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
@@ -66,7 +65,7 @@ describe("ExperimentPreview full previews", () => {
   it("waits for a rendered iframe wrapper before measuring canvas scale", async () => {
     render(
       <ExperimentPreview
-        canvasStyles={{ width: 640, height: 480, backgroundColor: "#ffffff" }}
+        previewViewport={{ width: 640, height: 480 }}
       />,
     );
 
@@ -139,7 +138,7 @@ describe("ExperimentPreview full previews", () => {
     render(
       <ExperimentPreview
         autoStart
-        canvasStyles={{ width: 800, height: 600 }}
+        previewViewport={{ width: 800, height: 600 }}
       />,
     );
 

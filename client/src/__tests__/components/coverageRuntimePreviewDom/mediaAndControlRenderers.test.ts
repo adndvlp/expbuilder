@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   config,
   describe,
   expect,
@@ -34,7 +34,7 @@ describe("runtime preview DOM renderers", () => {
     const html = renderPreviewHtmlComponent(
       container,
       config({ stimulus: { source: "typed", value: "<b>Hello</b>" } }),
-      { coordinateMode: "canvas", canvasStyles },
+      { coordinateMode: "canvas", previewViewport },
     );
     // Pasted HTML is isolated in a shadow root (styles must not leak), so
     // the markup lives in shadowRoot instead of the light-DOM innerHTML.

@@ -1,15 +1,11 @@
 import { afterEach, vi } from "vitest";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   TrialComponent,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
-const canvasStyles: CanvasStyles = {
-  backgroundColor: "#ffffff",
-  width: 1000,
+const previewViewport: PreviewViewport = {  width: 1000,
   height: 800,
-  fullScreen: true,
-  progressBar: false,
 };
 
 function installCanvasContext() {
@@ -96,5 +92,5 @@ function installImageStub(complete: boolean) {
   vi.stubGlobal("Image", PreviewImage as unknown as typeof Image);
 }
 
-export { canvasStyles, component, installCanvasContext, installImageStub };
-export type { CanvasStyles, TrialComponent };
+export { previewViewport, component, installCanvasContext, installImageStub };
+export type { PreviewViewport, TrialComponent };

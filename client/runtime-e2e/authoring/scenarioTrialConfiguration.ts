@@ -1,10 +1,8 @@
 import type { CanvasActionDependencies } from "../../src/pages/ExperimentBuilder/components/Canvas/actions/types";
 import type { Trial } from "../../src/pages/ExperimentBuilder/components/ConfigurationPanel/types";
 
-export const scenarioCanvasStyles = {
+export const scenarioAppearance = {
   backgroundColor: "#ffffff",
-  width: 1024,
-  height: 768,
   fullScreen: false,
   progressBar: false,
 };
@@ -55,7 +53,7 @@ export function configureScenarioDynamicButtonTrial(
       },
       require_response: { source: "typed", value: true },
       response_ends_trial: { source: "typed", value: true },
-      __canvasStyles: { source: "typed", value: scenarioCanvasStyles },
+      __canvasStyles: { source: "typed", value: scenarioAppearance },
     },
   });
 }

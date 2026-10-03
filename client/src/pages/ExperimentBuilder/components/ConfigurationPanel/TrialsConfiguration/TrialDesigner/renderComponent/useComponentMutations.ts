@@ -2,7 +2,7 @@ import type { RenderComponentProps } from "./types";
 
 type Args = Pick<
   RenderComponentProps,
-  | "canvasStyles"
+  | "previewViewport"
   | "comp"
   | "components"
   | "generateConfigFromComponents"
@@ -35,14 +35,14 @@ export function useComponentMutations(args: Args) {
         );
       }
       if (!__transient && attrs.width !== undefined && attrs.width > 0) {
-        const width = args.canvasStyles
-          ? (attrs.width / args.canvasStyles.width) * 100
+        const width = args.previewViewport
+          ? (attrs.width / args.previewViewport.width) * 100
           : attrs.width;
         updated.config = withConfig(updated.config, "width", width);
       }
       if (!__transient && attrs.height !== undefined && attrs.height > 0) {
-        const height = args.canvasStyles
-          ? (attrs.height / args.canvasStyles.width) * 100
+        const height = args.previewViewport
+          ? (attrs.height / args.previewViewport.width) * 100
           : attrs.height;
         updated.config = withConfig(updated.config, "height", height);
       }

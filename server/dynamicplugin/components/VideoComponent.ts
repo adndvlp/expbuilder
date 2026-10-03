@@ -1,3 +1,4 @@
+import { positionElement } from "../layout/domLayout";
 import { ParameterType } from "jspsych";
 
 var version = "2.2.0";
@@ -64,7 +65,7 @@ const info = {
       type: ParameterType.FLOAT,
       default: 1,
     },
-    /** Position coordinates for the video. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the video. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -108,12 +109,6 @@ class VideoComponent {
    */
   render(container: HTMLElement, config: any): HTMLVideoElement {
     // Helper to map coordinate values
-    // Coordinate range is [-100, 100], mapped to [-50vw/vh, 50vw/vh]
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
 
     // Create wrapper with coordinates
     const stimulusWrapper = document.createElement("div");
@@ -122,10 +117,7 @@ class VideoComponent {
     stimulusWrapper.style.position = "absolute";
     stimulusWrapper.style.zIndex = String(config.zIndex ?? 0);
 
-    const xVw = mapValue(config.coordinates.x);
-    const yVh = mapValue(config.coordinates.y);
-    stimulusWrapper.style.left = `calc(50% + ${xVw}vw)`;
-    stimulusWrapper.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(stimulusWrapper, config.coordinates);
     stimulusWrapper.style.transform = "translate(-50%, -50%)";
 
     container.appendChild(stimulusWrapper);
@@ -140,12 +132,12 @@ class VideoComponent {
     // Required attributes for autoplay to work reliably
     videoElement.setAttribute("playsinline", ""); // Required for iOS
 
-    // Set video dimensions via CSS: both in vw (same unit) → ratio is preserved exactly
+    // Both relative dimensions use the current presentation area width.
     if (config.width) {
-      videoElement.style.width = `${config.width}vw`;
+      videoElement.style.width = `${config.width}cqw`;
     }
     if (config.height) {
-      videoElement.style.height = `${config.height}vw`;
+      videoElement.style.height = `${config.height}cqw`;
     }
     if (config.width && !config.height) {
       videoElement.style.height = "auto";

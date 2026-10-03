@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import type React from "react";
-import type { CanvasStyles } from "../types";
 import type { CanvasContextMenuState } from "../CanvasContextMenu";
 import type { CanvasGuide } from "../editorGuides";
 import type { TrialComponent } from "../types";
@@ -20,7 +19,6 @@ interface Args {
   isOpen: boolean;
   selectedId: string | null;
   setActiveGuides: React.Dispatch<React.SetStateAction<CanvasGuide[]>>;
-  setCanvasStyles: React.Dispatch<React.SetStateAction<CanvasStyles>>;
   setComponents: React.Dispatch<React.SetStateAction<TrialComponent[]>>;
   setContextMenu: React.Dispatch<
     React.SetStateAction<CanvasContextMenuState | null>
@@ -66,6 +64,5 @@ export function useDesignerLifecycle(args: Args) {
     CANVAS_HEIGHT: args.canvasHeight,
     CANVAS_WIDTH: args.canvasWidth,
     fromJsPsychCoords: args.fromJsPsychCoords,
-    setCanvasStyles: args.setCanvasStyles,
   });
 }

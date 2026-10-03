@@ -1,10 +1,10 @@
+import { relativeCenter } from "../../../../../../../../../shared/dynamic-layout/geometry";
 import { useEffect, useRef, useState } from "react";
 import useHandleResize from "../useHandleResize";
+import type { PreviewViewport } from "../types";
 
 export function useDesignerPanels(
-  canvasWidth: number,
-  canvasHeight: number,
-  previewSize: { width: number; height: number },
+  previewViewport: PreviewViewport,
   isOpen: boolean,
 ) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
@@ -33,8 +33,8 @@ export function useDesignerPanels(
       if (!container.clientWidth || !container.clientHeight) return;
       setViewportFit(
         Math.min(
-          container.clientWidth / previewSize.width,
-          container.clientHeight / previewSize.height,
+          container.clientWidth / previewViewport.width,
+          container.clientHeight / previewViewport.height,
           1,
         ),
       );
@@ -43,21 +43,12 @@ export function useDesignerPanels(
     const observer = new ResizeObserver(updateScale);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [isOpen, previewSize.width, previewSize.height]);
+  }, [isOpen, previewViewport.width, previewViewport.height]);
 
-  // The runtime fits the entire reference scene into the selected viewport.
-  // The editor then fits that viewport into the available panel space.
-  const stageScale =
-    viewportFit *
-    Math.min(
-      previewSize.width / canvasWidth,
-      previewSize.height / canvasHeight,
-    );
+  const stageScale = viewportFit;
 
-  const fromJsPsychCoords = (coords: { x: number; y: number }) => ({
-    x: canvasWidth / 2 + (coords.x / 100) * (canvasWidth / 2),
-    y: canvasHeight / 2 - (coords.y / 100) * (canvasHeight / 2),
-  });
+  const fromJsPsychCoords = (coords: { x: number; y: number }) =>
+    relativeCenter(coords, previewViewport);
 
   return {
     canvasContainerRef,
@@ -73,7 +64,7 @@ export function useDesignerPanels(
     showLeftPanel,
     showRightPanel,
     stageScale,
-    viewportWidth: previewSize.width * viewportFit,
-    viewportHeight: previewSize.height * viewportFit,
+    viewportWidth: previewViewport.width * viewportFit,
+    viewportHeight: previewViewport.height * viewportFit,
   };
 }

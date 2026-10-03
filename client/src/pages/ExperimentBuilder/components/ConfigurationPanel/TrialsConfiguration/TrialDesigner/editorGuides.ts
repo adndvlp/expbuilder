@@ -1,4 +1,4 @@
-import { CanvasStyles, TrialComponent } from "./types";
+import { PreviewViewport, TrialComponent } from "./types";
 import { getComponentSnapBox } from "./editorGuides/getComponentSnapBox";
 export { getComponentSnapBox } from "./editorGuides/getComponentSnapBox";
 
@@ -221,16 +221,16 @@ export function snapBoxToGuides({
 export function snapComponentBox(
   box: SnapBox,
   components: TrialComponent[],
-  canvasStyles: CanvasStyles,
+  previewViewport: PreviewViewport,
 ): SnapResult {
   const targets = components
     .filter((component) => component.id !== box.id)
-    .map((component) => getComponentSnapBox(component, canvasStyles));
+    .map((component) => getComponentSnapBox(component, previewViewport));
 
   return snapBoxToGuides({
     box,
     targets,
-    canvasWidth: canvasStyles.width,
-    canvasHeight: canvasStyles.height,
+    canvasWidth: previewViewport.width,
+    canvasHeight: previewViewport.height,
   });
 }

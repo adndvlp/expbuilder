@@ -1,5 +1,6 @@
 import React from "react";
-import { ComponentType, TrialComponent, CanvasStyles } from "./types";
+import { ComponentType, TrialComponent, PreviewViewport } from "./types";
+import type { ExperimentAppearance } from "../../../../appearance";
 import { Stage, Layer, Rect, Group } from "react-konva";
 import type Konva from "konva";
 import AlignmentGuidesLayer from "./AlignmentGuidesLayer";
@@ -50,7 +51,8 @@ type Props = {
     metrics: HtmlSceneMetrics,
     setActiveDomId: React.Dispatch<React.SetStateAction<string | null>>,
   ) => React.ReactNode;
-  canvasStyles: CanvasStyles;
+  previewViewport: PreviewViewport;
+  appearance: ExperimentAppearance;
 };
 
 function KonvaCanvas({
@@ -73,7 +75,8 @@ function KonvaCanvas({
   onCancelTextEdit,
   onCanvasContextMenu,
   onRenderComponent,
-  canvasStyles,
+  previewViewport,
+  appearance,
 }: Props) {
   const [htmlSceneMetrics, setHtmlSceneMetrics] =
     React.useState<HtmlSceneMetrics>({});
@@ -161,13 +164,13 @@ function KonvaCanvas({
           }}
         >
           <CanvasBackdrop
-            backgroundColor={canvasStyles.backgroundColor}
+            backgroundColor={appearance.backgroundColor}
             stageScale={stageScale}
           />
 
           <ExperimentalHtmlSceneLayer
             components={components}
-            canvasStyles={canvasStyles}
+            previewViewport={previewViewport}
             stageScale={stageScale}
             metrics={htmlSceneMetrics}
             uploadedFiles={uploadedFiles}

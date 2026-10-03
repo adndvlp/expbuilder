@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   describe,
   expect,
   it,
@@ -78,7 +78,7 @@ describe("editor guides and visual config updates", () => {
         height: moving.height,
       },
       [moving, target],
-      canvasStyles,
+      previewViewport,
     );
 
     expect(snapped.x).toBe(250);

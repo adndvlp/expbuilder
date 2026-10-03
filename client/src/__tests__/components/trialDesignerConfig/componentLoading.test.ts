@@ -1,5 +1,4 @@
 import {
-  DEFAULT_CANVAS_STYLES,
   describe,
   expect,
   fromJsPsychCoords,
@@ -9,21 +8,12 @@ import {
   vi,
   waitFor,
 } from "./testHarness";
-import type { CanvasStyles, TrialComponent } from "./testHarness";
+import type { TrialComponent } from "./testHarness";
 
 describe("useLoadComponents", () => {
   it("loads saved stimulus and response components back into Konva component state", async () => {
     const setComponents = vi.fn();
     const setSelectedId = vi.fn();
-    let currentCanvasStyles: CanvasStyles = {
-      ...DEFAULT_CANVAS_STYLES,
-      backgroundColor: "#202020",
-      fullScreen: false,
-    };
-    const setCanvasStyles = vi.fn((updater) => {
-      currentCanvasStyles =
-        typeof updater === "function" ? updater(currentCanvasStyles) : updater;
-    });
 
     renderHook(() =>
       useLoadComponents({
@@ -74,13 +64,11 @@ describe("useLoadComponents", () => {
         CANVAS_HEIGHT: 700,
         setComponents,
         setSelectedId,
-        setCanvasStyles,
       }),
     );
 
     await waitFor(() => {
       expect(setComponents).toHaveBeenCalled();
-      expect(setCanvasStyles).toHaveBeenCalled();
     });
 
     const loadedComponents = setComponents.mock.calls[0][0] as TrialComponent[];
@@ -112,31 +100,11 @@ describe("useLoadComponents", () => {
         buttonColor: "#0088ff",
       }),
     );
-    // Only width/height come from the trial; appearance settings (including
-    // progressBar) stay as loaded by CanvasStylesProvider from the experiment.
-    expect(currentCanvasStyles).toEqual(
-      expect.objectContaining({
-        width: 1000,
-        height: 700,
-        progressBar: false,
-        backgroundColor: "#202020",
-        fullScreen: false,
-      }),
-    );
   });
 
   it("resets loaded state when closed and auto-sizes an empty trial on reopen", async () => {
     const setComponents = vi.fn();
     const setSelectedId = vi.fn();
-    let currentCanvasStyles: CanvasStyles = {
-      ...DEFAULT_CANVAS_STYLES,
-      backgroundColor: "#303030",
-      fullScreen: true,
-    };
-    const setCanvasStyles = vi.fn((updater) => {
-      currentCanvasStyles =
-        typeof updater === "function" ? updater(currentCanvasStyles) : updater;
-    });
     Object.defineProperty(window, "screen", {
       configurable: true,
       value: { width: 1366, height: 768 },
@@ -150,7 +118,6 @@ describe("useLoadComponents", () => {
       CANVAS_HEIGHT: 700,
       setComponents,
       setSelectedId,
-      setCanvasStyles,
     };
     const { rerender } = renderHook(
       ({ isOpen }) => useLoadComponents({ ...props, isOpen }),
@@ -161,14 +128,6 @@ describe("useLoadComponents", () => {
       expect(setComponents).toHaveBeenCalledWith([]);
       expect(setSelectedId).toHaveBeenCalledWith(null);
     });
-    expect(currentCanvasStyles).toEqual(
-      expect.objectContaining({
-        width: 1366,
-        height: 768,
-        backgroundColor: "#303030",
-        fullScreen: true,
-      }),
-    );
 
     rerender({ isOpen: true });
     expect(setComponents).toHaveBeenCalledTimes(1);

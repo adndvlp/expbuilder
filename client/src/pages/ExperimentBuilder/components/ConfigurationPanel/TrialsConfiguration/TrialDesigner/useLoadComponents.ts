@@ -2,21 +2,20 @@ import { useEffect, useRef } from "react";
 import {
   TrialComponent,
   ComponentType,
-  CanvasStyles,
-  DEFAULT_CANVAS_STYLES,
+  PreviewViewport,
+  DEFAULT_PREVIEW_VIEWPORT,
 } from "./types";
 import { restoreStyleFields } from "./syncConfigToComponent";
 
-export function getInitialCanvasSize(): { width: number; height: number } {
+export function getInitialCanvasSize(): PreviewViewport {
   return {
-    width: window.screen.width || DEFAULT_CANVAS_STYLES.width,
-    height: window.screen.height || DEFAULT_CANVAS_STYLES.height,
+    width: window.screen.width || DEFAULT_PREVIEW_VIEWPORT.width,
+    height: window.screen.height || DEFAULT_PREVIEW_VIEWPORT.height,
   };
 }
 
 function importsEditorBoxSize(type: string): boolean {
   return (
-    type !== "HtmlComponent" &&
     type !== "SurveyComponent" &&
     type !== "SketchpadComponent" &&
     type !== "FileUploadResponseComponent"
@@ -34,7 +33,6 @@ type Props = {
   CANVAS_HEIGHT: number;
   setComponents: React.Dispatch<React.SetStateAction<TrialComponent[]>>;
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
-  setCanvasStyles: React.Dispatch<React.SetStateAction<CanvasStyles>>;
 };
 
 export default function useLoadComponents({
@@ -45,7 +43,6 @@ export default function useLoadComponents({
   CANVAS_HEIGHT,
   setComponents,
   setSelectedId,
-  setCanvasStyles,
 }: Props) {
   const hasLoadedComponents = useRef(false);
 
@@ -136,7 +133,7 @@ export default function useLoadComponents({
         }
 
         // Restore editor box size only for components whose backend consumes it.
-        // HTML, Survey, Sketchpad, and FileUpload use runtime sizing.
+        // Survey, Sketchpad, and FileUpload use their own runtime sizing.
         const numericWidth =
           restoreBoxSize && typeof comp.width === "number"
             ? (comp.width / 100) * CANVAS_WIDTH
@@ -157,7 +154,7 @@ export default function useLoadComponents({
           zIndex: comp.zIndex ?? 0,
           config: config,
         };
-        loadedComponents.push(restoreStyleFields(base));
+        loadedComponents.push(restoreStyleFields(base, CANVAS_WIDTH));
       });
     }
 
@@ -263,7 +260,7 @@ export default function useLoadComponents({
           zIndex: comp.zIndex ?? 0,
           config: config,
         };
-        loadedComponents.push(restoreStyleFields(base));
+        loadedComponents.push(restoreStyleFields(base, CANVAS_WIDTH));
       });
     }
 
@@ -275,23 +272,6 @@ export default function useLoadComponents({
       setSelectedId(null);
     }
 
-    // Initialize the preview viewport only. The reference canvas is resolved
-    // separately before loading components; it must not follow device selection.
-    // Appearance stays owned by the experiment's CanvasStylesProvider.
-    setCanvasStyles((prev) => {
-      const saved = (columnMapping.__canvasStyles?.value ??
-        {}) as Partial<CanvasStyles>;
-      // First open (no saved size) → preview the user's screen.
-      const autoSize: Partial<Pick<CanvasStyles, "width" | "height">> =
-        !saved.width && !saved.height ? getInitialCanvasSize() : {};
-      return {
-        width: saved.width ?? autoSize.width ?? DEFAULT_CANVAS_STYLES.width,
-        height: saved.height ?? autoSize.height ?? DEFAULT_CANVAS_STYLES.height,
-        backgroundColor: prev.backgroundColor,
-        fullScreen: prev.fullScreen,
-        progressBar: prev.progressBar,
-      };
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 }

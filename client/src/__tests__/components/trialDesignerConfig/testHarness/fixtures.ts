@@ -1,9 +1,9 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_CANVAS_STYLES } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { DEFAULT_PREVIEW_VIEWPORT } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   TrialComponent,
 } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import {
@@ -30,12 +30,10 @@ import {
   getTextComponentModel,
 } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/textComponentModel";
 
-const canvasStyles: CanvasStyles = {
-  ...DEFAULT_CANVAS_STYLES,
+const previewViewport: PreviewViewport = {
+  ...DEFAULT_PREVIEW_VIEWPORT,
   width: 1000,
   height: 700,
-  backgroundColor: "#101010",
-  fullScreen: false,
 };
 
 function toJsPsychCoords(x: number, y: number) {
@@ -47,10 +45,10 @@ function fromJsPsychCoords(coords: { x: number; y: number }) {
 }
 
 export {
-  DEFAULT_CANVAS_STYLES,
+  DEFAULT_PREVIEW_VIEWPORT,
   React,
   applyComponentConfigPatch,
-  canvasStyles,
+  previewViewport,
   describe,
   expect,
   fromJsPsychCoords,
@@ -72,4 +70,4 @@ export {
   vi,
   waitFor,
 };
-export type { CanvasStyles, TrialComponent };
+export type { PreviewViewport, TrialComponent };

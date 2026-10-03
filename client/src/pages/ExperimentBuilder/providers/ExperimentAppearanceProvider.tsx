@@ -1,32 +1,32 @@
 import { ReactNode, useEffect, useState } from "react";
-import CanvasStylesContext from "../contexts/CanvasStylesContext";
+import ExperimentAppearanceContext from "../contexts/ExperimentAppearanceContext";
 import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 import {
-  CanvasStyles,
-  DEFAULT_CANVAS_STYLES,
-} from "../components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+  ExperimentAppearance,
+  DEFAULT_EXPERIMENT_APPEARANCE,
+} from "../appearance";
 
 const API_URL = getApiBaseUrl();
 
-export default function CanvasStylesProvider({
+export default function ExperimentAppearanceProvider({
   children,
   experimentID,
 }: {
   children: ReactNode;
   experimentID?: string;
 }) {
-  const [canvasStyles, setCanvasStyles] = useState<CanvasStyles>(
-    DEFAULT_CANVAS_STYLES,
+  const [appearance, setAppearance] = useState<ExperimentAppearance>(
+    DEFAULT_EXPERIMENT_APPEARANCE,
   );
 
-  // Load appearance settings (backgroundColor, fullScreen) from the server on mount
+  // Load the experiment appearance settings from the server.
   useEffect(() => {
     if (!experimentID) return;
     fetch(`${API_URL}/api/appearance-settings/${experimentID}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.settings) {
-          setCanvasStyles((prev) => ({
+          setAppearance((prev) => ({
             ...prev,
             backgroundColor:
               data.settings.backgroundColor ?? prev.backgroundColor,
@@ -39,8 +39,8 @@ export default function CanvasStylesProvider({
   }, [experimentID]);
 
   return (
-    <CanvasStylesContext.Provider value={{ canvasStyles, setCanvasStyles }}>
+    <ExperimentAppearanceContext.Provider value={{ appearance, setAppearance }}>
       {children}
-    </CanvasStylesContext.Provider>
+    </ExperimentAppearanceContext.Provider>
   );
 }

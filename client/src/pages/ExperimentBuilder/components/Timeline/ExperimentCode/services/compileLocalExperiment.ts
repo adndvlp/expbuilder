@@ -1,4 +1,4 @@
-import type { CanvasStyles } from "../../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import type { ExperimentAppearance } from "../../../../appearance";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -21,7 +21,7 @@ type CompileLocalExperimentOptions = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
-  canvasStyles?: CanvasStyles;
+  appearance?: ExperimentAppearance;
   baseCodeOverride?: string;
   customCode?: string;
   customPreInitCode?: string;
@@ -78,6 +78,6 @@ export async function compileLocalExperiment(
     customPreInitCode: { local: options.customPreInitCode ?? "" },
     extensions: extensionCode,
     localParams: options.localParams ?? {},
-    progressBar: options.canvasStyles?.progressBar ?? false,
+    progressBar: options.appearance?.progressBar ?? false,
   });
 }

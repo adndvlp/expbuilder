@@ -26,6 +26,7 @@ import {
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
+import { RuntimeViewportController, styleSurface } from "./layout/RuntimeViewport";
 import {
   getCanvasStages,
   StageMetrics,
@@ -36,6 +37,7 @@ const DYNAMIC_VISUAL_BRIDGE_ID = "jspsych-dynamic-visual-bridge";
 const DYNAMIC_PERSISTENT_VISUAL_ID = "jspsych-dynamic-persistent-visual";
 
 let preservedVisualBridge: HTMLElement | null = null;
+let preservedVisualStages: ReturnType<typeof getCanvasStages> = [];
 let preservedVisualBridgeObserver: MutationObserver | null = null;
 let persistentVisualSurface: HTMLElement | null = null;
 let persistentVisualHandoffTimestamp: number | null = null;
@@ -57,16 +59,19 @@ function removePreservedVisualBridge() {
   preservedVisualBridgeObserver?.disconnect();
   preservedVisualBridgeObserver = null;
   preservedVisualBridge?.remove();
+  for (const stage of preservedVisualStages) stage.destroy();
+  preservedVisualStages = [];
   preservedVisualBridge = null;
 }
 
 function monitorPreservedVisualBridge(displayElement: HTMLElement) {
   preservedVisualBridgeObserver?.disconnect();
   preservedVisualBridgeObserver = new MutationObserver(() => {
-    if (!preservedVisualBridge) return;
+    if (!preservedVisualBridge && !persistentVisualSurface) return;
     if (displayElement.childNodes.length === 0) return;
     if (displayElement.querySelector(`#${DYNAMIC_CONTAINER_ID}`)) return;
     removePreservedVisualBridge();
+    removePersistentVisualSurface();
   });
   preservedVisualBridgeObserver.observe(displayElement, {
     childList: true,
@@ -114,6 +119,7 @@ function preserveCanvasVisualBridge(
 
   document.body.appendChild(bridge);
   preservedVisualBridge = bridge;
+  preservedVisualStages = canvases;
   monitorPreservedVisualBridge(displayElement);
 }
 
@@ -123,20 +129,8 @@ function styleVisualContainer(
   height: number,
   backgroundColor: string,
 ) {
-  const ratio = Math.min(
-    window.innerWidth / width,
-    window.innerHeight / height,
-  );
-  container.style.position = "fixed";
-  container.style.top = "50%";
-  container.style.left = "50%";
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.overflow = "hidden";
-  container.style.textAlign = "left";
   container.style.background = backgroundColor;
-  container.style.transform = `translate(-50%, -50%) scale(${ratio})`;
-  container.style.transformOrigin = "center center";
+  styleSurface(container, { width, height, dpr: window.devicePixelRatio || 1, revision: 0 }, { left: 0, top: 0 });
 }
 
 function getPersistentVisualSurface(
@@ -198,10 +192,10 @@ const info = <const>{
   name: "DynamicPlugin",
   version: version,
   parameters: {
-    /** Canvas design dimensions and styles */
+    /** Presentation appearance. Legacy screen dimensions are ignored. */
     __canvasStyles: {
       type: ParameterType.COMPLEX,
-      default: { width: 1024, height: 768 },
+      default: {},
     },
     /** Array of component configurations for stimulus display */
     components: {
@@ -1252,8 +1246,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       styleElement.textContent = `
         #jspsych-dynamic-plugin-container {
           position: fixed;
-          top: 50%;
-          left: 50%;
+          top: 0;
+          left: 0;
           overflow: hidden;
           text-align: left;
         }
@@ -1281,24 +1275,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trial.__canvasStyles?.backgroundColor ?? "transparent";
     display_element.appendChild(mainContainer);
 
-    // Design canvas dimensions
-    const canvasWidth = trial.__canvasStyles?.width ?? 1024;
-    const canvasHeight = trial.__canvasStyles?.height ?? 768;
-
-    // Scale to fit viewport (same mechanism as ExperimentPreview iframe)
-    const updateScale = () => {
-      const ratio = Math.min(
-        window.innerWidth / canvasWidth,
-        window.innerHeight / canvasHeight
-      );
-      mainContainer.style.width = canvasWidth + "px";
-      mainContainer.style.height = canvasHeight + "px";
-      mainContainer.style.transform = "translate(-50%, -50%) scale(" + ratio + ")";
-    };
-    updateScale();
-
-    const resizeObserver = new ResizeObserver(() => updateScale());
-    resizeObserver.observe(document.documentElement);
+    let viewportController: RuntimeViewportController;
+    const layoutContext = { getViewport: () => viewportController.getViewport() };
 
     const initialDiagnostics = getDiagnosticsOptions(trial);
     const timing = createPrecisionTiming({
@@ -1325,8 +1303,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trial,
       timing,
       container: mainContainer,
-      canvasWidth,
-      canvasHeight,
+      getViewport: layoutContext.getViewport,
       onFinish: (timestamp, options) =>
         handleParticipantResponse(timestamp, options),
     });
@@ -1337,8 +1314,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     if (trial.components && trial.components.length > 0) {
       trial.components.forEach((rawConfig: any, idx: number) => {
         const config = { ...rawConfig };
-        // Inject __canvasStyles so components can compute pixel coords
-        config.__canvasStyles = trial.__canvasStyles;
+        // The runtime viewport is ephemeral and shared by all components.
+        config.__layoutContext = layoutContext;
         config.__renderBackend = trial.render_backend || "webgl-strict";
         config.__recordGpuTiming = trial.record_gpu_timing !== false;
         attachPrecisionTiming(config, timing);
@@ -1364,7 +1341,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     if (trial.response_components && trial.response_components.length > 0) {
       trial.response_components.forEach((rawConfig: any, idx: number) => {
         const config = { ...rawConfig };
-        config.__canvasStyles = trial.__canvasStyles;
+        config.__layoutContext = layoutContext;
         config.__renderBackend = trial.render_backend || "webgl-strict";
         config.__recordGpuTiming = trial.record_gpu_timing !== false;
         attachPrecisionTiming(config, timing);
@@ -1399,7 +1376,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         const _prevLen = visualRenderContainer.children.length;
         const renderedElement = instance.render(visualRenderContainer, config, () => {
           handleParticipantResponse();
-        });
+        }, layoutContext);
         // Capture the topmost new child appended during render (synchronous DOM op)
         comp.renderedEl =
           visualRenderContainer.children.length > _prevLen
@@ -1409,6 +1386,18 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
               : null;
       });
     };
+
+    viewportController = new RuntimeViewportController(this.jsPsych, display_element, (viewport, origin) => {
+      styleSurface(mainContainer, viewport, origin);
+      if (visualRenderContainer !== mainContainer) styleSurface(visualRenderContainer, viewport, origin);
+      for (const stage of getCanvasStages(visualRenderContainer)) {
+        stage.resize(viewport.width, viewport.height, viewport.dpr);
+      }
+      for (const { instance } of allComponents) instance.updateLayout?.(viewport);
+      for (const stage of getCanvasStages(visualRenderContainer)) stage.commit(performance.now(), true);
+      // A screenshot of the previous frame must not overlay a resized scene.
+      removePreservedVisualBridge();
+    });
 
     // Function to record all pending responses before ending trial
     const recordAllPendingResponses = () => {
@@ -1710,8 +1699,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           const cx = config.coordinates.x ?? 0;
           const cy = config.coordinates.y ?? 0;
           trialData[`${prefix}_coordinates`] = JSON.stringify({
-            x: Math.round(window.innerWidth * (0.5 + cx / 200)),
-            y: Math.round(window.innerHeight * (0.5 - cy / 200)),
+            x: Math.round(layoutContext.getViewport().width * (0.5 + cx / 200)),
+            y: Math.round(layoutContext.getViewport().height * (0.5 - cy / 200)),
           });
         }
 
@@ -1778,8 +1767,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           const cx = config.coordinates.x ?? 0;
           const cy = config.coordinates.y ?? 0;
           trialData[`${prefix}_coordinates`] = JSON.stringify({
-            x: Math.round(window.innerWidth * (0.5 + cx / 200)),
-            y: Math.round(window.innerHeight * (0.5 - cy / 200)),
+            x: Math.round(layoutContext.getViewport().width * (0.5 + cx / 200)),
+            y: Math.round(layoutContext.getViewport().height * (0.5 - cy / 200)),
           });
         }
         if (
@@ -1909,6 +1898,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
       if (visualFrameBoundaryHandoff && typeof offsetTime === "number") {
         setPersistentVisualHandoff(offsetTime);
+        monitorPreservedVisualBridge(display_element);
       } else {
         preserveCanvasVisualBridge(mainContainer, display_element);
       }
@@ -1923,7 +1913,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
 
       // Clean up resize observer
-      resizeObserver.disconnect();
+      viewportController.dispose();
 
       // Clear display
       display_element.innerHTML = "";
@@ -1944,11 +1934,13 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       if (visualFrameBoundaryHandoff) {
         removePreservedVisualBridge();
         visualRenderContainer = getPersistentVisualSurface(
-          canvasWidth,
-          canvasHeight,
+          layoutContext.getViewport().width,
+          layoutContext.getViewport().height,
           trial.__canvasStyles?.backgroundColor ?? "transparent",
         );
+        styleSurface(visualRenderContainer, layoutContext.getViewport(), viewportController.origin);
         for (const stage of getCanvasStages(visualRenderContainer)) {
+          stage.resize(layoutContext.getViewport().width, layoutContext.getViewport().height, layoutContext.getViewport().dpr);
           stage.resetForTrial();
         }
         mainContainer.style.visibility = "visible";
@@ -1970,6 +1962,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         }
       });
       timing.onFrameCommit((timestamp) => {
+        viewportController.checkDpr();
         for (const stage of getCanvasStages(visualRenderContainer)) {
           stage.commit(timestamp, true);
         }
@@ -2040,9 +2033,9 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         .catch((error) => {
           console.warn("DynamicPlugin asset preload failed:", error);
         })
-        .then(startPresentation);
+        .then(() => viewportController.ready()).then(startPresentation);
     } else {
-      startPresentation();
+      viewportController.ready().then(startPresentation);
     }
     });
   }

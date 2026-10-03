@@ -28,10 +28,7 @@ describe("ExperimentBaseHarness", () => {
       getTrial,
       getLoopTimeline,
       getLoop,
-      canvasStyles: {
-        width: 1024,
-        height: 768,
-        backgroundColor: "#fff",
+      appearance: {        backgroundColor: "#fff",
         fullScreen: true,
         progressBar: false,
       },
@@ -77,10 +74,7 @@ describe("ExperimentBaseHarness", () => {
       getTrial: vi.fn(),
       getLoopTimeline: vi.fn(),
       getLoop: vi.fn(),
-      canvasStyles: {
-        width: 1024,
-        height: 768,
-        backgroundColor: "#fff",
+      appearance: {        backgroundColor: "#fff",
         fullScreen: false,
         progressBar: false,
       },

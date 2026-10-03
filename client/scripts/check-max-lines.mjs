@@ -23,6 +23,7 @@ const IGNORED_DIRECTORIES = new Set([
   "test-results",
 ]);
 const IGNORED_FILES = new Set(["package-lock.json"]);
+const GENERATED_PATHS = new Set(["runtime-e2e/artifacts", "runtime-report"]);
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -30,7 +31,10 @@ async function collectFiles(directory) {
 
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      if (!IGNORED_DIRECTORIES.has(entry.name)) {
+      if (
+        !IGNORED_DIRECTORIES.has(entry.name) &&
+        !GENERATED_PATHS.has(relative(CLIENT_ROOT, join(directory, entry.name)))
+      ) {
         files.push(...(await collectFiles(join(directory, entry.name))));
       }
       continue;

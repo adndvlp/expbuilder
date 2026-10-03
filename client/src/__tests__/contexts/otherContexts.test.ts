@@ -21,11 +21,11 @@ describe("UrlContext", () => {
   });
 });
 
-describe("CanvasStylesContext", () => {
+describe("ExperimentAppearanceContext", () => {
   it("has default canvas styles", async () => {
-    const CanvasStylesContext = await import("../../pages/ExperimentBuilder/contexts/CanvasStylesContext");
-    const ctx = CanvasStylesContext.default;
-    // CanvasStylesContext is created with default values
+    const ExperimentAppearanceContext = await import("../../pages/ExperimentBuilder/contexts/ExperimentAppearanceContext");
+    const ctx = ExperimentAppearanceContext.default;
+    // ExperimentAppearanceContext is created with default values
     expect(ctx.Provider).toBeDefined();
   });
 });

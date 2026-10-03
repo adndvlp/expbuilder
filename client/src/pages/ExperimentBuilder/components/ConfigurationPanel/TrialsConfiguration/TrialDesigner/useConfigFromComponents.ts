@@ -1,4 +1,5 @@
-import { TrialComponent, CanvasStyles } from "./types";
+import { TrialComponent, PreviewViewport } from "./types";
+import type { ExperimentAppearance } from "../../../../appearance";
 import { makeGrapesHtmlPortable } from "./GrapesEditors/portableHtml";
 
 type Props = {
@@ -10,13 +11,15 @@ type Props = {
     y: number;
   };
   columnMapping: Record<string, any>;
-  canvasStyles?: CanvasStyles;
+  previewViewport?: PreviewViewport;
+  appearance?: ExperimentAppearance;
 };
 
 export default function useConfigComponents({
   toJsPsychCoords,
   columnMapping,
-  canvasStyles,
+  previewViewport,
+  appearance,
 }: Props) {
   const generateConfigFromComponents = (comps: TrialComponent[]) => {
     const stimulusComponents: any[] = [];
@@ -24,6 +27,8 @@ export default function useConfigComponents({
 
     comps.forEach((comp) => {
       const coords = toJsPsychCoords(comp.x, comp.y);
+      coords.x = Number(coords.x.toPrecision(12));
+      coords.y = Number(coords.y.toPrecision(12));
       const componentData: Record<string, any> = {
         type: comp.type,
         coordinates: coords,
@@ -37,14 +42,14 @@ export default function useConfigComponents({
       // Only export editor box size for components whose backend uses width/height.
       // Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
       if (exportsEditorBoxSize && comp.width > 0) {
-        componentData.width = canvasStyles
-          ? (comp.width / canvasStyles.width) * 100
+        componentData.width = previewViewport
+          ? Number(((comp.width / previewViewport.width) * 100).toPrecision(12))
           : comp.width;
       }
 
       if (exportsEditorBoxSize && comp.height > 0) {
-        componentData.height = canvasStyles
-          ? (comp.height / canvasStyles.width) * 100 // vw units — same denominator as width
+        componentData.height = previewViewport
+          ? Number(((comp.height / previewViewport.width) * 100).toPrecision(12)) // vw units — same denominator as width
           : comp.height;
       }
 
@@ -92,43 +97,67 @@ export default function useConfigComponents({
 
       // Convert font sizes from Konva px → vw so they scale with viewport at runtime
       // (same strategy as width/height: divide by canvas width to get a vw percentage)
-      if (comp.type === "TextComponent" && canvasStyles) {
+      if (
+        comp.type === "TextComponent" &&
+        previewViewport &&
+        comp.config?.font_size?.source !== "csv" &&
+        comp.config?._font_size_runtime_vw?.source !== "csv"
+      ) {
         const fontSizePx =
           comp.textFontSize ??
           (comp.config?.font_size?.value as number | undefined) ??
           16;
+        delete componentData.font_size;
         componentData._font_size_runtime_vw = {
           source: "typed",
-          value: (fontSizePx / canvasStyles.width) * 100,
+          value: Number(
+            ((fontSizePx / previewViewport.width) * 100).toPrecision(12),
+          ),
         };
       }
 
-      if (comp.type === "ButtonResponseComponent" && canvasStyles) {
+      if (
+        comp.type === "ButtonResponseComponent" &&
+        previewViewport &&
+        comp.config?.button_font_size?.source !== "csv" &&
+        comp.config?._button_font_size_runtime_vw?.source !== "csv"
+      ) {
         const bfsPx =
           comp.buttonFontSize ??
           (comp.config?.button_font_size?.value as number | undefined) ??
           14;
+        delete componentData.button_font_size;
         componentData._button_font_size_runtime_vw = {
           source: "typed",
-          value: (bfsPx / canvasStyles.width) * 100,
+          value: Number(((bfsPx / previewViewport.width) * 100).toPrecision(12)),
         };
       }
 
-      if (comp.type === "InputResponseComponent" && canvasStyles) {
+      if (
+        comp.type === "InputResponseComponent" &&
+        previewViewport &&
+        comp.config?.input_font_size?.source !== "csv" &&
+        comp.config?._input_font_size_runtime_vw?.source !== "csv"
+      ) {
         const ifsPx =
           comp.inputFontSize ??
           (comp.config?.input_font_size?.value as number | undefined) ??
           16;
+        delete componentData.input_font_size;
         componentData._input_font_size_runtime_vw = {
           source: "typed",
-          value: (ifsPx / canvasStyles.width) * 100,
+          value: Number(((ifsPx / previewViewport.width) * 100).toPrecision(12)),
         };
         // Derive width and height from the resized box when present, so the
         // runtime matches the canvas without touching the font size.
         const canvasWidth = comp.inputWidth ?? 10 * ifsPx * 0.55;
-        componentData.width = (canvasWidth / canvasStyles.width) * 100;
+        componentData.width = Number(
+          ((canvasWidth / previewViewport.width) * 100).toPrecision(12),
+        );
         const inputHeightPx = comp.inputHeight ?? ifsPx * 1.5;
-        componentData.height = (inputHeightPx / canvasStyles.width) * 100;
+        componentData.height = Number(
+          ((inputHeightPx / previewViewport.width) * 100).toPrecision(12),
+        );
       }
 
       // Categorize
@@ -183,17 +212,13 @@ export default function useConfigComponents({
       delete dynamicPluginConfig.response_components;
     }
 
-    // Persist only the trial layout size so it can be restored on re-open.
-    // Background color, full screen and progress bar are experiment-level
-    // settings owned by AppearanceSettings, not by the trial.
-    if (canvasStyles) {
+    if (appearance) {
       dynamicPluginConfig.__canvasStyles = {
         source: "typed",
-        value: {
-          width: canvasStyles.width,
-          height: canvasStyles.height,
-        },
+        value: { ...appearance },
       };
+    } else {
+      delete dynamicPluginConfig.__canvasStyles;
     }
 
     return dynamicPluginConfig;

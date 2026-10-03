@@ -1,3 +1,4 @@
+import { positionElement } from "../layout/domLayout";
 import "survey-js-ui";
 import { ParameterType } from "jspsych";
 import { Model } from "survey-core";
@@ -53,9 +54,9 @@ const info = {
      */
     min_width: {
       type: ParameterType.STRING,
-      default: "min(100vw, 800px)",
+      default: "min(100cqw, 800px)",
     },
-    /** Position coordinates for the survey. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the survey. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -117,26 +118,16 @@ class SurveyjsComponent {
   render(display_element: HTMLElement, trial: any, onResponse?: () => void) {
     this.timing = trial.__timing || null;
 
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
-
     // Create survey container with coordinates
     const surveyContainer = document.createElement("div");
     surveyContainer.id = "jspsych-survey-surveyjs-container";
     surveyContainer.style.position = "absolute";
-    surveyContainer.style.maxHeight = "90vh";
+    surveyContainer.style.maxHeight = "90cqh";
     surveyContainer.style.overflowY = "auto";
     surveyContainer.style.overflowX = "hidden";
     surveyContainer.style.zIndex = String(trial.zIndex ?? 0);
 
-    const xVw = mapValue(trial.coordinates.x);
-    const yVh = mapValue(trial.coordinates.y);
-    surveyContainer.style.left = `calc(50% + ${xVw}vw)`;
-    surveyContainer.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(surveyContainer, trial.coordinates);
     surveyContainer.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(surveyContainer);
@@ -195,7 +186,7 @@ class SurveyjsComponent {
     });
     const survey_container = this.createSurveyContainer(
       surveyContainer,
-      trial.min_width || "min(100vw, 800px)",
+      trial.min_width || "min(100cqw, 800px)",
     );
     this.survey.render(survey_container);
     if (this.timing) {

@@ -1,10 +1,10 @@
-import type { CanvasStyles, TrialComponent } from "../../types";
+import type { PreviewViewport, TrialComponent } from "../../types";
 import type { SnapHandlers } from "../../snapKonvaNode";
 import type { HtmlSceneNodeMetric } from "../sceneModel";
 
 export type EditorHitBoxProps = SnapHandlers & {
   shapeProps: TrialComponent;
-  canvasStyles?: CanvasStyles;
+  previewViewport?: PreviewViewport;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: any) => void;

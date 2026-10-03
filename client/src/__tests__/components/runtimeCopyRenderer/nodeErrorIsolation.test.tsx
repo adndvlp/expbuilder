@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RuntimeCopyNode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/runtimeCopy/RuntimeCopyNode";
 import type { HtmlSceneNode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/sceneModel";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   TrialComponent,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
@@ -15,12 +15,9 @@ vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
 // real implementation instead of the survey-core mock from the global setup.
 vi.unmock("survey-core");
 
-const canvasStyles: CanvasStyles = {
+const previewViewport: PreviewViewport = {
   width: 640,
   height: 480,
-  backgroundColor: "#ffffff",
-  fullScreen: true,
-  progressBar: false,
 };
 
 function surveyNode(): HtmlSceneNode {
@@ -61,7 +58,7 @@ function surveyNode(): HtmlSceneNode {
     rotation: 0,
     zIndex: 1,
     component,
-    canvasStyles,
+    previewViewport,
   };
 }
 

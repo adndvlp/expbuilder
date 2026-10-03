@@ -109,11 +109,9 @@ export function createPreviewTextLayout(
     resolvePreviewParam(config.__canvas_width, previewWidth || 1024),
   );
   const fontSize =
-    configuredFontSize != null
-      ? Number(configuredFontSize)
-      : fontSizeVw != null
-        ? (Number(fontSizeVw) / 100) * canvasWidth
-        : 16;
+    fontSizeVw != null
+      ? (Number(fontSizeVw) / 100) * canvasWidth
+      : Number(configuredFontSize ?? 16);
   const fontFamily = resolvePreviewParam(config.font_family, "sans-serif");
   const fontWeight = resolvePreviewParam(config.font_weight, "normal");
   const fontStyle = resolvePreviewParam(config.font_style, "normal");

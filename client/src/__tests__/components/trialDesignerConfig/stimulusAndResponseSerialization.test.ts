@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   describe,
   expect,
   it,
@@ -52,7 +52,7 @@ describe("useConfigFromComponents", () => {
           trial_duration: { source: "typed", value: 1000 },
           stale_field: { source: "none", value: null },
         },
-        canvasStyles,
+        previewViewport,
       }),
     );
 
@@ -60,12 +60,7 @@ describe("useConfigFromComponents", () => {
 
     expect(config.trial_duration).toEqual({ source: "typed", value: 1000 });
     expect(config.stale_field).toBeUndefined();
-    // Only the layout size is persisted per trial; background color, full
-    // screen and progress bar belong to the experiment appearance settings.
-    expect(config.__canvasStyles).toEqual({
-      source: "typed",
-      value: { width: canvasStyles.width, height: canvasStyles.height },
-    });
+    expect(config.__canvasStyles).toBeUndefined();
     expect(config.components.value).toEqual([
       expect.objectContaining({
         type: "TextComponent",
@@ -75,7 +70,6 @@ describe("useConfigFromComponents", () => {
         rotation: 15,
         zIndex: 2,
         text: { source: "typed", value: "Hello" },
-        font_size: { source: "typed", value: 20 },
         font_color: { source: "typed", value: "#ff0000" },
         _font_size_runtime_vw: { source: "typed", value: 2 },
       }),
@@ -89,7 +83,6 @@ describe("useConfigFromComponents", () => {
         height: 6,
         zIndex: 3,
         button_text: { source: "typed", value: "Continue" },
-        button_font_size: { source: "typed", value: 18 },
         button_color: { source: "typed", value: "#0088ff" },
       }),
     ]);
@@ -112,7 +105,7 @@ describe("useConfigFromComponents", () => {
             value: [{ type: "ButtonResponseComponent" }],
           },
         },
-        canvasStyles,
+        previewViewport,
       }),
     );
 
@@ -142,7 +135,7 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        canvasStyles,
+        previewViewport,
       }),
     );
 
@@ -179,7 +172,7 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        canvasStyles,
+        previewViewport,
       }),
     );
 

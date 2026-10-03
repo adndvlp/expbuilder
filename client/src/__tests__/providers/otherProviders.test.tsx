@@ -221,7 +221,7 @@ describe("UrlProvider", () => {
   });
 });
 
-describe("CanvasStylesProvider", () => {
+describe("ExperimentAppearanceProvider", () => {
   beforeEach(() => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -230,12 +230,12 @@ describe("CanvasStylesProvider", () => {
   });
 
   it("initializes with default canvas styles", async () => {
-    const CanvasStylesProvider = (await import("../../pages/ExperimentBuilder/providers/CanvasStylesProvider")).default;
-    const CanvasStylesContext = (await import("../../pages/ExperimentBuilder/contexts/CanvasStylesContext")).default;
+    const ExperimentAppearanceProvider = (await import("../../pages/ExperimentBuilder/providers/ExperimentAppearanceProvider")).default;
+    const ExperimentAppearanceContext = (await import("../../pages/ExperimentBuilder/contexts/ExperimentAppearanceContext")).default;
 
     let contextValue: any = null;
     const TestConsumer = () => {
-      const ctx = React.useContext(CanvasStylesContext);
+      const ctx = React.useContext(ExperimentAppearanceContext);
       React.useEffect(() => {
         contextValue = ctx;
       }, [ctx]);
@@ -243,7 +243,7 @@ describe("CanvasStylesProvider", () => {
     };
 
     render(
-      React.createElement(CanvasStylesProvider, { experimentID: "test-exp" },
+      React.createElement(ExperimentAppearanceProvider, { experimentID: "test-exp" },
         React.createElement(TestConsumer)
       )
     );
@@ -251,8 +251,8 @@ describe("CanvasStylesProvider", () => {
     await waitFor(() => {
       const ctx = contextValue;
       expect(ctx).toBeDefined();
-      expect(ctx.canvasStyles).toBeDefined();
-      expect(typeof ctx.setCanvasStyles).toBe("function");
+      expect(ctx.appearance).toBeDefined();
+      expect(typeof ctx.setAppearance).toBe("function");
     });
   });
 });

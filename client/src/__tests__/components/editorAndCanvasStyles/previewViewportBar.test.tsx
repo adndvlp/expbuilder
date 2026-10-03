@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import CanvasStylesBar from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/CanvasStylesBar";
-import type { CanvasStyles } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import PreviewViewportBar from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/PreviewViewportBar";
+import type { PreviewViewport } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
-const initialCanvasStyles: CanvasStyles = {
+const initialPreviewViewport: PreviewViewport = {
   width: 1024,
   height: 768,
   backgroundColor: "#ffffff",
@@ -12,7 +12,7 @@ const initialCanvasStyles: CanvasStyles = {
   progressBar: false,
 };
 
-function CanvasStylesHarness({
+function PreviewViewportHarness({
   isDemoRunning = false,
   onRunDemo = vi.fn(),
   onStopDemo = vi.fn(),
@@ -21,12 +21,12 @@ function CanvasStylesHarness({
   onRunDemo?: () => void;
   onStopDemo?: () => void;
 }) {
-  const [canvasStyles, setCanvasStyles] = useState(initialCanvasStyles);
+  const [previewViewport, setPreviewViewport] = useState(initialPreviewViewport);
 
   return (
-    <CanvasStylesBar
-      canvasStyles={canvasStyles}
-      setCanvasStyles={setCanvasStyles}
+    <PreviewViewportBar
+      previewViewport={previewViewport}
+      setPreviewViewport={setPreviewViewport}
       stageScale={0.75}
       onRunDemo={onRunDemo}
       onStopDemo={onStopDemo}
@@ -35,12 +35,12 @@ function CanvasStylesHarness({
   );
 }
 
-describe("CanvasStylesBar", () => {
+describe("PreviewViewportBar", () => {
   it("applies device presets, custom dimensions and demo actions", () => {
     const onRunDemo = vi.fn();
     const onStopDemo = vi.fn();
     const { rerender } = render(
-      <CanvasStylesHarness onRunDemo={onRunDemo} onStopDemo={onStopDemo} />,
+      <PreviewViewportHarness onRunDemo={onRunDemo} onStopDemo={onStopDemo} />,
     );
 
     expect(screen.getByText("Screen Preview")).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("CanvasStylesBar", () => {
     expect(onRunDemo).toHaveBeenCalled();
 
     rerender(
-      <CanvasStylesHarness
+      <PreviewViewportHarness
         isDemoRunning
         onRunDemo={onRunDemo}
         onStopDemo={onStopDemo}

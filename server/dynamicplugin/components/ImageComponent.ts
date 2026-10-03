@@ -1,3 +1,5 @@
+import { getViewport } from "../layout/RuntimeViewport";
+import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
@@ -89,6 +91,16 @@ let imageComponentCounter = 0;
  * changes from a DOM <img> to a retained canvas drawable.
  */
 class ImageComponent {
+  private layoutConfig: any;
+
+  updateLayout() {
+    if (!this.prepared || !this.source || !this.stage || this.destroyed) return;
+    const rect = this.computeDrawRect(this.layoutConfig, this.source);
+    if (!rect) return;
+    this.drawRect = rect;
+    this.updateTrackingElement(rect, resolveTimingMs(this.layoutConfig.zIndex, 0) ?? 0);
+    this.stage.updateDrawable(this.drawableId, rect);
+  }
   private jsPsych: any;
   private stage: CanvasStage | null = null;
   private element: HTMLElement | null = null;
@@ -133,9 +145,7 @@ class ImageComponent {
   }
 
   private computeDrawRect(config: any, source: CanvasBitmapSource): DrawRect | null {
-    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
-    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const { width: canvasWidth, height: canvasHeight } = getViewport(config);
     const sourceSize = this.getSourceSize(source);
 
     if (sourceSize.width <= 0 || sourceSize.height <= 0) return null;
@@ -167,10 +177,7 @@ class ImageComponent {
     }
 
     const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
-    const centerX =
-      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
-    const centerY =
-      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const { x: centerX, y: centerY } = relativeCenter(coordinates, { width: canvasWidth, height: canvasHeight });
 
     return {
       x: centerX - drawWidth / 2,
@@ -230,9 +237,8 @@ class ImageComponent {
   }
 
   render(container: HTMLElement, config: any): HTMLElement {
-    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
-    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    this.layoutConfig = config;
+    const { width: canvasWidth, height: canvasHeight } = getViewport(config);
     const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
 
     this.destroyed = false;

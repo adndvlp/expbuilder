@@ -40,7 +40,7 @@ export default function RuntimeCopyNode({
       rendered = renderRuntimeCopy(
         host,
         node.component,
-        node.canvasStyles,
+        node.previewViewport,
         (value) =>
           resolveMediaPreviewUrl(value, {
             apiUrl: API_URL,
@@ -65,7 +65,7 @@ export default function RuntimeCopyNode({
   }, [
     experimentID,
     node.id,
-    node.canvasStyles,
+    node.previewViewport,
     renderSignature,
     uploadedFiles,
   ]);

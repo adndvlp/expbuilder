@@ -31,7 +31,7 @@ describe("coverage trial designer EditorHitBox", () => {
             min_width: { source: "typed", value: "300px" },
           },
         })}
-        canvasStyles={{
+        previewViewport={{
           width: 500,
           height: 400,
           fullScreen: false,
