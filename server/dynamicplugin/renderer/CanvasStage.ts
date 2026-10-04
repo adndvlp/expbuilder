@@ -36,7 +36,11 @@ type RectDrawable = {
 type RgbaColor = [number, number, number, number];
 
 type StageDrawable =
-  | (Required<SpriteDrawable> & { kind: "sprite"; opacity: number })
+  | (Omit<Required<SpriteDrawable>, "source"> & {
+      kind: "sprite";
+      source?: CanvasImageSource;
+      opacity: number;
+    })
   | (Required<RectDrawable> & { kind: "rect"; colorRgba: RgbaColor });
 
 export type StageCommitInfo = {
@@ -163,6 +167,8 @@ abstract class BaseStage {
   protected trialActive = false;
   protected pendingVisibilityCommits: PendingVisibilityCommit[] = [];
   protected metrics: StageMetrics;
+  protected destroyed = false;
+  private parent: HTMLElement | null;
 
   constructor(
     parent: HTMLElement,
@@ -170,6 +176,7 @@ abstract class BaseStage {
     backend: string,
     bufferStrategy: string,
   ) {
+    this.parent = parent;
     const visible = createVisibleCanvas(parent, options);
     this.canvas = visible.canvas;
     this.dpr = visible.dpr;
@@ -177,11 +184,7 @@ abstract class BaseStage {
     this.height = options.height;
     this.backgroundColor = options.backgroundColor || "#ffffff";
     this.backgroundRgba = parseCssColor(this.backgroundColor);
-    this.metrics = createBaseMetrics(
-      "webgl-strict",
-      backend,
-      bufferStrategy,
-    );
+    this.metrics = createBaseMetrics("webgl-strict", backend, bufferStrategy);
   }
 
   setZIndex(zIndex: number) {
@@ -189,7 +192,9 @@ abstract class BaseStage {
   }
 
   resize(width: number, height: number, dpr = window.devicePixelRatio || 1) {
-    if (this.width === width && this.height === height && this.dpr === dpr) return;
+    if (this.destroyed) return;
+    if (this.width === width && this.height === height && this.dpr === dpr)
+      return;
     this.width = width;
     this.height = height;
     this.dpr = dpr;
@@ -200,7 +205,11 @@ abstract class BaseStage {
     this.markDirty();
   }
 
-  updateDrawable(id: string, geometry: { x: number; y: number; width: number; height: number }) {
+  updateDrawable(
+    id: string,
+    geometry: { x: number; y: number; width: number; height: number },
+  ) {
+    if (this.destroyed) return;
     const drawable = this.drawables.get(id);
     if (!drawable) return;
     Object.assign(drawable, geometry);
@@ -208,10 +217,12 @@ abstract class BaseStage {
   }
 
   setTrialActive(active: boolean) {
+    if (this.destroyed) return;
     this.trialActive = active;
   }
 
   resetForTrial() {
+    if (this.destroyed) return;
     this.drawables.clear();
     this.pendingVisibilityCommits = [];
     this.trialActive = false;
@@ -224,6 +235,7 @@ abstract class BaseStage {
   }
 
   registerSprite(sprite: SpriteDrawable) {
+    if (this.destroyed) return () => {};
     this.drawables.set(sprite.id, {
       kind: "sprite",
       id: sprite.id,
@@ -245,6 +257,7 @@ abstract class BaseStage {
   }
 
   registerRect(rect: RectDrawable) {
+    if (this.destroyed) return () => {};
     this.drawables.set(rect.id, {
       kind: "rect",
       id: rect.id,
@@ -269,6 +282,7 @@ abstract class BaseStage {
     visible: boolean,
     onCommit?: (info: StageCommitInfo) => void,
   ) {
+    if (this.destroyed) return;
     const drawable = this.drawables.get(id);
     if (!drawable) return;
     if (onCommit) {
@@ -280,22 +294,26 @@ abstract class BaseStage {
   }
 
   removeDrawable(id: string) {
-    const drawable = this.drawables.get(id);
-    if (!drawable || !this.drawables.delete(id)) return;
-    if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
+    if (!this.drawables.delete(id)) return;
+    // Keep the last presented frame's sources until another frame replaces it.
     this.markDirty();
   }
 
-  protected releaseTexture(_key: string) {}
+  protected releaseUnusedTextures() {}
 
   render() {
+    if (this.destroyed) return;
     this.markDirty();
     if (!this.trialActive) {
       this.commit(performance.now(), false);
     }
   }
 
-  commit(timestamp: number, fromAnimationFrame = false): StageCommitInfo | null {
+  commit(
+    timestamp: number,
+    fromAnimationFrame = false,
+  ): StageCommitInfo | null {
+    if (this.destroyed) return null;
     if (this.trialActive && !fromAnimationFrame) {
       this.metrics.visual_all_commits_rAF = false;
       this.metrics.commit_outside_raf_count += 1;
@@ -308,6 +326,7 @@ abstract class BaseStage {
 
     const startedAt = performance.now();
     const drawCalls = this.renderFrame(timestamp);
+    this.releaseUnusedTextures();
     const endedAt = performance.now();
     const duration = round3(endedAt - startedAt);
     this.metrics.commit_count += 1;
@@ -359,6 +378,30 @@ abstract class BaseStage {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.trialActive = false;
+    this.dirty = false;
+    this.drawables.clear();
+    this.pendingVisibilityCommits = [];
+    this.metrics.commit_durations = [];
+    this.metrics.gpu_draw_durations = [];
+    this.metrics.gpu_pending_query_count = 0;
+    const registry = (
+      this.parent as
+        | (HTMLElement & {
+            __dynamicCanvasStages?: Map<string, CanvasStage>;
+          })
+        | null
+    )?.[CANVAS_STAGE_REGISTRY_KEY];
+    if (registry) {
+      for (const [key, stage] of registry) {
+        if (stage === this) registry.delete(key);
+      }
+    }
+    this.parent = null;
+    this.canvas.width = 0;
+    this.canvas.height = 0;
     this.canvas.remove();
   }
 
@@ -389,21 +432,25 @@ abstract class BaseStage {
 }
 
 class WebGLStage extends BaseStage {
-  private gl: WebGLRenderingContext | WebGL2RenderingContext;
-  private program: WebGLProgram;
-  private positionBuffer: WebGLBuffer;
-  private texCoordBuffer: WebGLBuffer;
+  private gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+  private program: WebGLProgram | null = null;
+  private positionBuffer: WebGLBuffer | null = null;
+  private texCoordBuffer: WebGLBuffer | null = null;
   private textures = new Map<string, WebGLTexture>();
   private textureSources = new Map<string, CanvasImageSource>();
-  private whiteTexture: WebGLTexture;
-  private uniformResolution: WebGLUniformLocation | null;
-  private uniformRect: WebGLUniformLocation | null;
-  private uniformTexture: WebGLUniformLocation | null;
-  private uniformColor: WebGLUniformLocation | null;
-  private attributePosition: number;
-  private attributeTexCoord: number;
+  private whiteTexture: WebGLTexture | null = null;
+  private uniformResolution: WebGLUniformLocation | null = null;
+  private uniformRect: WebGLUniformLocation | null = null;
+  private uniformTexture: WebGLUniformLocation | null = null;
+  private uniformColor: WebGLUniformLocation | null = null;
+  private attributePosition = 0;
+  private attributeTexCoord = 0;
   private gpuTimerExt: any = null;
   private pendingGpuQueries: any[] = [];
+  private readonly handleContextLost = (event: Event) => {
+    event.preventDefault();
+    this.metrics.webgl_context_lost_count += 1;
+  };
 
   constructor(parent: HTMLElement, options: CanvasStageOptions) {
     super(
@@ -427,6 +474,7 @@ class WebGLStage extends BaseStage {
       });
 
     if (!gl) {
+      super.destroy();
       throw new Error("WebGL is not available");
     }
 
@@ -438,60 +486,110 @@ class WebGLStage extends BaseStage {
         ? gl.getExtension("EXT_disjoint_timer_query_webgl2")
         : null;
     this.metrics.gpu_timer_available = !!this.gpuTimerExt;
-    this.canvas.addEventListener("webglcontextlost", (event) => {
-      event.preventDefault();
-      this.metrics.webgl_context_lost_count += 1;
-    });
+    this.canvas.addEventListener("webglcontextlost", this.handleContextLost);
 
-    this.program = this.createProgram();
-    this.positionBuffer = this.createBuffer(
-      new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
-    );
-    this.texCoordBuffer = this.createBuffer(
-      new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
-    );
-    this.whiteTexture = this.createWhiteTexture();
-    this.attributePosition = gl.getAttribLocation(this.program, "a_position");
-    this.attributeTexCoord = gl.getAttribLocation(this.program, "a_texCoord");
-    this.uniformResolution = gl.getUniformLocation(this.program, "u_resolution");
-    this.uniformRect = gl.getUniformLocation(this.program, "u_rect");
-    this.uniformTexture = gl.getUniformLocation(this.program, "u_texture");
-    this.uniformColor = gl.getUniformLocation(this.program, "u_color");
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.useProgram(this.program);
-    gl.uniform2f(this.uniformResolution, this.width, this.height);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    this.clearGl();
+    try {
+      this.program = this.createProgram();
+      this.positionBuffer = this.createBuffer(
+        new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
+      );
+      this.texCoordBuffer = this.createBuffer(
+        new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
+      );
+      this.whiteTexture = this.createWhiteTexture();
+      this.attributePosition = gl.getAttribLocation(this.program, "a_position");
+      this.attributeTexCoord = gl.getAttribLocation(this.program, "a_texCoord");
+      this.uniformResolution = gl.getUniformLocation(
+        this.program,
+        "u_resolution",
+      );
+      this.uniformRect = gl.getUniformLocation(this.program, "u_rect");
+      this.uniformTexture = gl.getUniformLocation(this.program, "u_texture");
+      this.uniformColor = gl.getUniformLocation(this.program, "u_color");
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.useProgram(this.program);
+      gl.uniform2f(this.uniformResolution, this.width, this.height);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      this.clearGl();
+    } catch (error) {
+      this.destroy();
+      throw error;
+    }
   }
 
   preloadTexture(key: string, source: CanvasImageSource) {
+    if (this.destroyed) return null;
     const previous = this.textureSources.get(key);
-    this.textureSources.set(key, source);
     if (this.textures.has(key) && previous === source) return key;
-    const oldTexture = this.textures.get(key);
-    if (oldTexture) this.gl.deleteTexture(oldTexture);
     const texture = this.uploadTexture(source);
+    const oldTexture = this.textures.get(key);
+    if (oldTexture) this.gl!.deleteTexture(oldTexture);
+    this.textureSources.set(key, source);
     this.textures.set(key, texture);
     return key;
   }
 
   protected releaseTexture(key: string) {
     const texture = this.textures.get(key);
-    if (texture) this.gl.deleteTexture(texture);
+    if (texture) this.gl!.deleteTexture(texture);
     this.textures.delete(key);
     this.textureSources.delete(key);
   }
 
+  protected releaseUnusedTextures() {
+    const usedKeys = new Set<string>();
+    for (const drawable of this.drawables.values()) {
+      if (drawable.kind === "sprite") usedKeys.add(drawable.textureKey);
+    }
+    for (const key of this.textures.keys()) {
+      if (!usedKeys.has(key)) this.releaseTexture(key);
+    }
+  }
+
+  resetForTrial() {
+    if (this.destroyed) return;
+    this.clearGpuQueries();
+    super.resetForTrial();
+    this.metrics.gpu_timer_available = !!this.gpuTimerExt;
+  }
+
   destroy() {
+    if (this.destroyed) return;
+    const gl = this.gl!;
+    this.canvas.removeEventListener("webglcontextlost", this.handleContextLost);
     for (const key of this.textures.keys()) this.releaseTexture(key);
-    for (const query of this.pendingGpuQueries) (this.gl as WebGL2RenderingContext).deleteQuery(query);
-    this.pendingGpuQueries = [];
-    this.gl.deleteTexture(this.whiteTexture);
-    this.gl.deleteBuffer(this.positionBuffer);
-    this.gl.deleteBuffer(this.texCoordBuffer);
-    this.gl.deleteProgram(this.program);
+    this.clearGpuQueries();
+    gl.useProgram(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    if (this.whiteTexture) gl.deleteTexture(this.whiteTexture);
+    if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+    if (this.texCoordBuffer) gl.deleteBuffer(this.texCoordBuffer);
+    if (this.program) gl.deleteProgram(this.program);
+    this.whiteTexture = null;
+    this.positionBuffer = null;
+    this.texCoordBuffer = null;
+    this.program = null;
+    this.uniformResolution = null;
+    this.uniformRect = null;
+    this.uniformTexture = null;
+    this.uniformColor = null;
+    this.gpuTimerExt = null;
+    const contextLoss = gl.isContextLost()
+      ? null
+      : gl.getExtension("WEBGL_lose_context");
     super.destroy();
+    this.gl = null;
+    contextLoss?.loseContext();
+  }
+
+  private clearGpuQueries() {
+    for (const query of this.pendingGpuQueries) {
+      (this.gl as WebGL2RenderingContext).deleteQuery(query);
+    }
+    this.pendingGpuQueries = [];
+    this.metrics.gpu_pending_query_count = 0;
   }
 
   protected getTextureSource(key: string) {
@@ -499,7 +597,7 @@ class WebGLStage extends BaseStage {
   }
 
   protected renderFrame() {
-    const gl = this.gl;
+    const gl = this.gl!;
     const query = this.beginGpuQuery();
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.useProgram(this.program);
@@ -527,7 +625,7 @@ class WebGLStage extends BaseStage {
         }
       } else if (drawable.kind === "rect") {
         this.drawTexturedQuad(
-          this.whiteTexture,
+          this.whiteTexture!,
           drawable.x,
           drawable.y,
           drawable.width,
@@ -542,6 +640,7 @@ class WebGLStage extends BaseStage {
   }
 
   protected pollGpuQueries() {
+    if (this.destroyed) return;
     if (!this.gpuTimerExt || this.pendingGpuQueries.length === 0) {
       this.metrics.gpu_pending_query_count = this.pendingGpuQueries.length;
       return;
@@ -569,7 +668,7 @@ class WebGLStage extends BaseStage {
   }
 
   private createShader(type: number, source: string) {
-    const gl = this.gl;
+    const gl = this.gl!;
     const shader = gl.createShader(type);
     if (!shader) throw new Error("Could not create WebGL shader");
     gl.shaderSource(shader, source);
@@ -586,7 +685,7 @@ class WebGLStage extends BaseStage {
   }
 
   private createProgram() {
-    const gl = this.gl;
+    const gl = this.gl!;
     const vertexShader = this.createShader(
       gl.VERTEX_SHADER,
       `
@@ -606,9 +705,12 @@ class WebGLStage extends BaseStage {
       }
     `,
     );
-    const fragmentShader = this.createShader(
-      gl.FRAGMENT_SHADER,
-      `
+    let fragmentShader: WebGLShader | null = null;
+    let program: WebGLProgram | null = null;
+    try {
+      fragmentShader = this.createShader(
+        gl.FRAGMENT_SHADER,
+        `
       precision mediump float;
       uniform sampler2D u_texture;
       uniform vec4 u_color;
@@ -618,27 +720,35 @@ class WebGLStage extends BaseStage {
         gl_FragColor = texture2D(u_texture, v_texCoord) * u_color;
       }
     `,
-    );
-    const program = gl.createProgram();
-    if (!program) throw new Error("Could not create WebGL program");
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-    if (this.trialActive) {
-      this.metrics.shader_compiles_during_trial += 1;
+      );
+      program = gl.createProgram();
+      if (!program) throw new Error("Could not create WebGL program");
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      if (this.trialActive) {
+        this.metrics.shader_compiles_during_trial += 1;
+      }
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        const log = gl.getProgramInfoLog(program) || "Unknown WebGL link error";
+        throw new Error(log);
+      }
+      return program;
+    } catch (error) {
+      if (program) gl.deleteProgram(program);
+      throw error;
+    } finally {
+      gl.deleteShader(vertexShader);
+      if (fragmentShader) gl.deleteShader(fragmentShader);
     }
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      const log = gl.getProgramInfoLog(program) || "Unknown WebGL link error";
-      throw new Error(log);
-    }
-    return program;
   }
 
   private createBuffer(data: Float32Array) {
-    const buffer = this.gl.createBuffer();
+    const gl = this.gl!;
+    const buffer = gl.createBuffer();
     if (!buffer) throw new Error("Could not create WebGL buffer");
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, data, this.gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     if (this.trialActive) {
       this.metrics.buffer_uploads_during_trial += 1;
     }
@@ -646,7 +756,7 @@ class WebGLStage extends BaseStage {
   }
 
   private createWhiteTexture() {
-    const gl = this.gl;
+    const gl = this.gl!;
     const texture = gl.createTexture();
     if (!texture) throw new Error("Could not create WebGL texture");
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -676,27 +786,32 @@ class WebGLStage extends BaseStage {
   }
 
   private uploadTexture(source: CanvasImageSource) {
-    const gl = this.gl;
+    const gl = this.gl!;
     const texture = gl.createTexture();
     if (!texture) throw new Error("Could not create WebGL texture");
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      source,
-    );
-    if (this.trialActive) {
-      this.metrics.texture_uploads_during_trial += 1;
+    try {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        source as TexImageSource,
+      );
+      if (this.trialActive) {
+        this.metrics.texture_uploads_during_trial += 1;
+      }
+      return texture;
+    } catch (error) {
+      gl.deleteTexture(texture);
+      throw error;
     }
-    return texture;
   }
 
   private drawTexturedQuad(
@@ -707,7 +822,7 @@ class WebGLStage extends BaseStage {
     height: number,
     color: [number, number, number, number],
   ) {
-    const gl = this.gl;
+    const gl = this.gl!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.enableVertexAttribArray(this.attributePosition);
     gl.vertexAttribPointer(this.attributePosition, 2, gl.FLOAT, false, 0, 0);
@@ -725,7 +840,7 @@ class WebGLStage extends BaseStage {
   }
 
   private clearGl() {
-    const gl = this.gl;
+    const gl = this.gl!;
     const [r, g, b, a] = this.backgroundRgba;
     gl.clearColor(r, g, b, a);
     gl.clear(gl.COLOR_BUFFER_BIT);
