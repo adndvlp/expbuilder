@@ -96,6 +96,8 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -139,6 +141,7 @@ const SliderResponseComponent: React.FC<SliderResponseComponentProps> = ({
           const nextWidth = Math.max(150, effectiveWidth * scaleX);
           const nextHeight = Math.max(80, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

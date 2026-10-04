@@ -79,6 +79,8 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -122,6 +124,7 @@ const KeyboardResponseComponent: React.FC<KeyboardResponseComponentProps> = ({
           const nextWidth = Math.max(60, effectiveWidth * scaleX);
           const nextHeight = Math.max(24, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

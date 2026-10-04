@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { PreviewViewport } from "./types";
+import GridToggleButton from "./previewViewport/GridToggleButton";
 import {
   DEVICE_PRESETS,
   type DevicePreset,
 } from "./previewViewport/devicePresets";
 
 type Props = {
+  gridEnabled?: boolean;
+  onToggleGrid?: () => void;
   previewViewport: PreviewViewport;
   setPreviewViewport: React.Dispatch<React.SetStateAction<PreviewViewport>>;
   stageScale: number;
@@ -16,6 +19,8 @@ type Props = {
 };
 
 function PreviewViewportBar({
+  gridEnabled = true,
+  onToggleGrid,
   previewViewport,
   setPreviewViewport,
   stageScale,
@@ -249,6 +254,7 @@ function PreviewViewportBar({
       </span>
 
       {/* Spacer */}
+      <GridToggleButton enabled={gridEnabled} onToggle={onToggleGrid} />
       <div style={{ flex: 1 }} />
 
       {/* Run / Stop Demo button */}

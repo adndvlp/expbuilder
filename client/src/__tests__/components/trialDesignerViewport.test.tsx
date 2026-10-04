@@ -163,6 +163,13 @@ describe("TrialDesigner screen preview", () => {
       "data-design-width",
       "1440",
     );
+    const toggle = screen.getByRole("button", { name: "Grid" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("canvas").textContent).toBe(originalComponents);
+    expect(save(onSave)).toEqual(baseline);
+    fireEvent.click(toggle);
 
     for (const preset of DEVICE_PRESETS) {
       fireEvent.click(

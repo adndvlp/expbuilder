@@ -10,6 +10,8 @@ import { CanvasGuide } from "./editorGuides";
 import TextEditingOverlay from "./TextEditingOverlay";
 import CanvasBackdrop from "./KonvaCanvas/CanvasBackdrop";
 import { findTopComponentAtPoint } from "./KonvaCanvas/hitTesting";
+import { createViewportGrid } from "./editorGrid";
+import ViewportGridOverlay from "./ViewportGridOverlay";
 
 // Extra canvas space (in stage coords) so Transformer handles at node edges
 // are never clipped by the canvas boundary.
@@ -24,6 +26,13 @@ export type CanvasContextMenuRequest = {
 };
 
 type Props = {
+  onCanvasPointerDown?: (
+    event: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ) => void;
+  gridEnabled?: boolean;
+  onCanvasDragStart?: (event: Konva.KonvaEventObject<DragEvent>) => void;
+  onCanvasDragEnd?: () => void;
+  onCanvasDragCancel?: () => void;
   canvasContainerRef: React.RefObject<HTMLDivElement | null>;
   CANVAS_WIDTH: number;
   CANVAS_HEIGHT: number;
@@ -56,6 +65,11 @@ type Props = {
 };
 
 function KonvaCanvas({
+  onCanvasPointerDown,
+  gridEnabled = true,
+  onCanvasDragStart,
+  onCanvasDragEnd,
+  onCanvasDragCancel,
   canvasContainerRef,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -78,6 +92,14 @@ function KonvaCanvas({
   previewViewport,
   appearance,
 }: Props) {
+  const grid = React.useMemo(
+    () =>
+      createViewportGrid({
+        width: previewViewport.width,
+        height: previewViewport.height,
+      }),
+    [previewViewport.width, previewViewport.height],
+  );
   const [htmlSceneMetrics, setHtmlSceneMetrics] =
     React.useState<HtmlSceneMetrics>({});
   const [activeDomId, setActiveDomId] = React.useState<string | null>(null);
@@ -122,7 +144,10 @@ function KonvaCanvas({
           }}
           onPointerLeave={() => onGuidesChange([])}
           onPointerUpCapture={() => onGuidesChange([])}
-          onPointerCancel={() => onGuidesChange([])}
+          onPointerCancel={() => {
+            onCanvasDragCancel?.();
+            onGuidesChange([]);
+          }}
           onContextMenu={(event) => {
             event.preventDefault();
             const rect = event.currentTarget.getBoundingClientRect();
@@ -163,10 +188,10 @@ function KonvaCanvas({
             }
           }}
         >
-          <CanvasBackdrop
-            backgroundColor={appearance.backgroundColor}
-            stageScale={stageScale}
-          />
+          <CanvasBackdrop backgroundColor={appearance.backgroundColor} />
+          {gridEnabled && (
+            <ViewportGridOverlay grid={grid} viewport={previewViewport} />
+          )}
 
           <ExperimentalHtmlSceneLayer
             components={components}
@@ -214,6 +239,10 @@ function KonvaCanvas({
               height={(CANVAS_HEIGHT + 2 * HANDLE_PAD) * stageScale}
               scaleX={stageScale}
               scaleY={stageScale}
+              onDragStart={onCanvasDragStart}
+              onDragEnd={onCanvasDragEnd}
+              onMouseDown={onCanvasPointerDown}
+              onTouchStart={onCanvasPointerDown}
               onClick={(e) => {
                 if (e.target === e.target.getStage()) {
                   setActiveDomId(null);
@@ -223,7 +252,7 @@ function KonvaCanvas({
               }}
             >
               <Layer>
-                <Group x={HANDLE_PAD} y={HANDLE_PAD}>
+                <Group name="designer-scene" x={HANDLE_PAD} y={HANDLE_PAD}>
                   <Rect
                     x={0}
                     y={0}
@@ -241,6 +270,7 @@ function KonvaCanvas({
                   <AlignmentGuidesLayer
                     guides={activeGuides}
                     stageScale={stageScale}
+                    viewport={previewViewport}
                   />
                 </Group>
               </Layer>

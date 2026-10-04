@@ -39,6 +39,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const { previewViewport, setPreviewViewport } = useDesignerViewport();
   const { components, setComponents } = useDesignerComponents(previewViewport);
   const [isDemoRunning, setIsDemoRunning] = useState(false);
+  const [gridEnabled, setGridEnabled] = useState(true);
 
   const stageRef = useRef<Konva.Stage>(null);
   const componentsRef = useRef<TrialComponent[]>([]);
@@ -132,27 +133,29 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     setSelectedIds,
   });
 
-  const { commitTextEdit, handleCanvasContextMenu, onDrop, onRenderComponent } =
-    useDesignerActions({
-      previewViewport,
-      components,
-      editingTextId,
-      generateConfig: generateConfigFromComponents,
-      onAutoSave,
-      pushHistory,
-      selectedId,
-      selectedIds,
-      setActiveGuides,
-      setComponents,
-      setComponentsWithHistory,
-      setContextMenu,
-      setEditingTextId,
-      setSelectedId,
-      setSelectedIds,
-      stageRef,
-      toJsPsychCoords,
-      uploadedFiles,
-    });
+  const actions = useDesignerActions({
+    isOpen: isOpen && !isDemoRunning,
+    gridEnabled,
+    stageScale,
+    previewViewport,
+    components,
+    editingTextId,
+    generateConfig: generateConfigFromComponents,
+    onAutoSave,
+    pushHistory,
+    selectedId,
+    selectedIds,
+    setActiveGuides,
+    setComponents,
+    setComponentsWithHistory,
+    setContextMenu,
+    setEditingTextId,
+    setSelectedId,
+    setSelectedIds,
+    stageRef,
+    toJsPsychCoords,
+    uploadedFiles,
+  });
 
   useDesignerKeyboard({
     contextMenu,
@@ -179,6 +182,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     <TrialDesignerLayout
       modalProps={{ isOpen, onClose }}
       toolbarProps={{
+        gridEnabled,
+        onToggleGrid: () => setGridEnabled((enabled) => !enabled),
         previewViewport,
         setPreviewViewport,
         stageScale,
@@ -212,6 +217,11 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         components,
       }}
       canvasProps={{
+        onCanvasPointerDown: actions.onCanvasPointerDown,
+        gridEnabled,
+        onCanvasDragStart: actions.onCanvasDragStart,
+        onCanvasDragEnd: actions.onCanvasDragEnd,
+        onCanvasDragCancel: actions.onCanvasDragCancel,
         canvasContainerRef,
         CANVAS_HEIGHT,
         CANVAS_WIDTH,
@@ -220,17 +230,17 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
         viewportHeight,
         stageRef,
         selectedId,
-        onDrop,
+        onDrop: actions.onDrop,
         setSelectedId,
         components,
         uploadedFiles,
         activeGuides,
         onGuidesChange: setActiveGuides,
         editingTextId,
-        onCommitTextEdit: commitTextEdit,
+        onCommitTextEdit: actions.commitTextEdit,
         onCancelTextEdit: () => setEditingTextId(null),
-        onCanvasContextMenu: handleCanvasContextMenu,
-        onRenderComponent,
+        onCanvasContextMenu: actions.handleCanvasContextMenu,
+        onRenderComponent: actions.onRenderComponent,
         previewViewport,
         appearance,
       }}

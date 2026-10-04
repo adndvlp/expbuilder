@@ -221,6 +221,7 @@ export default function EditorHitBox({
         ? update.height
         : Math.max(20, node.height * scaleY);
     const snapped = snapKonvaNode({
+      interaction: "transform",
       node: group,
       id: shapeProps.id,
       width: snapWidth,
@@ -238,6 +239,8 @@ export default function EditorHitBox({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}

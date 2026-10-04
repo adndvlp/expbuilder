@@ -8,6 +8,7 @@ type Args = Pick<
   | "generateConfigFromComponents"
   | "onAutoSave"
   | "onRecordHistory"
+  | "shouldSkipMutation"
   | "setComponents"
   | "toJsPsychCoords"
 >;
@@ -20,6 +21,7 @@ export function useComponentMutations(args: Args) {
   };
 
   const handleComponentChange = (newAttrs: any) => {
+    if (args.shouldSkipMutation?.()) return;
     const { __transient, ...attrs } = newAttrs;
     if (!__transient) args.onRecordHistory?.();
 
@@ -93,6 +95,7 @@ export function useComponentMutations(args: Args) {
   };
 
   const handleDragEnd = (id: string, event: any) => {
+    if (args.shouldSkipMutation?.()) return;
     const x = event.target.x();
     const y = event.target.y();
     const coordinates = args.toJsPsychCoords(x, y);

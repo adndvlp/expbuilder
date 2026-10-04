@@ -91,7 +91,7 @@ describe("editor guides and visual config updates", () => {
         }),
         expect.objectContaining({
           orientation: "horizontal",
-          position: 100,
+          position: 120,
         }),
       ]),
     );

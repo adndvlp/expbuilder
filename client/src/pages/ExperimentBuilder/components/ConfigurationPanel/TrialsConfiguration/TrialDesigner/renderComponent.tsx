@@ -19,6 +19,7 @@ const RenderComponent = ({
   editingTextId,
   onEditTextStart,
   onRecordHistory,
+  shouldSkipMutation,
   onSnap,
   onGuidesChange,
 }: Props) => {
@@ -30,6 +31,7 @@ const RenderComponent = ({
     generateConfigFromComponents,
     onAutoSave,
     onRecordHistory,
+    shouldSkipMutation,
     setComponents,
     toJsPsychCoords,
   });

@@ -4,6 +4,7 @@ import Konva from "konva";
 import { TrialComponent } from "../types";
 import { getTextComponentModel } from "../textComponentModel";
 import { snapKonvaNode, SnapHandlers } from "../snapKonvaNode";
+import { useTransientDrag } from "../hooks/useTransientDrag";
 import { getTextHeightForWidth } from "../textSizing";
 import ClozeText from "./Text/ClozeText";
 
@@ -28,6 +29,7 @@ const TextComponent: React.FC<TextComponentProps> = ({
   onSnap,
   onGuidesChange,
 }) => {
+  const drag = useTransientDrag(onChange);
   const groupRef = useRef<any>(null);
   const resizeBoxRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -161,6 +163,8 @@ const TextComponent: React.FC<TextComponentProps> = ({
   return (
     <>
       <Group
+        id={`${shapeProps.id}-visual`}
+        designerComponentId={shapeProps.id}
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -173,9 +177,10 @@ const TextComponent: React.FC<TextComponentProps> = ({
         offsetX={drawWidth / 2}
         offsetY={drawHeight / 2}
         onDragMove={(e) => {
-          snapNode(e.target);
+          drag.queue(snapNode(e.target));
         }}
         onDragEnd={(e) => {
+          drag.clear();
           const snapped = snapNode(e.target);
           onGuidesChange?.([]);
           onChange({ ...shapeProps, x: snapped.x, y: snapped.y });
@@ -235,6 +240,8 @@ const TextComponent: React.FC<TextComponentProps> = ({
 
       {isSelected && !isEditing && (
         <Rect
+          id={shapeProps.id}
+          name="designer-component"
           ref={resizeBoxRef}
           x={shapeProps.x}
           y={shapeProps.y}
@@ -251,9 +258,10 @@ const TextComponent: React.FC<TextComponentProps> = ({
           onTap={onSelect}
           onDblClick={handleDblClick}
           onDragMove={(e) => {
-            snapNode(e.target);
+            drag.queue(snapNode(e.target));
           }}
           onDragEnd={(e) => {
+            drag.clear();
             const snapped = snapNode(e.target);
             onGuidesChange?.([]);
             onChange({ ...shapeProps, x: snapped.x, y: snapped.y });

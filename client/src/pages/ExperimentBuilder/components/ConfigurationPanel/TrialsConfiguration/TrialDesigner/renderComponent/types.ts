@@ -1,5 +1,6 @@
 import type React from "react";
-import type { CanvasGuide, SnapBox, SnapResult } from "../editorGuides";
+import type { CanvasGuide } from "../editorGuides";
+import type { SnapHandlers } from "../snapKonvaNode";
 import type { HtmlSceneMetrics } from "../experimentalScene/sceneModel";
 import type { PreviewViewport, TrialComponent } from "../types";
 
@@ -22,6 +23,7 @@ export type RenderComponentProps = {
   editingTextId?: string | null;
   onEditTextStart?: (id: string) => void;
   onRecordHistory?: () => void;
-  onSnap?: (box: SnapBox) => SnapResult;
+  shouldSkipMutation?: () => boolean;
+  onSnap?: SnapHandlers["onSnap"];
   onGuidesChange?: (guides: CanvasGuide[]) => void;
 };
