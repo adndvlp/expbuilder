@@ -20,13 +20,21 @@ import SketchpadComponent from "./components/SketchpadComponent";
 import AudioResponseComponent from "./response_components/AudioResponseComponent";
 import FileUploadResponseComponent from "./response_components/FileUploadResponseComponent";
 import {
-  AssetPreloadList,
   createPrecisionTiming,
   preloadAssets,
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
 import { retainBitmapAssets } from "./utils/bitmapResources";
+import {
+  collectDynamicAssets,
+  collectUpcomingDynamicAssets,
+} from "./utils/mediaAssets";
+import { retainHtmlImages } from "./utils/mediaResources";
+import {
+  getMediaLibrary,
+  mediaPreparationServices,
+} from "./utils/mediaPreparationServices";
 import { RuntimeViewportController, styleSurface } from "./layout/RuntimeViewport";
 import {
   getCanvasStages,
@@ -692,101 +700,6 @@ const RESPONSE_COMPONENT_MAP: Record<string, any> = {
   FileUploadResponseComponent,
 };
 
-function isImageUrl(value: string): boolean {
-  if (!value) return false;
-  try {
-    const url = new URL(value, window.location.href);
-    return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(url.pathname);
-  } catch {
-    return /\.(jpg|jpeg|png|gif|bmp|svg|webp)(\?.*)?$/i.test(value);
-  }
-}
-
-function emptyAssetPreloadList(): AssetPreloadList {
-  return { images: [], audio: [], video: [] };
-}
-
-function mergeAssetPreloadLists(...lists: AssetPreloadList[]): AssetPreloadList {
-  const merged = emptyAssetPreloadList();
-  for (const list of lists) {
-    merged.images.push(...list.images);
-    merged.audio.push(...list.audio);
-    merged.video.push(...list.video);
-  }
-  merged.images = [...new Set(merged.images.filter(Boolean))];
-  merged.audio = [...new Set(merged.audio.filter(Boolean))];
-  merged.video = [...new Set(merged.video.filter(Boolean))];
-  return merged;
-}
-
-function collectAssetPreloadList(components: Array<{ config: any }>): AssetPreloadList {
-  const assets = emptyAssetPreloadList();
-  for (const { config } of components) {
-    if (
-      config.type === "ImageComponent" &&
-      typeof config.stimulus === "string"
-    ) {
-      assets.images.push(config.stimulus);
-    }
-    if (config.type === "AudioComponent" && typeof config.stimulus === "string") {
-      assets.audio.push(config.stimulus);
-    }
-    if (config.type === "VideoComponent" && Array.isArray(config.stimulus)) {
-      assets.video.push(...config.stimulus.filter((src: any) => typeof src === "string"));
-    }
-    if (config.type === "SketchpadComponent" && typeof config.background_image === "string") {
-      assets.images.push(config.background_image);
-    }
-    if (config.type === "ButtonResponseComponent" && Array.isArray(config.choices)) {
-      for (const choice of config.choices) {
-        if (typeof choice === "string" && isImageUrl(choice)) {
-          assets.images.push(choice);
-        }
-      }
-    }
-  }
-  return mergeAssetPreloadLists(assets);
-}
-
-function collectAssetPreloadListFromTrial(trial: any): AssetPreloadList {
-  const configs = [
-    ...(Array.isArray(trial?.components) ? trial.components : []),
-    ...(Array.isArray(trial?.response_components) ? trial.response_components : []),
-  ].map((config: any) => ({ config }));
-  return collectAssetPreloadList(configs);
-}
-
-function flattenTimelineDescriptions(nodes: any[]): any[] {
-  const flat: any[] = [];
-  for (const node of nodes || []) {
-    if (Array.isArray(node?.timeline)) {
-      flat.push(...flattenTimelineDescriptions(node.timeline));
-    } else {
-      flat.push(node);
-    }
-  }
-  return flat;
-}
-
-function collectUpcomingAssetPreloadList(
-  jsPsych: any,
-  trialCount: number,
-): AssetPreloadList {
-  const rootTimeline = jsPsych?.timeline?.description;
-  if (!Array.isArray(rootTimeline)) return emptyAssetPreloadList();
-
-  const flatTrials = flattenTimelineDescriptions(rootTimeline);
-  const currentTrialIndex = jsPsych?.getProgress?.()?.current_trial_global ?? -1;
-  const upcomingTrials = flatTrials.slice(
-    currentTrialIndex + 1,
-    currentTrialIndex + 1 + trialCount,
-  );
-
-  return mergeAssetPreloadLists(
-    ...upcomingTrials.map((trial) => collectAssetPreloadListFromTrial(trial)),
-  );
-}
-
 function attachPrecisionTiming(config: any, timing: ReturnType<typeof createPrecisionTiming>) {
   Object.defineProperty(config, "__timing", {
     value: timing,
@@ -1241,6 +1154,7 @@ function classifyTimingQuality(
  */
 class DynamicPlugin implements JsPsychPlugin<Info> {
   static info = info;
+  static mediaPreparationServices = mediaPreparationServices;
 
   static dispose() {
     removePreservedVisualBridge();
@@ -1252,7 +1166,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
   trial(display_element: HTMLElement, trial: TrialType<Info>) {
     const dynamicTrialSequence = ++dynamicTrialSequenceCounter;
-    return new Promise((resolveTrial) => {
+    return new Promise((resolveTrial, rejectTrial) => {
 
     // Inject plugin styles if not already present
     if (!document.getElementById("jspsych-dynamic-plugin-styles")) {
@@ -1306,6 +1220,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let hasResponded = false;
     let trialEnded = false;
     let releaseTrialBitmaps: (() => void) | null = null;
+    let releaseTrialHtmlImages: (() => void) | null = null;
+    let trialPreloadController: AbortController | null = null;
     let trialEndedByResponse = false;
     let visualFrameBoundaryHandoff = false;
     let visualFrameBoundaryHandoffLeadMs: number | null = null;
@@ -1524,8 +1440,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const endTrial = (offsetTime = performance.now()) => {
       if (trialEnded) return;
       trialEnded = true;
+      trialPreloadController?.abort();
+      trialPreloadController = null;
       releaseTrialBitmaps?.();
       releaseTrialBitmaps = null;
+      releaseTrialHtmlImages?.();
+      releaseTrialHtmlImages = null;
 
       const timingSummary = timing.getSummary(offsetTime);
       const desiredTrialDuration = resolveTimingMs(trial.trial_duration, null);
@@ -2032,18 +1952,27 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       }
 
       if (trial.prefetch_next_trials !== false) {
-        const upcomingAssets = collectUpcomingAssetPreloadList(
+        const upcomingAssets = collectUpcomingDynamicAssets(
           this.jsPsych,
           resolveTimingMs(trial.prefetch_trial_count, 3) ?? 3,
+          getMediaLibrary(this.jsPsych),
         );
         const releaseUpcoming = retainBitmapAssets(
           upcomingAssets.images,
           resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+          1,
         );
+        const upcomingHtml = retainHtmlImages(
+          upcomingAssets.htmlImages,
+          resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+          1,
+        );
+        void upcomingHtml.ready.catch(() => {});
         const imageController = new AbortController();
         clearPrefetchedBitmaps();
         releasePrefetchedBitmaps = () => {
           releaseUpcoming();
+          upcomingHtml.release();
           imageController.abort();
         };
         preloadAssets(
@@ -2051,6 +1980,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           upcomingAssets,
           resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
           imageController.signal,
+          1,
         ).catch((error) => {
           if (imageController.signal.aborted) return;
           console.warn("DynamicPlugin upcoming asset prefetch failed:", error);
@@ -2060,8 +1990,35 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       }
     };
 
+    const failPreparation = (error: unknown) => {
+      trialEnded = true;
+      trialPreloadController?.abort();
+      trialPreloadController = null;
+      releaseTrialBitmaps?.();
+      releaseTrialBitmaps = null;
+      releaseTrialHtmlImages?.();
+      releaseTrialHtmlImages = null;
+      timing.stop();
+      responseTiming.detach();
+      viewportController.dispose();
+      for (const { instance } of allComponents) instance.destroy?.();
+      mainContainer.remove();
+      DynamicPlugin.dispose();
+      rejectTrial(error);
+    };
+
     if (trial.preload_assets !== false) {
-      const assets = collectAssetPreloadList(allComponents);
+      trialPreloadController = new AbortController();
+      const assets = collectDynamicAssets(
+        { components: allComponents.map(comp => comp.config) },
+        getMediaLibrary(this.jsPsych),
+      );
+      const trialHtml = retainHtmlImages(
+        assets.htmlImages,
+        resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+      );
+      releaseTrialHtmlImages = trialHtml.release;
+      void trialHtml.ready.catch(() => {});
       releaseTrialBitmaps = retainBitmapAssets(
         assets.images,
         resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
@@ -2070,13 +2027,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         this.jsPsych,
         assets,
         resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+        trialPreloadController.signal,
       )
-        .catch((error) => {
-          console.warn("DynamicPlugin asset preload failed:", error);
-        })
-        .then(() => viewportController.ready()).then(startPresentation);
+        .then(() => viewportController.ready()).then(startPresentation)
+        .catch(failPreparation);
     } else {
-      viewportController.ready().then(startPresentation);
+      viewportController.ready().then(startPresentation).catch(failPreparation);
     }
     });
   }

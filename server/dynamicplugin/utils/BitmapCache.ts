@@ -14,6 +14,7 @@ type Entry = {
   users: number;
   bytes: number;
   lastUse: number;
+  priority: number;
 };
 
 export function disposeBitmapSource(source: CanvasBitmapSource) {
@@ -41,6 +42,7 @@ export class BitmapCache {
       url: string,
       signal: AbortSignal,
       timeoutMs: number,
+      priority: number,
     ) => Promise<CanvasBitmapSource>,
     private maxIdleBytes = 0,
   ) {
@@ -51,10 +53,11 @@ export class BitmapCache {
     }
   }
 
-  acquire(url: string, timeoutMs = 10000): BitmapLease {
+  acquire(url: string, timeoutMs = 10000, priority = 0): BitmapLease {
     let entry = this.entries.get(url);
-    if (!entry) entry = this.createEntry(url, timeoutMs);
+    if (!entry) entry = this.createEntry(url, timeoutMs, priority);
     const current = entry;
+    current.priority = Math.min(current.priority, priority);
     current.users++;
     current.lastUse = ++this.clock;
     let released = false;
@@ -100,7 +103,7 @@ export class BitmapCache {
     };
   }
 
-  private createEntry(url: string, timeoutMs: number) {
+  private createEntry(url: string, timeoutMs: number, priority: number) {
     const entry: Entry = {
       url,
       source: null,
@@ -109,12 +112,18 @@ export class BitmapCache {
       users: 0,
       bytes: 0,
       lastUse: ++this.clock,
+      priority,
     };
     this.entries.set(url, entry);
     entry.ready = Promise.resolve()
       .then(() => {
         if (entry.controller.signal.aborted) throw bitmapCancelled();
-        return this.load(url, entry.controller.signal, timeoutMs);
+        return this.load(
+          url,
+          entry.controller.signal,
+          timeoutMs,
+          entry.priority,
+        );
       })
       .then((source) => {
         if (this.entries.get(url) !== entry) {

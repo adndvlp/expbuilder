@@ -1,19 +1,34 @@
 import { BitmapCache } from "./BitmapCache";
 import { loadBitmap } from "./loadBitmap";
+import { assetLoadQueue } from "./AssetLoadQueue";
 
 export type { BitmapLease, CanvasBitmapSource } from "./BitmapCache";
 
-const cache = new BitmapCache(loadBitmap);
+const cache = new BitmapCache((url, signal, timeoutMs, priority) =>
+  assetLoadQueue.run(
+    `bitmap:${url}`,
+    () => loadBitmap(url, signal, timeoutMs),
+    signal,
+    priority,
+  ),
+);
 
-export const acquireBitmap = (url: string, timeoutMs = 10000) =>
-  cache.acquire(url, timeoutMs);
+export const acquireBitmap = (url: string, timeoutMs = 10000, priority = 0) => {
+  const lease = cache.acquire(url, timeoutMs, priority);
+  assetLoadQueue.promote(`bitmap:${url}`, priority);
+  return lease;
+};
 export const retainBitmapSource = (source: CanvasImageSource) =>
   cache.retainSource(source);
 export const getBitmapCacheSnapshot = () => cache.snapshot();
 
-export function retainBitmapAssets(urls: string[], timeoutMs = 10000) {
+export function retainBitmapAssets(
+  urls: string[],
+  timeoutMs = 10000,
+  priority = 0,
+) {
   const leases = [...new Set(urls.filter(Boolean))].map((url) =>
-    acquireBitmap(url, timeoutMs),
+    acquireBitmap(url, timeoutMs, priority),
   );
   let released = false;
   return () => {
@@ -27,9 +42,10 @@ export async function preloadImages(
   urls: string[],
   timeoutMs = 10000,
   signal?: AbortSignal,
+  priority = 0,
 ) {
   const leases = [...new Set(urls.filter(Boolean))].map((url) =>
-    acquireBitmap(url, timeoutMs),
+    acquireBitmap(url, timeoutMs, priority),
   );
   const release = () => {
     for (const lease of leases) lease.release();

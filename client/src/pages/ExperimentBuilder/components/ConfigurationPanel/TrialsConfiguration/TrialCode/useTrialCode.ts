@@ -121,8 +121,7 @@ export function useTrialCode({
   const genTrialCode = () => {
     let code = "";
 
-    // Preload is now handled globally from Timeline, not per trial
-    // Individual trial preloads have been removed
+    // Media preparation runs after jsPsych resolves parameters and on_start.
 
     const testStimuliCode = mappedJson.map((row) =>
       stringifyWithFunctions(activeParameters, row),
@@ -172,6 +171,10 @@ export function useTrialCode({
     code += `
     const ${trialNameSanitized}_timeline = {
     type: ${pluginTypeForCode}, ${timelineProps}
+    __expbuilderMedia: ${JSON.stringify({
+      stable: !customOnStart?.trim() && !paramsOverride?.length,
+      sequential: !branches?.length && !branchConditions?.length && !repeatConditions?.length && !customOnFinish?.trim(),
+    })},
     ${initializeCode}
     ${onStartCode}
     ${onLoadCode}

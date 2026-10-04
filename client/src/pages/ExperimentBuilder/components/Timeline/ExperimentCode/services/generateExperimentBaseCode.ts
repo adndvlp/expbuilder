@@ -1,6 +1,8 @@
 import type { ExperimentAppearance } from "../../../../appearance";
 import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
 import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";
+import { createStandaloneMediaServices } from "../../../../modules/experiment-runtime/standaloneMediaServices";
+import { createMediaPreparation } from "../../../../modules/experiment-runtime/mediaPreparation";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -56,28 +58,11 @@ export function renderExperimentBaseCode(
   appearance?: ExperimentAppearance,
 ) {
   const fullScreen = appearance?.fullScreen ?? true;
-  const getMediaUrls = (type: "img" | "aud" | "vid") =>
-    uploadedFiles.flatMap((file) =>
-      file?.type === type && file.url ? [file.url] : [],
-    );
-  const images = getMediaUrls("img");
-  const audio = getMediaUrls("aud");
-  const video = getMediaUrls("vid");
-  const hasMedia = images.length > 0 || audio.length > 0 || video.length > 0;
+  const library = uploadedFiles.filter(
+    (file) => file.url && ["img", "aud", "vid"].includes(file.type || ""),
+  );
 
   return `const timeline = [];
-${
-  hasMedia
-    ? `
-    const globalPreload = {
-      type: jsPsychPreload,
-      images: ${JSON.stringify(images)},
-      audio: ${JSON.stringify(audio)},
-      video: ${JSON.stringify(video)}
-    };
-    timeline.push(globalPreload);`
-    : ""
-}
 ${
   fullScreen
     ? `
@@ -91,6 +76,17 @@ ${
 
 ${codes.join("\n\n")}
 
+    const mediaLibrary = ${JSON.stringify(library)};
+    window.ExpBuilderMediaPreparation?.dispose();
+    window.ExpBuilderMediaPreparation = (${createMediaPreparation.toString()})(
+      jsPsych,
+      mediaLibrary,
+      typeof DynamicPlugin !== 'undefined' && typeof DynamicPlugin.mediaPreparationServices === 'function'
+        ? DynamicPlugin.mediaPreparationServices(jsPsych, mediaLibrary)
+        : undefined,
+      ${createStandaloneMediaServices.toString()}
+    );
+    window.ExpBuilderMediaPreparation.install(timeline);
     jsPsych.run(timeline);
 `;
 }

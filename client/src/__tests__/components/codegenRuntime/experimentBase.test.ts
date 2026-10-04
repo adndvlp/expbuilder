@@ -15,7 +15,7 @@ describe("ExperimentBaseHarness", () => {
     ]);
   });
 
-  it("assembles preload, fullscreen, generated codes, last trial and jsPsych.run", async () => {
+  it("assembles media preparation, fullscreen, generated codes and jsPsych.run", async () => {
     const getTrial = vi.fn();
     const getLoopTimeline = vi.fn();
     const getLoop = vi.fn();
@@ -53,10 +53,9 @@ describe("ExperimentBaseHarness", () => {
       },
     );
     expect(code).toContain("const timeline = [];");
-    expect(code).toContain("type: jsPsychPreload");
-    expect(code).toContain('images: ["https://cdn.test/a.png"]');
-    expect(code).toContain("audio: []");
-    expect(code).toContain("video: []");
+    expect(code).toContain("ExpBuilderMediaPreparation.install(timeline)");
+    expect(code).toContain('"url":"https://cdn.test/a.png","type":"img"');
+    expect(code).not.toContain("globalPreload");
     expect(code).not.toContain("files:");
     expect(code).toContain("type: jsPsychFullscreen");
     expect(code).toContain(
@@ -107,7 +106,7 @@ describe("ExperimentBaseHarness", () => {
       expect.any(Error),
     );
     expect(code).toContain("const timeline = [];");
-    expect(code).toContain('audio: ["aud/alert.mp3"]');
+    expect(code).toContain('"url":"aud/alert.mp3","type":"aud"');
     expect(code).not.toContain("files:");
     expect(code).toContain("jsPsych.run(timeline);");
   });

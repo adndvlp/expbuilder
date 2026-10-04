@@ -1,4 +1,4 @@
-import { preloadImages } from "./bitmapResources";
+import { prepareMedia } from "./mediaResources";
 
 type FrameTimingOptions = {
   recordFrameTiming?: boolean;
@@ -40,6 +40,7 @@ export type StimulusTimingRecord = {
 
 export type AssetPreloadList = {
   images: string[];
+  htmlImages?: string[];
   audio: string[];
   video: string[];
 };
@@ -47,8 +48,6 @@ export type AssetPreloadList = {
 const DEFAULT_FRAME_MS = 1000 / 60;
 const MIN_FRAME_INTERVAL_MS = 0.25;
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
-const audioPreloadCache = new Map<string, Promise<void>>();
-const videoPreloadCache = new Map<string, Promise<void>>();
 
 export function resolveTimingMs(raw: any, fallback: number | null = null): number | null {
   if (raw === null || raw === undefined) return fallback;
@@ -556,62 +555,12 @@ export function getResponseRT(
   return endTime - startTime;
 }
 
-function preloadWithJsPsych(
-  cache: Map<string, Promise<void>>,
-  urls: string[],
-  timeoutMs: number,
-  preload: (
-    files: string[],
-    complete: () => void,
-    load: (filepath: string) => void,
-    error: (error: unknown) => void,
-  ) => void,
-) {
-  const uniqueUrls = [...new Set(urls.filter(Boolean))];
-  if (uniqueUrls.length === 0) return Promise.resolve();
-
-  return Promise.all(
-    uniqueUrls.map((url) => {
-      if (!cache.has(url)) {
-        cache.set(
-          url,
-          new Promise<void>((resolve) => {
-            let settled = false;
-            const finish = () => {
-              if (settled) return;
-              settled = true;
-              window.clearTimeout(timeout);
-              resolve();
-            };
-            const timeout = window.setTimeout(finish, timeoutMs);
-            preload([url], finish, finish, finish);
-          }),
-        );
-      }
-      return cache.get(url)!;
-    }),
-  ).then(() => undefined);
-}
-
 export function preloadAssets(
   jsPsych: any,
   assets: AssetPreloadList,
   timeoutMs = 10000,
   imageSignal?: AbortSignal,
+  priority = 0,
 ): Promise<void> {
-  return Promise.all([
-    preloadImages(assets.images, timeoutMs, imageSignal),
-    preloadWithJsPsych(
-      audioPreloadCache,
-      assets.audio,
-      timeoutMs,
-      jsPsych.pluginAPI.preloadAudio.bind(jsPsych.pluginAPI),
-    ),
-    preloadWithJsPsych(
-      videoPreloadCache,
-      assets.video,
-      timeoutMs,
-      jsPsych.pluginAPI.preloadVideo.bind(jsPsych.pluginAPI),
-    ),
-  ]).then(() => undefined);
+  return prepareMedia(jsPsych, assets, timeoutMs, imageSignal, priority);
 }

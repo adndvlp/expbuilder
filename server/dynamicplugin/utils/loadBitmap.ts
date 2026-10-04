@@ -4,6 +4,7 @@ export function loadBitmap(
   url: string,
   signal: AbortSignal,
   timeoutMs: number,
+  convertToBitmap = true,
 ): Promise<CanvasBitmapSource> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -46,7 +47,7 @@ export function loadBitmap(
       )
         return;
       converting = true;
-      if (typeof window.createImageBitmap === "function") {
+      if (convertToBitmap && typeof window.createImageBitmap === "function") {
         try {
           complete(await window.createImageBitmap(image));
           return;
