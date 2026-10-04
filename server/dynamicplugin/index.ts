@@ -26,6 +26,7 @@ import {
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
+import { retainBitmapAssets } from "./utils/bitmapResources";
 import { RuntimeViewportController, styleSurface } from "./layout/RuntimeViewport";
 import {
   getCanvasStages,
@@ -43,6 +44,13 @@ let persistentVisualSurface: HTMLElement | null = null;
 let persistentVisualHandoffTimestamp: number | null = null;
 let persistentVisualHandoffTimer: number | null = null;
 let dynamicTrialSequenceCounter = 0;
+let releasePrefetchedBitmaps: (() => void) | null = null;
+
+function clearPrefetchedBitmaps() {
+  const release = releasePrefetchedBitmaps;
+  releasePrefetchedBitmaps = null;
+  release?.();
+}
 
 type PendingVisualDurationPatch = {
   jsPsych: any;
@@ -67,11 +75,12 @@ function removePreservedVisualBridge() {
 function monitorPreservedVisualBridge(displayElement: HTMLElement) {
   preservedVisualBridgeObserver?.disconnect();
   preservedVisualBridgeObserver = new MutationObserver(() => {
-    if (!preservedVisualBridge && !persistentVisualSurface) return;
+    if (!preservedVisualBridge && !persistentVisualSurface && !releasePrefetchedBitmaps) return;
     if (displayElement.childNodes.length === 0) return;
     if (displayElement.querySelector(`#${DYNAMIC_CONTAINER_ID}`)) return;
     removePreservedVisualBridge();
     removePersistentVisualSurface();
+    clearPrefetchedBitmaps();
   });
   preservedVisualBridgeObserver.observe(displayElement, {
     childList: true,
@@ -1233,6 +1242,12 @@ function classifyTimingQuality(
 class DynamicPlugin implements JsPsychPlugin<Info> {
   static info = info;
 
+  static dispose() {
+    removePreservedVisualBridge();
+    removePersistentVisualSurface();
+    clearPrefetchedBitmaps();
+  }
+
   constructor(private jsPsych: JsPsych) {}
 
   trial(display_element: HTMLElement, trial: TrialType<Info>) {
@@ -1290,6 +1305,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let visualRenderContainer = mainContainer;
     let hasResponded = false;
     let trialEnded = false;
+    let releaseTrialBitmaps: (() => void) | null = null;
     let trialEndedByResponse = false;
     let visualFrameBoundaryHandoff = false;
     let visualFrameBoundaryHandoffLeadMs: number | null = null;
@@ -1318,6 +1334,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         config.__layoutContext = layoutContext;
         config.__renderBackend = trial.render_backend || "webgl-strict";
         config.__recordGpuTiming = trial.record_gpu_timing !== false;
+        config.__assetPreloadTimeout = trial.asset_preload_timeout;
         attachPrecisionTiming(config, timing);
         attachResponseTiming(config, responseTiming);
         const ComponentClass = COMPONENT_MAP[config.type];
@@ -1344,6 +1361,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         config.__layoutContext = layoutContext;
         config.__renderBackend = trial.render_backend || "webgl-strict";
         config.__recordGpuTiming = trial.record_gpu_timing !== false;
+        config.__assetPreloadTimeout = trial.asset_preload_timeout;
         attachPrecisionTiming(config, timing);
         attachResponseTiming(config, responseTiming);
         const ComponentClass = RESPONSE_COMPONENT_MAP[config.type];
@@ -1506,6 +1524,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const endTrial = (offsetTime = performance.now()) => {
       if (trialEnded) return;
       trialEnded = true;
+      releaseTrialBitmaps?.();
+      releaseTrialBitmaps = null;
 
       const timingSummary = timing.getSummary(offsetTime);
       const desiredTrialDuration = resolveTimingMs(trial.trial_duration, null);
@@ -1898,10 +1918,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
 
       if (visualFrameBoundaryHandoff && typeof offsetTime === "number") {
         setPersistentVisualHandoff(offsetTime);
-        monitorPreservedVisualBridge(display_element);
       } else {
         preserveCanvasVisualBridge(mainContainer, display_element);
       }
+      monitorPreservedVisualBridge(display_element);
 
       // Clean up components
       stimulusComponents.forEach(({ instance }) => {
@@ -1954,6 +1974,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       }
 
       renderAllComponents();
+      releaseTrialBitmaps?.();
+      releaseTrialBitmaps = null;
       responseTiming.attach();
       timing.onStart(() => {
         mainContainer.style.visibility = "visible";
@@ -2014,20 +2036,39 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           this.jsPsych,
           resolveTimingMs(trial.prefetch_trial_count, 3) ?? 3,
         );
+        const releaseUpcoming = retainBitmapAssets(
+          upcomingAssets.images,
+          resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+        );
+        const imageController = new AbortController();
+        clearPrefetchedBitmaps();
+        releasePrefetchedBitmaps = () => {
+          releaseUpcoming();
+          imageController.abort();
+        };
         preloadAssets(
           this.jsPsych,
           upcomingAssets,
           resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+          imageController.signal,
         ).catch((error) => {
+          if (imageController.signal.aborted) return;
           console.warn("DynamicPlugin upcoming asset prefetch failed:", error);
         });
+      } else {
+        clearPrefetchedBitmaps();
       }
     };
 
     if (trial.preload_assets !== false) {
+      const assets = collectAssetPreloadList(allComponents);
+      releaseTrialBitmaps = retainBitmapAssets(
+        assets.images,
+        resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
+      );
       preloadAssets(
         this.jsPsych,
-        collectAssetPreloadList(allComponents),
+        assets,
         resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,
       )
         .catch((error) => {

@@ -1,3 +1,5 @@
+import { preloadImages } from "./bitmapResources";
+
 type FrameTimingOptions = {
   recordFrameTiming?: boolean;
   longFrameThreshold?: number;
@@ -42,14 +44,9 @@ export type AssetPreloadList = {
   video: string[];
 };
 
-export type CanvasBitmapSource = ImageBitmap | HTMLImageElement;
-
 const DEFAULT_FRAME_MS = 1000 / 60;
 const MIN_FRAME_INTERVAL_MS = 0.25;
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;
-const imagePreloadCache = new Map<string, Promise<void>>();
-const bitmapPreloadCache = new Map<string, Promise<CanvasBitmapSource>>();
-const bitmapSourceCache = new Map<string, CanvasBitmapSource>();
 const audioPreloadCache = new Map<string, Promise<void>>();
 const videoPreloadCache = new Map<string, Promise<void>>();
 
@@ -559,102 +556,6 @@ export function getResponseRT(
   return endTime - startTime;
 }
 
-export function preloadImages(urls: string[], timeoutMs = 10000): Promise<void> {
-  const uniqueUrls = [...new Set(urls.filter(Boolean))];
-  if (uniqueUrls.length === 0) return Promise.resolve();
-
-  return Promise.all(
-    uniqueUrls.map((url) => {
-      if (!imagePreloadCache.has(url)) {
-        imagePreloadCache.set(
-          url,
-          new Promise<void>((resolve) => {
-            const image = new Image();
-            let settled = false;
-            const finish = () => {
-              if (settled) return;
-              settled = true;
-              window.clearTimeout(timeout);
-              resolve();
-            };
-            const timeout = window.setTimeout(finish, timeoutMs);
-            image.onload = finish;
-            image.onerror = finish;
-            image.src = url;
-            if (image.complete && image.naturalWidth !== 0) {
-              finish();
-            } else if ("decode" in image) {
-              image.decode().then(finish).catch(() => undefined);
-            }
-          }),
-        );
-      }
-      return imagePreloadCache.get(url)!;
-    }),
-  )
-    .then(() =>
-      Promise.all(uniqueUrls.map((url) => preloadBitmap(url, timeoutMs))),
-    )
-    .then(() => undefined);
-}
-
-export function preloadBitmap(
-  url: string,
-  timeoutMs = 10000,
-): Promise<CanvasBitmapSource> {
-  if (!bitmapPreloadCache.has(url)) {
-    bitmapPreloadCache.set(
-      url,
-      new Promise<CanvasBitmapSource>((resolve) => {
-        const image = new Image();
-        let settled = false;
-
-        const resolveWithImage = async () => {
-          if (settled) return;
-          settled = true;
-          window.clearTimeout(timeout);
-
-          if (
-            typeof window.createImageBitmap === "function" &&
-            image.complete &&
-            image.naturalWidth !== 0
-          ) {
-            try {
-              const bitmap = await window.createImageBitmap(image);
-              bitmapSourceCache.set(url, bitmap);
-              resolve(bitmap);
-              return;
-            } catch {
-              // Fall back to the decoded image element when bitmap creation
-              // is unsupported for this image type.
-            }
-          }
-
-          bitmapSourceCache.set(url, image);
-          resolve(image);
-        };
-
-        const timeout = window.setTimeout(resolveWithImage, timeoutMs);
-        image.onload = resolveWithImage;
-        image.onerror = resolveWithImage;
-        image.src = url;
-
-        if (image.complete && image.naturalWidth !== 0) {
-          resolveWithImage();
-        } else if ("decode" in image) {
-          image.decode().then(resolveWithImage).catch(() => undefined);
-        }
-      }),
-    );
-  }
-
-  return bitmapPreloadCache.get(url)!;
-}
-
-export function getPreloadedBitmap(url: string): CanvasBitmapSource | null {
-  return bitmapSourceCache.get(url) ?? null;
-}
-
 function preloadWithJsPsych(
   cache: Map<string, Promise<void>>,
   urls: string[],
@@ -696,9 +597,10 @@ export function preloadAssets(
   jsPsych: any,
   assets: AssetPreloadList,
   timeoutMs = 10000,
+  imageSignal?: AbortSignal,
 ): Promise<void> {
   return Promise.all([
-    preloadImages(assets.images, timeoutMs),
+    preloadImages(assets.images, timeoutMs, imageSignal),
     preloadWithJsPsych(
       audioPreloadCache,
       assets.audio,

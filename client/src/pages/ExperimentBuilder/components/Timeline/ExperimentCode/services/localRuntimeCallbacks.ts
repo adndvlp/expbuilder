@@ -1,4 +1,5 @@
 import type { LocalExperimentCodeOptions } from "./localCodeTypes";
+import { dynamicResourceCleanupCode } from "./dynamicResourceCleanupCode";
 
 export function buildLocalDataCallback({
   branchingEvaluation,
@@ -54,6 +55,7 @@ export function buildLocalFinishCallback({
         _runtimeTrace('experiment-finish-suppressed', { reason: 'jump' });
         return;
       }
+      ${dynamicResourceCleanupCode}
       _showLoading('Saving your data…');
       _setLoadingMsg('Verifying every result…');
       let completionRetryDelay = 2000;

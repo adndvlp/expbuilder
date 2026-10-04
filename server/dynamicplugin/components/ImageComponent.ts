@@ -3,13 +3,15 @@ import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
-  CanvasBitmapSource,
   createPrecisionTiming,
-  getPreloadedBitmap,
-  preloadBitmap,
   resolveTimingMs,
   scheduleFrameEvent,
 } from "../utils/PrecisionTiming";
+import {
+  acquireBitmap,
+  type BitmapLease,
+  type CanvasBitmapSource,
+} from "../utils/bitmapResources";
 
 var version = "2.2.0";
 
@@ -98,14 +100,18 @@ class ImageComponent {
     const rect = this.computeDrawRect(this.layoutConfig, this.source);
     if (!rect) return;
     this.drawRect = rect;
-    this.updateTrackingElement(rect, resolveTimingMs(this.layoutConfig.zIndex, 0) ?? 0);
+    this.updateTrackingElement(
+      rect,
+      resolveTimingMs(this.layoutConfig.zIndex, 0) ?? 0,
+    );
     this.stage.updateDrawable(this.drawableId, rect);
   }
   private jsPsych: any;
   private stage: CanvasStage | null = null;
   private element: HTMLElement | null = null;
   private source: CanvasBitmapSource | null = null;
-  private sourcePromise: Promise<CanvasBitmapSource> | null = null;
+  private sourcePromise: Promise<CanvasBitmapSource | null> | null = null;
+  private bitmapLease: BitmapLease | null = null;
   private cancelSchedule: Array<() => void> = [];
   private removeDrawable: (() => void) | null = null;
   private deferredRafHandle: number | null = null;
@@ -126,7 +132,9 @@ class ImageComponent {
   private resolveParam(raw: any, fallback: any): any {
     if (raw === undefined || raw === null) return fallback;
     if (typeof raw === "object" && "value" in raw) {
-      return raw.value !== undefined && raw.value !== null ? raw.value : fallback;
+      return raw.value !== undefined && raw.value !== null
+        ? raw.value
+        : fallback;
     }
     return raw;
   }
@@ -144,7 +152,10 @@ class ImageComponent {
     };
   }
 
-  private computeDrawRect(config: any, source: CanvasBitmapSource): DrawRect | null {
+  private computeDrawRect(
+    config: any,
+    source: CanvasBitmapSource,
+  ): DrawRect | null {
     const { width: canvasWidth, height: canvasHeight } = getViewport(config);
     const sourceSize = this.getSourceSize(source);
 
@@ -177,7 +188,10 @@ class ImageComponent {
     }
 
     const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
-    const { x: centerX, y: centerY } = relativeCenter(coordinates, { width: canvasWidth, height: canvasHeight });
+    const { x: centerX, y: centerY } = relativeCenter(coordinates, {
+      width: canvasWidth,
+      height: canvasHeight,
+    });
 
     return {
       x: centerX - drawWidth / 2,
@@ -281,17 +295,30 @@ class ImageComponent {
 
     const stimulus = this.resolveParam(config.stimulus, "");
     if (stimulus) {
-      const cachedSource = getPreloadedBitmap(stimulus);
+      const lease = acquireBitmap(
+        stimulus,
+        resolveTimingMs(config.__assetPreloadTimeout, 10000) ?? 10000,
+      );
+      this.bitmapLease = lease;
+      const cachedSource = lease.source;
       if (cachedSource) {
         this.source = cachedSource;
         this.prepareDrawable(config, zIndex);
         this.sourcePromise = Promise.resolve(cachedSource);
       } else {
-        this.sourcePromise = preloadBitmap(stimulus).then((source) => {
-          this.source = source;
-          this.prepareDrawable(config, zIndex);
-          return source;
-        });
+        this.sourcePromise = lease.ready
+          .then((source) => {
+            if (this.destroyed || this.bitmapLease !== lease) return null;
+            this.source = source;
+            this.prepareDrawable(config, zIndex);
+            return source;
+          })
+          .catch((error) => {
+            if (!this.destroyed && this.bitmapLease === lease) {
+              console.warn("ImageComponent preparation failed:", error);
+            }
+            return null;
+          });
       }
     }
 
@@ -311,8 +338,8 @@ class ImageComponent {
       if (this.destroyed || this.offsetReached) return;
 
       if (!this.prepareDrawable(config, zIndex)) {
-        this.sourcePromise?.then(() => {
-          if (this.destroyed || this.offsetReached) return;
+        this.sourcePromise?.then((source) => {
+          if (!source || this.destroyed || this.offsetReached) return;
           this.deferredRafHandle = requestAnimationFrame((frameTimestamp) => {
             this.deferredRafHandle = null;
             draw(frameTimestamp);
@@ -333,9 +360,13 @@ class ImageComponent {
       this.offsetReached = true;
       this.visible = false;
       if (this.drawn) {
-        this.stage?.setDrawableVisibility(this.drawableId, false, (commitInfo) => {
-          stimulusTiming?.markOffset(timestamp, commitInfo);
-        });
+        this.stage?.setDrawableVisibility(
+          this.drawableId,
+          false,
+          (commitInfo) => {
+            stimulusTiming?.markOffset(timestamp, commitInfo);
+          },
+        );
       } else {
         this.stage?.setDrawableVisibility(this.drawableId, false);
       }
@@ -394,6 +425,8 @@ class ImageComponent {
     }
     this.removeDrawable?.();
     this.removeDrawable = null;
+    this.bitmapLease?.release();
+    this.bitmapLease = null;
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }

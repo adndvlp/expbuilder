@@ -6,7 +6,6 @@ import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
   CanvasBitmapSource,
   getResponseRT,
-  preloadBitmap,
   resolveTimingMs,
   scheduleFrameEvent,
   setResponseStartTime,

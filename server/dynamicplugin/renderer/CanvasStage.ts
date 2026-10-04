@@ -1,3 +1,5 @@
+import { retainBitmapSource } from "../utils/bitmapResources";
+
 export type RenderBackendRequest = "webgl-strict";
 
 type CanvasStageOptions = {
@@ -438,6 +440,7 @@ class WebGLStage extends BaseStage {
   private texCoordBuffer: WebGLBuffer | null = null;
   private textures = new Map<string, WebGLTexture>();
   private textureSources = new Map<string, CanvasImageSource>();
+  private sourceReleases = new Map<string, () => void>();
   private whiteTexture: WebGLTexture | null = null;
   private uniformResolution: WebGLUniformLocation | null = null;
   private uniformRect: WebGLUniformLocation | null = null;
@@ -525,6 +528,9 @@ class WebGLStage extends BaseStage {
     const texture = this.uploadTexture(source);
     const oldTexture = this.textures.get(key);
     if (oldTexture) this.gl!.deleteTexture(oldTexture);
+    const release = retainBitmapSource(source);
+    this.sourceReleases.get(key)?.();
+    this.sourceReleases.set(key, release);
     this.textureSources.set(key, source);
     this.textures.set(key, texture);
     return key;
@@ -535,6 +541,8 @@ class WebGLStage extends BaseStage {
     if (texture) this.gl!.deleteTexture(texture);
     this.textures.delete(key);
     this.textureSources.delete(key);
+    this.sourceReleases.get(key)?.();
+    this.sourceReleases.delete(key);
   }
 
   protected releaseUnusedTextures() {
@@ -780,6 +788,7 @@ class WebGLStage extends BaseStage {
 
   private uploadTextureForKey(key: string, source: CanvasImageSource) {
     const texture = this.uploadTexture(source);
+    this.sourceReleases.set(key, retainBitmapSource(source));
     this.textureSources.set(key, source);
     this.textures.set(key, texture);
     return texture;

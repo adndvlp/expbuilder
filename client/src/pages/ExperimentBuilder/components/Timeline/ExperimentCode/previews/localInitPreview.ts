@@ -1,3 +1,5 @@
+import { dynamicResourceCleanupCode } from "../services/dynamicResourceCleanupCode";
+
 function injectUserCode(userCode: string | undefined): string {
   const trimmed = userCode?.trim() ?? "";
   if (!trimmed) return "";
@@ -63,6 +65,7 @@ export function getLocalOnFinishPreview(
   userCode?: string,
 ): string {
   return `on_finish: async function() {
+    ${dynamicResourceCleanupCode}
     _showLoading('Saving your data…');
     await new Promise(r => setTimeout(r, 0));
 

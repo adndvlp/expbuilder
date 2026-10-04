@@ -1,4 +1,5 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
+import { dynamicResourceCleanupCode } from "./dynamicResourceCleanupCode";
 
 export function publicFinishCode(options: PublicExperimentCodeOptions): string {
   const {
@@ -48,6 +49,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           );
           return;
         }
+        ${dynamicResourceCleanupCode}
         _showLoading('Saving your data\u2026');
         await new Promise(r => setTimeout(r, 0));
         
