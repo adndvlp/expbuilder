@@ -96,11 +96,9 @@ vi.mock("../../../pages/ExperimentBuilder/hooks/usePlugins", () => ({
   default: () => ({ plugins: mocks.plugins }),
 }));
 
-vi.mock("../../../pages/ExperimentBuilder/hooks/useCanvasStyles", () => ({
+vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentAppearance", () => ({
   default: () => ({
-    canvasStyles: {
-      width: 1024,
-      height: 768,
+    appearance: {
       backgroundColor: "#ffffff",
       fullScreen: true,
       progressBar: true,

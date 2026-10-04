@@ -17,6 +17,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   wrapperMocks.initialComponents = undefined;
   wrapperMocks.initialSelectedId = undefined;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
 });
 
 export {

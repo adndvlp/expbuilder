@@ -1,6 +1,6 @@
 import { type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
-import useCanvasStyles from "../hooks/useCanvasStyles";
+import useExperimentAppearance from "../hooks/useExperimentAppearance";
 import useDevMode from "../hooks/useDevMode";
 import { useExperimentID } from "../hooks/useExperimentID";
 import usePlugins from "../hooks/usePlugins";
@@ -38,7 +38,7 @@ export default function GlobalCustomCode() {
   const monacoRef = useRef<MonacoInstance | null>(null);
   const pluginNamesRef = useRef<string[]>([]);
   pluginNamesRef.current = plugins.map((plugin) => plugin.name);
-  const { canvasStyles } = useCanvasStyles();
+  const { appearance } = useExperimentAppearance();
   const experimentID = useExperimentID();
   const [modalOpen, setModalOpen] = useState(false);
   const [preInitModalOpen, setPreInitModalOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function GlobalCustomCode() {
   const [preInitLiveValue, setPreInitLiveValue] = useState(preInitCurrentValue);
   const preInitEditorKey = `preinit-${preInitEditVariant}`;
   const eid = experimentID ?? "[experimentID]";
-  const progressBar = canvasStyles?.progressBar ?? false;
+  const progressBar = appearance?.progressBar ?? false;
   const theme = getEditorTheme(isLightMode);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

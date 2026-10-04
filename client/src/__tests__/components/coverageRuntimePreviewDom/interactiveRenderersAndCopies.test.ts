@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   config,
   describe,
   ensurePreviewSketchpadStyles,
@@ -21,7 +21,7 @@ describe("runtime preview DOM renderers", () => {
     const survey = renderPreviewSurveyContainer(
       container,
       config({ min_width: "420px" }),
-      { coordinateMode: "canvas", canvasStyles },
+      { coordinateMode: "canvas", previewViewport },
     );
     expect(survey.element.id).toBe("jspsych-survey-surveyjs-container");
     expect(survey.surveyHost.style.minWidth).toBe("420px");
@@ -117,7 +117,7 @@ describe("runtime preview DOM renderers", () => {
       trialComponent("ImageComponent", {
         config: { stimulus: { source: "typed", value: "photo.png" } },
       }),
-      canvasStyles,
+      previewViewport,
       resolveAsset,
     );
     expect(container.innerHTML).toContain("dynamic-image-component");
@@ -128,7 +128,7 @@ describe("runtime preview DOM renderers", () => {
       trialComponent("VideoComponent", {
         config: { stimulus: { source: "typed", value: ["clip.mp4"] } },
       }),
-      canvasStyles,
+      previewViewport,
       resolveAsset,
     );
     expect(video.element.querySelector("source")?.src).toContain(
@@ -141,7 +141,7 @@ describe("runtime preview DOM renderers", () => {
       trialComponent("ButtonResponseComponent", {
         config: { choices: { source: "typed", value: ["yes", "icon.png"] } },
       }),
-      canvasStyles,
+      previewViewport,
       resolveAsset,
     );
     expect(
@@ -158,7 +158,7 @@ describe("runtime preview DOM renderers", () => {
           background_image: { source: "typed", value: "bg.png" },
         },
       }),
-      canvasStyles,
+      previewViewport,
       resolveAsset,
     );
     expect(sketchpad.element.querySelector(".sketchpad-circle")).toBeTruthy();
@@ -180,7 +180,7 @@ describe("runtime preview DOM renderers", () => {
           min_width: { source: "typed", value: "80vw" },
         },
       }),
-      canvasStyles,
+      previewViewport,
     );
     expect(survey.element.id).toBe("jspsych-survey-surveyjs-container");
     survey.destroy();
@@ -189,7 +189,7 @@ describe("runtime preview DOM renderers", () => {
       renderRuntimeCopy(
         container,
         { ...(trialComponent("AudioComponent") as any), type: "Unknown" },
-        canvasStyles,
+        previewViewport,
       ),
     ).toThrow("No frontend runtime copy");
   });

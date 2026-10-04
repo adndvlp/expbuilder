@@ -379,12 +379,12 @@ describe('POST /api/trials-preview/:experimentID', () => {
     await request(app).post('/api/trials-preview/E1').send({}).expect(400)
   })
 
-  test('builds preview HTML with DB canvas style fallback', async () => {
+  test('builds preview HTML with experiment appearance settings', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'PreviewExp', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+    db.data.experiments.push({ experimentID: 'E1', name: 'PreviewExp', appearanceSettings: { backgroundColor: '#445566', fullScreen: false, progressBar: false }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     db.data.trials.push({
       experimentID: 'E1',
-      trials: [{ id: 1, columnMapping: { __canvasStyles: { value: { backgroundColor: '#445566' } } } }],
+      trials: [{ id: 1, columnMapping: {} }],
       loops: [],
       timeline: [],
     })

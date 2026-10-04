@@ -80,6 +80,8 @@ const ClickResponseComponent: React.FC<ClickResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -122,6 +124,7 @@ const ClickResponseComponent: React.FC<ClickResponseComponentProps> = ({
           const nextWidth = Math.max(80, effectiveWidth * scaleX);
           const nextHeight = Math.max(50, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

@@ -1,4 +1,4 @@
-import { CanvasStyles, ComponentType, TrialComponent } from "../types";
+import { PreviewViewport, ComponentType, TrialComponent } from "../types";
 
 export const EXPERIMENTAL_HTML_SCENE_ENABLED = true;
 
@@ -34,7 +34,7 @@ export type HtmlSceneNode = {
   rotation: number;
   zIndex: number;
   component: TrialComponent;
-  canvasStyles: CanvasStyles;
+  previewViewport: PreviewViewport;
 };
 
 export function isHtmlSceneComponent(type: ComponentType): boolean {
@@ -73,14 +73,14 @@ function configuredPixels(
 
 function fallbackSize(
   component: TrialComponent,
-  canvasStyles: CanvasStyles,
+  previewViewport: PreviewViewport,
 ): HtmlSceneNodeMetric {
-  const width = configuredPixels(component, "width", canvasStyles.width);
-  const height = configuredPixels(component, "height", canvasStyles.width);
+  const width = configuredPixels(component, "width", previewViewport.width);
+  const height = configuredPixels(component, "height", previewViewport.width);
   if (width && height) return { width, height };
 
   if (component.type === "SurveyComponent") {
-    return { width: Math.min(canvasStyles.width, 800), height: 240 };
+    return { width: Math.min(previewViewport.width, 800), height: 240 };
   }
 
   if (component.type === "SketchpadComponent") {
@@ -140,12 +140,9 @@ function fallbackSize(
 
 export function getHtmlSceneNode(
   component: TrialComponent,
-  canvasStyles: CanvasStyles = {
-    backgroundColor: "#ffffff",
+  previewViewport: PreviewViewport = {
     width: 1024,
     height: 768,
-    fullScreen: true,
-    progressBar: false,
   },
   metrics?: HtmlSceneMetrics,
 ): HtmlSceneNode | null {
@@ -160,12 +157,12 @@ export function getHtmlSceneNode(
           const width = configuredPixels(
             component,
             "width",
-            canvasStyles.width,
+            previewViewport.width,
           );
           const height = configuredPixels(
             component,
             "height",
-            canvasStyles.width,
+            previewViewport.width,
           );
           return width && height ? { width, height } : null;
         })()
@@ -174,7 +171,7 @@ export function getHtmlSceneNode(
   const size =
     explicitHtmlSize ||
     metrics?.[component.id] ||
-    fallbackSize(component, canvasStyles);
+    fallbackSize(component, previewViewport);
   return {
     id: component.id,
     type: component.type,
@@ -187,17 +184,17 @@ export function getHtmlSceneNode(
     rotation: component.rotation || 0,
     zIndex: component.zIndex ?? 0,
     component,
-    canvasStyles,
+    previewViewport,
   };
 }
 
 export function getHtmlSceneNodes(
   components: TrialComponent[],
-  canvasStyles?: CanvasStyles,
+  previewViewport?: PreviewViewport,
   metrics?: HtmlSceneMetrics,
 ): HtmlSceneNode[] {
   return components
-    .map((component) => getHtmlSceneNode(component, canvasStyles, metrics))
+    .map((component) => getHtmlSceneNode(component, previewViewport, metrics))
     .filter((node): node is HtmlSceneNode => Boolean(node))
     .sort((a, b) => a.zIndex - b.zIndex);
 }

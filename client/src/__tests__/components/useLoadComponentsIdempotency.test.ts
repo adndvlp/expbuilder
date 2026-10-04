@@ -1,8 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_CANVAS_STYLES } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import type {
-  CanvasStyles,
   TrialComponent,
 } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
@@ -31,14 +29,6 @@ describe("useLoadComponents idempotency guard", () => {
     );
     const setComponents = vi.fn();
     const setSelectedId = vi.fn();
-    const setCanvasStyles = vi.fn((updater) => {
-      const previous: CanvasStyles = {
-        ...DEFAULT_CANVAS_STYLES,
-        backgroundColor: "#606060",
-        fullScreen: false,
-      };
-      return typeof updater === "function" ? updater(previous) : updater;
-    });
 
     renderHook(() =>
       useLoadComponents({
@@ -57,7 +47,6 @@ describe("useLoadComponents idempotency guard", () => {
         CANVAS_HEIGHT: 700,
         setComponents,
         setSelectedId,
-        setCanvasStyles,
       }),
     );
 
@@ -71,6 +60,5 @@ describe("useLoadComponents idempotency guard", () => {
       }),
     ]);
     expect(setSelectedId).not.toHaveBeenCalled();
-    expect(setCanvasStyles).toHaveBeenCalledTimes(1);
   });
 });

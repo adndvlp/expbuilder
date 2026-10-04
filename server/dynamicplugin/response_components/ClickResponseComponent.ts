@@ -1,3 +1,4 @@
+import { positionElement } from "../layout/domLayout";
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
@@ -175,10 +176,7 @@ class ClickResponseComponent {
         v > 100 ? 50 : v < -100 ? -50 : v * 0.5;
 
       const coords = trial.coordinates ?? { x: 0, y: 0 };
-      const xVw = mapValue(coords.x ?? 0);
-      const yVh = mapValue(coords.y ?? 0);
-      this.overlayElement.style.left = `calc(50% + ${xVw}vw)`;
-      this.overlayElement.style.top = `calc(50% - ${yVh}vh)`;
+      positionElement(this.overlayElement, trial.coordinates);
       this.overlayElement.style.transform = "translate(-50%, -50%)";
       // Size defaults to auto; caller can pass width/height in px via trial if needed
       this.overlayElement.style.minWidth = "40px";

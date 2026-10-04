@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -26,8 +27,6 @@ const allocatePort = () =>
     });
   });
 
-const port = String(await allocatePort());
-const serverUrl = `http://127.0.0.1:${port}`;
 const dbRoot = path.join(os.tmpdir(), `expbuilder-runtime-${process.pid}`);
 const playwrightCli = path.join(
   clientRoot,
@@ -37,29 +36,84 @@ const playwrightCli = path.join(
   "cli.js",
 );
 
-const child = spawn(
-  process.execPath,
-  [playwrightCli, "test", "-c", "playwright.runtime.config.ts", ...process.argv.slice(2)],
-  {
-    cwd: clientRoot,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      RUNTIME_SERVER_PORT: port,
-      RUNTIME_SERVER_URL: serverUrl,
-      RUNTIME_DB_ROOT: dbRoot,
-    },
-  },
-);
+const testArguments = process.argv.slice(2);
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+let child;
+let interrupted = false;
+let browserDirectory;
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => child.kill(signal));
+function runPlaywright(args, env) {
+  if (interrupted) return Promise.resolve(1);
+  return new Promise((resolve, reject) => {
+    child = spawn(process.execPath, [playwrightCli, ...args], {
+      cwd: clientRoot,
+      stdio: "inherit",
+      env,
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      child = undefined;
+      resolve(signal ? 1 : (code ?? 1));
+    });
+  });
 }
 
-child.once("error", (error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-child.once("exit", (code, signal) => {
-  process.exitCode = signal ? 1 : (code ?? 1);
-});
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    interrupted = true;
+    child?.kill(signal);
+  });
+}
+
+let exitCode = 1;
+try {
+  const testEnvironment = { ...process.env };
+  let installExitCode = 0;
+  if (
+    !isCi &&
+    !testEnvironment.PLAYWRIGHT_BROWSERS_PATH &&
+    !testEnvironment.RUNTIME_BROWSER_CHANNEL
+  ) {
+    browserDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "expbuilder-playwright-"),
+    );
+    testEnvironment.PLAYWRIGHT_BROWSERS_PATH = browserDirectory;
+    const headed =
+      testArguments.some((arg) =>
+        ["--headed", "--debug", "--ui"].includes(arg),
+      ) || Boolean(testEnvironment.PWDEBUG && testEnvironment.PWDEBUG !== "0");
+    console.log(
+      `Installing temporary Chromium for ${process.platform}/${process.arch}...`,
+    );
+    installExitCode = await runPlaywright(
+      ["install", ...(headed ? [] : ["--only-shell"]), "chromium"],
+      testEnvironment,
+    );
+  }
+  if (installExitCode !== 0 || interrupted) {
+    exitCode = installExitCode || 1;
+  } else {
+    const port = String(await allocatePort());
+    exitCode = await runPlaywright(
+      ["test", "-c", "playwright.runtime.config.ts", ...testArguments],
+      {
+        ...testEnvironment,
+        RUNTIME_SERVER_PORT: port,
+        RUNTIME_SERVER_URL: `http://127.0.0.1:${port}`,
+        RUNTIME_DB_ROOT: dbRoot,
+      },
+    );
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+} finally {
+  if (browserDirectory) {
+    await rm(browserDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100,
+    });
+  }
+}
+process.exitCode = interrupted ? 1 : exitCode;

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     getLoopTimeline: vi.fn(),
     getLoop: vi.fn(),
   },
-  canvasStyles: {
+  appearance: {
     fullScreen: false,
     progressBar: true,
   },
@@ -31,8 +31,8 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
   default: () => mocks.trialsContext,
 }));
 
-vi.mock("../../pages/ExperimentBuilder/hooks/useCanvasStyles", () => ({
-  default: () => ({ canvasStyles: mocks.canvasStyles }),
+vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentAppearance", () => ({
+  default: () => ({ appearance: mocks.appearance }),
 }));
 
 vi.mock(
@@ -105,14 +105,14 @@ describe("useExperimentCode", () => {
         getTrial: mocks.trialsContext.getTrial,
         getLoopTimeline: mocks.trialsContext.getLoopTimeline,
         getLoop: mocks.trialsContext.getLoop,
-        canvasStyles: mocks.canvasStyles,
+        appearance: mocks.appearance,
       }),
     );
     expect(mocks.baseProps).toEqual(
       expect.objectContaining({
         experimentID: "exp-123",
         uploadedFiles,
-        canvasStyles: mocks.canvasStyles,
+        appearance: mocks.appearance,
       }),
     );
 

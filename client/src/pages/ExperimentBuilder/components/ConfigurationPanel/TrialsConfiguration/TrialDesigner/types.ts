@@ -54,20 +54,14 @@ export type TrialComponent = {
   config: Record<string, any>;
 };
 
-export type CanvasStyles = {
-  backgroundColor: string;
+export type PreviewViewport = {
   width: number;
   height: number;
-  fullScreen: boolean;
-  progressBar: boolean;
 };
 
-export const DEFAULT_CANVAS_STYLES: CanvasStyles = {
-  backgroundColor: "#ffffff",
+export const DEFAULT_PREVIEW_VIEWPORT: PreviewViewport = {
   width: 1024,
   height: 768,
-  fullScreen: true,
-  progressBar: false,
 };
 
 export type KonvaTrialDesignerProps = {

@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import useCanvasStyles from "../../../pages/ExperimentBuilder/hooks/useCanvasStyles";
-import CanvasStylesProvider from "../../../pages/ExperimentBuilder/providers/CanvasStylesProvider";
+import useExperimentAppearance from "../../../pages/ExperimentBuilder/hooks/useExperimentAppearance";
+import ExperimentAppearanceProvider from "../../../pages/ExperimentBuilder/providers/ExperimentAppearanceProvider";
 import {
   API_URL,
   cleanupProviderTest,
@@ -11,23 +11,23 @@ import {
   prepareProviderTest,
 } from "./testHarness";
 
-function ExperimentCanvasStylesWrapper({ children }: { children: ReactNode }) {
+function ExperimentAppearanceWrapper({ children }: { children: ReactNode }) {
   return (
-    <CanvasStylesProvider experimentID="exp-style">
+    <ExperimentAppearanceProvider experimentID="exp-style">
       {children}
-    </CanvasStylesProvider>
+    </ExperimentAppearanceProvider>
   );
 }
 
-function DefaultCanvasStylesWrapper({ children }: { children: ReactNode }) {
-  return <CanvasStylesProvider>{children}</CanvasStylesProvider>;
+function DefaultAppearanceWrapper({ children }: { children: ReactNode }) {
+  return <ExperimentAppearanceProvider>{children}</ExperimentAppearanceProvider>;
 }
 
-describe("CanvasStylesProvider", () => {
+describe("ExperimentAppearanceProvider", () => {
   beforeEach(prepareProviderTest);
   afterEach(cleanupProviderTest);
 
-  it("loads appearance settings into CanvasStylesProvider and keeps defaults for omitted fields", async () => {
+  it("loads appearance settings into ExperimentAppearanceProvider and keeps defaults for omitted fields", async () => {
     fetchMock().mockResolvedValue(
       okJson({
         success: true,
@@ -38,15 +38,13 @@ describe("CanvasStylesProvider", () => {
       }),
     );
 
-    const { result } = renderHook(() => useCanvasStyles(), {
-      wrapper: ExperimentCanvasStylesWrapper,
+    const { result } = renderHook(() => useExperimentAppearance(), {
+      wrapper: ExperimentAppearanceWrapper,
     });
 
     await waitFor(() => {
-      expect(result.current.canvasStyles).toEqual({
+      expect(result.current.appearance).toEqual({
         backgroundColor: "#101820",
-        width: 1024,
-        height: 768,
         fullScreen: false,
         progressBar: false,
       });
@@ -66,15 +64,13 @@ describe("CanvasStylesProvider", () => {
       }),
     );
 
-    const { result } = renderHook(() => useCanvasStyles(), {
-      wrapper: ExperimentCanvasStylesWrapper,
+    const { result } = renderHook(() => useExperimentAppearance(), {
+      wrapper: ExperimentAppearanceWrapper,
     });
 
     await waitFor(() => {
-      expect(result.current.canvasStyles).toEqual({
+      expect(result.current.appearance).toEqual({
         backgroundColor: "#ffffff",
-        width: 1024,
-        height: 768,
         fullScreen: true,
         progressBar: true,
       });
@@ -84,8 +80,8 @@ describe("CanvasStylesProvider", () => {
   it("ignores unsuccessful appearance settings responses", async () => {
     fetchMock().mockResolvedValue(okJson({ success: false }));
 
-    const { result } = renderHook(() => useCanvasStyles(), {
-      wrapper: ExperimentCanvasStylesWrapper,
+    const { result } = renderHook(() => useExperimentAppearance(), {
+      wrapper: ExperimentAppearanceWrapper,
     });
 
     await waitFor(() => {
@@ -93,25 +89,21 @@ describe("CanvasStylesProvider", () => {
         `${API_URL}/api/appearance-settings/exp-style`,
       );
     });
-    expect(result.current.canvasStyles).toEqual({
+    expect(result.current.appearance).toEqual({
       backgroundColor: "#ffffff",
-      width: 1024,
-      height: 768,
       fullScreen: true,
       progressBar: false,
     });
   });
 
   it("does not request appearance settings without an experiment id", () => {
-    const { result } = renderHook(() => useCanvasStyles(), {
-      wrapper: DefaultCanvasStylesWrapper,
+    const { result } = renderHook(() => useExperimentAppearance(), {
+      wrapper: DefaultAppearanceWrapper,
     });
 
     expect(fetchMock()).not.toHaveBeenCalled();
-    expect(result.current.canvasStyles).toEqual({
+    expect(result.current.appearance).toEqual({
       backgroundColor: "#ffffff",
-      width: 1024,
-      height: 768,
       fullScreen: true,
       progressBar: false,
     });
@@ -122,8 +114,8 @@ describe("CanvasStylesProvider", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     fetchMock().mockRejectedValue(error);
 
-    renderHook(() => useCanvasStyles(), {
-      wrapper: ExperimentCanvasStylesWrapper,
+    renderHook(() => useExperimentAppearance(), {
+      wrapper: ExperimentAppearanceWrapper,
     });
 
     await waitFor(() => {

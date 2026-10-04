@@ -1,12 +1,14 @@
 import { compileLocalExperiment } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/compileLocalExperiment";
 import { buildExperimentArtifact } from "../../src/pages/ExperimentBuilder/modules/experiment-runtime/experimentArtifact";
 import type { ExperimentAuthoringClient } from "../../src/pages/ExperimentBuilder/modules/experiment-authoring/types";
-import { scenarioCanvasStyles } from "./scenarioTrialConfiguration";
+import { scenarioAppearance } from "./scenarioTrialConfiguration";
 
 export async function compileScenarioArtifact(options: {
   apiBaseUrl: string;
   client: ExperimentAuthoringClient;
   experimentId: string;
+  customPreInitCode?: string;
+  appearance?: typeof scenarioAppearance;
 }) {
   const getLoopTimeline = async (loopId: string | number) => {
     const graph = await options.client.getGraph(options.experimentId);
@@ -18,13 +20,14 @@ export async function compileScenarioArtifact(options: {
     getTrial: (id) => options.client.getTrial(options.experimentId, id),
     getLoop: (id) => options.client.getLoop(options.experimentId, id),
     getLoopTimeline,
-    canvasStyles: scenarioCanvasStyles,
+    appearance: options.appearance ?? scenarioAppearance,
+    customPreInitCode: options.customPreInitCode,
   });
   return buildExperimentArtifact({
     experimentId: options.experimentId,
     generatedCode,
     apiBaseUrl: options.apiBaseUrl,
     saveConfiguration: true,
-    canvasStyles: scenarioCanvasStyles,
+    appearance: options.appearance ?? scenarioAppearance,
   });
 }

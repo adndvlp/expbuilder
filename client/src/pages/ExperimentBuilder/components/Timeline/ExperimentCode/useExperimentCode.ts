@@ -3,7 +3,7 @@ import {
   fetchExperimentNameByID,
   useExperimentID,
 } from "../../../hooks/useExperimentID";
-import useCanvasStyles from "../../../hooks/useCanvasStyles";
+import useExperimentAppearance from "../../../hooks/useExperimentAppearance";
 import useTrials from "../../../hooks/useTrials";
 import type { UploadedFile } from "../../../utils/codegen/types";
 import ExperimentBase from "./ExperimentBase";
@@ -45,7 +45,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
   };
 
   const { getTrial, getLoopTimeline, getLoop } = useTrials();
-  const { canvasStyles } = useCanvasStyles();
+  const { appearance } = useExperimentAppearance();
   const shared = {
     experimentID,
     evaluateCondition: evaluateConditionRuntimeCode,
@@ -55,7 +55,7 @@ export function useExperimentCode(uploadedFiles: UploadedFile[] = []) {
     getTrial,
     getLoopTimeline,
     getLoop,
-    canvasStyles,
+    appearance,
   };
 
   const { generateLocalExperiment } = LocalConfiguration(shared);

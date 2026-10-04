@@ -17,30 +17,10 @@ function setExperimentBase($, experimentID) {
   );
 }
 
-function resolveCanvasStyles(canvasStylesFromBody, trialDoc, experiment) {
-  let canvasStyles = canvasStylesFromBody;
-  if (!canvasStyles && trialDoc) {
-    for (const trial of trialDoc.trials || []) {
-      const saved = trial.columnMapping?.__canvasStyles?.value;
-      if (saved) {
-        canvasStyles = saved;
-        break;
-      }
-    }
-  }
-
-  if (experiment.appearanceSettings) {
-    canvasStyles = {
-      ...(canvasStyles || {}),
-      backgroundColor:
-        experiment.appearanceSettings.backgroundColor ??
-        canvasStyles?.backgroundColor,
-      fullScreen:
-        experiment.appearanceSettings.fullScreen ?? canvasStyles?.fullScreen,
-    };
-  }
-
-  return canvasStyles;
+function resolveExperimentAppearance(appearanceFromBody, experiment) {
+  return experiment.appearanceSettings
+    ? { ...appearanceFromBody, ...experiment.appearanceSettings }
+    : appearanceFromBody;
 }
 
 /* istanbul ignore next -- run HTML permutations are covered by route integration tests. */
@@ -61,9 +41,8 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
-    const canvasStyles = resolveCanvasStyles(
+    const canvasStyles = resolveExperimentAppearance(
       canvasStylesFromBody,
-      trialDoc,
       experiment,
     );
 
@@ -158,12 +137,8 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
-    // Merge the experiment-level appearance settings (owned by
-    // AppearanceSettings) so the preview background no longer depends on the
-    // per-trial __canvasStyles, which only stores the layout size.
-    const canvasStyles = resolveCanvasStyles(
+    const canvasStyles = resolveExperimentAppearance(
       canvasStylesFromBody,
-      trialDoc,
       experiment,
     );
 

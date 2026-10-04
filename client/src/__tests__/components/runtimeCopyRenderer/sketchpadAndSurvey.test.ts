@@ -5,7 +5,7 @@ import {
   renderPreviewSketchpadComponent,
   renderRuntimeCopy,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/runtimePreviewDom";
-import { canvasStyles, component, installCanvasContext } from "./testHarness";
+import { previewViewport, component, installCanvasContext } from "./testHarness";
 
 describe("runtime copy: sketchpad, upload and survey branches", () => {
   it("covers sketchpad control absence, color fallback and prompt placement", () => {
@@ -81,7 +81,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
       component("FileUploadResponseComponent", {
         button_label: { source: "typed", value: "Upload" },
       }),
-      canvasStyles,
+      previewViewport,
     );
     expect(fileCopy.element.querySelector("button")?.textContent).toBe(
       "Upload",
@@ -95,7 +95,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
         width: 0,
         height: 0,
       },
-      canvasStyles,
+      previewViewport,
     );
     expect(emptySurvey.element.id).toBe("jspsych-survey-surveyjs-container");
     emptySurvey.destroy();
@@ -116,7 +116,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
         validation_function: { source: "typed", value: validationFunction },
         min_width: { source: "typed", value: "50vw" },
       }),
-      canvasStyles,
+      previewViewport,
     );
     expect(surveyFunction).toHaveBeenCalled();
     themedSurvey.destroy();
@@ -141,7 +141,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
           },
           validation_function: { source: "typed", value: validationFunction },
         }),
-        canvasStyles,
+        previewViewport,
       );
       expect(applyTheme).toHaveBeenCalledWith(
         expect.objectContaining({ themeName: "plain" }),
@@ -172,7 +172,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
       component("InputResponseComponent", {
         input_font_size: { source: "typed", value: 24 },
       }),
-      canvasStyles,
+      previewViewport,
     );
     expect(inputFromConfig.element.querySelector("input")).not.toBeNull();
     inputFromConfig.destroy();
@@ -184,7 +184,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
         inputFontSize: undefined,
         inputWidth: undefined,
       } as TrialComponent,
-      canvasStyles,
+      previewViewport,
     );
     expect(inputDefault.element.querySelector("input")).not.toBeNull();
     inputDefault.destroy();
@@ -196,7 +196,7 @@ describe("runtime copy: sketchpad, upload and survey branches", () => {
         width: 0,
         height: 0,
       },
-      canvasStyles,
+      previewViewport,
     );
     expect(buttonDefault.element.querySelector("button")?.dataset.choice).toBe(
       "Button",

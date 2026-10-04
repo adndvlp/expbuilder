@@ -2,12 +2,13 @@ import type { RenderComponentProps } from "./types";
 
 type Args = Pick<
   RenderComponentProps,
-  | "canvasStyles"
+  | "previewViewport"
   | "comp"
   | "components"
   | "generateConfigFromComponents"
   | "onAutoSave"
   | "onRecordHistory"
+  | "shouldSkipMutation"
   | "setComponents"
   | "toJsPsychCoords"
 >;
@@ -20,6 +21,7 @@ export function useComponentMutations(args: Args) {
   };
 
   const handleComponentChange = (newAttrs: any) => {
+    if (args.shouldSkipMutation?.()) return;
     const { __transient, ...attrs } = newAttrs;
     if (!__transient) args.onRecordHistory?.();
 
@@ -35,14 +37,14 @@ export function useComponentMutations(args: Args) {
         );
       }
       if (!__transient && attrs.width !== undefined && attrs.width > 0) {
-        const width = args.canvasStyles
-          ? (attrs.width / args.canvasStyles.width) * 100
+        const width = args.previewViewport
+          ? (attrs.width / args.previewViewport.width) * 100
           : attrs.width;
         updated.config = withConfig(updated.config, "width", width);
       }
       if (!__transient && attrs.height !== undefined && attrs.height > 0) {
-        const height = args.canvasStyles
-          ? (attrs.height / args.canvasStyles.width) * 100
+        const height = args.previewViewport
+          ? (attrs.height / args.previewViewport.width) * 100
           : attrs.height;
         updated.config = withConfig(updated.config, "height", height);
       }
@@ -93,6 +95,7 @@ export function useComponentMutations(args: Args) {
   };
 
   const handleDragEnd = (id: string, event: any) => {
+    if (args.shouldSkipMutation?.()) return;
     const x = event.target.x();
     const y = event.target.y();
     const coordinates = args.toJsPsychCoords(x, y);

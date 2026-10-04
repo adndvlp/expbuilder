@@ -6,7 +6,7 @@ import {
   isHtmlSceneComponent,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/sceneModel";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   TrialComponent,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
@@ -28,12 +28,9 @@ function component(
   } as TrialComponent;
 }
 
-const canvasStyles: CanvasStyles = {
+const previewViewport: PreviewViewport = {
   width: 600,
   height: 400,
-  backgroundColor: "#fff",
-  fullScreen: true,
-  progressBar: false,
 };
 
 describe("coverage core branches: HTML scene model", () => {
@@ -86,7 +83,7 @@ describe("coverage core branches: HTML scene model", () => {
           height: { source: "typed", value: 25 },
         },
       }),
-      canvasStyles,
+      previewViewport,
     )!;
     expect(configured).toMatchObject({
       left: 150,
@@ -98,29 +95,29 @@ describe("coverage core branches: HTML scene model", () => {
     });
 
     expect(
-      getHtmlSceneNode(component("AudioComponent" as any), canvasStyles),
+      getHtmlSceneNode(component("AudioComponent" as any), previewViewport),
     ).toBeNull();
     expect(
       getHtmlSceneNode(
         component("HtmlComponent", { id: "metric" }),
-        canvasStyles,
+        previewViewport,
         { metric: { width: 10, height: 20 } },
       )!.width,
     ).toBe(10);
     expect(
       getHtmlSceneNode(
         component("HtmlComponent", { id: "fallback" }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 120, height: 40 });
     expect(
       getHtmlSceneNode(
         component("TextComponent", { width: 220, height: 60 }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 220, height: 60 });
     expect(
-      getHtmlSceneNode(component("SurveyComponent"), canvasStyles)!.height,
+      getHtmlSceneNode(component("SurveyComponent"), previewViewport)!.height,
     ).toBe(240);
 
     expect(
@@ -131,7 +128,7 @@ describe("coverage core branches: HTML scene model", () => {
             canvas_diameter: { source: "typed", value: 75 },
           },
         }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 75, height: 115 });
     expect(
@@ -142,7 +139,7 @@ describe("coverage core branches: HTML scene model", () => {
             canvas_height: { source: "typed", value: 90 },
           },
         }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 180, height: 130 });
     expect(
@@ -150,11 +147,11 @@ describe("coverage core branches: HTML scene model", () => {
         component("SliderResponseComponent", {
           config: { height: { source: "typed", value: 20 } },
         }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 300, height: 120 });
     expect(
-      getHtmlSceneNode(component("SliderResponseComponent"), canvasStyles),
+      getHtmlSceneNode(component("SliderResponseComponent"), previewViewport),
     ).toMatchObject({ width: 300, height: 120 });
 
     expect(
@@ -163,7 +160,7 @@ describe("coverage core branches: HTML scene model", () => {
           inputFontSize: 20,
           inputWidth: 240,
         } as any),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 240, height: 30 });
     expect(
@@ -174,31 +171,31 @@ describe("coverage core branches: HTML scene model", () => {
             input_font_size: { source: "typed", value: 18 },
           },
         }),
-        canvasStyles,
+        previewViewport,
       ),
     ).toMatchObject({ width: 300, height: 27 });
     const computedInput = getHtmlSceneNode(
       component("InputResponseComponent", {
         config: { input_font_size: { source: "typed", value: 10 } },
       }),
-      canvasStyles,
+      previewViewport,
     )!;
     expect(computedInput.width).toBeCloseTo(55);
     expect(computedInput.height).toBe(15);
 
     expect(
-      getHtmlSceneNode(component("ButtonResponseComponent"), canvasStyles),
+      getHtmlSceneNode(component("ButtonResponseComponent"), previewViewport),
     ).toMatchObject({ width: 80, height: 34 });
     expect(
-      getHtmlSceneNode(component("ImageComponent"), canvasStyles),
+      getHtmlSceneNode(component("ImageComponent"), previewViewport),
     ).toMatchObject({ width: 1, height: 1 });
     expect(
-      getHtmlSceneNode(component("FileUploadResponseComponent"), canvasStyles),
+      getHtmlSceneNode(component("FileUploadResponseComponent"), previewViewport),
     ).toMatchObject({ width: 120, height: 40 });
     expect(
       getHtmlSceneNode(
         component("TextComponent", { id: "no-z", zIndex: undefined }),
-        canvasStyles,
+        previewViewport,
       )!.zIndex,
     ).toBe(0);
 
@@ -208,7 +205,7 @@ describe("coverage core branches: HTML scene model", () => {
         component("TextComponent", { id: "low", zIndex: 1 }),
         component("AudioComponent" as any, { id: "ignored" }),
       ],
-      canvasStyles,
+      previewViewport,
     );
     expect(sorted.map((node) => node.id)).toEqual(["low", "high"]);
   });

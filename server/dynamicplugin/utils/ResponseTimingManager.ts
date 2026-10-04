@@ -119,8 +119,7 @@ export class ResponseTimingManager {
   private trial: any;
   private timing: any;
   private container: HTMLElement;
-  private canvasWidth: number;
-  private canvasHeight: number;
+  private getViewport: () => { width: number; height: number };
   private onFinish?: (
     timestamp?: number | null,
     options?: { force: boolean },
@@ -139,8 +138,9 @@ export class ResponseTimingManager {
     trial: any;
     timing: any;
     container: HTMLElement;
-    canvasWidth: number;
-    canvasHeight: number;
+    canvasWidth?: number;
+    canvasHeight?: number;
+    getViewport?: () => { width: number; height: number };
     onFinish?: (
       timestamp?: number | null,
       options?: { force: boolean },
@@ -149,8 +149,9 @@ export class ResponseTimingManager {
     this.trial = options.trial;
     this.timing = options.timing;
     this.container = options.container;
-    this.canvasWidth = options.canvasWidth;
-    this.canvasHeight = options.canvasHeight;
+    this.getViewport = options.getViewport ?? (() => ({
+      width: this.container.clientWidth, height: this.container.clientHeight,
+    }));
     this.onFinish = options.onFinish;
     this.enabled = resolveRawValue(this.trial.response_timing_enabled) !== false;
     this.data = this.createInitialData();
@@ -593,9 +594,9 @@ export class ResponseTimingManager {
   private computePointerCoordinates(clientX: number, clientY: number) {
     const rect = this.container.getBoundingClientRect();
     const canvasX =
-      rect.width > 0 ? ((clientX - rect.left) / rect.width) * this.canvasWidth : null;
+      rect.width > 0 ? ((clientX - rect.left) / rect.width) * this.getViewport().width : null;
     const canvasY =
-      rect.height > 0 ? ((clientY - rect.top) / rect.height) * this.canvasHeight : null;
+      rect.height > 0 ? ((clientY - rect.top) / rect.height) * this.getViewport().height : null;
     return {
       canvasX,
       canvasY,

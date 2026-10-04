@@ -13,30 +13,32 @@ const RenderComponent = ({
   setSelectedId,
   components,
   uploadedFiles = [],
-  canvasStyles,
+  previewViewport,
   htmlSceneMetrics = {},
   setActiveDomId,
   editingTextId,
   onEditTextStart,
   onRecordHistory,
+  shouldSkipMutation,
   onSnap,
   onGuidesChange,
 }: Props) => {
   const isSelected = comp.id === selectedId || selectedIds.includes(comp.id);
   const { handleComponentChange, handleDragEnd } = useComponentMutations({
-    canvasStyles,
+    previewViewport,
     comp,
     components,
     generateConfigFromComponents,
     onAutoSave,
     onRecordHistory,
+    shouldSkipMutation,
     setComponents,
     toJsPsychCoords,
   });
 
   return (
     <VisualComponentRenderer
-      canvasStyles={canvasStyles}
+      previewViewport={previewViewport}
       comp={comp}
       editingTextId={editingTextId}
       htmlSceneMetrics={htmlSceneMetrics}

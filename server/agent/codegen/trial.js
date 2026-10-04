@@ -41,7 +41,11 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
             props[key] = val.map(comp => {
               const resolved = {}
               for (const ck of Object.keys(comp)) {
-                resolved[ck] = resolveValue(comp[ck], row, parameters, ck)
+                if (ck === 'button_html') continue
+                const entry = comp[ck]
+                resolved[ck] = entry && typeof entry === 'object' && 'source' in entry
+                  ? resolveValue(entry, row, parameters, ck)
+                  : entry
               }
               return resolved
             })

@@ -1,13 +1,16 @@
 import React, { useState } from "react";
-import { CanvasStyles } from "./types";
+import { PreviewViewport } from "./types";
+import GridToggleButton from "./previewViewport/GridToggleButton";
 import {
   DEVICE_PRESETS,
   type DevicePreset,
-} from "./canvasStyles/devicePresets";
+} from "./previewViewport/devicePresets";
 
 type Props = {
-  canvasStyles: CanvasStyles;
-  setCanvasStyles: React.Dispatch<React.SetStateAction<CanvasStyles>>;
+  gridEnabled?: boolean;
+  onToggleGrid?: () => void;
+  previewViewport: PreviewViewport;
+  setPreviewViewport: React.Dispatch<React.SetStateAction<PreviewViewport>>;
   stageScale: number;
   // Run Demo (ExperimentPreview) integration
   onRunDemo: () => void;
@@ -15,36 +18,39 @@ type Props = {
   isDemoRunning: boolean;
 };
 
-function CanvasStylesBar({
-  canvasStyles,
-  setCanvasStyles,
+function PreviewViewportBar({
+  gridEnabled = true,
+  onToggleGrid,
+  previewViewport,
+  setPreviewViewport,
   stageScale,
   onRunDemo,
   onStopDemo,
   isDemoRunning,
 }: Props) {
   const [showCustomSize, setShowCustomSize] = useState(false);
-  const [customW, setCustomW] = useState(String(canvasStyles.width));
-  const [customH, setCustomH] = useState(String(canvasStyles.height));
+  const [customW, setCustomW] = useState(String(previewViewport.width));
+  const [customH, setCustomH] = useState(String(previewViewport.height));
 
   const isDeviceActive = (preset: DevicePreset) =>
-    canvasStyles.width === preset.width &&
-    canvasStyles.height === preset.height;
+    previewViewport.width === preset.width &&
+    previewViewport.height === preset.height;
 
   const handleDeviceSelect = (preset: DevicePreset) => {
     setShowCustomSize(false);
-    setCanvasStyles((prev) => ({
-      ...prev,
+    setCustomW(String(preset.width));
+    setCustomH(String(preset.height));
+    setPreviewViewport({
       width: preset.width,
       height: preset.height,
-    }));
+    });
   };
 
   const applyCustomSize = () => {
     const w = parseInt(customW, 10);
     const h = parseInt(customH, 10);
     if (w > 0 && h > 0) {
-      setCanvasStyles((prev) => ({ ...prev, width: w, height: h }));
+      setPreviewViewport({ width: w, height: h });
       setShowCustomSize(false);
     }
   };
@@ -87,7 +93,7 @@ function CanvasStylesBar({
           letterSpacing: "0.3px",
         }}
       >
-        Experiment Layout
+        Screen Preview
       </span>
       {divider}
 
@@ -98,7 +104,7 @@ function CanvasStylesBar({
           const active = isDeviceActive(preset);
           return (
             <button
-              key={preset.label}
+              key={`${preset.label}-${preset.width}-${preset.height}`}
               onClick={() => handleDeviceSelect(preset)}
               title={`${preset.label} — ${preset.description}`}
               style={{
@@ -229,7 +235,7 @@ function CanvasStylesBar({
           fontFamily: "monospace",
         }}
       >
-        {canvasStyles.width}×{canvasStyles.height}px
+        {previewViewport.width}×{previewViewport.height}px
       </span>
 
       {divider}
@@ -248,6 +254,7 @@ function CanvasStylesBar({
       </span>
 
       {/* Spacer */}
+      <GridToggleButton enabled={gridEnabled} onToggle={onToggleGrid} />
       <div style={{ flex: 1 }} />
 
       {/* Run / Stop Demo button */}
@@ -284,4 +291,4 @@ function CanvasStylesBar({
   );
 }
 
-export default CanvasStylesBar;
+export default PreviewViewportBar;

@@ -1,5 +1,5 @@
 import { UploadedFile } from "./useExperimentCode";
-import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { ExperimentAppearance } from "../../../appearance";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
 import { auth } from "../../../../../lib/firebase";
@@ -37,7 +37,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
-  canvasStyles?: CanvasStyles;
+  appearance?: ExperimentAppearance;
 };
 
 export default function PublicConfiguration({
@@ -50,7 +50,7 @@ export default function PublicConfiguration({
   getTrial,
   getLoopTimeline,
   getLoop,
-  canvasStyles,
+  appearance,
 }: Props) {
   const { isDevMode, code, customInitJsPsychParams, customPreInitCode } =
     useDevMode();
@@ -61,10 +61,10 @@ export default function PublicConfiguration({
     getTrial,
     getLoopTimeline,
     getLoop,
-    canvasStyles,
+    appearance,
   });
 
-  const progressBar = canvasStyles?.progressBar ?? false;
+  const progressBar = appearance?.progressBar ?? false;
 
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;

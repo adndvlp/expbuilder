@@ -68,12 +68,14 @@ describe("coverage trial designer KonvaCanvas", () => {
           {comp.id}
         </button>
       ),
-      canvasStyles: {
+      previewViewport: {
         width: 500,
         height: 400,
+      },
+      appearance: {
+        backgroundColor: "#fff",
         fullScreen: false,
         progressBar: false,
-        backgroundColor: "#fafafa",
       },
     };
     const { rerender } = render(

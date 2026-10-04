@@ -8,24 +8,25 @@ import {
   type ConfigPatch,
   typedValue,
 } from "../componentConfigUpdates";
-import {
-  snapComponentBox,
-  type CanvasGuide,
-  type SnapBox,
-} from "../editorGuides";
+import type { CanvasGuide, SnapBox } from "../editorGuides";
+import type { SnapNodeContext } from "../snapKonvaNode";
+import { useDesignerSnapping } from "./useDesignerSnapping";
 import type { HtmlSceneMetrics } from "../experimentalScene/sceneModel";
 import { getDefaultConfig } from "../utils/getDefaultConfig";
 import renderComponent from "../renderComponent";
 import handleDrop from "../useHandleDrop";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   ComponentType,
   KonvaTrialDesignerProps,
   TrialComponent,
 } from "../types";
 
 interface Args {
-  canvasStyles: CanvasStyles;
+  isOpen: boolean;
+  gridEnabled: boolean;
+  stageScale: number;
+  previewViewport: PreviewViewport;
   components: TrialComponent[];
   editingTextId: string | null;
   generateConfig: (components: TrialComponent[]) => Record<string, any>;
@@ -50,6 +51,7 @@ interface Args {
 }
 
 export function useDesignerActions(args: Args) {
+  const snapping = useDesignerSnapping(args);
   const handleCanvasContextMenu = useCallback(
     (request: CanvasContextMenuRequest) => {
       if (args.editingTextId) return;
@@ -68,11 +70,6 @@ export function useDesignerActions(args: Args) {
       });
     },
     [args.editingTextId],
-  );
-
-  const handleSnap = useCallback(
-    (box: SnapBox) => snapComponentBox(box, args.components, args.canvasStyles),
-    [args.components, args.canvasStyles],
   );
 
   const patchTextComponent = useCallback(
@@ -122,13 +119,15 @@ export function useDesignerActions(args: Args) {
       setSelectedId: args.setSelectedId,
       components: args.components,
       uploadedFiles: args.uploadedFiles,
-      canvasStyles: args.canvasStyles,
+      previewViewport: args.previewViewport,
       htmlSceneMetrics,
       setActiveDomId,
       editingTextId: args.editingTextId,
       onEditTextStart: args.setEditingTextId,
-      onRecordHistory: args.pushHistory,
-      onSnap: handleSnap,
+      onRecordHistory: snapping.recordHistory,
+      shouldSkipMutation: snapping.shouldSkipMutation,
+      onSnap: (box: SnapBox, context?: SnapNodeContext) =>
+        snapping.snap(box, context, htmlSceneMetrics),
       onGuidesChange: args.setActiveGuides,
     });
 
@@ -152,6 +151,10 @@ export function useDesignerActions(args: Args) {
     });
 
   return {
+    onCanvasPointerDown: snapping.rememberPointer,
+    onCanvasDragStart: snapping.beginDrag,
+    onCanvasDragEnd: snapping.endDrag,
+    onCanvasDragCancel: () => snapping.cancelDrag(),
     commitTextEdit,
     handleCanvasContextMenu,
     onDrop,

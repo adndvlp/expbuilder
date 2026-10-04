@@ -1,11 +1,10 @@
+import { relativeCenter } from "../../../../../../../../../shared/dynamic-layout/geometry";
+import type { PreviewViewport } from "../types";
 export type CoordinateMode = "canvas" | "none";
 
 export type RenderContext = {
   coordinateMode?: CoordinateMode;
-  canvasStyles?: {
-    width?: number;
-    height?: number;
-  };
+  previewViewport?: PreviewViewport;
 };
 
 export type Padding = {
@@ -65,10 +64,14 @@ export function applyPreviewPosition(
   element.style.transform = "translate(-50%, -50%)";
 
   const coordinates = resolvePreviewParam(config.coordinates, { x: 0, y: 0 });
-  const x = Number(coordinates?.x ?? 0);
-  const y = Number(coordinates?.y ?? 0);
-  const width = Number(context.canvasStyles?.width ?? 1024);
-  const height = Number(context.canvasStyles?.height ?? 768);
-  element.style.left = `${width / 2 + (x / 100) * (width / 2)}px`;
-  element.style.top = `${height / 2 - (y / 100) * (height / 2)}px`;
+  const center = relativeCenter(coordinates, {
+    width: Number(
+      context.previewViewport?.width ?? element.parentElement?.clientWidth ?? 0,
+    ),
+    height: Number(
+      context.previewViewport?.height ?? element.parentElement?.clientHeight ?? 0,
+    ),
+  });
+  element.style.left = `${center.x}px`;
+  element.style.top = `${center.y}px`;
 }

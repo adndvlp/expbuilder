@@ -7,6 +7,7 @@ export const acceptanceCoverage = {
 };
 
 export const verticalCapabilities = {
+  "RUNTIME-RESPONSIVE-VIEWPORT": "responsive-viewport-runtime.spec.ts",
   "RUNTIME-LOOP-SIBLING-ENTRY": "loop-trial-routing-runtime.spec.ts",
   "RUNTIME-LOOP-CSV-REPETITIONS": "loop-iteration-runtime.spec.ts",
   "RUNTIME-LOOP-CSV-BRANCH": "loop-iteration-runtime.spec.ts",
