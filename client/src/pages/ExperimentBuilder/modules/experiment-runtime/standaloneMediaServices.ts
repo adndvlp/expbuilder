@@ -56,6 +56,14 @@ export function createStandaloneMediaServices(
       ["audio", "video"].flatMap((type) =>
         assets[type].map((url: string) => {
           const key = `${type}:${url}`;
+          if (
+            jsPsych.pluginAPI.expBuilderMedia &&
+            !jsPsych.pluginAPI.expBuilderMedia.has(
+              type as "audio" | "video",
+              url,
+            )
+          )
+            loaded.delete(key);
           if (!loaded.has(key)) {
             const ready = run(
               () =>
@@ -100,6 +108,13 @@ export function createStandaloneMediaServices(
             void ready.catch(() => {
               if (loaded.get(key) === ready) loaded.delete(key);
             });
+            if (jsPsych.pluginAPI.expBuilderMedia)
+              void ready.then(
+                () => {
+                  if (loaded.get(key) === ready) loaded.delete(key);
+                },
+                () => {},
+              );
           }
           return loaded.get(key);
         }),

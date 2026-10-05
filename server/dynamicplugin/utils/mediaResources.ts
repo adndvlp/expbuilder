@@ -18,7 +18,7 @@ type MediaLoadRuntime = {
   pluginAPI: Partial<
     Pick<
       MediaPreparationRuntime["pluginAPI"],
-      "preloadAudio" | "preloadVideo" | "getVideoBuffer"
+      "preloadAudio" | "preloadVideo" | "getVideoBuffer" | "expBuilderMedia"
     >
   >;
 };
@@ -120,6 +120,11 @@ function prepareJsPsychMedia(
         void current.ready.then(
           () => {
             current.settled = true;
+            if (
+              jsPsych.pluginAPI.expBuilderMedia &&
+              registry!.get(key) === current
+            )
+              registry!.delete(key);
           },
           () => {
             current.settled = true;

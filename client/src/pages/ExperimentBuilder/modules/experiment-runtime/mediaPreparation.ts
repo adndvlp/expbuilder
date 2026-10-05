@@ -36,8 +36,11 @@ export function createMediaPreparation(
             ) =>
               mode === "data-only"
                 ? plugin.simulate!(trial, mode, options, onLoad)
-                : this.execute(trial, () =>
-                    plugin.simulate!(trial, mode, options, onLoad),
+                : this.execute(
+                    trial,
+                    () => plugin.simulate!(trial, mode, options, onLoad),
+                    undefined,
+                    jsPsych.getDisplayElement?.(),
                   ),
           });
         }
@@ -46,6 +49,7 @@ export function createMediaPreparation(
         trial: RuntimeMediaTrial,
         invoke: () => unknown,
         onLoad?: () => void,
+        display?: HTMLElement,
       ) {
         const description = jsPsych.getCurrentTrial();
         let finish!: () => void;
@@ -58,15 +62,31 @@ export function createMediaPreparation(
             ? trial.asset_preload_timeout
             : 10000;
         const assets = services!.collect(trial);
+        const releaseMedia = jsPsych.pluginAPI.expBuilderMedia?.reserve(
+          assets,
+          true,
+        );
+        const releaseElements = display
+          ? jsPsych.pluginAPI.expBuilderMedia?.trackElements(display)
+          : undefined;
         const images = services!.reserveImages(assets.images, timeoutMs);
         const controller = new AbortController();
         let retired = false;
         const release = () => {
+          if (retired) return;
           retired = true;
           controller.abort();
+          releaseElements?.();
+          releaseMedia?.();
           images.release();
           finish();
         };
+        const cleanup = () => {
+          owners.delete(release);
+          completions.delete(description);
+          release();
+        };
+        let returnedResult = false;
         owners.add(release);
         try {
           await Promise.all([
@@ -79,14 +99,17 @@ export function createMediaPreparation(
             result instanceof Promise ||
             (result &&
               typeof (result as { then?: unknown }).then === "function")
-          )
-            return await result;
+          ) {
+            const data = await result;
+            returnedResult = true;
+            // Return data to jsPsych first; its on_finish completes the ownership scope.
+            void finished.then(cleanup);
+            return data;
+          }
           onLoad?.();
           await finished; // jsPsych's finishTrial wins the result race for sync plugins.
         } finally {
-          owners.delete(release);
-          completions.delete(description);
-          release();
+          if (!returnedResult) cleanup();
         }
       }
       trial(
@@ -105,6 +128,7 @@ export function createMediaPreparation(
           trial,
           () => plugins.get(this)!.trial(display, trial, load),
           load,
+          display,
         );
       }
     };
@@ -122,6 +146,13 @@ export function createMediaPreparation(
       if (Array.isArray(node.timeline)) {
         install(node.timeline, type);
         continue;
+      }
+      if (type?.info?.name === "preload") {
+        const onStart = node.on_start;
+        node.on_start = function (trial) {
+          jsPsych.pluginAPI.expBuilderMedia?.beginManualPreload();
+          return onStart?.call(this, trial);
+        };
       }
       if (!type?.info || ["plugin-dynamic", "preload"].includes(type.info.name))
         continue;
@@ -141,6 +172,7 @@ export function createMediaPreparation(
     dispose: () => {
       for (const release of owners) release();
       owners.clear();
+      jsPsych.pluginAPI.expBuilderMedia?.dispose();
     },
   };
 }

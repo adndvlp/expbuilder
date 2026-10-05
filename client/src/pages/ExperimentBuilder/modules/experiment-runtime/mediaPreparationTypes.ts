@@ -20,11 +20,16 @@ export type RuntimePluginClass = {
 export type RuntimeMediaTrial = Record<string, unknown> & {
   type?: RuntimePluginClass;
   timeline?: RuntimeMediaTrial[];
+  on_start?: (trial: RuntimeMediaTrial) => unknown;
   on_finish?: (data: unknown) => unknown;
 };
 export type MediaPreparationRuntime = {
   getCurrentTrial(): object;
+  getDisplayElement?(): HTMLElement;
   pluginAPI: {
+    expBuilderMedia?: ManagedMediaAPI;
+    audioContext?(): AudioContext | null;
+    cancelPreloads?(): void;
     getAutoPreloadList(trials: RuntimeMediaTrial[]): PreparedAssets;
     getVideoBuffer?(url: string): unknown;
     preloadAudio(
@@ -53,3 +58,4 @@ export type MediaPreparationServices = {
     signal?: AbortSignal,
   ): Promise<unknown>;
 };
+import type { ManagedMediaAPI } from "./managedMediaTypes";

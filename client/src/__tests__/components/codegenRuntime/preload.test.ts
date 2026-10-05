@@ -18,7 +18,10 @@ function runGeneratedExperiment(
     fullScreen: false,
     progressBar: false,
   });
-  new Function("jsPsych", "DynamicPlugin", code)({ run }, dynamic);
+  new Function("jsPsych", "DynamicPlugin", code)(
+    { run, pluginAPI: {} },
+    dynamic,
+  );
   expect(run).toHaveBeenCalledOnce();
   return { timeline: run.mock.calls[0][0], dynamic, services, code };
 }
@@ -53,7 +56,7 @@ describe("generated media preparation", () => {
     const url = "https://cdn.test/download?token=abc&file=portrait%20%22one%22";
     const { code } = runGeneratedExperiment([{ url, type: "img" }]);
     const run = vi.fn();
-    new Function("jsPsych", code)({ run });
+    new Function("jsPsych", code)({ run, pluginAPI: {} });
     expect(run).toHaveBeenCalledWith([{ type: "generated-trial" }]);
     expect(code).toContain(JSON.stringify(url));
   });
@@ -66,7 +69,11 @@ describe("generated media preparation", () => {
       ],
     );
     expect(timeline).toEqual([
-      { type: { info: { name: "preload" } }, images: ["manual.png"] },
+      {
+        type: { info: { name: "preload" } },
+        images: ["manual.png"],
+        on_start: expect.any(Function),
+      },
     ]);
   });
 });

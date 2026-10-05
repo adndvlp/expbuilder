@@ -31,6 +31,7 @@ import {
   collectUpcomingDynamicAssets,
 } from "./utils/mediaAssets";
 import { retainHtmlImages } from "./utils/mediaResources";
+import { getMediaOwnership } from "./utils/mediaOwnership";
 import {
   getMediaLibrary,
   mediaPreparationServices,
@@ -1221,6 +1222,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     let trialEnded = false;
     let releaseTrialBitmaps: (() => void) | null = null;
     let releaseTrialHtmlImages: (() => void) | null = null;
+    let releaseTrialMedia: (() => void) | undefined;
     let trialPreloadController: AbortController | null = null;
     let trialEndedByResponse = false;
     let visualFrameBoundaryHandoff = false;
@@ -1851,6 +1853,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       responseComponents.forEach(({ instance }) => {
         if (instance.destroy) instance.destroy();
       });
+      releaseTrialMedia?.();
+      releaseTrialMedia = undefined;
 
       // Clean up resize observer
       viewportController.dispose();
@@ -1969,11 +1973,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         );
         void upcomingHtml.ready.catch(() => {});
         const imageController = new AbortController();
+        const releaseUpcomingMedia = getMediaOwnership(this.jsPsych)?.reserve(
+          upcomingAssets,
+        );
         clearPrefetchedBitmaps();
         releasePrefetchedBitmaps = () => {
           releaseUpcoming();
           upcomingHtml.release();
           imageController.abort();
+          releaseUpcomingMedia?.();
         };
         preloadAssets(
           this.jsPsych,
@@ -2002,17 +2010,20 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       responseTiming.detach();
       viewportController.dispose();
       for (const { instance } of allComponents) instance.destroy?.();
+      releaseTrialMedia?.();
+      releaseTrialMedia = undefined;
       mainContainer.remove();
       DynamicPlugin.dispose();
       rejectTrial(error);
     };
 
+    const assets = collectDynamicAssets(
+      { components: allComponents.map(comp => comp.config) },
+      getMediaLibrary(this.jsPsych),
+    );
+    releaseTrialMedia = getMediaOwnership(this.jsPsych)?.reserve(assets, true);
     if (trial.preload_assets !== false) {
       trialPreloadController = new AbortController();
-      const assets = collectDynamicAssets(
-        { components: allComponents.map(comp => comp.config) },
-        getMediaLibrary(this.jsPsych),
-      );
       const trialHtml = retainHtmlImages(
         assets.htmlImages,
         resolveTimingMs(trial.asset_preload_timeout, 10000) ?? 10000,

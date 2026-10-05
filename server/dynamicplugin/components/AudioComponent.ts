@@ -43,6 +43,7 @@ class AudioComponent {
   private audio: any = null;
   private element: HTMLElement | null = null;
   private context: any = null;
+  private retired = false;
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -61,8 +62,17 @@ class AudioComponent {
     container: HTMLElement,
     config: any
   ): Promise<HTMLElement | null> {
+    this.retired = false;
     // Get audio player from jsPsych
-    this.audio = await this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus);
+    let audio: unknown;
+    try {
+      audio = await this.jsPsych.pluginAPI.getAudioPlayer(config.stimulus);
+    } catch (error) {
+      if (this.retired) return null;
+      throw error;
+    }
+    if (this.retired) return null;
+    this.audio = audio;
 
     // Only create visible element if controls are requested
     if (config.show_controls) {
@@ -88,9 +98,11 @@ class AudioComponent {
       config.autoplay !== undefined ? config.autoplay : true;
     if (shouldAutoplay && this.audio) {
       const playAudio = async () => {
+        if (this.retired) return;
         try {
           await this.audio.play();
         } catch (error) {
+          if (this.retired) return;
           console.warn("Audio autoplay failed:", error);
           // If autoplay fails, could show controls or notify user
           if (this.element) {
@@ -178,6 +190,7 @@ class AudioComponent {
    * Remove the audio element from DOM and clean up
    */
   destroy() {
+    this.retired = true;
     if (this.audio) {
       this.audio.stop();
     }

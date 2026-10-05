@@ -94,6 +94,8 @@ class VideoComponent {
   private videoElement: HTMLVideoElement | null = null;
   private wrapper: HTMLElement | null = null;
   private stopped: boolean = false;
+  private retired = false;
+  private events = new AbortController();
 
   constructor(jsPsych: any) {
     this.jsPsych = jsPsych;
@@ -108,6 +110,9 @@ class VideoComponent {
    * @returns The rendered video element
    */
   render(container: HTMLElement, config: any): HTMLVideoElement {
+    this.retired = false;
+    this.stopped = false;
+    this.events = new AbortController();
     // Helper to map coordinate values
 
     // Create wrapper with coordinates
@@ -169,13 +174,9 @@ class VideoComponent {
 
     if (!videoPreloadBlob) {
       // Add video sources
-      for (let filename of config.stimulus) {
-        if (filename.indexOf("?") > -1) {
-          filename = filename.substring(0, filename.indexOf("?"));
-        }
-        const type = filename
-          .substring(filename.lastIndexOf(".") + 1)
-          .toLowerCase();
+      for (const filename of config.stimulus) {
+        const path = filename.split(/[?#]/)[0];
+        const type = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
 
         if (type === "mov") {
           console.warn(
@@ -202,16 +203,19 @@ class VideoComponent {
         "loadeddata",
         () => {
           const startPlayback = () => {
+            if (this.retired) return;
             // Try with audio first
             const playPromise = videoElement.play();
             if (playPromise !== undefined) {
               playPromise.catch((error) => {
+                if (this.retired) return;
                 console.warn("Autoplay with audio failed, trying muted:", error);
                 // If autoplay with audio fails, try muted
                 videoElement.muted = true;
                 videoElement
                   .play()
                   .then(() => {
+                    if (this.retired) return;
                     console.log("Playing muted - click video to unmute");
                     // Add click listener to unmute
                     videoElement.addEventListener(
@@ -219,10 +223,11 @@ class VideoComponent {
                       () => {
                         videoElement.muted = false;
                       },
-                      { once: true },
+                      { once: true, signal: this.events.signal },
                     );
                   })
                   .catch((err) => {
+                    if (this.retired) return;
                     console.error("Autoplay failed completely:", err);
                     videoElement.controls = true;
                   });
@@ -236,7 +241,7 @@ class VideoComponent {
             startPlayback();
           }
         },
-        { once: true },
+        { once: true, signal: this.events.signal },
       );
     }
 
@@ -271,12 +276,16 @@ class VideoComponent {
       typeof config.stop === "number" &&
       !isNaN(config.stop)
     ) {
-      videoElement.addEventListener("timeupdate", () => {
-        if (videoElement.currentTime >= config.stop && !this.stopped) {
-          this.stopped = true;
-          videoElement.pause();
-        }
-      });
+      videoElement.addEventListener(
+        "timeupdate",
+        () => {
+          if (videoElement.currentTime >= config.stop && !this.stopped) {
+            this.stopped = true;
+            videoElement.pause();
+          }
+        },
+        { signal: this.events.signal },
+      );
     }
 
     this.videoElement = videoElement;
@@ -376,9 +385,18 @@ class VideoComponent {
    * Remove the video from DOM and clean up
    */
   destroy() {
+    this.retired = true;
+    this.events.abort();
     if (this.videoElement) {
       this.videoElement.pause();
-      this.videoElement.onended = () => {};
+      this.videoElement.onended = null;
+      this.videoElement.onseeked = null;
+      this.videoElement.onplaying = null;
+      this.videoElement.srcObject = null;
+      this.videoElement.removeAttribute("src");
+      for (const source of this.videoElement.querySelectorAll("source"))
+        source.removeAttribute("src");
+      this.videoElement.load();
     }
     if (this.wrapper && this.wrapper.parentNode) {
       this.wrapper.parentNode.removeChild(this.wrapper);

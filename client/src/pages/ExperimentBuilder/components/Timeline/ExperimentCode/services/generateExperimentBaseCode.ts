@@ -3,6 +3,8 @@ import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
 import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";
 import { createStandaloneMediaServices } from "../../../../modules/experiment-runtime/standaloneMediaServices";
 import { createMediaPreparation } from "../../../../modules/experiment-runtime/mediaPreparation";
+import { installManagedMediaAPI } from "../../../../modules/experiment-runtime/managedMediaAPI";
+import { createManagedAudioPlayer } from "../../../../modules/experiment-runtime/managedAudioPlayer";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -78,6 +80,7 @@ ${codes.join("\n\n")}
 
     const mediaLibrary = ${JSON.stringify(library)};
     window.ExpBuilderMediaPreparation?.dispose();
+    (${installManagedMediaAPI.toString()})(jsPsych, ${createManagedAudioPlayer.toString()});
     window.ExpBuilderMediaPreparation = (${createMediaPreparation.toString()})(
       jsPsych,
       mediaLibrary,
