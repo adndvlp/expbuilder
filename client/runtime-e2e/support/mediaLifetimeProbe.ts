@@ -1,10 +1,6 @@
 import type { Page } from "@playwright/test";
 
 export async function installMediaLifetimeProbe(page: Page, htmlAudio = false) {
-  // These scenarios do not use eye tracking; avoid unrelated model downloads.
-  await page.route("**/jspsych-bundle/webgazer.js", (route) =>
-    route.fulfill({ contentType: "application/javascript", body: "" }),
-  );
   await page.addInitScript((html) => {
     let initialize: (options: unknown) => unknown;
     Object.defineProperty(window, "initJsPsych", {

@@ -108,7 +108,12 @@ test("reuses the image surface, retires old textures and disposes bridged contex
     page.getByRole("button", { name: "Continue", exact: true }),
   ).toBeVisible();
   await expect
-    .poll(async () => (await gpuInventory(page)).every((entry) => entry.lost))
+    // isContextLost() changes before the asynchronous webglcontextlost event.
+    .poll(async () =>
+      (await gpuInventory(page)).every(
+        (entry) => entry.lost && entry.losses === 1,
+      ),
+    )
     .toBe(true);
   const finalInventory = await gpuInventory(page);
   expect(finalInventory).toHaveLength(3);

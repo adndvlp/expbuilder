@@ -4,6 +4,10 @@
  * with special handling for webgazer and survey.
  * @module utils/plugin-scripts
  */
+import {
+  WEBGAZER_PLUGINS,
+  getWebgazerPluginsFromCode,
+} from "./webgazer-assets.js";
 
 // ---------------------------------------------------------------------------
 // Version map — keep in sync with jspsych-bundler/package.json dependencies
@@ -111,7 +115,17 @@ function pluginUrl(plugin) {
  * ]);
  */
 export function getPluginScripts(pluginNames) {
-  const uniquePlugins = [...new Set(pluginNames.filter(Boolean))];
+  // ExpBuilder's grouped calibration trial contains several jsPsych plugins;
+  // there is no @jspsych/webgazer package.
+  const uniquePlugins = [
+    ...new Set(
+      pluginNames
+        .filter(Boolean)
+        .flatMap((name) =>
+          name === "webgazer" ? Object.values(WEBGAZER_PLUGINS) : [name],
+        ),
+    ),
+  ];
 
   const scriptUrls = [];
   const styleUrls = [];
@@ -149,11 +163,25 @@ export function getPluginScripts(pluginNames) {
  * Convenience wrapper: extracts plugin names from a trials array and calls
  * {@link getPluginScripts}.
  *
- * @param {Array<{ plugin?: string }>} trials - Trial objects from db.data.trials[].trials
+ * @param {Array<{ plugin?: string, parameters?: object }>} trials - Includes trials inside loops.
+ * @param {string} [generatedCode] - Also resolves eye tracking in custom hooks.
  * @returns {{ scriptUrls: string[], styleUrls: string[] }}
  */
-export function getPluginScriptsFromTrials(trials) {
-  const pluginNames = (trials ?? []).map((t) => t.plugin).filter(Boolean);
+export function getPluginScriptsFromTrials(trials, generatedCode = "") {
+  const extensionPlugins = {
+    ...WEBGAZER_PLUGINS,
+    jsPsychExtensionMouseTracking: "extension-mouse-tracking",
+    jsPsychExtensionRecordVideo: "extension-record-video",
+  };
+  const pluginNames = (trials ?? []).flatMap((trial) => {
+    const extension =
+      trial.parameters?.includesExtensions &&
+      Object.hasOwn(extensionPlugins, trial.parameters.extensionType)
+        ? extensionPlugins[trial.parameters.extensionType]
+        : undefined;
+    return [trial.plugin, extension].filter(Boolean);
+  });
+  pluginNames.push(...getWebgazerPluginsFromCode(generatedCode));
   return getPluginScripts(pluginNames);
 }
 

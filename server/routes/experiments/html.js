@@ -5,6 +5,7 @@ import { Router } from "express";
 import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
 import { db, ensureDbData } from "../../utils/db.js";
 import { ensureTemplate } from "../../utils/templates.js";
+import { configureLocalWebgazer } from "../../utils/webgazer-assets.js";
 import { applyGeneratedArtifact } from "./artifact.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
 
@@ -62,6 +63,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
 
     setExperimentBase($, experimentID);
+    configureLocalWebgazer($, generatedCode);
     applyGeneratedArtifact($, generatedCode, canvasStyles, {
       requiresDynamicPlugin: trialDoc?.trials?.some(
         (trial) => trial.plugin === "plugin-dynamic",
@@ -158,6 +160,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     }
 
     setExperimentBase($, experimentID);
+    configureLocalWebgazer($, generatedCode);
     applyGeneratedArtifact($, generatedCode, canvasStyles, {
       requiresDynamicPlugin: trialDoc?.trials?.some(
         (trial) => trial.plugin === "plugin-dynamic",

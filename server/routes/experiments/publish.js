@@ -38,7 +38,7 @@ function getDynamicPluginCdn() {
   return `https://unpkg.com/${dynamicName}@${dynamicVersion}/dist/index.iife.js`;
 }
 
-function injectPublicAssets($, experiment, experimentID) {
+function injectPublicAssets($, experiment, experimentID, generatedCode) {
   $('link[href*="jspsych-bundle"]').remove();
   $('script[src*="jspsych-bundle"]').remove();
   $('script[src*="webgazer"]').remove();
@@ -56,6 +56,7 @@ function injectPublicAssets($, experiment, experimentID) {
   }
   const { scriptUrls, styleUrls } = getPluginScriptsFromTrials(
     trialDoc?.trials ?? [],
+    generatedCode,
   );
   for (const url of styleUrls) {
     $("head").append(
@@ -228,7 +229,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     );
     applyGeneratedArtifact($, generatedPublicCode);
 
-    injectPublicAssets($, experiment, experimentID);
+    injectPublicAssets($, experiment, experimentID, generatedPublicCode);
 
     const { mediaFiles, oversizedFiles } = collectMediaFiles(experiment.name);
     if (oversizedFiles.length > 0) {

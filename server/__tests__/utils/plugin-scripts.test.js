@@ -23,7 +23,9 @@ describe("getPluginScripts", () => {
 
   test("uses pinned version for known plugin", () => {
     const { scriptUrls } = getPluginScripts(["plugin-survey"]);
-    expect(scriptUrls[0]).toBe("https://unpkg.com/@jspsych/plugin-survey@4.0.0");
+    expect(scriptUrls[0]).toBe(
+      "https://unpkg.com/@jspsych/plugin-survey@4.0.0",
+    );
   });
 
   test("uses default version for unknown plugin", () => {
@@ -45,7 +47,9 @@ describe("getPluginScripts", () => {
     expect(WEBGAZER_JS_SHA256).toBe(
       "65840eaae573c10c1d015b432b447c04607bb2d709be6302482c0e7582975dde",
     );
-    expect(scriptUrls[scriptUrls.length - 1]).toMatch(/plugin-webgazer-calibrate/);
+    expect(scriptUrls[scriptUrls.length - 1]).toMatch(
+      /plugin-webgazer-calibrate/,
+    );
   });
 
   test("adds survey CSS for plugin-survey", () => {
@@ -73,6 +77,91 @@ describe("getPluginScripts", () => {
 });
 
 describe("getPluginScriptsFromTrials", () => {
+  test("ordinary plugins do not load eye tracking libraries", () => {
+    const { scriptUrls } = getPluginScriptsFromTrials([
+      { plugin: "plugin-dynamic" },
+      { plugin: "plugin-video-button-response" },
+    ]);
+    expect(scriptUrls.some((url) => url.includes("webgazer"))).toBe(false);
+  });
+
+  test("the grouped calibration trial resolves actual jsPsych packages", () => {
+    const { scriptUrls } = getPluginScriptsFromTrials([{ plugin: "webgazer" }]);
+    expect(scriptUrls[0]).toBe(WEBGAZER_JS_URL);
+    expect(scriptUrls).toHaveLength(5);
+    expect(scriptUrls.join(" ")).not.toContain("@jspsych/webgazer@");
+    for (const plugin of [
+      "extension-webgazer",
+      "plugin-webgazer-init-camera",
+      "plugin-webgazer-calibrate",
+      "plugin-webgazer-validate",
+    ]) {
+      expect(
+        scriptUrls.some((url) => url.includes(`@jspsych/${plugin}@`)),
+      ).toBe(true);
+    }
+  });
+
+  test("resolves enabled trial extensions, including trials owned by loops", () => {
+    const { scriptUrls } = getPluginScriptsFromTrials([
+      {
+        plugin: "plugin-dynamic",
+        parentLoopId: "inner",
+        parameters: {
+          includesExtensions: true,
+          extensionType: "jsPsychExtensionWebgazer",
+        },
+      },
+      {
+        parameters: {
+          includesExtensions: true,
+          extensionType: "jsPsychExtensionWebgazer",
+        },
+      },
+      {
+        parameters: {
+          includesExtensions: true,
+          extensionType: "jsPsychExtensionRecordVideo",
+        },
+      },
+      {
+        parameters: {
+          includesExtensions: true,
+          extensionType: "jsPsychExtensionMouseTracking",
+        },
+      },
+    ]);
+    expect(scriptUrls[0]).toBe(WEBGAZER_JS_URL);
+    expect(scriptUrls).toHaveLength(4);
+    expect(scriptUrls.join(" ")).toContain("extension-record-video@1.2.0");
+    expect(scriptUrls.join(" ")).toContain("extension-mouse-tracking@1.2.0");
+  });
+
+  test("ignores disabled or unknown extensions", () => {
+    const { scriptUrls } = getPluginScriptsFromTrials([
+      {
+        parameters: {
+          includesExtensions: false,
+          extensionType: "jsPsychExtensionWebgazer",
+        },
+      },
+      { parameters: { includesExtensions: true, extensionType: "toString" } },
+    ]);
+    expect(scriptUrls).toEqual([]);
+  });
+
+  test("includes eye tracking dependencies used only in custom code", () => {
+    const { scriptUrls } = getPluginScriptsFromTrials(
+      [],
+      `
+      const loop = { timeline: [{ type: jsPsychWebgazerValidate }] };
+      const extension = jsPsychExtensionWebgazer;
+    `,
+    );
+    expect(scriptUrls[0]).toBe(WEBGAZER_JS_URL);
+    expect(scriptUrls).toHaveLength(3);
+  });
+
   test("extracts plugin names from trials", () => {
     const trials = [
       { plugin: "plugin-html-keyboard-response" },

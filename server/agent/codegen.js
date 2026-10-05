@@ -5,6 +5,7 @@ import { db, ensureDbData, userDataRoot } from '../utils/db.js'
 import { __dirname } from '../utils/paths.js'
 import { ensureTemplate } from '../utils/templates.js'
 import { getPluginScriptsFromTrials } from '../utils/plugin-scripts.js'
+import { configureLocalWebgazer } from '../utils/webgazer-assets.js'
 import { generateLoopCode } from './codegen/loop.js'
 import { generateTrialCode } from './codegen/trial.js'
 
@@ -65,7 +66,7 @@ export async function generateExperimentCode(experimentID, isPublic = false) {
 
   if (isPublic) {
     const { scriptUrls, styleUrls } = getPluginScriptsFromTrials(
-      doc.trials.map(t => ({ plugin: t.plugin }))
+      doc.trials, code
     )
     return { code, experimentName, fullScreen, backgroundColor: appearance.backgroundColor, scriptUrls, styleUrls, uploadedUrls, pluginNames: [...pluginNames] }
   }
@@ -88,6 +89,7 @@ export async function buildExperimentHtml(experimentID) {
 
   let html = fs.readFileSync(htmlPath, 'utf8')
   const $ = cheerio.load(html)
+  configureLocalWebgazer($, code)
   $('style#canvas-styles').remove()
   if (backgroundColor) {
     $('head').append(`<style id="canvas-styles">\n  body { background-color: ${backgroundColor}; }\n</style>`)
