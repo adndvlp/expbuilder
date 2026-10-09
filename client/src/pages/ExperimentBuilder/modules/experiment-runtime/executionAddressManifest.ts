@@ -5,6 +5,7 @@ export type ExecutionAddressManifest = {
   version: 2;
   revision: string;
   nextBySource: Record<string, string>;
+  rootBranchTargetIds?: string[];
   addressesByTarget: Record<string, ExecutionAddress>;
 };
 
@@ -79,6 +80,7 @@ export function buildExecutionAddressManifest(
     version: 2,
     revision: graph.revision,
     nextBySource,
+    rootBranchTargetIds: [...rootBranchTargets],
     addressesByTarget: buildAddressesByTarget(graph),
   };
 }

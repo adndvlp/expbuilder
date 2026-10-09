@@ -24,6 +24,8 @@ export function generateTrialBranching(trial, loopId) {
       ${variable('NextTrialId')} = branchTarget;
       ${variable('SkipRemaining')} = true;
       ${variable('BranchingActive')} = true;
+      ${variable('BranchUsedDefault')} = matchedBranch === null;
+      ${loopId != null ? `${variable('BranchSourceId')} = data.builder_id ?? data.trial_id ?? null;` : ''}
       ${loopId != null ? `${variable('TargetExecuted')} = false;` : ''}
       ${variable('BranchCustomParameters')} = matchedBranch?.customParameters ?? null;
     }

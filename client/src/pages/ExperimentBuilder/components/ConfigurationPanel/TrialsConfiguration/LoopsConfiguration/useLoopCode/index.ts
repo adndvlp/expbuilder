@@ -5,6 +5,7 @@ import { generateItemWrappers } from "./services/generateItemWrappers";
 import {
   generateDescendantIdEntries,
   getLoopId,
+  getTimelineItemId,
   getTimelineItemName,
   isLoopData,
 } from "./services/timelineItemIdentity";
@@ -115,10 +116,10 @@ export default function useLoopCode({
       code += `
     let test_stimuli_${loopIdSanitized} = [];
     
-    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+    const test_stimuli_previous_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};
+    if (typeof participantNumber === "number" && Number.isInteger(participantNumber) && participantNumber > 0) {
       const stimuliOrders = ${JSON.stringify(stimuliOrders)};
       const categoryData = ${JSON.stringify(categoryData)};
-      const test_stimuli_previous_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};
       
       
       if (categoryData.length > 0) {
@@ -158,9 +159,11 @@ export default function useLoopCode({
             .filter(i => indexMapping.hasOwnProperty(i))
             .map(i => indexMapping[i]);
           
-          test_stimuli_${loopIdSanitized} = orderedIndices
+          const orderedStimuli = orderedIndices
             .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
             .map(i => categoryFilteredStimuli[i]);
+          test_stimuli_${loopIdSanitized} = orderedStimuli.length > 0
+            ? orderedStimuli : categoryFilteredStimuli;
         } else {
           test_stimuli_${loopIdSanitized} = categoryFilteredStimuli;
         }
@@ -169,12 +172,16 @@ export default function useLoopCode({
         const orderIndex = (participantNumber - 1) % stimuliOrders.length;
         const index_order = stimuliOrders[orderIndex];
         
-        test_stimuli_${loopIdSanitized} = index_order
+        const orderedStimuli = index_order
           .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${loopIdSanitized}.length)
           .map((i) => test_stimuli_previous_${loopIdSanitized}[i]);
+        test_stimuli_${loopIdSanitized} = orderedStimuli.length > 0
+          ? orderedStimuli : test_stimuli_previous_${loopIdSanitized};
       } else {
         test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
       }
+    } else {
+      test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
     }
     window.ExpBuilderRuntime?.emit("stimuli-selected", {
       loopId: ${JSON.stringify(id ?? null)},
@@ -199,6 +206,7 @@ export default function useLoopCode({
       repetitions,
       randomize,
       descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
+      lastItemId: trials.length ? getTimelineItemId(trials[trials.length - 1]) : null,
       isConditionalLoop,
       loopConditions,
     });

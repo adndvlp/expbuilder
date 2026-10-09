@@ -17,6 +17,8 @@ export function generateLoopBranchConditionsCode({
         ${getVarName("SkipRemaining")} = true;
         ${getVarName("TargetExecuted")} = false;
         ${getVarName("BranchingActive")} = true;
+        ${getVarName("BranchUsedDefault")} = branchDecision.usedDefault && branchDecision.conditionId == null;
+        ${getVarName("BranchSourceId")} = data.builder_id ?? data.trial_id ?? null;
         ${getVarName("BranchCustomParameters")} =
           branchDecision.customParameters;
         if (window.ExpBuilderRuntime) {

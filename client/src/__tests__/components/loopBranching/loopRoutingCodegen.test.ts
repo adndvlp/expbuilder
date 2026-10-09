@@ -139,8 +139,14 @@ const createRuntime = (code: string) =>
         { sourceId: 'source' },
         { builder_id: 'source', trial_index: 1 },
       ),
-      startInner: () => inner_procedure.on_timeline_start(),
-      startOuter: () => outer_procedure.on_timeline_start(),
+      startInner: () => {
+        inner_procedure.sample.fn([0]);
+        inner_procedure.on_timeline_start();
+      },
+      startOuter: () => {
+        outer_procedure.sample.fn([0]);
+        outer_procedure.on_timeline_start();
+      },
       targetCanRun: () => Target_wrapper.conditional_function(),
       targetEntryCanRun: () =>
         window.ExpBuilderNavigation.enterItem(42, 'trial'),

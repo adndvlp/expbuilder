@@ -32,6 +32,14 @@ export function generateConditionalFunctionCode(
         return false;
       }
       
+      // Root branch destinations run only when selected. A completed nested
+      // route must not enable other alternatives in the main timeline.
+      const rootBranchTargetIds =
+        window.ExpBuilderExecutionAddresses?.rootBranchTargetIds;
+      if (Array.isArray(rootBranchTargetIds) &&
+          rootBranchTargetIds.some(targetId => String(targetId) === String(currentId))) {
+        return false;
+      }
       return true;
     },
   `;

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import vm from "node:vm";
+import { generateConditionalFunctionCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import {
   buildExecutionAddressManifest,
@@ -36,6 +38,7 @@ describe("execution address manifest", () => {
       version: 2,
       revision: "r1",
       nextBySource: { "1": "loop-1" },
+      rootBranchTargetIds: ["2"],
       addressesByTarget: {
         "1": {
           targetId: 1,
@@ -69,8 +72,27 @@ describe("execution address manifest", () => {
     const code = generateExecutionAddressManifestCode(graph());
 
     expect(code).toContain("window.ExpBuilderExecutionAddresses");
-    expect(code).toContain('\"1\":\"loop-1\"');
-    expect(code).not.toContain('\"2\":\"loop-1\"');
+    expect(code).toContain('"1":"loop-1"');
+    expect(code).not.toContain('"2":"loop-1"');
+  });
+
+  it("requires an explicit selection for a root alternative after a nested route completes", () => {
+    const window = {
+      ExpBuilderExecutionAddresses: buildExecutionAddressManifest(graph()),
+      skipRemaining: false,
+      nextTrialId: null as number | null,
+    };
+    const canRun = (id: number) => vm.runInNewContext(
+      `({ ${generateConditionalFunctionCode(id)} }).conditional_function()`,
+      { window },
+    );
+    expect(canRun(2)).toBe(false);
+    expect(canRun(3)).toBe(true);
+    window.skipRemaining = true;
+    window.nextTrialId = 2;
+    expect(canRun(2)).toBe(true);
+    expect(canRun(2)).toBe(false);
+    expect(canRun(3)).toBe(true);
   });
 
   it("compiles the full loop ancestry for nested trial and loop targets", () => {

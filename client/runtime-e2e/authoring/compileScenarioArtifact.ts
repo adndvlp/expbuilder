@@ -8,6 +8,8 @@ export async function compileScenarioArtifact(options: {
   client: ExperimentAuthoringClient;
   experimentId: string;
   customPreInitCode?: string;
+  localParams?: Record<string, string>;
+  baseCodeOverride?: string;
   appearance?: typeof scenarioAppearance;
 }) {
   const getLoopTimeline = async (loopId: string | number) => {
@@ -22,6 +24,8 @@ export async function compileScenarioArtifact(options: {
     getLoopTimeline,
     appearance: options.appearance ?? scenarioAppearance,
     customPreInitCode: options.customPreInitCode,
+    localParams: options.localParams,
+    baseCodeOverride: options.baseCodeOverride,
   });
   return buildExperimentArtifact({
     experimentId: options.experimentId,

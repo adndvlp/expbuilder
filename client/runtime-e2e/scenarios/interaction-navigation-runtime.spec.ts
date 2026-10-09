@@ -26,6 +26,10 @@ test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without r
     {},
     ["Jump", "Continue"],
   );
+  // The trigger is a branch destination; select it explicitly after the jump.
+  await author.configureButtonTrial("branch-jump-target", {
+    branches: [author.id("branch-jump-trigger")],
+  });
   await author.configureBranchConditions("branch-jump-source", [{
     id: 131,
     rules: [{ column: "response", op: "==", value: "0" }],
@@ -94,6 +98,9 @@ test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump in one persis
     {},
     ["Jump", "Continue"],
   );
+  await author.configureButtonTrial("exit-jump-target", {
+    branches: [author.id("exit-jump-trigger")],
+  });
   await author.configureBranchConditions("exit-jump-source", [{
     id: 141,
     rules: [{ column: "response", op: "==", value: "0" }],

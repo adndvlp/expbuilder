@@ -76,6 +76,20 @@ export function getNavigationCoordinatorKernelCode(): string {
         invalidateNavigation('RESUME_ADDRESS_NOT_FOUND', null);
         return;
       }
+      if (deferredResume.experimentRevision &&
+          deferredResume.experimentRevision !== manifest.revision) {
+        invalidateNavigation('RESUME_REVISION_MISMATCH', null);
+        return;
+      }
+      if (deferredResume.kind === 'cursor') {
+        const ownerPath = address.enterLoopIds;
+        if (ownerPath.length !== deferredResume.loops.length ||
+            ownerPath.some((id, index) => String(id) !== deferredResume.loops[index].loopId)) {
+          invalidateNavigation('RESUME_LOOP_PATH_MISMATCH', null);
+          return;
+        }
+        Object.assign(window, deferredResume.globalRouting);
+      }
       activeRequest = window.ExpBuilderJumpProtocol.create(
         address,
         manifest.revision,
@@ -84,6 +98,7 @@ export function getNavigationCoordinatorKernelCode(): string {
         {
           navigationKind: 'resume',
           routeKind: deferredResume.kind,
+          resumeAfterCompleted: Boolean(deferredResume.afterCompleted),
           conditionId: deferredResume.conditionId ?? null
         }
       );

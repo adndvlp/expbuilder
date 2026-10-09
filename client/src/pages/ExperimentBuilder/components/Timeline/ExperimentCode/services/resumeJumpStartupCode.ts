@@ -30,6 +30,9 @@ export function resumeJumpStartupCode(
 export function activateResumeRouteDecisionCode(): string {
   return `
     if (resumeRouteDecision !== null) {
+      if (resumeRouteDecision.kind === 'cursor') {
+        window.ExpBuilderNavigation.activateResume(resumeRouteDecision);
+      } else {
       const resumesBranch = resumeRouteDecision.kind === 'branch';
       window.nextTrialId = resumesBranch
         ? resumeRouteDecision.targetId
@@ -42,6 +45,7 @@ export function activateResumeRouteDecisionCode(): string {
           : null;
       if (!resumesBranch) {
         window.ExpBuilderNavigation.activateResume(resumeRouteDecision);
+      }
       }
       window.ExpBuilderRuntime?.emit(
         'resume-route-activated',

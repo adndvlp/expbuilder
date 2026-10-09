@@ -34,10 +34,10 @@ describe("loop exit code generation", () => {
     const code = generateLoop("parent");
 
     expect(code).toContain(
-      "const pendingBranchTarget = loop_inner_NextTrialId;",
+      "const pendingBranchTarget = loop_inner_NextTrialId ??",
     );
     expect(code).toContain(
-      "const pendingBranchCustomParameters = loop_inner_BranchCustomParameters;",
+      "? loop_inner_BranchCustomParameters",
     );
     expect(code).toContain(
       "loop_parent_NextTrialId = pendingBranchTarget;",
@@ -69,7 +69,7 @@ describe("loop exit code generation", () => {
     expect(wrapperCode).toContain(
       "if (!loop_inner_RouteInherited &&",
     );
-    expect(wrapperCode).toContain("!hasScopeExit)");
+    expect(wrapperCode).toContain("!hasScopeExit || isContinuation");
   });
 
   it("clears a resolved same-loop branch before a conditional repeat", () => {

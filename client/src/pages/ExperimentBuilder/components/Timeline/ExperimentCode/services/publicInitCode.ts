@@ -49,6 +49,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
 
 
       on_trial_start: function(trial) {
+        window.ExpBuilderNavigation.checkpointTrialStart(trial?.data ?? {});
         const lastTrialData = jsPsych.data.get()
         if (lastTrialData && trial.data) {
         trial.data.prev_response = lastTrialData.response;

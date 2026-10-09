@@ -37,7 +37,7 @@ export function generateLoopCode(loop, doc, parentLoopId) {
   let preCode = ''
   if (loop.orders || loop.categories) {
     preCode += `\nlet test_stimuli_${loopId} = [];\n`
-    preCode += `if (typeof participantNumber === "number" && !isNaN(participantNumber)) {\n`
+    preCode += `if (typeof participantNumber === "number" && Number.isInteger(participantNumber) && participantNumber > 0) {\n`
     preCode += `  const _stimuliOrders = ${JSON.stringify(loop.stimuliOrders || [])};\n`
     preCode += `  const _categoryData = ${JSON.stringify(loop.categoryData || [])};\n`
     preCode += `  const _allStimuli = ${serializeStimuli(csvData)};\n`
@@ -49,12 +49,14 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     preCode += `    let _filtered = _indices.map(i => _allStimuli[i]);\n`
     preCode += `    if (_stimuliOrders.length > 0) {\n`
     preCode += `      const _orderIdx = (participantNumber - 1) % _stimuliOrders.length;\n`
-    preCode += `      _filtered = _stimuliOrders[_orderIdx].map(i => _filtered[i]).filter(Boolean);\n`
+    preCode += `      const _ordered = _stimuliOrders[_orderIdx].map(i => _filtered[i]).filter(Boolean);\n`
+    preCode += `      if (_ordered.length > 0) _filtered = _ordered;\n`
     preCode += `    }\n`
     preCode += `    test_stimuli_${loopId} = _filtered;\n`
     preCode += `  } else if (_stimuliOrders.length > 0) {\n`
     preCode += `    const _idx = (participantNumber - 1) % _stimuliOrders.length;\n`
-    preCode += `    test_stimuli_${loopId} = _stimuliOrders[_idx].filter(i => i >= 0 && i < _allStimuli.length).map(i => _allStimuli[i]);\n`
+    preCode += `    const _ordered = _stimuliOrders[_idx].filter(i => i >= 0 && i < _allStimuli.length).map(i => _allStimuli[i]);\n`
+    preCode += `    test_stimuli_${loopId} = _ordered.length > 0 ? _ordered : _allStimuli;\n`
     preCode += `  }\n`
     preCode += `} else {\n`
     preCode += `  test_stimuli_${loopId} = ${serializeStimuli(csvData)};\n`
@@ -80,8 +82,16 @@ export function generateLoopCode(loop, doc, parentLoopId) {
   procedure += `\nconst ${loopId}_procedure = {\n`
   procedure += `  timeline: [${loopId}_iteration],\n`
   procedure += `  timeline_variables: test_stimuli_${loopId},\n`
-  procedure += `  repetitions: ${rep},\n`
-  if (loop.randomize) procedure += `  randomize_order: true,\n`
+  procedure += `get repetitions() {
+    return window.ExpBuilderNavigation?.remainingLoopRepetitions(${JSON.stringify(loop.id)}, ${rep}) ?? ${rep};
+  },
+  randomize_order: false,
+  sample: { type: 'custom', fn: function(indices) {
+    if (window.ExpBuilderNavigation) {
+      return window.ExpBuilderNavigation.sampleLoop(${JSON.stringify(loop.id)}, indices, ${Boolean(loop.randomize)}, ${Boolean(loop.isConditionalLoop && loop.loopConditions?.length)});
+    }
+    return ${loop.randomize ? 'jsPsych.randomization.shuffle(indices)' : 'indices'};
+  } },`
   procedure += generateLoopRoutingProperties(loop, parentLoopId)
 
   if (loop.isConditionalLoop && loop.loopConditions?.length) {
@@ -89,7 +99,7 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     procedure += `    const _loopConds = ${JSON.stringify(loop.loopConditions)};\n`
     procedure += `    for (const _lc of _loopConds) {\n`
     procedure += `      if (!_lc.rules) continue;\n`
-    procedure += `      const _trials = data.values();\n`
+    procedure += `      const _trials = (window.ExpBuilderNavigation?.loopResults(${JSON.stringify(loop.id)}) ?? data.values()).slice();\n`
     procedure += `      const _targetTrial = _trials.reverse().find(t => String(t.trial_id) === String(_lc.rules[0]?.trialId));\n`
     procedure += `      if (!_targetTrial) return false;\n`
     procedure += `      const _match = _lc.rules.every(_r => {\n`
@@ -98,8 +108,9 @@ export function generateLoopCode(loop, doc, parentLoopId) {
     procedure += `        const _nv = parseFloat(_v); const _ncv = parseFloat(_cv);\n`
     procedure += `        return !isNaN(_nv) && !isNaN(_ncv) ? _nv == _ncv : _v == _cv;\n`
     procedure += `      });\n`
-    procedure += `      if (_match) return true;\n`
+    procedure += `      if (_match) { window.ExpBuilderNavigation?.finishLoopCycle(${JSON.stringify(loop.id)}, true); return true; }\n`
     procedure += `    }\n`
+    procedure += `    window.ExpBuilderNavigation?.finishLoopCycle(${JSON.stringify(loop.id)}, false);\n`
     procedure += `    return false;\n`
     procedure += `  },\n`
   }

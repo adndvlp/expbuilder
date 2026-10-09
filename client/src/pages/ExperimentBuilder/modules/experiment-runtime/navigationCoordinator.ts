@@ -1,4 +1,5 @@
 import { getNavigationCoordinatorKernelCode } from "./navigationCoordinatorKernel";
+import { getLoopResumeRuntimeCode } from "./loopResumeRuntimeCode";
 
 export type NavigationStorageKeys = {
   jumpRequest: string;
@@ -48,7 +49,17 @@ export function getNavigationCoordinatorRuntimeCode(
     let reloadStarted = false;
     let durabilityCheck = null;
 ${getNavigationCoordinatorKernelCode()}
+${getLoopResumeRuntimeCode()}
     window.ExpBuilderNavigation = Object.freeze({
+      sampleLoop,
+      remainingLoopRepetitions,
+      startLoop,
+      finishLoop,
+      finishLoopRow,
+      finishLoopCycle,
+      loopResults,
+      checkpointTrialStart,
+      checkpointTrialComplete,
       requestJump(targetId, context, sourceData, pauseRuntime) {
         const manifest = currentManifest();
         const address = resolveAddress(targetId);
@@ -117,6 +128,7 @@ ${getNavigationCoordinatorKernelCode()}
       },
       activateResume(decision) {
         if (!decision?.targetId || activeRequest || pendingJump) return false;
+        restoreCursor(decision);
         deferredResume = { ...decision, targetId: String(decision.targetId) };
         return true;
       },
@@ -156,6 +168,7 @@ ${getNavigationCoordinatorKernelCode()}
               : 'jump-target-enter',
             targetPayload(request)
           );
+          if (request.context?.resumeAfterCompleted) return false;
         }
         return true;
       },
@@ -167,6 +180,10 @@ ${getNavigationCoordinatorKernelCode()}
         return pendingJump !== null;
       },
       clearTransientState() {
+        loopFrames.length = 0;
+        preparedLoops.clear();
+        restoredLoops.clear();
+        cursorCheckpointsEnabled = false;
         pendingJump = null;
         activeRequest = null;
         deferredResume = null;

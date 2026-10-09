@@ -20,12 +20,16 @@ let loop_${loopId}_NextTrialId = null;
 let loop_${loopId}_SkipRemaining = false;
 let loop_${loopId}_TargetExecuted = false;
 let loop_${loopId}_BranchingActive = false;
+let loop_${loopId}_BranchUsedDefault = false;
+let loop_${loopId}_BranchSourceId = null;
+let loop_${loopId}_DeferredBranch = null;
 let loop_${loopId}_BranchCustomParameters = null;
 let loop_${loopId}_InheritedTrialId = null;
 let loop_${loopId}_InheritedTrialExecuted = false;
 let loop_${loopId}_RouteInherited = false;
 const loop_${loopId}_DescendantIds = [${descendants.join(', ')}];
 const loop_${loopId}_DescendantTrialIds = [${trialDescendants.join(', ')}];
+const loop_${loopId}_LastItemId = ${q(children[children.length - 1]?.id ?? null)};
 `
 }
 
@@ -54,9 +58,16 @@ export function generateChildWrapper(child, parentLoopId) {
     timelineRef: `${childId}_wrapper`,
     code: `
 const ${childId}_wrapper = {
-  timeline: [${timelineRef}],
+  timeline: [${child.type === 'trial' ? `{
+    timeline: [${timelineRef}],
+    conditional_function: function() {
+      return window.ExpBuilderNavigation?.enterItem(${q(child.id)}, 'trial') ?? true;
+    }
+  }` : timelineRef}],
   conditional_function: function() {
     const currentId = ${q(child.id)};
+    const navigationDecision = window.ExpBuilderNavigation?.allowsItem(currentId, '${child.type}');
+    if (navigationDecision !== null && navigationDecision !== undefined) return navigationDecision;
     const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
     if (jumpToTrial) {
       if (String(currentId) === String(jumpToTrial)) {
@@ -91,17 +102,29 @@ export function generateLoopIteration(loopId, timelineRefs) {
 const ${id}_iteration = {
   timeline: [${timelineRefs.join(', ')}],
   on_timeline_finish: function() {
+    window.ExpBuilderNavigation?.finishLoopRow(${q(loopId)});
     const targetBelongsToLoop = loop_${id}_NextTrialId !== null &&
       loop_${id}_DescendantTrialIds.some(
         descendantId => String(descendantId) === String(loop_${id}_NextTrialId)
       );
     const hasScopeExit = loop_${id}_BranchingActive &&
       loop_${id}_NextTrialId !== null && !targetBelongsToLoop;
-    if (!loop_${id}_RouteInherited && !hasScopeExit) {
+    const isContinuation = hasScopeExit && !loop_${id}_RouteInherited &&
+      loop_${id}_BranchUsedDefault && loop_${id}_LastItemId !== null &&
+      String(loop_${id}_BranchSourceId) === String(loop_${id}_LastItemId);
+    if (isContinuation) {
+      loop_${id}_DeferredBranch = {
+        targetId: loop_${id}_NextTrialId,
+        customParameters: loop_${id}_BranchCustomParameters,
+      };
+    }
+    if (!loop_${id}_RouteInherited && (!hasScopeExit || isContinuation)) {
       loop_${id}_NextTrialId = null;
       loop_${id}_SkipRemaining = false;
       loop_${id}_TargetExecuted = false;
       loop_${id}_BranchingActive = false;
+      loop_${id}_BranchUsedDefault = false;
+      loop_${id}_BranchSourceId = null;
       loop_${id}_BranchCustomParameters = null;
     }
   }
@@ -111,21 +134,47 @@ const ${id}_iteration = {
 
 export function generateLoopRoutingProperties(loop, parentLoopId) {
   const loopId = sanitizeId(loop.id)
+  const resumeRouteFields = [
+    'NextTrialId', 'SkipRemaining', 'BranchingActive', 'BranchUsedDefault',
+    'BranchSourceId', 'DeferredBranch', 'BranchCustomParameters', 'TargetExecuted',
+    'InheritedTrialId', 'InheritedTrialExecuted', 'RouteInherited',
+  ]
+  const resumePrefix = `loop_${loopId}_`
+  const resumeRoutingRead = resumeRouteFields
+    .map(field => `${field}: ${resumePrefix}${field}`).join(',\n')
+  const resumeRoutingWrite = resumeRouteFields
+    .map(field => `${resumePrefix}${field} = saved.${field};`).join('\n')
   const parentId = parentLoopId != null ? sanitizeId(parentLoopId) : null
   const active = parentId ? `loop_${parentId}_SkipRemaining` : 'window.skipRemaining'
   const target = parentId ? `loop_${parentId}_NextTrialId` : 'window.nextTrialId'
   const parameters = parentId
     ? `loop_${parentId}_BranchCustomParameters`
     : 'window.branchCustomParameters'
+  const usedDefault = parentId ? `loop_${parentId}_BranchUsedDefault` : 'window.branchUsedDefault'
+  const consumeDefaultEntry = parentId
+    ? `loop_${parentId}_NextTrialId = null;
+      loop_${parentId}_SkipRemaining = false;
+      loop_${parentId}_TargetExecuted = false;
+      loop_${parentId}_BranchingActive = false;
+      loop_${parentId}_BranchUsedDefault = false;
+      loop_${parentId}_BranchCustomParameters = null;`
+    : `window.nextTrialId = null;
+      window.skipRemaining = false;
+      window.branchingActive = false;
+      window.branchUsedDefault = false;
+      window.branchCustomParameters = null;`
   const propagate = parentId
     ? `loop_${parentId}_NextTrialId = pendingBranchTarget;
       loop_${parentId}_SkipRemaining = true;
       loop_${parentId}_TargetExecuted = false;
       loop_${parentId}_BranchingActive = true;
+      loop_${parentId}_BranchUsedDefault = pendingBranchUsedDefault;
+      loop_${parentId}_BranchSourceId = ${q(loop.id)};
       loop_${parentId}_BranchCustomParameters = pendingBranchParameters;`
     : `window.nextTrialId = pendingBranchTarget;
       window.skipRemaining = true;
       window.branchingActive = true;
+      window.branchUsedDefault = pendingBranchUsedDefault;
       window.branchCustomParameters = pendingBranchParameters;`
   const complete = parentId
     ? `if (inheritedTrialWasExecuted && loop_${parentId}_BranchingActive &&
@@ -145,6 +194,8 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
 
   return `  conditional_function: function() {
     const currentId = ${q(loop.id)};
+    const navigationDecision = window.ExpBuilderNavigation?.enterItem(currentId, 'loop');
+    if (navigationDecision !== null && navigationDecision !== undefined) return navigationDecision;
     const jumpToTrial = localStorage.getItem('jsPsych_jumpToTrial');
     if (jumpToTrial) {
       if (String(currentId) === String(jumpToTrial)) {
@@ -163,6 +214,13 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
     return true;
   },
   on_timeline_start: function() {
+    if (${active} && ${usedDefault} === true &&
+        String(${target}) === String(loop_${loopId}_DescendantTrialIds[0])) {
+      ${consumeDefaultEntry}
+    }
+    loop_${loopId}_DeferredBranch = null;
+    loop_${loopId}_BranchUsedDefault = false;
+    loop_${loopId}_BranchSourceId = null;
     const inheritedTarget = ${active} && ${target} !== null &&
       loop_${loopId}_DescendantTrialIds.some(
         descendantId => String(descendantId) === String(${target})
@@ -175,14 +233,25 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
     loop_${loopId}_RouteInherited = inheritedTarget;
     loop_${loopId}_BranchCustomParameters = inheritedTarget ? ${parameters} : null;
     loop_${loopId}_TargetExecuted = false;
+    window.ExpBuilderNavigation?.startLoop(${q(loop.id)},
+    () => ({ ${resumeRoutingRead} }),
+    saved => { ${resumeRoutingWrite} }
+  );
   },
   on_timeline_finish: function() {
-    const pendingBranchTarget = loop_${loopId}_NextTrialId;
-    const pendingBranchParameters = loop_${loopId}_BranchCustomParameters;
+    const pendingBranchTarget = loop_${loopId}_NextTrialId ??
+      loop_${loopId}_DeferredBranch?.targetId ?? null;
+    const pendingBranchParameters = loop_${loopId}_NextTrialId !== null
+      ? loop_${loopId}_BranchCustomParameters
+      : loop_${loopId}_DeferredBranch?.customParameters ?? null;
+    const pendingBranchUsedDefault = loop_${loopId}_NextTrialId !== null
+      ? loop_${loopId}_BranchUsedDefault
+      : loop_${loopId}_DeferredBranch !== null;
     const inheritedTrialId = loop_${loopId}_InheritedTrialId;
     const inheritedTrialWasExecuted = loop_${loopId}_RouteInherited &&
       loop_${loopId}_InheritedTrialExecuted;
-    const hasUnresolvedExit = loop_${loopId}_BranchingActive &&
+    const hasUnresolvedExit = (loop_${loopId}_BranchingActive ||
+      loop_${loopId}_DeferredBranch !== null) &&
       !loop_${loopId}_TargetExecuted && pendingBranchTarget !== null;
     ${complete}
     if (hasUnresolvedExit) {
@@ -193,9 +262,13 @@ export function generateLoopRoutingProperties(loop, parentLoopId) {
     loop_${loopId}_TargetExecuted = false;
     loop_${loopId}_BranchCustomParameters = null;
     loop_${loopId}_BranchingActive = false;
+    loop_${loopId}_BranchUsedDefault = false;
+    loop_${loopId}_BranchSourceId = null;
+    loop_${loopId}_DeferredBranch = null;
     loop_${loopId}_InheritedTrialId = null;
     loop_${loopId}_InheritedTrialExecuted = false;
     loop_${loopId}_RouteInherited = false;
+    window.ExpBuilderNavigation?.finishLoop(${q(loop.id)});
   },
 `
 }

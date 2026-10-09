@@ -1,4 +1,5 @@
 import { generateTrialBranching } from './trialBranching.js'
+import { generateRootTerminalFinish, generateRootTrialRouting } from './rootRouting.js'
 import {
   generateExtensionCode,
   generateRuleEvalJS,
@@ -10,7 +11,7 @@ import {
 } from './helpers.js'
 
 /* istanbul ignore next -- trial code generation is covered by output-focused fixture tests. */
-export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
+export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId, options = {}) {
   if (!trial.plugin) return { code: '', timelineRef: '', procedureRef: '' }
 
   if (trial.plugin === 'webgazer') return { code: trial.trialCode || '', timelineRef: '', procedureRef: '' }
@@ -68,17 +69,17 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   let onStartCode = ''
   if (isInLoop) {
     const lid = sanitizeId(loopId)
-    onStartCode += `    const _branchParams = loop_${lid}_BranchCustomParameters;\n`
-    onStartCode += `    if (_branchParams) {\n`
-    onStartCode += `      for (const [_key, _value] of Object.entries(_branchParams)) {\n`
+    onStartCode += `    const _branchCustomParameters = loop_${lid}_BranchCustomParameters;\n`
+    onStartCode += `    if (_branchCustomParameters) {\n`
+    onStartCode += `      for (const [_key, _value] of Object.entries(_branchCustomParameters)) {\n`
     onStartCode += `        trial[_key] = _value && typeof _value === 'object' && 'value' in _value ? _value.value : _value;\n`
     onStartCode += `      }\n`
     onStartCode += `      loop_${lid}_BranchCustomParameters = null;\n`
     onStartCode += `    }\n`
   } else {
-    onStartCode += `    const _branchParams = window.branchCustomParameters;\n`
-    onStartCode += `    if (_branchParams) {\n`
-    onStartCode += `      for (const [_key, _value] of Object.entries(_branchParams)) {\n`
+    onStartCode += `    const _branchCustomParameters = window.branchCustomParameters;\n`
+    onStartCode += `    if (_branchCustomParameters) {\n`
+    onStartCode += `      for (const [_key, _value] of Object.entries(_branchCustomParameters)) {\n`
     onStartCode += `        trial[_key] = _value && typeof _value === 'object' && 'value' in _value ? _value.value : _value;\n`
     onStartCode += `      }\n`
     onStartCode += `      window.branchCustomParameters = null;\n`
@@ -141,6 +142,9 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
   if (trial.customOnFinish?.trim()) {
     onFinishCode += `    // -- User custom on_finish --\n    ${trial.customOnFinish.trim()}\n`
   }
+  if (!isInLoop && !trial.branches?.length && !trial.branchConditions?.length && !hasRepeats) {
+    onFinishCode += generateRootTerminalFinish(options.isMergePoint)
+  }
 
   let code = ''
   const dataFieldsJS = dataFields.map(d => d.key)
@@ -164,6 +168,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     }
 
     obj += `    data: {\n      trial_id: "${trial.id}",\n      trial_name: "${trial.name}",\n      builder_id: "${trial.id}",\n      branches: ${JSON.stringify(trial.branches || [])},\n      branchConditions: ${JSON.stringify(trial.branchConditions || [])}\n`
+    if (isInLoop) obj += `,\n      isInLoop: true\n`
     for (const dk of dataFieldsJS) obj += `,\n      ${dk}: "${dk}"`
     obj += `\n    }`
 
@@ -184,6 +189,7 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     code += `const ${trialIdStr}_procedure = {\n`
     code += `  timeline: [${trialIdStr}_timeline],\n`
     code += `  timeline_variables: test_stimuli_${trialIdStr}\n`
+    if (!isInLoop) code += `,\n  ${generateRootTrialRouting(trialId, options.isBranchTarget)}\n`
     code += `};\n`
     if (!isInLoop) code += `timeline.push(${trialIdStr}_procedure);\n`
   } else if (isInLoop) {
@@ -191,9 +197,13 @@ export function generateTrialCode(trial, isInLoop, loopCsvJson, loopId) {
     code += buildTrialObj(rowsMapped[0], usesLoopCsv)
     code += `\n};\n`
   } else {
-    code += `timeline.push({\n`
+    code += `const ${trialIdStr}_timeline = {\n`
     code += buildTrialObj(rowsMapped[0], false)
-    code += `\n});\n`
+    code += `\n};\n`
+    code += `const ${trialIdStr}_procedure = {\n`
+    code += `  timeline: [${trialIdStr}_timeline],\n`
+    code += `  ${generateRootTrialRouting(trialId, options.isBranchTarget)}\n};\n`
+    code += `timeline.push(${trialIdStr}_procedure);\n`
   }
 
   return {

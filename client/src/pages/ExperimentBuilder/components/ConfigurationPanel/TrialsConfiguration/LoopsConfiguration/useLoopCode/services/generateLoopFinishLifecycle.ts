@@ -1,9 +1,11 @@
 type Options = {
+  id?: string;
   loopIdSanitized: string;
   parentLoopIdSanitized: string | null;
 };
 
 export function generateLoopFinishLifecycle({
+  id,
   loopIdSanitized,
   parentLoopIdSanitized,
 }: Options): string {
@@ -13,11 +15,14 @@ export function generateLoopFinishLifecycle({
       loop_${parentLoopIdSanitized}_SkipRemaining = true;
       loop_${parentLoopIdSanitized}_TargetExecuted = false;
       loop_${parentLoopIdSanitized}_BranchingActive = true;
+      loop_${parentLoopIdSanitized}_BranchUsedDefault = pendingBranchUsedDefault;
+      loop_${parentLoopIdSanitized}_BranchSourceId = ${JSON.stringify(id ?? null)};
       loop_${parentLoopIdSanitized}_BranchCustomParameters = pendingBranchCustomParameters;`
     : `
       window.nextTrialId = pendingBranchTarget;
       window.skipRemaining = true;
       window.branchingActive = true;
+      window.branchUsedDefault = pendingBranchUsedDefault;
       window.branchCustomParameters = pendingBranchCustomParameters;`;
   const completeInheritedTarget = parentLoopIdSanitized
     ? `
@@ -41,12 +46,19 @@ export function generateLoopFinishLifecycle({
 
   return `on_timeline_finish: function() {
     // Preserve an exact trial exit before any loop-local state is reset.
-    const pendingBranchTarget = loop_${loopIdSanitized}_NextTrialId;
-    const pendingBranchCustomParameters = loop_${loopIdSanitized}_BranchCustomParameters;
+    const pendingBranchTarget = loop_${loopIdSanitized}_NextTrialId ??
+      loop_${loopIdSanitized}_DeferredBranch?.targetId ?? null;
+    const pendingBranchCustomParameters = loop_${loopIdSanitized}_NextTrialId !== null
+      ? loop_${loopIdSanitized}_BranchCustomParameters
+      : loop_${loopIdSanitized}_DeferredBranch?.customParameters ?? null;
+    const pendingBranchUsedDefault = loop_${loopIdSanitized}_NextTrialId !== null
+      ? loop_${loopIdSanitized}_BranchUsedDefault
+      : loop_${loopIdSanitized}_DeferredBranch !== null;
     const inheritedTrialId = loop_${loopIdSanitized}_InheritedTrialId;
     const inheritedTrialWasExecuted = loop_${loopIdSanitized}_RouteInherited &&
       loop_${loopIdSanitized}_InheritedTrialExecuted;
-    const hasUnresolvedExit = loop_${loopIdSanitized}_BranchingActive &&
+    const hasUnresolvedExit = (loop_${loopIdSanitized}_BranchingActive ||
+      loop_${loopIdSanitized}_DeferredBranch !== null) &&
       !loop_${loopIdSanitized}_TargetExecuted &&
       pendingBranchTarget !== null;
 
@@ -63,5 +75,9 @@ export function generateLoopFinishLifecycle({
     loop_${loopIdSanitized}_InheritedTrialExecuted = false;
     loop_${loopIdSanitized}_RouteInherited = false;
     loop_${loopIdSanitized}_BranchingActive = false;
+    loop_${loopIdSanitized}_BranchUsedDefault = false;
+    loop_${loopIdSanitized}_BranchSourceId = null;
+    loop_${loopIdSanitized}_DeferredBranch = null;
+    window.ExpBuilderNavigation?.finishLoop(${JSON.stringify(id)});
   },`;
 }

@@ -38,7 +38,7 @@ describe("trial-only loop runtime", () => {
     expect(code).not.toContain("ExpBuilderBranching.decide");
     expect(code).not.toContain("branches[0]");
     expect(code).not.toContain("abortExperiment");
-    expect(code).toContain("repetitions: 2");
+    expect(code).toContain('remainingLoopRepetitions("outer", 2) ?? 2');
   });
 
   it.each(["outer", "inner", "loop_trial"])(

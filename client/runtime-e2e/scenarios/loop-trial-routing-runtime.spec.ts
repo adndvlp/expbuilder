@@ -6,7 +6,7 @@ import { builderIds, loadPersistedSession, runtimeApiBaseUrl } from "../support/
 
 for (const generator of ["client", "agent"] as const) {
   for (const chain of [false, true]) {
-    test(`[RUNTIME-LOOP-SIBLING-ENTRY] ${generator} preserves a sibling-loop trial destination and parameters across CSV rows and repetitions (chain=${chain})`, async ({ page }) => {
+    test(`[RUNTIME-LOOP-SIBLING-ENTRY] ${generator} preserves a trial destination three loops deep and parameters across CSV rows and repetitions (chain=${chain})`, async ({ page }) => {
       const author = new ScenarioAuthor(runtimeApiBaseUrl);
       await author.createExperiment(`runtime-sibling-${generator}-${Date.now()}`);
       for (const alias of ["entry-source", "entry-source-skipped", "entry-before", "entry-target", "entry-after", "entry-final"]) {
@@ -15,7 +15,8 @@ for (const generator of ["client", "agent"] as const) {
       await author.createLoop("entry-source-loop", ["entry-source", "entry-source-skipped"]);
       await author.createLoop("entry-target-loop", ["entry-before", "entry-target", "entry-after", "entry-final"]);
       await author.createLoop("entry-target-outer", ["entry-target-loop"]);
-      for (const alias of ["entry-source-loop", "entry-target-loop", "entry-target-outer"]) {
+      await author.createLoop("entry-target-outermost", ["entry-target-outer"]);
+      for (const alias of ["entry-source-loop", "entry-target-loop", "entry-target-outer", "entry-target-outermost"]) {
         await author.client.updateLoop(author.experimentId, author.id(alias), {
           csvJson: [{ row: 1 }, { row: 2 }], repetitions: 2,
         });

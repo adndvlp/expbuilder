@@ -116,7 +116,7 @@ export async function generateLoopCode(
       ...trialsWithCode
         .filter((t) => t.mappedJson && Array.isArray(t.mappedJson))
         .map((t) => t.mappedJson?.length || 0),
-      0,
+      fullLoop.csvJson?.length ?? 0,
     );
 
     const unifiedStimuli = [];

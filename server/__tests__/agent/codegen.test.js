@@ -521,7 +521,7 @@ describe('agent codegen', () => {
     expect(result.error).toBeUndefined()
     expect(result.code).toContain('let test_stimuli_loop_outer = []')
     expect(result.code).toContain('const loop_outer_procedure = {')
-    expect(result.code).toContain('randomize_order: true')
+    expect(result.code).toContain('sampleLoop("loop_outer", indices, true, true)')
     expect(result.code).toContain('loop_function: function(data)')
     expect(result.code).toContain('localStorage.setItem')
     expect(result.code).toContain('timeline.push(loop_outer_procedure)')
@@ -609,8 +609,8 @@ describe('agent codegen', () => {
     expect(result.code).toContain('const loop_child_wrapper = {')
     expect(result.code).toContain('loop_loop_parent_NextTrialId = pendingBranchTarget')
     expect(result.code).toContain('window.nextTrialId = pendingBranchTarget')
-    expect(result.code).toContain('repetitions: 1')
-    expect(result.code).not.toContain('sample:')
+    expect(result.code).toContain('remainingLoopRepetitions("loop_parent", 1) ?? 1')
+    expect(result.code).toContain("sample: { type: 'custom'")
     expect(result.code).not.toContain('loop_empty_procedure')
     expect(result.code).not.toContain('loop_invalid_procedure')
   })
@@ -661,8 +661,16 @@ describe('agent codegen', () => {
     const result = await generateExperimentCode('E1')
 
     expect(result.error).toBeUndefined()
-    expect(result.code).toContain('} else if (_stimuliOrders.length > 0) {')
-    expect(result.code).toContain('test_stimuli_loop_order = _stimuliOrders[_idx]')
+    const selectRows = new Function('participantNumber', `
+      const timeline = [];
+      const window = {};
+      const jsPsychHtmlKeyboardResponse = {};
+      const jsPsych = { timelineVariable: () => null, run: () => {} };
+      ${result.code}
+      return test_stimuli_loop_order.map(row => row.stimulus);
+    `)
+    expect(selectRows(1)).toEqual(['B', 'A'])
+    expect(selectRows(undefined)).toEqual(['A', 'B'])
   })
 
   test('buildPublicExperimentHtml creates a self-contained response and includes media payloads', async () => {

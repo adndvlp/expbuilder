@@ -59,7 +59,12 @@ export function generateItemWrappers({
 
       return `
 const ${itemNameSanitized}_wrapper = {
-  timeline: [${timelineRef}],
+  timeline: [${itemKind === "trial" ? `{
+    timeline: [${timelineRef}],
+    conditional_function: function() {
+      return window.ExpBuilderNavigation?.enterItem(${itemId}, 'trial') ?? true;
+    }
+  }` : timelineRef}],
   conditional_function: function() {
     const currentId = ${itemId};
 

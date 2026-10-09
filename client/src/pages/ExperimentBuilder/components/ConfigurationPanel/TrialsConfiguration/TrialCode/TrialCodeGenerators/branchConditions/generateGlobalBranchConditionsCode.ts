@@ -15,6 +15,7 @@ export function generateGlobalBranchConditionsCode({
         window.nextTrialId = nextTrialId;
         window.skipRemaining = true;
         window.branchingActive = true;
+        window.branchUsedDefault = branchDecision.usedDefault && branchDecision.conditionId == null;
         window.branchCustomParameters = branchDecision.customParameters;
         if (window.ExpBuilderRuntime) {
           window.ExpBuilderRuntime.emit('branch-decision', {

@@ -7,6 +7,7 @@ import { ensureTemplate } from '../utils/templates.js'
 import { getPluginScriptsFromTrials } from '../utils/plugin-scripts.js'
 import { generateLoopCode } from './codegen/loop.js'
 import { generateTrialCode } from './codegen/trial.js'
+import { getRootBranchTargetIds, getRootMergePointIds } from './codegen/rootRouting.js'
 
 /* istanbul ignore next -- integration tests assert generated experiment output, not every emitted branch. */
 export async function generateExperimentCode(experimentID, isPublic = false) {
@@ -20,6 +21,8 @@ export async function generateExperimentCode(experimentID, isPublic = false) {
   if (!doc) return { error: 'No timeline data found' }
 
   const timeline = doc.timeline || []
+  const rootMergePointIds = getRootMergePointIds(doc)
+  const rootBranchTargetIds = getRootBranchTargetIds(doc)
   const appearance = exp.appearanceSettings || {}
   const fullScreen = appearance.fullScreen ?? true
 
@@ -54,7 +57,10 @@ export async function generateExperimentCode(experimentID, isPublic = false) {
   for (const item of timeline) {
     if (item.type === 'trial') {
       const t = doc.trials.find(tr => tr.id === item.id)
-      if (t) code += generateTrialCode(t, false).code + '\n'
+      if (t) code += generateTrialCode(t, false, undefined, undefined, {
+        isMergePoint: rootMergePointIds.has(String(t.id)),
+        isBranchTarget: rootBranchTargetIds.has(String(t.id)),
+      }).code + '\n'
     } else if (item.type === 'loop') {
       const l = doc.loops.find(lp => lp.id === item.id)
       if (l) code += generateLoopCode(l, doc, null) + '\n'
