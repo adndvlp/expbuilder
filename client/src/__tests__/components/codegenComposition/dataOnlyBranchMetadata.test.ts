@@ -100,6 +100,6 @@ describe("useTrialCode composition", () => {
 
     expect(code).toContain('branches: ["string-target"]');
     expect(code).toContain('window.ExpBuilderBranching.decide( data, ["string-target"]');
-    expect(code).toContain("window.nextTrialId = nextTrialId;");
+    expect(code).toContain("window.ExpBuilderNavigation?.requestBranch(data, branchDecision);");
   });
 });

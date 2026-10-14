@@ -136,16 +136,25 @@ function ExperimentPreview({
 
         if (!generatedCode) return;
 
+        const selectionName = selectedTrial?.name || selectedLoop?.name || "preview";
+        const previewStoragePrefix = `expbuilder:preview:${experimentID || ""}:${selectionName}`;
+        const previewNavigationKeys = {
+          jumpRequest: `${previewStoragePrefix}:jump-request`,
+          jumpReload: `${previewStoragePrefix}:jump-reload`,
+          resumeTrial: `${previewStoragePrefix}:resume-trial`,
+          jumpTarget: `${previewStoragePrefix}:jump-target`,
+          jumpContext: `${previewStoragePrefix}:jump-context`,
+        };
         const persistenceCode = buildSelectedPreviewPersistence({
           experimentID: experimentID || "",
           isSaveMode,
-          selectionName: selectedTrial?.name || selectedLoop?.name || "preview",
+          selectionName,
         });
         const trialCode = `
 ${persistenceCode}
-${resumeCode()}
+${resumeCode(previewNavigationKeys)}
 (async () => {
-localStorage.removeItem('jsPsych_jumpToTrial');
+localStorage.removeItem(${JSON.stringify(previewNavigationKeys.jumpTarget)});
   participantNumber = await initParticipant();
 
   if (!Number.isInteger(participantNumber) || participantNumber < 1) {
@@ -177,6 +186,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
       
       ${generatedCode}
 
+      window.ExpBuilderNavigation.attachPreview(jsPsych, timeline);
       jsPsych.run(timeline);
       
       })()

@@ -149,7 +149,10 @@ export function buildSelectedPreviewPersistence({
     }
 
     function persistPreviewResult(data) {
-      if (!localOutbox) return;
+      if (!localOutbox) {
+        window.ExpBuilderNavigation.onTrialPersisted(data);
+        return;
+      }
       localOutbox.enqueue(data).catch(function(error) {
         console.error('[session-persistence] preview result remains recoverable', {
           experimentID: ${encodedExperimentID},

@@ -1,20 +1,16 @@
 import { BranchCondition } from "../../../types";
-import { generateGlobalBranchConditionsCode } from "./branchConditions/generateGlobalBranchConditionsCode";
-import { generateLoopBranchConditionsCode } from "./branchConditions/generateLoopBranchConditionsCode";
 
-/**
- * Generates the code for evaluating branch conditions in on_finish
- * Supports both loop-scoped and window-scoped branching
- */
+/** Root and loop trials submit the same source-bound decision. */
 export function generateBranchConditionsCode(options: {
   branches: (string | number)[];
   branchConditions?: BranchCondition[];
   isInLoop?: boolean;
   getVarName: (baseName: string) => string;
 }): string {
-  const { isInLoop = false } = options;
-
-  return isInLoop
-    ? generateLoopBranchConditionsCode(options)
-    : generateGlobalBranchConditionsCode(options);
+  return `
+      const branchDecision = window.ExpBuilderBranching.decide(
+        data, ${JSON.stringify(options.branches)}, ${JSON.stringify(options.branchConditions ?? [])}
+      );
+      window.ExpBuilderNavigation?.requestBranch(data, branchDecision);
+  `;
 }

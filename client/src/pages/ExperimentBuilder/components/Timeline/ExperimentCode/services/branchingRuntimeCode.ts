@@ -20,33 +20,5 @@ export const evaluateConditionRuntimeCode = `
     };
   `;
 
-export const branchingEvaluationRuntimeCode = `
-      if ((data.trial_id !== undefined && data.trial_id !== null) ||
-          (data.loop_id !== undefined && data.loop_id !== null)) {
-        const lastTrialData = jsPsych.data.getLastTrialData();
-        const trial = lastTrialData.trials ? lastTrialData.trials[0] : null;
-        if (trial && trial.branches && trial.branches.length > 0 &&
-            trial.isInLoop !== true) {
-          const nextTrialId = getNextTrialId(lastTrialData);
-          if (nextTrialId === 'FINISH_EXPERIMENT') {
-            if (window.ExpBuilderRuntime) {
-              window.ExpBuilderRuntime.emit('branch-decision', {
-                sourceId: trial.builder_id ?? trial.trial_id ?? trial.loop_id,
-                targetId: 'FINISH_EXPERIMENT',
-                scope: 'global'
-              });
-            }
-            jsPsych.abortExperiment(
-              'Experiment finished by branching condition',
-              {}
-            );
-            return;
-          }
-          if (nextTrialId !== null && nextTrialId !== undefined) {
-            window.nextTrialId = nextTrialId;
-            window.skipRemaining = true;
-            window.branchingActive = true;
-          }
-        }
-      }
-  `;
+// Navigation is decided once in the source trial's on_finish callback.
+export const branchingEvaluationRuntimeCode = "";

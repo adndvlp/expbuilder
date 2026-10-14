@@ -120,7 +120,7 @@ describe("useTrialCode composition", () => {
     );
     expect(code).toContain(`response: "response_${identifier}"`);
     expect(code).toContain('branches: ["trial-next", 9]');
-    expect(code).toContain("NextTrialId = nextTrialId;");
+    expect(code).toContain("window.ExpBuilderNavigation?.requestBranch(data, branchDecision);");
     expect(code).not.toContain(`timeline.push(${identifier}_procedure)`);
   });
 });

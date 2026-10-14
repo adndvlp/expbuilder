@@ -20,7 +20,7 @@ export function resumeCode(
     const branchConditions = data.branchConditions || [];
     const completedId = data.builder_id ?? data.trial_id ?? null;
     const decision = branches.length > 0
-      ? window.ExpBuilderBranching.decide(data, branches, branchConditions)
+      ? window.ExpBuilderNavigation.decisionFor(data) ?? window.ExpBuilderBranching.decide(data, branches, branchConditions)
       : null;
     const sequentialTarget = completedId === null
       ? null

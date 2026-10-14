@@ -26,7 +26,7 @@ export function generateLoopRepeatLifecycle({
     window.ExpBuilderNavigation.requestJump(
       matchedRepeatCondition.jumpToTrialId,
       {
-        sourceId: ${loopId},
+        sourceId: loopLastData.builder_id ?? loopLastData.trial_id ?? ${loopId},
         conditionId: matchedRepeatCondition.id ?? null,
         sourceSessionId: trialSessionId
       },
@@ -37,8 +37,8 @@ export function generateLoopRepeatLifecycle({
   }`;
 
   return `
-  on_finish: function(data) {
+  on_timeline_finish: function() {
     const loopRows = jsPsych.data.get().filter({loop_id: ${loopId}}).values();
-    const loopLastData = loopRows[loopRows.length - 1] || data || {};${repeatCode}
+    const loopLastData = loopRows[loopRows.length - 1] || {};${repeatCode}
   },`;
 }

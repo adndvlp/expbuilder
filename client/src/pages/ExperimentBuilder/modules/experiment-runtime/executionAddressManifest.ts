@@ -7,6 +7,8 @@ export type ExecutionAddressManifest = {
   nextBySource: Record<string, string>;
   rootBranchTargetIds?: string[];
   addressesByTarget: Record<string, ExecutionAddress>;
+  scopes: Record<string, string[]>;
+  allScopes: Record<string, string[]>;
 };
 
 const idKey = (value: string | number) => String(value);
@@ -82,6 +84,15 @@ export function buildExecutionAddressManifest(
     nextBySource,
     rootBranchTargetIds: [...rootBranchTargets],
     addressesByTarget: buildAddressesByTarget(graph),
+    scopes: Object.fromEntries([
+      ["root", sequentialItems.map((item) => idKey(item.id))],
+      ...Object.values(graph.scopes).map((scope) => [
+        String(scope.scopeId), scope.items.map((item) => idKey(item.id)),
+      ]),
+    ]),
+    allScopes: Object.fromEntries([graph.root, ...Object.values(graph.scopes)].map(
+      (scope) => [scope.scopeId ?? "root", scope.items.map((item) => idKey(item.id))],
+    )),
   };
 }
 

@@ -11,7 +11,6 @@ import {
   generateOnStartCode,
   generateOnLoadCode,
   generateOnFinishCode,
-  generateConditionalFunctionCode,
 } from "./TrialCodeGenerators";
 import { generateStimuliSetupCode } from "./services/generateStimuliSetupCode";
 import { generateTrialProps } from "./services/generateTrialProps";
@@ -200,6 +199,7 @@ export function useTrialCode({
     }
 
     if (isInLoop) {
+      code += `\nwindow.ExpBuilderNavigation?.registerTrial(${JSON.stringify(id)}, ${trialNameSanitized}_timeline);`;
       return code;
     } else {
       code += `
@@ -213,9 +213,6 @@ export function useTrialCode({
     timeline_variables: test_stimuli_${trialNameSanitized},`;
       }
 
-      code += `
-    ${generateConditionalFunctionCode(id)}
-    `;
 
       if (includesExtensions && extensions !== "") {
         code += `
@@ -230,6 +227,7 @@ export function useTrialCode({
   `;
       }
 
+      code += `\nwindow.ExpBuilderNavigation?.registerTrial(${JSON.stringify(id)}, ${trialNameSanitized}_procedure);`;
       return code;
     }
   };

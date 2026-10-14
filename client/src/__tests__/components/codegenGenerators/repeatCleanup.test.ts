@@ -1,61 +1,23 @@
-import {
-  describe,
-  expect,
-  generateOnFinishCode,
-  getVarName,
-  it,
-  normalize,
-} from "./testHarness";
-import type { RepeatCondition } from "./testHarness";
+import { describe, expect, it, vi } from "vitest";
+import { generateOnFinishCode } from "./testHarness";
 
-describe("generateOnFinishCode merge points", () => {
-  const repeatConditions: RepeatCondition[] = [
-    {
-      id: 1,
-      jumpToTrialId: 7,
-      rules: [{ column: "score", op: ">=", value: "3" }],
-    },
-  ];
-
-  it("combines repeat-only loop code with loop branch cleanup", () => {
-    const loopCode = normalize(
-      generateOnFinishCode({
-        branches: [],
-        repeatConditions,
-        isInLoop: true,
-        getVarName,
-      }),
-    );
-    const mergeLoopCode = normalize(
-      generateOnFinishCode({
-        branches: [],
-        repeatConditions,
-        isInLoop: true,
-        isMergePoint: true,
-        getVarName,
-      }),
-    );
-
-    expect(loopCode).toContain("const repeatConditionsArray =");
-    expect(loopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
-    expect(mergeLoopCode).toContain("loop_1_NextTrialId = null;");
-    expect(mergeLoopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
-  });
-
-  it("combines repeat-only global merge code with custom code", () => {
-    const code = normalize(
-      generateOnFinishCode({
-        branches: [],
-        repeatConditions,
-        isMergePoint: true,
-        getVarName,
-        customOnFinish: "data.afterRepeat = true;",
-      }),
-    );
-
-    expect(code).toContain("const repeatConditionsArray =");
-    expect(code).toContain("data.afterRepeat = true;");
-    expect(code).toContain("window.nextTrialId = null;");
-    expect(code).toContain("window.branchCustomParameters = null;");
+describe("jump priority over branch completion", () => {
+  it.each([true, false])("completes a merge only when the jump condition does not match (%s)", matches => {
+    const data = { builder_id: 1, score: 4 };
+    const runtime = {
+      ExpBuilderBranching: { evaluateCondition: vi.fn(() => matches) },
+      ExpBuilderNavigation: { requestJump: vi.fn(), completeTrial: vi.fn() },
+    };
+    const jsPsych = { pauseExperiment: vi.fn() };
+    const code = generateOnFinishCode({ getVarName: name => name, isMergePoint: true, repeatConditions: [{ id: 2, jumpToTrialId: 7, rules: [{ column: "score", op: ">=", value: "3" }] }] });
+    const finish = new Function("window", "jsPsych", "trialSessionId", `return ({${code}}).on_finish;`)(runtime, jsPsych, "session");
+    finish(data);
+    if (matches) {
+      expect(runtime.ExpBuilderNavigation.requestJump).toHaveBeenCalledOnce();
+      expect(runtime.ExpBuilderNavigation.completeTrial).not.toHaveBeenCalled();
+    } else {
+      expect(runtime.ExpBuilderNavigation.requestJump).not.toHaveBeenCalled();
+      expect(runtime.ExpBuilderNavigation.completeTrial).toHaveBeenCalledExactlyOnceWith(data, true);
+    }
   });
 });

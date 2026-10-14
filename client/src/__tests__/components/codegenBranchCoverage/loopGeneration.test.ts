@@ -66,7 +66,7 @@ describe("loop and branch code generation coverage", () => {
         "trialSessionId",
         `return ({${code}});`,
       )(runtime, jsPsych, "session-a");
-      lifecycle.on_finish({ response: "unused" });
+      lifecycle.on_timeline_finish();
 
       expect(
         runtime.ExpBuilderBranching.evaluateCondition,
@@ -75,7 +75,7 @@ describe("loop and branch code generation coverage", () => {
       if (matches) {
         expect(runtime.ExpBuilderNavigation.requestJump).toHaveBeenCalledWith(
           10,
-          { sourceId: "loop-a", conditionId: 1, sourceSessionId: "session-a" },
+          { sourceId: 2, conditionId: 1, sourceSessionId: "session-a" },
           lastRow,
           expect.any(Function),
         );

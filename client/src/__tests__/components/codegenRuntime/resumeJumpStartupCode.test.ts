@@ -202,13 +202,13 @@ describe("resume/jump startup protocol", () => {
 
     expect(localStorage.getItem("jsPsych_jumpRequest")).toBeNull();
     expect(result.branchState).toEqual({
-      nextTrialId: "nested-target",
-      skipRemaining: true,
-      branchingActive: true,
-      customParameters: {
-        stimulus: { source: "typed", value: "restored" },
-      },
+      nextTrialId: null,
+      skipRemaining: false,
+      branchingActive: false,
+      customParameters: null,
     });
+    expect(result.enter("source", "trial")).toBe(false);
+    expect(result.enter("nested-target", "trial")).toBe(true);
   });
 
   it("routes a sequential resume through the canonical address cursor", () => {

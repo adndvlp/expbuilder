@@ -55,7 +55,7 @@ export function buildLocalExperimentCode(
         {
           state: "custom-parameters",
           mode: "consumer",
-          evidence: /Object\.entries\([^)]*[Bb]ranchCustomParameters\)/,
+          evidence: /Object\.entries\([^)]*[Bb]ranch(?:Custom)?Parameters\)/,
         },
         {
           state: "cleanup",

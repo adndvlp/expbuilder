@@ -1,5 +1,6 @@
 import { getNavigationCoordinatorKernelCode } from "./navigationCoordinatorKernel";
 import { getLoopResumeRuntimeCode } from "./loopResumeRuntimeCode";
+import { getNativeTimelineNavigationCode } from "./nativeTimelineNavigation";
 
 export type NavigationStorageKeys = {
   jumpRequest: string;
@@ -50,7 +51,16 @@ export function getNavigationCoordinatorRuntimeCode(
     let durabilityCheck = null;
 ${getNavigationCoordinatorKernelCode()}
 ${getLoopResumeRuntimeCode()}
+${getNativeTimelineNavigationCode()}
     window.ExpBuilderNavigation = Object.freeze({
+      registerTrial,
+      registerLoop,
+      attach,
+      attachPreview,
+      requestBranch,
+      completeTrial,
+      takeParameters,
+      decisionFor: data => branchDecisions.get(data),
       sampleLoop,
       remainingLoopRepetitions,
       startLoop,
@@ -64,6 +74,7 @@ ${getLoopResumeRuntimeCode()}
         const manifest = currentManifest();
         const address = resolveAddress(targetId);
         if (!manifest || !address) {
+          if (selectedPreview) return;
           throw new Error('Jump target has no compiled execution address');
         }
         const row = sourceData || {};
@@ -84,7 +95,8 @@ ${getLoopResumeRuntimeCode()}
         sessionStorage.removeItem(JUMP_CONTEXT_KEY);
         emit('jump-requested', targetPayload(request));
         if (typeof pauseRuntime === 'function') pauseRuntime();
-        reloadWhenDurable();
+        else nativeRuntime?.pauseExperiment();
+        completeJumpWhenDurable();
       },
       consumeReloadMarker() {
         const marked = sessionStorage.getItem(JUMP_RELOAD_KEY) === '1';
@@ -174,12 +186,14 @@ ${getLoopResumeRuntimeCode()}
       },
       onTrialPersisted(data) {
         persistedRows.push(data || {});
-        reloadWhenDurable();
+        completeJumpWhenDurable();
       },
       isTransitionPending() {
         return pendingJump !== null;
       },
       clearTransientState() {
+        nativeScopes.length = 0;
+        nativeTransition = null;
         loopFrames.length = 0;
         preparedLoops.clear();
         restoredLoops.clear();

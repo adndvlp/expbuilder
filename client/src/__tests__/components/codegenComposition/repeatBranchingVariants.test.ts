@@ -36,7 +36,7 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("const repeatConditions =");
     expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
     expect(code).not.toContain('const branches = [10, "fallback_branch"];');
-    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
+    expect(code).toContain("window.ExpBuilderNavigation?.registerLoop(");
   });
 
   it("does not generate conditional branching from obsolete loop fields", () => {
@@ -72,10 +72,10 @@ describe("useLoopCode composition", () => {
 
     expect(code).not.toContain('const branches = [10, "branch_b"];');
     expect(code).not.toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
+    expect(code).toContain("window.ExpBuilderNavigation?.registerLoop(");
   });
 
-  it("propagates concrete trial exits to the parent scope", () => {
+  it("registers nested scopes for runtime exit resolution", () => {
     const genLoopCode = useLoopCode({
       id: "loop_child",
       repetitions: 1,
@@ -100,10 +100,10 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain(
-      "loop_loop_parent_NextTrialId = pendingBranchTarget;",
+      'registerLoop("loop_child", loop_child_procedure)',
     );
-    expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
-    expect(code).toContain("loop_loop_parent_BranchingActive = true;");
+    expect(code).not.toContain("SkipRemaining");
+    expect(code).not.toContain("timeline.push(loop_child_procedure)");
     expect(code).not.toContain("window.nextTrialId = branches[0];");
   });
 });

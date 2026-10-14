@@ -1,11 +1,8 @@
 import { generateLoopRepeatLifecycle } from "./services/generateLoopRepeatLifecycle";
 import LoopProcedureCode from "./LoopProcedureCode";
 import { LoopCondition, RepeatCondition, TimelineItem } from "./types";
-import { generateItemWrappers } from "./services/generateItemWrappers";
 import {
-  generateDescendantIdEntries,
   getLoopId,
-  getTimelineItemId,
   getTimelineItemName,
   isLoopData,
 } from "./services/timelineItemIdentity";
@@ -42,18 +39,12 @@ export default function useLoopCode({
   loopConditions,
   isConditionalLoop,
   parentLoopId,
-  mergePointIds = [],
 }: Props) {
   const sanitizeName = toCodeIdentifier;
 
   const genLoopCode = (): string => {
     // Sanitize the loop ID to use it in variable names
     const loopIdSanitized = id ? sanitizeName(id) : "Loop";
-
-    // Detect if this loop is nested (has a parent)
-    const parentLoopIdSanitized = parentLoopId
-      ? sanitizeName(parentLoopId)
-      : null;
 
     // Generate the code for each trial or loop
     const itemDefinitions = trials
@@ -93,22 +84,9 @@ export default function useLoopCode({
       })
       .join("\n\n");
 
-    // Generate wrappers with conditional_function for each trial/loop inside the loop
-    const itemWrappers = generateItemWrappers({
-      loopIdSanitized,
-      mergePointIds,
-      sanitizeName,
-      trials,
-    });
-
-    // Generate the list of wrapper names for the loop timeline
-    const timelineRefs = trials
-      .map((item) => {
-        const itemName = getTimelineItemName(item);
-        const itemNameSanitized = sanitizeName(itemName);
-        return `${itemNameSanitized}_wrapper`;
-      })
-      .join(", ");
+    const timelineRefs = trials.map(item => isLoopData(item)
+      ? `${sanitizeName(String(getLoopId(item)))}_procedure`
+      : `${sanitizeName(getTimelineItemName(item))}_timeline`).join(", ");
 
     let code = "";
 
@@ -197,16 +175,12 @@ export default function useLoopCode({
 
     const procedureResult = LoopProcedureCode({
       code,
-      parentLoopIdSanitized,
       itemDefinitions,
       loopIdSanitized,
       id,
-      itemWrappers,
       timelineRefs,
       repetitions,
       randomize,
-      descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
-      lastItemId: trials.length ? getTimelineItemId(trials[trials.length - 1]) : null,
       isConditionalLoop,
       loopConditions,
     });
@@ -226,6 +200,7 @@ export default function useLoopCode({
       : `timeline.push(${loopIdSanitized}_procedure);`;
     code += `
 };
+window.ExpBuilderNavigation?.registerLoop(${JSON.stringify(id)}, ${loopIdSanitized}_procedure);
 ${appendRootProcedure}
 `;
 

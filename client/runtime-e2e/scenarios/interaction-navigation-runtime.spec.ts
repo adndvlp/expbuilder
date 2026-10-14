@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { ScenarioAuthor } from "../authoring/ScenarioAuthor";
 import { RuntimeObserver } from "../runtime/RuntimeObserver";
+import { compileScenarioArtifact } from "../authoring/compileScenarioArtifact";
 import {
   builderIds,
   loadPersistedSession,
   runtimeApiBaseUrl,
+  localRuntimeStorageKeys,
 } from "../support/session";
 
 test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without replaying the branch source", async ({
@@ -48,13 +50,24 @@ test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without r
   await runtime.continue();
   await expect(runtime.trial("branch-jump-trigger")).toBeVisible();
   const branchSessionId = await runtime.sessionId();
+  const documentId = await page.evaluate(() => {
+    const token = crypto.randomUUID();
+    Object.assign(window, { navigationDocumentId: token });
+    return token;
+  });
   await runtime.choose("Jump");
   await expect(runtime.trial("branch-jump-target")).toBeVisible();
+  expect(await page.evaluate(() => Reflect.get(window, "navigationDocumentId")))
+    .toBe(documentId);
   const jumpSessionId = await runtime.sessionId();
   expect(jumpSessionId).toBe(branchSessionId);
   await runtime.continue();
   await expect(runtime.trial("branch-jump-trigger")).toBeVisible();
   await runtime.choose("Continue");
+  await test.info().attach("navigation-events", {
+    body: JSON.stringify(await runtime.snapshot(), null, 2),
+    contentType: "application/json",
+  });
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
   const persisted = await loadPersistedSession(
@@ -67,6 +80,42 @@ test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without r
     author.id("branch-jump-target"),
     author.id("branch-jump-trigger"),
   ].map(String));
+  await runtime.assertNoRuntimeFailures();
+});
+
+test("resumes a cross-scope branch during the source's inter-trial gap", async ({ page }) => {
+  const author = new ScenarioAuthor(runtimeApiBaseUrl);
+  await author.createExperiment(`runtime-exit-gap-${Date.now()}`);
+  await author.createTrial("gap-source");
+  await author.createLoop("gap-loop", ["gap-source"]);
+  await author.client.updateLoop(author.experimentId, author.id("gap-loop"), {
+    csvJson: [{ row: 1 }, { row: 2 }], repetitions: 2,
+  });
+  await author.addLoopExitBranch("gap-source", "gap-target");
+  await author.configureButtonTrials(["gap-source", "gap-target"]);
+  await author.configureBranchConditions("gap-source", [{
+    id: 160, rules: [{ column: "response", op: "==", value: "0" }],
+    nextTrialAlias: "gap-target",
+  }]);
+  const artifact = await compileScenarioArtifact({
+    apiBaseUrl: author.apiBaseUrl, client: author.client, experimentId: author.experimentId,
+    localParams: { default_iti: "4000" },
+  });
+  const runtime = new RuntimeObserver(page);
+  await page.goto(artifact.experimentUrl);
+  await expect(runtime.trial("gap-source")).toBeVisible();
+  const sessionId = await runtime.sessionId();
+  await runtime.continue();
+  const key = localRuntimeStorageKeys(author.experimentId).resumeTrial;
+  await expect.poll(() => page.evaluate(k => JSON.parse(localStorage.getItem(k) || "null")?.completed?.builderId, key)).toBe(author.id("gap-source"));
+  await runtime.waitForPersistence();
+  await page.reload();
+  await expect(runtime.trial("gap-target")).toBeVisible();
+  await runtime.continue();
+  await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
+  expect(builderIds((await loadPersistedSession(author.experimentId, sessionId)).session.data)).toEqual([
+    String(author.id("gap-source")), String(author.id("gap-target")),
+  ]);
   await runtime.assertNoRuntimeFailures();
 });
 
@@ -120,8 +169,15 @@ test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump in one persis
   await expect(runtime.trial("exit-jump-trigger")).toBeVisible();
   await expect(runtime.trial("exit-jump-inside-skipped")).toHaveCount(0);
   const exitSessionId = await runtime.sessionId();
+  const documentId = await page.evaluate(() => {
+    const token = crypto.randomUUID();
+    Object.assign(window, { navigationDocumentId: token });
+    return token;
+  });
   await runtime.choose("Jump");
   await expect(runtime.trial("exit-jump-target")).toBeVisible();
+  expect(await page.evaluate(() => Reflect.get(window, "navigationDocumentId")))
+    .toBe(documentId);
   const jumpSessionId = await runtime.sessionId();
   expect(jumpSessionId).toBe(exitSessionId);
   await runtime.continue();

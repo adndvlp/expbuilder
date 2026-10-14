@@ -11,6 +11,7 @@ export function getLoopResumeRuntimeCode(): string {
       branchingActive: Boolean(window.branchingActive),
       branchUsedDefault: Boolean(window.branchUsedDefault),
       branchCustomParameters: window.branchCustomParameters ?? null
+      ,nativeTimeline: nativeRootSnapshot()
     });
     const loopSnapshots = () => loopFrames.map(frame => ({
       loopId: frame.loopId,
@@ -107,6 +108,7 @@ export function getLoopResumeRuntimeCode(): string {
       preparedLoops.get(String(loopId))?.cycleRows ?? null;
     const checkpointTrialStart = trialData => {
       if (!cursorCheckpointsEnabled || pendingJump) return;
+      nativeTransition = null;
       const targetId = trialData?.builder_id ?? trialData?.trial_id;
       if (targetId === undefined || targetId === null) return;
       let previous = null;
@@ -122,6 +124,8 @@ export function getLoopResumeRuntimeCode(): string {
       for (const frame of loopFrames) {
         if (frame.conditional) frame.cycleRows.push(cloneResumeValue(data));
       }
+      const transition = transitionCheckpoint(data, fallback);
+      if (transition) return transition;
       return cursorCheckpoint(
         data.builder_id ?? data.trial_id,
         fallback.completed,

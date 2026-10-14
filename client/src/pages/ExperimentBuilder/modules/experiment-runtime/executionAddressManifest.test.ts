@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import vm from "node:vm";
-import { generateConditionalFunctionCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
+import { resumeCode } from "../../components/Timeline/ExperimentCode/ResumeCode";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import {
   buildExecutionAddressManifest,
@@ -39,6 +39,8 @@ describe("execution address manifest", () => {
       revision: "r1",
       nextBySource: { "1": "loop-1" },
       rootBranchTargetIds: ["2"],
+      scopes: { root: ["1", "loop-1", "3"] },
+      allScopes: { root: ["1", "2", "loop-1", "3"] },
       addressesByTarget: {
         "1": {
           targetId: 1,
@@ -77,22 +79,29 @@ describe("execution address manifest", () => {
   });
 
   it("requires an explicit selection for a root alternative after a nested route completes", () => {
-    const window = {
-      ExpBuilderExecutionAddresses: buildExecutionAddressManifest(graph()),
-      skipRemaining: false,
-      nextTrialId: null as number | null,
+    const storage = {
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => undefined,
     };
-    const canRun = (id: number) => vm.runInNewContext(
-      `({ ${generateConditionalFunctionCode(id)} }).conditional_function()`,
-      { window },
+    const routes = vm.runInNewContext(
+      `${resumeCode()}
+       const nav = window.ExpBuilderNavigation;
+       for (const id of ['1', '2', '3']) nav.registerTrial(id, { data: { builder_id: id } });
+       nav.registerLoop('loop-1', { data: { loop_id: 'loop-1' }, timeline: [] });
+       const timeline = [];
+       nav.attach({}, timeline);
+       const root = timeline[0];
+       root.on_timeline_start();
+       root.timeline[0].on_timeline_start();
+       const initial = root.timeline.map(entry => entry.timeline[0].data.builder_id || entry.timeline[0].data.loop_id);
+       nav.requestBranch({ builder_id: '1' }, { targetId: '2' });
+       const selected = root.timeline.map(entry => entry.timeline[0].data.builder_id);
+       ({ initial, selected });`,
+      { window: { ExpBuilderExecutionAddresses: buildExecutionAddressManifest(graph()) }, localStorage: storage, sessionStorage: storage },
     );
-    expect(canRun(2)).toBe(false);
-    expect(canRun(3)).toBe(true);
-    window.skipRemaining = true;
-    window.nextTrialId = 2;
-    expect(canRun(2)).toBe(true);
-    expect(canRun(2)).toBe(false);
-    expect(canRun(3)).toBe(true);
+    expect(routes.initial).toEqual(["1", "loop-1", "3"]);
+    expect(routes.selected).toEqual(["1", "2"]);
   });
 
   it("compiles the full loop ancestry for nested trial and loop targets", () => {

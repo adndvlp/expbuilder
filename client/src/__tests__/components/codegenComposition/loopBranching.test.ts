@@ -2,7 +2,7 @@ import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
 import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
-  it("checks a newly requested loop branch target before suppressing remaining wrappers", () => {
+  it("registers loop definitions without a second branching engine", () => {
     const genLoopCode = useLoopCode({
       id: "loop_chain",
       repetitions: 1,
@@ -41,17 +41,12 @@ describe("useLoopCode composition", () => {
     });
 
     const code = normalize(genLoopCode());
-    const skipCheckIndex = code.indexOf("if (loop_loop_chain_SkipRemaining)");
-    const targetExecutedIndex = code.indexOf(
-      "if (loop_loop_chain_TargetExecuted)",
-    );
+    expect(code).toContain('registerLoop("loop_chain", loop_chain_procedure)');
+    expect(code).not.toMatch(/SkipRemaining|TargetExecuted/);
 
-    expect(skipCheckIndex).toBeGreaterThan(-1);
-    expect(targetExecutedIndex).toBeGreaterThan(-1);
-    expect(skipCheckIndex).toBeLessThan(targetExecutedIndex);
   });
 
-  it("resets loop branch state after a shared terminal target so later wrappers continue", () => {
+  it("retains the shared destination and its continuation in the loop definition", () => {
     const genLoopCode = useLoopCode({
       id: "loop_merge",
       repetitions: 1,
@@ -98,11 +93,11 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain(
-      `const ${toCodeIdentifier("Shared Target")}_wrapper =`,
+      `timeline: [${toCodeIdentifier("Trial A")}_timeline, ${toCodeIdentifier("Shared Target")}_timeline, ${toCodeIdentifier("After Merge")}_timeline]`,
     );
-    expect(code).toContain("loop_loop_merge_NextTrialId = null;");
-    expect(code).toContain("loop_loop_merge_SkipRemaining = false;");
-    expect(code).toContain("loop_loop_merge_TargetExecuted = false;");
+    expect(code).toContain('registerLoop("loop_merge", loop_merge_procedure)');
+    expect(code).not.toContain("SkipRemaining");
+    expect(code).not.toContain("TargetExecuted");
     expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
@@ -159,6 +154,6 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
     expect(code).not.toContain('const branches = [10, "loop_next"];');
     expect(code).not.toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
+    expect(code).toContain("on_timeline_finish: function()");
   });
 });

@@ -30,7 +30,7 @@ export function resumeJumpStartupCode(
 export function activateResumeRouteDecisionCode(): string {
   return `
     if (resumeRouteDecision !== null) {
-      if (resumeRouteDecision.kind === 'cursor') {
+      if (resumeRouteDecision.kind === 'cursor' || resumeRouteDecision.kind === 'branch') {
         window.ExpBuilderNavigation.activateResume(resumeRouteDecision);
       } else {
       const resumesBranch = resumeRouteDecision.kind === 'branch';

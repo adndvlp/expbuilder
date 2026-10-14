@@ -274,9 +274,9 @@ describe("generateTrialLoopCodes integration", () => {
       ) || "",
     );
 
-    expect(sharedTargetCode).toContain("window.nextTrialId = null;");
-    expect(sharedTargetCode).toContain("window.skipRemaining = false;");
-    expect(sharedTargetCode).toContain("window.branchingActive = false;");
+    expect(sharedTargetCode).toContain("window.ExpBuilderNavigation?.completeTrial(data, true)");
+    expect(sharedTargetCode).not.toContain("skipRemaining");
+    expect(sharedTargetCode).not.toContain("branchingActive");
     expect(sharedTargetCode).not.toContain("jsPsych.abortExperiment");
   });
 });

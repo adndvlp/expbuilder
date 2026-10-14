@@ -132,7 +132,7 @@ export function getNavigationCoordinatorKernelCode(): string {
       }
       return sourceId === null || rowIds(row).includes(sourceId);
     };
-    const reloadWhenDurable = () => {
+    const completeJumpWhenDurable = () => {
       if (!pendingJump || reloadStarted) return;
       const persisted = persistedRows.find(row => rowMatches(row, pendingJump));
       if (!persisted || durabilityCheck) return;
@@ -142,9 +142,15 @@ export function getNavigationCoordinatorKernelCode(): string {
         if (reloadStarted || pendingJump !== jump) return;
         const durable = persistedRows.some(row => rowMatches(row, jump));
         if (!durable) return;
-        reloadStarted = true;
         emit('jump-persisted', targetPayload(jump));
-        window.location.reload();
+        if (nativeRuntime) {
+          performTransition(jump.address.targetId, { kind: 'jump' });
+          pendingJump = null;
+          nativeRuntime.resumeExperiment();
+        } else {
+          reloadStarted = true;
+          window.location.reload();
+        }
       })()
         .catch(error => {
           window.ExpBuilderRuntime?.reportError(error, {
@@ -153,6 +159,7 @@ export function getNavigationCoordinatorKernelCode(): string {
         })
         .finally(() => {
           durabilityCheck = null;
+          if (pendingJump && pendingJump !== jump) completeJumpWhenDurable();
         });
     };
 `;

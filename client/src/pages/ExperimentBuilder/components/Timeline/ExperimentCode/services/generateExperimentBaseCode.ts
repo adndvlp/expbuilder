@@ -91,6 +91,7 @@ ${
 
 ${codes.join("\n\n")}
 
+    window.ExpBuilderNavigation?.attach(jsPsych, timeline);
     jsPsych.run(timeline);
 `;
 }

@@ -1,80 +1,21 @@
-import {
-  describe,
-  expect,
-  generateOnFinishCode,
-  getVarName,
-  it,
-  normalize,
-} from "./testHarness";
+import { describe, expect, it, vi } from "vitest";
+import { generateOnFinishCode } from "./testHarness";
 
-describe("generateOnFinishCode merge points", () => {
-  it("clears global branch state for terminal top-level merge targets", () => {
-    const code = normalize(
-      generateOnFinishCode({
-        branches: [],
-        branchConditions: [],
-        isMergePoint: true,
-        getVarName,
-      }),
-    );
-
-    expect(code).toContain("window.nextTrialId = null;");
-    expect(code).toContain("window.skipRemaining = false;");
-    expect(code).toContain("window.branchingActive = false;");
-    expect(code).not.toContain("jsPsych.abortExperiment");
+describe("terminal trial navigation", () => {
+  it.each([false, true])("delegates merge completion in either scope (inside loop=%s)", isInLoop => {
+    const data = { builder_id: 3, saved: false };
+    const runtime = { ExpBuilderNavigation: { completeTrial: vi.fn() } };
+    const code = generateOnFinishCode({ branches: [], isInLoop, isMergePoint: true, getVarName: name => name, customOnFinish: "data.saved = true;" });
+    new Function("window", `return ({${code}}).on_finish;`)(runtime)(data);
+    expect(data.saved).toBe(true);
+    expect(runtime.ExpBuilderNavigation.completeTrial).toHaveBeenCalledExactlyOnceWith(data, true);
   });
 
-  it("clears loop branch state for terminal loop-scoped merge targets", () => {
-    const code = normalize(
-      generateOnFinishCode({
-        branches: [],
-        branchConditions: [],
-        isInLoop: true,
-        isMergePoint: true,
-        getVarName,
-      }),
-    );
-
-    expect(code).toContain("loop_1_NextTrialId = null;");
-    expect(code).toContain("loop_1_SkipRemaining = false;");
-    expect(code).toContain("loop_1_TargetExecuted = false;");
-    expect(code).toContain("loop_1_BranchingActive = false;");
-    expect(code).not.toContain("jsPsych.abortExperiment");
-  });
-
-  it("aborts active branching for plain non-merge terminal trials", () => {
-    const topLevelCode = normalize(
-      generateOnFinishCode({
-        branches: [],
-        getVarName,
-        customOnFinish: "data.saved = true;",
-      }),
-    );
-    const loopCode = normalize(
-      generateOnFinishCode({
-        branches: [],
-        isInLoop: true,
-        getVarName,
-      }),
-    );
-
-    expect(topLevelCode).toContain("data.saved = true;");
-    expect(topLevelCode).toContain("if (window.branchingActive)");
-    expect(topLevelCode).toContain("jsPsych.abortExperiment('', {});");
-    expect(loopCode).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
-    expect(loopCode).toContain("window.branchingActive");
-  });
-
-  it("appends branch condition code in the final on_finish path", () => {
-    const code = normalize(
-      generateOnFinishCode({
-        branches: [2],
-        branchConditions: [],
-        getVarName,
-      }),
-    );
-
-    expect(code).toContain("window.nextTrialId = nextTrialId;");
-    expect(code).toContain("window.branchingActive = true;");
+  it("delegates plain terminal completion without aborting the whole experiment", () => {
+    const data = { builder_id: 4 };
+    const runtime = { ExpBuilderNavigation: { completeTrial: vi.fn() } };
+    const code = generateOnFinishCode({ getVarName: name => name });
+    new Function("window", `return ({${code}}).on_finish;`)(runtime)(data);
+    expect(runtime.ExpBuilderNavigation.completeTrial).toHaveBeenCalledExactlyOnceWith(data, false);
   });
 });

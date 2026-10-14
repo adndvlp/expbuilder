@@ -2,7 +2,7 @@ import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
 import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
-  it("generates a loop procedure with trial wrappers and unified stimuli", () => {
+  it("generates a loop procedure with registered trial definitions and unified stimuli", () => {
     const genLoopCode = useLoopCode({
       id: "loop_1",
       repetitions: 2,
@@ -37,15 +37,15 @@ describe("useLoopCode composition", () => {
     expect(code).toContain("const test_stimuli_loop_1 = [");
     const trialA = toCodeIdentifier("Loop Trial A");
     const trialB = toCodeIdentifier("Loop Trial B");
-    expect(code).toContain(`const ${trialA}_wrapper =`);
-    expect(code).toContain(`const ${trialB}_wrapper =`);
-    expect(code).toContain("let loop_loop_1_NextTrialId = null;");
+    expect(code).toContain(`timeline: [${trialA}_timeline, ${trialB}_timeline]`);
+    expect(code).not.toContain("SkipRemaining");
+    expect(code).toContain('registerLoop("loop_1", loop_1_procedure)');
     expect(code).toContain("const loop_1_procedure =");
     expect(code).toContain(
-      `timeline: [${trialA}_wrapper, ${trialB}_wrapper]`,
+      `timeline: [${trialA}_timeline, ${trialB}_timeline]`,
     );
-    expect(code).toContain("repetitions: 2");
-    expect(code).toContain("randomize_order: true");
+    expect(code).toContain('remainingLoopRepetitions("loop_1", 2)');
+    expect(code).toContain('sampleLoop("loop_1", indices, true, false)');
     expect(code).toContain('data: { loop_id: "loop_1" }');
     expect(code).toContain("timeline.push(loop_1_procedure)");
   });
@@ -88,12 +88,12 @@ describe("useLoopCode composition", () => {
     expect(code).toContain(
       "window.ExpBuilderBranching.evaluateReferencedCondition",
     );
-    expect(code).toContain("window.nextTrialId = null;");
-    expect(code).toContain("window.skipRemaining = false;");
+    expect(code).toContain('registerLoop("loop_2", loop_2_procedure)');
+    expect(code).not.toContain("SkipRemaining");
     expect(code).not.toContain("window.nextTrialId = branches[0];");
   });
 
-  it("generates loop repeat/jump conditions in on_finish", () => {
+  it("generates loop repeat/jump conditions in on_timeline_finish", () => {
     const genLoopCode = useLoopCode({
       id: "loop_repeat",
       repeatConditions: [
