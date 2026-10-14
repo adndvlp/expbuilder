@@ -5,6 +5,7 @@ import multer from "multer";
 import JSZip from "jszip";
 import { db, dbDir, userDataRoot } from "../../utils/db.js";
 import { ALLOWED_MEDIA_TYPES } from "./zip.js";
+import { migrateLegacyBranching } from "./legacy/migrateLegacyBranching.js";
 
 const router = Router();
 const importZipUpload = multer({ dest: dbDir });
@@ -69,8 +70,7 @@ router.post(
         if (firstSegment) experimentFolders.add(firstSegment);
       });
 
-      let importedCount = 0;
-
+      const imports = [];
       for (const folderName of experimentFolders) {
         const dataFile = zip.file(`${folderName}/data.json`);
         if (!dataFile) continue;
@@ -82,6 +82,15 @@ router.post(
           continue;
         }
 
+        if (!data.experiment?.experimentID) continue;
+        // TEMPORARY: remove this call with the legacy compatibility module.
+        data.trials = migrateLegacyBranching(data.trials);
+        imports.push({ folderName, data });
+      }
+
+      // Prepare every migration before changing the database or media files.
+      let importedCount = 0;
+      for (const { folderName, data } of imports) {
         const {
           experiment,
           trials,
@@ -89,8 +98,6 @@ router.post(
           sessionResults,
           sessionCounter,
         } = data;
-        if (!experiment?.experimentID) continue;
-
         mergeRecord(db.data.experiments, experiment.experimentID, experiment);
         if (trials) mergeRecord(db.data.trials, experiment.experimentID, trials);
         if (config) mergeRecord(db.data.configs, experiment.experimentID, config);
@@ -124,7 +131,11 @@ router.post(
           // Best-effort cleanup; the original import error is returned below.
         }
       }
-      res.status(500).json({ success: false, error: err.message });
+      res.status(err.status || 500).json({
+        success: false,
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+      });
     }
   },
 );
