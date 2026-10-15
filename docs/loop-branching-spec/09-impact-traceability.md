@@ -70,18 +70,6 @@ Las seis lecturas se limitan a topología. DEC-28–30 evitan inferir de ellas c
 | create/update/delete de loops y trials | reconnect y replacement globales | graph service para cada mutación |
 | validation actual | self-edge/cycle básico | validaciones DATA/API y códigos tipados |
 
-### Ruta del agente del servidor
-
-| Superficie | Hecho confirmado | Consecuencia requerida |
-|---|---|---|
-| `server/agent/tools/create/trials.js` | crea/PATCH/borrar directamente en LowDB | delegar en commands o rechazar capacidad no soportada |
-| `loop-create.js` | agrupa y reemplaza branch refs con implementación propia | compartir ownership/group rules |
-| `loop-update.js` | mueve ownership y membership directamente | compartir impact analysis y revision |
-| `loop-delete.js` | elige terminal y reconecta branches al desagrupar | no usar reconnect legacy sobre exits |
-| `server/agent/tools/create/build.js` | dispara HTML local/público del agente | mismo compiler contract y diagnostics |
-
-DEC-33 define si el agente también autoriza la creación conversacional de exits. La preservación, validación y paridad de ejecución no son opcionales mientras estas rutas operen sobre el mismo documento.
-
 ### Layout y proyección
 
 | Superficie | Hecho confirmado | Consecuencia requerida |
@@ -112,15 +100,6 @@ DEC-33 define si el agente también autoriza la creación conversacional de exit
 | `useLoopCode/BranchesCode.ts` | branch múltiple de loop conserva TODO/primera branch | evaluator único sin fallback accidental |
 | `generateItemWrappers.ts` | busca target sólo en items del loop y resetea flags localmente | address/router con cleanup probado |
 
-### Codegen del agente
-
-| Superficie | Hecho confirmado | Consecuencia requerida |
-|---|---|---|
-| `server/agent/codegen.js` | recorre `timeline` y llama generadores JS propios | mismo snapshot/IR que el cliente |
-| `server/agent/codegen/trial.js` | activa flags/reload/custom state; no genera consumidor raíz encontrado | eliminar protocolo incompleto/duplicado |
-| `server/agent/codegen/loop.js` | nesting recursivo; propaga parent directo/primera branch | route table y conformidad runtime |
-| `buildExperimentHtml` / `buildPublicExperimentHtml` | outputs productivos; tests actuales verifican substrings | pruebas de traza cliente↔agente |
-
 ### Resume, jump y sesiones
 
 | Superficie | Hecho confirmado | Consecuencia requerida |
@@ -138,7 +117,6 @@ DEC-33 define si el agente también autoriza la creación conversacional de exit
 - suites `canvasExpandedLayout/` y E2E `unified-canvas-*.spec.ts`
 - suites `codegenComposition/`, `codegenGenerators/`, `codegenRuntime/` y `resumeBranching.test.ts`
 - `server/__tests__/routes/{loops,final-branches,branch-coverage,timeline-index}.test.js`
-- `server/__tests__/agent/codegen.test.js` y `tools/create.test.js`
 
 La lista concreta de casos nuevos está en [07](./07-test-acceptance-plan.md). Las pruebas existentes caracterizan compatibilidad; no prueban por sí mismas el nuevo origen cross-scope.
 
@@ -154,10 +132,9 @@ La matriz no exhaustiva de interacciones, su evidencia vertical y sus bloqueos c
 | Continuación runtime | DEC-15–19, DEC-28/32, DEC-39–41 |
 | Resume/jump | DEC-20/21, DEC-34/35 |
 | Visual/layout | DEC-08, DEC-23, DEC-27 |
-| Agente | DEC-33/37 |
 | Límites | DEC-23/38 |
 | Release | DEC-25/26/37 |
 
 ## Cierre de trazabilidad
 
-Ninguna de las superficies anteriores puede considerarse compatible por similitud visual. El gate final exige que un mismo fixture persistido produzca: ownership único, proyecciones correctas, condiciones conservadas y la misma traza en preview, local, publicación y build del agente.
+Ninguna de las superficies anteriores puede considerarse compatible por similitud visual. El gate final exige que un mismo fixture persistido produzca: ownership único, proyecciones correctas, condiciones conservadas y la misma traza en preview, local y publicación.

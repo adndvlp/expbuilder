@@ -65,7 +65,7 @@ After deleting Loop1: same trial connections; TrialA and TrialB restored in orde
 
 Creation inserts the container at the first selected position and updates direct member ownership. Deletion replaces the container with its direct members at that position; nested loops remain containers. Neither operation substitutes loop IDs into branches or transfers branches from a loop to a trial. Responses include the canonical graph for the provider to adopt.
 
-Loops reject `branches` and `branchConditions`, including empty arrays. Trial mutations and timeline replacement reject existing loop IDs as branch destinations. REST and agent tools use the same validation contract; there is no legacy migration.
+Loops reject `branches` and `branchConditions`, including empty arrays. Trial mutations and timeline replacement reject existing loop IDs as branch destinations. REST mutations use the same validation contract; ZIP import applies the temporary compatibility conversion documented in [legacy-experiment-import.md](legacy-experiment-import.md).
 
 ---
 

@@ -38,8 +38,8 @@ const references = (doc) => doc.trials.map(({ id, branches, branchConditions }) 
   id, branches, branchConditions,
 }))
 
-describe.each(['REST', 'agent'])('%s loop containment', (mode) => {
-  let tmpDir, db, app, tools
+describe('REST loop containment', () => {
+  let tmpDir, db, app
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-containment-'))
     process.env.DB_ROOT = tmpDir
@@ -55,11 +55,7 @@ describe.each(['REST', 'agent'])('%s loop containment', (mode) => {
     app = express()
     app.use(express.json())
     app.use((await import('../../routes/timeline/index.js')).default)
-    tools = {
-      ...(await import('../../agent/tools/create/loop-create.js')).loopCreateTools,
-      ...(await import('../../agent/tools/create/loop-update.js')).loopUpdateTools,
-      ...(await import('../../agent/tools/create/loop-delete.js')).loopDeleteTools,
-    }
+
   })
   afterEach(() => {
     jest.restoreAllMocks()
@@ -68,9 +64,6 @@ describe.each(['REST', 'agent'])('%s loop containment', (mode) => {
   })
 
   async function mutate(operation, payload, expectedStatus = 200) {
-    if (mode === 'agent') {
-      return tools[`${operation}_loop`].execute({ experimentID: 'E1', ...payload })
-    }
     const endpoint = `/api/loop/E1${operation === 'create' ? '' : `/${payload.loopId}`}`
     const method = { create: 'post', update: 'patch', delete: 'delete' }[operation]
     return (await request(app)[method](endpoint)
@@ -101,7 +94,7 @@ describe.each(['REST', 'agent'])('%s loop containment', (mode) => {
     }
   }
 
-  test('group/ungroup round trip preserves trial targets, parameters, multiple exits and mixed order', async () => {
+  test('[TA-15] group/ungroup round trip preserves trial targets, parameters, multiple exits and mixed order', async () => {
     const before = seedDoc()
     const result = await mutate('create', { name: 'Group', trials: ['2', 'nested', '3', 2] })
     expect(result.success).toBe(true)

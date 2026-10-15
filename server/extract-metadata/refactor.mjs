@@ -19,7 +19,7 @@ export async function generateRefactorInstructions(pluginName, failedDir) {
 This plugin could not be processed automatically because it doesn't follow the expected standard format.
 
 ## Solution
-Use any free LLM (ChatGPT, Claude, Copilot, etc.) with this prompt:
+Update the plugin manually to follow this specification:
 
 \`\`\`
 Refactor this jsPsych plugin to have a standard info object:
@@ -48,7 +48,7 @@ const info = {
 DO NOT USE jspsych.ParameterType - use strings directly.
 
 Original code:
-[PASTE THE PLUGIN CODE HERE]
+[INSERT THE PLUGIN CODE HERE]
 
 Return only the refactored JavaScript code.
 \`\`\`

@@ -210,4 +210,4 @@ Loops generate jsPsych timeline code that:
 4. Uses `loop_function` to evaluate `loopConditions` when conditional repetition is configured.
 5. Transports pending trial decisions through nested scopes with their original target IDs and parameters.
 
-Loops do not evaluate branch conditions or select a fallback branch when they finish. Both the client and agent code generators follow this contract.
+Loops do not evaluate branch conditions or select a fallback branch when they finish. The client code generator follows this contract.

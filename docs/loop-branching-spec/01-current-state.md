@@ -4,7 +4,7 @@
 
 ## Método y límites de la auditoría
 
-Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, herramientas de creación del agente, ambos codegens, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `jump to trial`, pruebas existentes y bundle jsPsych incluido.
+Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, generación del cliente, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `jump to trial`, pruebas existentes y bundle jsPsych incluido.
 
 La evidencia corresponde al commit `15daef2`. Es una auditoría estática del código y de las pruebas existentes. No se presenta como observación runtime porque:
 
@@ -26,11 +26,7 @@ botón + del nodo
   -> buildUnifiedFlowLayout
   -> generateAllCodes -> codegen del cliente
 
-agente create/build
-  -> herramientas que escriben LowDB directamente
-  -> codegen independiente en server/agent
-
-ambos codegens
+codegen del cliente
   -> jsPsych con flags globales o del loop padre inmediato
 ```
 
@@ -131,24 +127,6 @@ Un loop puede tener `branches` en su scope padre. Al terminar, propaga `branches
 
 Evidencia: `generateAllCodes`, `generateLoopCode`, `generateOnFinishCode`, `generateLoopBranchConditionsCode`, `BranchingLogicCode`, `BranchesCode`, `generateItemWrappers`.
 
-## Ruta paralela del agente del servidor
-
-La aplicación contiene otra ruta funcional sobre el mismo documento que no pasa por los hooks ni por los endpoints anteriores:
-
-- `server/agent/tools/create/trials.js` crea trials con `parentLoopId` y `branches`, los inserta directamente en `loop.trials` cuando hay parent, acepta PATCH de campos arbitrarios y realiza su propio borrado/reconnect global;
-- `loop-create.js`, `loop-update.js` y `loop-delete.js` reescriben ownership, timeline y branches directamente en LowDB, incluyendo otra implementación de agrupación/desagrupación;
-- estas herramientas no validan una ruta cross-scope ni comparten una operación atómica de dominio con el canvas;
-- `server/agent/codegen.js` llama a implementaciones JavaScript distintas en `server/agent/codegen/trial.js` y `loop.js` para construir HTML local y público;
-- ese codegen también escribe routing sólo en el loop padre inmediato y, al propagar una branch del nodo loop, usa `loop.branches[0]` como fallback.
-- en raíz, `codegen/trial.js` activa `window.nextTrialId/window.skipRemaining`, pero el output del agente añade trials directamente con `timeline.push` y no genera los wrappers que consumen esos flags;
-- los repeat conditions del agente escriben `jsPsych_jumpToTrial` y recargan, pero no se encontró un reader de esa key en su output/template; tampoco se encontró consumo de `BranchCustomParameters` en `on_start`;
-- `codegen/loop.js` consulta `loop_*_ShouldBranchOnFinish`, pero en esa familia sólo se encontró su reset a `false`, no una asignación a `true`, por lo que las branches del nodo loop tampoco están demostradas runtime;
-- las pruebas del agente existentes comprueban fragmentos de strings, no una traza jsPsych, así que no demuestran branching, jump o custom parameters end-to-end.
-
-Por tanto, no basta corregir el codegen TypeScript del cliente. La implementación debe hacer que ambas entradas deleguen en el mismo grafo/compilador o demostrar conformidad completa mediante un contrato común. Si producto no quiere que el agente **cree** la nueva feature, sus herramientas todavía deben leer, preservar, validar y no corromper grafos que ya la contienen.
-
-Evidencia: `server/agent/tools/create/{trials,loop-create,loop-update,loop-delete}.js`, `server/agent/codegen.js`, `server/agent/codegen/{trial,loop}.js`, `server/agent/tools/create/build.js` y pruebas `server/__tests__/agent/`.
-
 ## Resume actual
 
 En cada `on_data_update` con `builder_id`, local y público guardan:
@@ -189,5 +167,4 @@ El bundle incluido expone `abortCurrentTimeline()` y `abortTimelineByName()`, ad
 - **Posible sólo con el modal actual:** no.
 - **Seguro reutilizando ciegamente `branches[]` + `parentLoopId`:** no demostrado; depende de la decisión de contrato y de corregir loaders/mutaciones.
 - **Resume/jump compatibles sin cambios:** no.
-- **Build generado por el agente compatible sin cambios:** no.
 - **Layout reutilizable:** sí como base, añadiendo una fase explícita de proyección cross-scope y preservando el theme existente.

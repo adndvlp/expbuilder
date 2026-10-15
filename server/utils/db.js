@@ -35,13 +35,6 @@ export function ensureDbData() {
   db.data.participantFiles ||= [];
   db.data.sessionCounters ||= {};
   db.data.mutationReceipts ||= [];
-  // Chat agent — intentionally excluded from experiment export/import and factory reset
-  db.data.chat ||= {
-    apiKeys: {},
-    activeProvider: "anthropic",
-    activeModel: "claude-sonnet-4-6",
-    conversations: [],
-  };
 }
 
 // Exportar userDataRoot, dbPath y dbDir para usar en otros módulos

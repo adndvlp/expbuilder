@@ -37,7 +37,7 @@ const seedDoc = () => ({
 });
 
 describe("trial-only branching contract", () => {
-  let tmpDir, db, app, agent;
+  let tmpDir, db, app;
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "branch-contract-"));
     process.env.DB_ROOT = tmpDir;
@@ -53,14 +53,6 @@ describe("trial-only branching contract", () => {
     app = express();
     app.use(express.json());
     app.use((await import("../../routes/timeline/index.js")).default);
-    agent = {
-      ...(await import("../../agent/tools/create/loop-create.js"))
-        .loopCreateTools,
-      ...(await import("../../agent/tools/create/loop-update.js"))
-        .loopUpdateTools,
-      ...(await import("../../agent/tools/create/trials.js")).trialTools,
-      ...(await import("../../agent/tools/create/timeline.js")).timelineTools,
-    };
   });
   afterEach(() => {
     jest.restoreAllMocks();
@@ -178,88 +170,6 @@ describe("trial-only branching contract", () => {
     },
   );
 
-  test.each([
-    [
-      "create_loop",
-      { name: "Invalid", trials: [2], branches: [] },
-      "BRANCH_SOURCE_NOT_TRIAL",
-    ],
-    [
-      "create_loop",
-      { name: "Invalid", trials: [2], branchConditions: [] },
-      "BRANCH_SOURCE_NOT_TRIAL",
-    ],
-    [
-      "update_loop",
-      {
-        loopId: "container",
-        updates: { name: "Changed", trials: [1], branches: [3] },
-      },
-      "BRANCH_SOURCE_NOT_TRIAL",
-    ],
-    [
-      "update_loop",
-      {
-        loopId: "container",
-        updates: { name: "Changed", branchConditions: [] },
-      },
-      "BRANCH_SOURCE_NOT_TRIAL",
-    ],
-    [
-      "create_trial",
-      { name: "Invalid", plugin: "plugin-dynamic", branches: ["container"] },
-      "BRANCH_TARGET_NOT_TRIAL",
-    ],
-    [
-      "create_trial",
-      {
-        name: "Invalid",
-        plugin: "plugin-dynamic",
-        branchConditions: [condition("container")],
-      },
-      "BRANCH_TARGET_NOT_TRIAL",
-    ],
-    [
-      "update_trial",
-      { trialId: 1, updates: { name: "Changed", branches: ["container"] } },
-      "BRANCH_TARGET_NOT_TRIAL",
-    ],
-    [
-      "update_trial",
-      {
-        trialId: 1,
-        updates: {
-          name: "Changed",
-          branchConditions: [condition("container")],
-        },
-      },
-      "BRANCH_TARGET_NOT_TRIAL",
-    ],
-    [
-      "reorder_timeline",
-      {
-        timeline: [
-          { id: "container", type: "loop", name: "Invalid", branches: [] },
-        ],
-      },
-      "BRANCH_SOURCE_NOT_TRIAL",
-    ],
-    [
-      "reorder_timeline",
-      {
-        timeline: [
-          { id: 1, type: "trial", name: "Invalid", branches: ["container"] },
-        ],
-      },
-      "BRANCH_TARGET_NOT_TRIAL",
-    ],
-  ])("[TA-13] agent rejects %s: %j without changes", async (tool, payload, code) => {
-    await expectUnchanged(
-      () => agent[tool].execute({ experimentID: "E1", ...payload }),
-      code,
-    );
-  });
-
   test("rejects loop fields before creating a document", async () => {
     await expectUnchanged(
       async () =>
@@ -363,74 +273,37 @@ describe("trial-only branching contract", () => {
     },
   );
 
-  test.each(["api", "agent"])(
-    "%s grouping preserves exact trial IDs, conditions, and parameters",
-    async (via) => {
-      const args = { name: "Nested", trials: [2], parentLoopId: "container" };
-      const result =
-        via === "api"
-          ? (await request(app).post("/api/loop/E1").send(args).expect(200))
-              .body
-          : await agent.create_loop.execute({ experimentID: "E1", ...args });
-      expect(result.success).toBe(true);
-      const doc = db.data.trials[0];
-      expect(doc.trials[0].branches).toEqual(["2"]);
-      expect(doc.trials[0].branchConditions).toEqual([condition("2")]);
-      expect(doc.trials[1].branches).toEqual([3]);
-      expect(doc.trials[1].parentLoopId).toBe(result.loop.id);
-      expect(result.loop).not.toHaveProperty("branches");
-      expect(result.loop).not.toHaveProperty("branchConditions");
-      const graph = buildExperimentGraph(doc);
-      expect(graph.diagnostics).toEqual([]);
-      expect(
-        graph.edges.find(({ sourceId }) => sourceId === 2).exitedLoopIds,
-      ).toEqual([result.loop.id, "container"]);
-    },
-  );
+  test("API grouping preserves exact trial IDs, conditions, and parameters", async () => {
+    const args = { name: "Nested", trials: [2], parentLoopId: "container" };
+    const result = (
+      await request(app).post("/api/loop/E1").send(args).expect(200)
+    ).body;
+    expect(result.success).toBe(true);
+    const doc = db.data.trials[0];
+    expect(doc.trials[0].branches).toEqual(["2"]);
+    expect(doc.trials[0].branchConditions).toEqual([condition("2")]);
+    expect(doc.trials[1].branches).toEqual([3]);
+    expect(doc.trials[1].parentLoopId).toBe(result.loop.id);
+    expect(result.loop).not.toHaveProperty("branches");
+    expect(result.loop).not.toHaveProperty("branchConditions");
+    const graph = buildExperimentGraph(doc);
+    expect(graph.diagnostics).toEqual([]);
+    expect(
+      graph.edges.find(({ sourceId }) => sourceId === 2).exitedLoopIds,
+    ).toEqual([result.loop.id, "container"]);
+  });
 
-  test.each(["api", "agent"])(
-    "%s accepts conditional trial destinations across scopes",
-    async (via) => {
-      const updates = {
-        branches: ["2", 3],
-        branchConditions: [condition("2"), condition(null)],
-      };
-      const result =
-        via === "api"
-          ? (
-              await request(app)
-                .patch("/api/trial/E1/1")
-                .send(updates)
-                .expect(200)
-            ).body
-          : await agent.update_trial.execute({
-              experimentID: "E1",
-              trialId: 1,
-              updates,
-            });
-      expect(result.success).toBe(true);
-      expect(result.trial.branches).toEqual(["2", 3]);
-      expect(result.trial.branchConditions).toEqual(updates.branchConditions);
-      expect(buildExperimentGraph(db.data.trials[0]).diagnostics).toEqual([]);
-    },
-  );
-
-  test("agent schemas exclude loop branching even when fields are empty", () => {
-    const loop = { experimentID: "E1", name: "Loop", trials: [] };
-    expect(agent.create_loop.parameters.safeParse(loop).success).toBe(true);
-    for (const field of ["branches", "branchConditions"]) {
-      expect(
-        agent.create_loop.parameters.safeParse({ ...loop, [field]: [] })
-          .success,
-      ).toBe(false);
-      expect(
-        agent.reorder_timeline.parameters.safeParse({
-          experimentID: "E1",
-          timeline: [
-            { id: "container", type: "loop", name: "Loop", [field]: [] },
-          ],
-        }).success,
-      ).toBe(false);
-    }
+  test("API accepts conditional trial destinations across scopes", async () => {
+    const updates = {
+      branches: ["2", 3],
+      branchConditions: [condition("2"), condition(null)],
+    };
+    const result = (
+      await request(app).patch("/api/trial/E1/1").send(updates).expect(200)
+    ).body;
+    expect(result.success).toBe(true);
+    expect(result.trial.branches).toEqual(["2", 3]);
+    expect(result.trial.branchConditions).toEqual(updates.branchConditions);
+    expect(buildExperimentGraph(db.data.trials[0]).diagnostics).toEqual([]);
   });
 });

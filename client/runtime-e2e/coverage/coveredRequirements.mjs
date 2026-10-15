@@ -42,16 +42,21 @@ const publicConfiguration =
   "client/src/__tests__/components/codegenRuntime/publicConfiguration.test.ts";
 
 export const coveredRequirements = {
+  "TA-15": {
+    status: "covered",
+    evidence: [
+      evidence(
+        "server/__tests__/routes/loop-containment.test.js",
+        "[TA-15] group/ungroup round trip preserves trial targets",
+      ),
+    ],
+  },
   "TA-13": {
     status: "covered",
     evidence: [
       evidence(
         "server/__tests__/routes/branch-contract.test.js",
         "[TA-13] API rejects",
-      ),
-      evidence(
-        "server/__tests__/routes/branch-contract.test.js",
-        "[TA-13] agent rejects",
       ),
     ],
   },

@@ -79,7 +79,6 @@ Impacto confirmado:
 - `server/routes/timeline/loops/state.js`
 - `server/routes/timeline/trials/crud.js`
 - `server/routes/timeline/loops/create|update|delete.js`
-- `server/agent/tools/create/{trials,loop-create,loop-update,loop-delete}.js`
 - validation routes o un nuevo módulo de dominio
 - LowDB experiment schema/import/export
 - pruebas `server/__tests__/routes/`
@@ -93,7 +92,6 @@ Trabajo:
 5. validar conditions y mutations;
 6. añadir schema version/compat reader;
 7. mantener endpoints legacy hasta completar migración.
-8. hacer que las tools del agente deleguen en los mismos commands o rechacen operaciones no soportadas sin mutar.
 
 Gate: todos los contratos `TA-*` y la regresión server pasan.
 
@@ -202,9 +200,6 @@ Refactors afectados:
 - `useLoopCode/BranchingLogicCode.ts`
 - `BranchesCode.ts`
 - `generateItemWrappers.ts`
-- `server/agent/codegen.js`
-- `server/agent/codegen/{trial,loop,helpers}.js`
-- `server/agent/tools/create/build.js`
 
 Debe retirarse el `branches[0]` hardcoded para conditions y la propagación limitada al parent inmediato en todos los entrypoints productivos. No se acepta mantener dos routers con semántica copiada.
 
@@ -274,7 +269,6 @@ Gate: TM-01 a TM-08 y COMP-01 a COMP-05 pasan sobre fixtures legacy y nuevos.
 | Legacy se reinterpreta | alta | versioning + no heuristic migration |
 | Expand/collapse cambia edge identity | media | stable semantic/projection IDs |
 | Refactor rompe branch colors/circuits | media | characterization + E2E existentes |
-| Codegens cliente/agente divergen | crítica | IR compartido + pruebas de traza |
 
 ## Rollout y rollback
 

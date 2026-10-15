@@ -9,7 +9,7 @@ A loop can contain trials and other loops. Each item has one direct owner; \`par
 
 ## Recursive Generation
 
-The compiler loads each loop scope and generates its members recursively. Both the client and agent generators produce an iteration procedure inside each container:
+The compiler loads each loop scope and generates its members recursively. The client generator produces an iteration procedure inside each container:
 
 \`\`\`js
 const inner_iteration = {

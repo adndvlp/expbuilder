@@ -197,7 +197,7 @@ type Question = {
 };
 ```
 
-#### LLM-Ready Examples
+#### Configuration Examples
 
 **Simple demographics:**
 ```json

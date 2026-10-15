@@ -253,5 +253,3 @@ El usuario confirmó que no hay experimentos que conservar. No se implementa lec
 - API-04: no se persisten respuestas de participantes en logs de validación.
 - API-05: publicación toma un snapshot/revision consistente del grafo.
 - API-06: una compilación nunca mezcla revisiones de root y cachés de loops.
-- API-07: las tools de `server/agent/tools/create` no hacen PATCH/direct writes que eludan el nuevo graph service.
-- API-08: si el agente no puede crear exits en la primera entrega, sus schemas rechazan esa intención de forma explícita y preservan sin pérdida los exits existentes.

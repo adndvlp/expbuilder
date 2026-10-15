@@ -21,10 +21,8 @@
     "supertest": "^7.2.2"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^2.0.47",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
-    "ai": "^6.0.177",
     "cheerio": "^1.1.0",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
@@ -40,8 +38,7 @@
     "multer-storage-cloudinary": "^2.2.1",
     "sharp": "^0.35.3",
     "socket.io": "^4.8.1",
-    "uuid": "^13.0.0",
-    "zod": "^4.4.3"
+    "uuid": "^13.0.0"
   },
   "overrides": {
     "@electron/asar": "4.2.1",
@@ -101,7 +98,6 @@
       "!client/**",
       "!coverage/**",
       "!landing-page/**",
-      "!server/agent/docs-content.js",
       "!server/cloudflared/**",
       "!server/custom-plugins/**",
       "!server/dynamicplugin/**",

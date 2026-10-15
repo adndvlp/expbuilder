@@ -230,7 +230,6 @@ Completado despues de este corte:
 - 2026-05-25: `SubCanvas/index` queda cubierto con suite de contenedor para breadcrumbs, cierre, pane click, branching, nested loops y branches directos dentro del loop.
 - 2026-05-25: `ExperimentBuilder/index` queda cubierto con suite de shell para composicion de providers, fetch de existencia del experimento, layout normal/dev mode, wiring de `useFileUpload`, navegacion y switches de dev/save mode.
 - 2026-05-25: `Settings` OAuth token components/callback pages quedan cubiertos con suites dedicadas para `fetchOAuthState`, URLs OAuth con state firmado, disconnect de Drive/Dropbox/GitHub, flujo manual/OAuth de OSF y callbacks de Drive/Dropbox/GitHub/OSF.
-- 2026-05-25: `Chat/*` queda cubierto con suites dedicadas para `ChatProvider`, streaming SSE, abort, persistencia debounced, `ChatFAB`/`ChatPanel`, `ChatInput`, `ChatMessage`, `ToolCallCard`, `ProviderPicker` y `ConversationList`.
 - 2026-05-25: `Docs`, `LandingPage` y `ErrorDetail` quedan cubiertos con suite dedicada para busqueda/navegacion de documentacion, links externos/Electron y ramas de error.
 - 2026-05-25: Fixture mega de regresion codegen queda cubierto para timeline mixto con DynamicPlugin/survey, loop CSV/orders/categories/conditional+repeat, params override, nested loop scoped branch y WebGazer guardado.
 

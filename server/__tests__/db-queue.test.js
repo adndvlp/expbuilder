@@ -87,19 +87,6 @@ describe('database mutation queue', () => {
     jest.restoreAllMocks()
   })
 
-  test.each(['/api/chat/stream', '/api/chat'])(
-    'does not hold the database lock while a model request runs at %s',
-    (path) => {
-    const next = jest.fn()
-    serializeDbRequest(
-      { method: 'POST', path },
-      { once: jest.fn() },
-      next,
-    )
-    expect(next).toHaveBeenCalledTimes(1)
-    },
-  )
-
   test('does not hold the database lock while streaming experiment media', () => {
     const next = jest.fn()
     serializeDbRequest(

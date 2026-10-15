@@ -58,7 +58,7 @@ El servidor en `JsPsych/server` tiene implicaciones de costo separadas:
 - `api.js` levanta Express + Socket.IO en puerto 3000.
 - Usa LowDB (`server/utils/db.js`) sobre `database/db.json`.
 - Escribe archivos locales: uploads, plugins, HTML generado, previews, exports/imports.
-- Sirve `dist`, plugins y endpoints de experimentos, trials, configs, resultados, files, tunnel y agent.
+- Sirve `dist`, plugins y endpoints de experimentos, trials, configs, resultados, files y tunnel.
 
 Si se sube tal cual a Cloud Run/App Hosting, se debe resolver persistencia. En serverless, el filesystem del contenedor es efimero. Para produccion hay dos caminos:
 
@@ -387,7 +387,7 @@ Ademas:
 
 Mapeo razonable:
 
-- `db.json` -> Firestore (`experiments`, `trials`, `configs`, `pluginConfigs`, `sessionResults`, `participantFiles`, `chat`).
+- `db.json` -> Firestore (`experiments`, `trials`, `configs`, `pluginConfigs`, `sessionResults`, `participantFiles`).
 - uploads/media/plugins generados -> Cloud Storage/Firebase Storage.
 - session tracking -> Realtime Database o Firestore listeners.
 - publish -> Cloud Function o Cloud Run job/function.

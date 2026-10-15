@@ -1,6 +1,6 @@
 # Navegación con timelines nativos
 
-Los experimentos generados por el editor usan `nativeTimelineNavigation.ts`, dentro del coordinador de navegación del cliente. Local, public y el preview de una selección conectan el mismo coordinador. El generador de `server/agent` conserva su implementación independiente.
+Los experimentos generados por el editor usan `nativeTimelineNavigation.ts`, dentro del coordinador de navegación del cliente. Local, public y el preview de una selección conectan el mismo coordinador.
 
 ## Compilación y ejecución
 

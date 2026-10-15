@@ -15,7 +15,6 @@ All data is stored in a single JSON file (`database/db.json`). The schema is ini
 | `sessionResults` | `Array<SessionDoc>` | Participant session data |
 | `participantFiles` | `Array<ParticipantFile>` | Files uploaded by participants |
 | `sessionCounters` | `Record<string, number>` | Last participant number allocated per `experimentID` |
-| `chat` | `Object` | Chat agent settings (API keys, provider, conversations) |
 
 ---
 
@@ -171,7 +170,7 @@ type TimelineItem =
     };
 ```
 
-The root `timeline` is a flat, ordered array. Each loop owns an ordered scope containing trials and nested loops. Selecting a loop loads that scope as `loopTimeline`. Branch endpoints are resolved by actual trial identity; an ID prefix does not determine the entity type. Grouping and ungrouping change containment without rewriting trial connections. Loops cannot own `branches` or `branchConditions`, even empty arrays; REST and agent mutations reject those fields and loop IDs as branch targets.
+The root `timeline` is a flat, ordered array. Each loop owns an ordered scope containing trials and nested loops. Selecting a loop loads that scope as `loopTimeline`. Branch endpoints are resolved by actual trial identity; an ID prefix does not determine the entity type. Grouping and ungrouping change containment without rewriting trial connections. Loops cannot own `branches` or `branchConditions`, even empty arrays; REST mutations reject those fields and loop IDs as branch targets.
 
 ---
 

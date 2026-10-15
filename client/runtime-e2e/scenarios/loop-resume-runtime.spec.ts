@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { ScenarioAuthor } from "../authoring/ScenarioAuthor";
 import { compileScenarioArtifact } from "../authoring/compileScenarioArtifact";
-import { compileAgentScenarioArtifact } from "../authoring/compileAgentScenarioArtifact";
 import { RuntimeObserver } from "../runtime/RuntimeObserver";
 import { builderIds, localRuntimeStorageKeys, loadPersistedSession, runtimeApiBaseUrl } from "../support/session";
 
-for (const generator of ["client", "agent"] as const) {
-test(`${generator} resumes the current CSV row without taking the loop's deferred exit`, async ({ page }) => {
+
+test(`client resumes the current CSV row without taking the loop's deferred exit`, async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-loop-resume-${Date.now()}`);
   for (const alias of ["entry", "csv", "final"]) await author.createTrial(alias);
@@ -26,9 +25,7 @@ test(`${generator} resumes the current CSV row without taking the loop's deferre
       choices: { source: "typed", value: ["Continue"] },
     },
   });
-  const artifact = generator === "client"
-    ? await author.compileAndBuild()
-    : await compileAgentScenarioArtifact(author, true);
+  const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
   await runtime.continue();
@@ -54,7 +51,7 @@ test(`${generator} resumes the current CSV row without taking the loop's deferre
   ]);
   await runtime.assertNoRuntimeFailures();
 });
-}
+
 
 test("restores three loop levels, including an unfinished repetition and the root continuation", async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -238,7 +235,9 @@ test("restores a selected branch and its parameters inside the current loop row"
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
+  await expect(runtime.trial("source")).toBeVisible();
   const sessionId = await runtime.sessionId();
+  expect(sessionId).not.toBe("");
   for (let row = 0; row < 2; row++) {
     await expect(runtime.trial("source")).toBeVisible();
     await runtime.continue();
@@ -273,8 +272,9 @@ test("restores a conditional cycle within the second configured repetition", asy
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
-  const sessionId = await runtime.sessionId();
   await expect(runtime.trial("source")).toBeVisible();
+  const sessionId = await runtime.sessionId();
+  expect(sessionId).not.toBe("");
   await runtime.choose("Continue");
   await expect(runtime.trial("source")).toBeVisible();
   await runtime.choose("Repeat");

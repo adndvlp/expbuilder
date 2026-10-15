@@ -171,7 +171,7 @@ La UX exacta para operaciones que cambiarían una ruta depende de DEC-22.
 - ERR-04: conflictos de revisión devuelven el grafo actual y permiten reintentar conscientemente.
 - ERR-05: logs de builder/codegen pueden identificar source, target y scopes sin incluir respuestas del participante.
 - ERR-06: si el grafo persistido es inválido, preview/publicación falla con diagnóstico; no genera silenciosamente un timeline parcial.
-- ERR-07: mutaciones iniciadas por el canvas, endpoints REST o herramientas del agente pasan por las mismas validaciones de ownership/routing.
+- ERR-07: mutaciones iniciadas por el canvas o endpoints REST pasan por las mismas validaciones de ownership/routing.
 
 ## Compatibilidad
 
@@ -180,4 +180,3 @@ La UX exacta para operaciones que cambiarían una ruta depende de DEC-22.
 - COMP-03 (resuelta 2026-10-01): los loops no tienen ramas propias ni pueden ser destinos de ramas. Se rechazan los campos legacy; no hay experimentos que requieran migración.
 - COMP-04: datos legacy no se reinterpretan como cross-scope sólo porque un loader los encuentre en otra caché.
 - COMP-05: no se escriben nuevos campos hasta que el contrato y migración estén aprobados.
-- COMP-06: el build iniciado por el agente y el iniciado por el cliente producen la misma traza para el mismo snapshot, o la ruta no compatible se bloquea explícitamente.

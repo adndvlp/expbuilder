@@ -6,7 +6,7 @@ import request from 'supertest'
 import { jest } from '@jest/globals'
 
 /**
- * Feature-combination matrix (app surface only, no agent tools).
+ * Feature-combination matrix (editor API surface).
  *
  * Each scenario combines several features at once — branches, branch
  * conditions with customParameters (params override on branches),

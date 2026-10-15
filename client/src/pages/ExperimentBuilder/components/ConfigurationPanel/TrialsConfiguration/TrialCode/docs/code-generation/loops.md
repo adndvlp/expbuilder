@@ -24,4 +24,4 @@ Las variables lexicales `loop_<id>_NextTrialId`, `SkipRemaining`, `BranchingActi
 
 `generateLoopFinishLifecycle.ts` propaga al padre o root únicamente una ruta pendiente, con el mismo target y payload. El contenedor no evalúa condiciones de ramas ni elige un destino por defecto.
 
-El generador del agente (`server/agent/codegen/loop.js`, `loopRouting.js`, `trialBranching.js`) conserva el mismo contrato. Las pruebas de Chromium ejecutan ambos generadores con filas, repeticiones, rutas internas y entradas a trials no iniciales con parámetros.
+Las pruebas de Chromium ejecutan el generador del editor con filas, repeticiones, rutas internas y entradas a trials no iniciales con parámetros.

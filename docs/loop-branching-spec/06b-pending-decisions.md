@@ -109,15 +109,7 @@
 - Opciones reales: trial normal; trial branch-only que no entra a secuencia; trial normal con restricciones de move/group mientras tenga incoming exits.
 - Pregunta: ¿qué operaciones quedan habilitadas sobre un target creado como salida?
 
-## Agente, revisión y datos científicos
-
-### DEC-33 — Creación mediante el agente — BLOQUEANTE PARA ESA RUTA
-
-- Entendido: el agente crea/actualiza/borrar items y construye HTML por rutas propias.
-- Falta: si debe autorizar esta feature conversacionalmente desde la primera entrega.
-- Impacto: schemas/prompts de tools, commands y pruebas del agente.
-- Opciones reales: autoría completa; sólo lectura/preservación y rechazo explícito; deshabilitar temporalmente tools incompatibles.
-- Pregunta: ¿qué capacidades de creación/edición de exits debe exponer el agente?
+## Revisión y datos científicos
 
 ### DEC-34 — Revisión distinta al reanudar — BLOQUEANTE
 
@@ -145,10 +137,10 @@
 
 ### DEC-37 — Superficies de ejecución obligatorias — BLOQUEANTE
 
-- Entendido: la app tiene preview, HTML local, publicación browser y build iniciado por agente.
+- Entendido: la app tiene preview, HTML local y publicación browser.
 - Falta: cuáles forman parte del primer release.
 - Impacto: alcance, compiler compartido y release gate.
-- Opciones reales: todas; preview+local+published y agente sólo preserva/rechaza; una lista concreta con feature flag por superficie.
+- Opciones reales: preview, local y publicación; una lista concreta con feature flag por superficie.
 - Pregunta: ¿en qué superficies debe funcionar la feature desde la primera entrega?
 
 ### DEC-38 — Máximo de branches por source
@@ -187,4 +179,4 @@
 
 ## Orden sugerido para revisión humana
 
-Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, agente, layout y release. Este orden no selecciona respuestas.
+Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, layout y release. Este orden no selecciona respuestas.

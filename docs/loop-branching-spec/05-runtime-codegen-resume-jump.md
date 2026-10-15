@@ -25,19 +25,9 @@ No se permite compilar la nueva feature como branches artificiales de los nodos 
 
 Por eso el cambio debe introducir un compilador/routing protocol consciente de scopes.
 
-## Dos codegens actuales, un solo contrato requerido
+## Generación del editor
 
-Hay dos familias de generación que leen el mismo LowDB:
-
-1. el cliente TypeScript (`generateAllCodes`, `generateLoopCode`, generadores de branch y wrappers), usado por los flujos del builder;
-2. el agente del servidor (`server/agent/codegen.js`, `codegen/trial.js`, `codegen/loop.js`), usado por `buildExperimentHtml` y `buildPublicExperimentHtml`.
-
-No son adaptadores del mismo core: implementan condiciones, wrappers y estado de loops por separado. La segunda ruta propaga sólo al parent inmediato y conserva fallbacks por primera branch. Además, sus trials raíz activan flags sin generar un wrapper raíz que los consuma, sus repeat/custom-parameter states no tienen un consumidor encontrado y `ShouldBranchOnFinish` sólo aparece leído/reseteado. Esto crea una divergencia incluso antes de añadir cross-scope exits.
-
-- DUAL-CG-01: todo entrypoint de preview/local/public/agent build compila el mismo snapshot y semántica.
-- DUAL-CG-02: el evaluador, routing IR y diagnósticos tienen una implementación canónica o un paquete compartido; no se copian strings con lógica equivalente.
-- DUAL-CG-03: una ruta que aún no soporte el schema nuevo debe rechazar el build con diagnóstico de versión, nunca degradarlo a `branches[0]`.
-- DUAL-CG-04: las pruebas de conformidad ejecutan el mismo fixture por ambos entrypoints y comparan trazas, no sólo texto generado.
+El cliente TypeScript genera los artefactos de preview, ejecución local y publicación a partir del grafo del experimento. Estas entradas deben conservar las mismas condiciones, direcciones de ejecución y diagnósticos.
 
 ## Artefactos conceptuales
 
@@ -78,7 +68,7 @@ ExperimentGraph validado
 - CG-05: no se usan `any`, casts dobles ni arrays locales contaminados como contrato del nuevo dominio.
 - CG-06: helpers de evaluación y routing son compartidos por local/public/preview.
 - CG-07: código generado mantiene IDs originales como datos y nombres sanitizados sólo como identifiers JavaScript.
-- CG-08: la generación iniciada por el agente usa el mismo IR/route table y no mantiene un protocolo de branch paralelo.
+- CG-08: preview, local y publicación usan el mismo contrato de generación y navegación.
 - CG-09: la enumeración de plugins/recursos recorre todos los items owned una sola vez, aun cuando un target sólo llegue por una branch cross-scope.
 
 ## Activación de una branch
@@ -250,7 +240,7 @@ Debe probar:
 13. jump a root, loop y trial anidado;
 14. no-match, corrupt route y finish experiment si aplica.
 
-Cada escenario se ejecuta por el entrypoint canónico del cliente y por el build del agente mientras ambos sigan expuestos en producción.
+Cada escenario se ejecuta mediante las entradas de preview, ejecución local y publicación del cliente.
 
 El spike registra los callbacks omitidos por abort y los compara con DEC-41. Si no cumple, se descarta esa estrategia o se diseña el cierre fuera de esos callbacks.
 

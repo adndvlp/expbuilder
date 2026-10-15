@@ -6,7 +6,7 @@ import request from 'supertest'
 import { jest } from '@jest/globals'
 
 /**
- * Adversarial ID-robustness matrix (app surface only, no agent tools).
+ * Adversarial ID-robustness matrix (editor API surface).
  *
  * Every timeline mutation endpoint is exercised against:
  *  - ghost ids (references to already-deleted items, common in legacy DBs),

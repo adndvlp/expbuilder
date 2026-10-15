@@ -132,21 +132,6 @@ describe("Dashboard", () => {
     expect(routerMocks.navigate).toHaveBeenCalledWith("/docs");
   });
 
-  it("refreshes experiments when chat changes experiment data", async () => {
-    render(<Dashboard />);
-
-    await screen.findByText("Memory Task");
-    fetchMock().mockClear();
-
-    window.dispatchEvent(new Event("experiment-data-changed"));
-
-    await waitFor(() => {
-      expect(fetchMock()).toHaveBeenCalledWith(
-        "http://localhost:3000/api/load-experiments",
-      );
-    });
-  });
-
   it("creates an experiment from the prompt modal and appends it to the list", async () => {
     render(<Dashboard />);
 

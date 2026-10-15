@@ -29,7 +29,7 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 ### DEC-04 — Nodo loop como origen — RESUELTA
 
 - Decisión 2026-10-01: toda rama nace en un trial y apunta a otro trial.
-- Los loops no tienen `branches` ni `branchConditions`; REST, agente y canvas aplican la misma regla.
+- Los loops no tienen `branches` ni `branchConditions`; REST y canvas aplican la misma regla.
 - Las conexiones visibles sobre un loop colapsado proyectan los endpoints reales de trials.
 
 ### DEC-05 — Un solo nivel de loop — RESUELTA
@@ -152,4 +152,4 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 
 ## Continuación
 
-Las decisiones de resume, edición, merges, agente, publicación y callbacks están en [06B — Decisiones pendientes](./06b-pending-decisions.md).
+Las decisiones de resume, edición, merges, publicación y callbacks están en [06B — Decisiones pendientes](./06b-pending-decisions.md).

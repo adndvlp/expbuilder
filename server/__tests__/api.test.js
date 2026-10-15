@@ -85,7 +85,6 @@ const setupApi = async (seedFn, options = {}) => {
   jest.unstable_mockModule('../routes/tunnel.js', () => ({ default: makeRouter('tunnel') }))
   jest.unstable_mockModule('../routes/configs.js', () => ({ default: makeRouter('configs') }))
   jest.unstable_mockModule('../routes/db.js', () => ({ default: makeRouter('db') }))
-  jest.unstable_mockModule('../agent/routes.js', () => ({ default: makeRouter('agent') }))
 
   const apiModule = await import('../api.js')
   await Promise.all(listenPromises)
@@ -113,6 +112,17 @@ const setupApi = async (seedFn, options = {}) => {
 }
 
 describe('api.js app setup', () => {
+  test('mounts editor routes and rejects unregistered endpoints', async () => {
+    const { app, cleanup } = await setupApi()
+    try {
+      await request(app).get('/__test/experiments').expect(200)
+      await request(app).get('/__test/timeline').expect(200)
+      await request(app).get('/__test/unregistered').expect(404)
+    } finally {
+      cleanup()
+    }
+  })
+
   test('creates the HTTP and Socket.IO servers, mounts routers, and clears stale tunnel URLs', async () => {
     const { app, cleanup, createServer, db, httpServer, Server } = await setupApi((data) => {
       data.experiments.push({

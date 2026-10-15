@@ -99,10 +99,9 @@ Variantes cartesianas acotadas:
 - TA-10: read models de root/outer/nested clasifican exit edge sin duplicarla.
 - TA-11: condiciones cross-scope permanecen branch conditions.
 - TA-12: custom parameters sobreviven round-trip.
-- TA-13 (decisión vigente): REST y agente rechazan campos de branching de loops y destinos de tipo loop antes de mutar o escribir; no hay migración legacy.
+- TA-13 (decisión vigente): REST rechaza campos de branching de loops y destinos de tipo loop antes de mutar o escribir; no hay migración legacy.
 - TA-14: invalid graph bloquea publicación con diagnóstico.
-- TA-15: create/update/delete por agente y REST respetan los mismos invariantes.
-- TA-16: la tool del agente no borra, re-owna ni reconecta una exit con su algoritmo legacy.
+- TA-15: create/update/delete por REST respetan los mismos invariantes.
 
 ## Layout y proyección
 
@@ -132,7 +131,7 @@ Variantes cartesianas acotadas:
 - TG-08: grafo inválido no devuelve `[]`/string vacío como éxito silencioso.
 - TG-09: output parsea como JavaScript válido.
 - TG-10: branches legacy same-scope generan comportamiento equivalente.
-- TG-11: el fixture compilado por cliente y agente produce una traza runtime equivalente.
+- TG-11: el fixture compilado por cliente produce trazas equivalentes en preview, local y publicación.
 - TG-12: un compiler/entrypoint incompatible rechaza el schema nuevo; no emite timeline parcial.
 - TG-13: cada state emitido por el runtime (`route`, jump, custom params, cleanup) tiene al menos un writer y consumer alcanzables, o falla validación de generación.
 
@@ -242,7 +241,6 @@ La ampliación vertical de combinaciones está inventariada en [10 — Cobertura
 - branch edge colors;
 - preview de trial dentro de parent loop;
 - local/public generation y session completion.
-- build y mutaciones iniciadas por el agente del servidor.
 
 ## Gates de calidad
 

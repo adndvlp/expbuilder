@@ -183,7 +183,6 @@ The generated state includes `NextTrialId`, `SkipRemaining`, `BranchingActive`, 
 
 Resolved local decisions are cleared per row; unresolved exits and inherited routes are preserved until consumed. The original inherited trial remains identifiable even when it chooses a new branch. This prevents repeating that entry across remaining rows or repetitions.
 
-The agent's `server/agent/codegen/loop.js`, `loopRouting.js` and `trialBranching.js` follow the same trial routing and CSV/repetition contract. Neither generator reads branches from a loop or chooses a loop fallback destination.
 
 ---
 
