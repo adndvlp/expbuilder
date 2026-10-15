@@ -12,6 +12,12 @@ Jump desaparece como concepto del producto y del contrato completo, como operaci
 
 No habrá compatibilidad de navegación con el contrato anterior: sin conversores, lectores dobles, aliases, migraciones, detección de formatos antiguos ni ejecución alternativa con recarga. Los datos que no satisfagan el nuevo contrato serán inválidos. La implementación de este SDD no autoriza borrar ni convertir los experimentos del usuario.
 
+Actualización temporal autorizada el 2026-10-15: se permite convertir backups
+anteriores únicamente al importarlos, según
+[la migración temporal de importación](legacy-experiment-import.md). Esta
+excepción se retira después de la versión de transición; edición, compilación
+y ejecución siguen aceptando únicamente el contrato actual.
+
 Se reutilizan el coordinador, los timelines nativos de jsPsych, las direcciones por ID, la persistencia y el seguimiento de loops existentes. El cambio no incluye paginación, componentes del Dynamic Plugin ni otro motor de ejecución.
 
 Erradicar el concepto no elimina la capacidad de volver a un trial, entrar o salir de un loop, guardar datos o recuperar una sesión. Esas capacidades pasan a depender exclusivamente del contrato único de Branching y de resume, sin una segunda operación equivalente bajo otro nombre.

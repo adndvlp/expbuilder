@@ -6,6 +6,7 @@ import JSZip from "jszip";
 import { db, dbDir, userDataRoot } from "../../utils/db.js";
 import { ALLOWED_MEDIA_TYPES } from "./zip.js";
 import { assertExperimentNavigation } from "../timeline/branchContract.js";
+import { migrateLegacyNavigation } from "./legacy/migrateLegacyNavigation.js";
 
 const router = Router();
 const importZipUpload = multer({ dest: dbDir });
@@ -83,7 +84,10 @@ router.post(
         }
 
         if (!data.experiment?.experimentID) continue;
-        if (data.trials) assertExperimentNavigation(data.trials);
+        if (data.trials) {
+          data.trials = migrateLegacyNavigation(data.trials);
+          assertExperimentNavigation(data.trials);
+        }
         imports.push({ folderName, data });
       }
 

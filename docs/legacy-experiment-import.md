@@ -1,21 +1,78 @@
-# Compatibilidad temporal al importar experimentos legacy
+# Migración temporal de backups al contrato de Branching
 
-Esta conversión está prevista para la siguiente versión y se retirará después. Se ejecuta únicamente en `POST /api/import-experiments`, antes de guardar los registros y restaurar los archivos del ZIP. No cambia el contrato del editor ni el runtime.
+Autorizada el 2026-10-15 para recuperar experimentos anteriores al contrato
+explícito, siguiendo el alcance del commit
+`0044fc3297cc096b74838882d2f6a63309c4e5f8`. Se incluye solo durante la versión
+de transición y después se elimina.
 
-`server/routes/db/legacy/migrateLegacyBranching.js` convierte los destinos `trial → loop` en destinos al primer trial del loop, siguiendo el orden de `loop.trials`. Si el primer elemento es otro loop, resuelve su entrada de forma recursiva. Actualiza tanto los trials completos como las copias del timeline, incluidos los destinos de `branchConditions`. Conserva las reglas y los parámetros de esas condiciones. Si la conversión hace que dos destinos sean el mismo trial, conserva una sola conexión.
+## Uso y alcance
 
-Elimina los campos vacíos `branches` y `branchConditions` de los loops y de sus copias del timeline. Conserva los propietarios, el orden, el CSV, las repeticiones y las salidas de los trials. No interpreta columnas de órdenes como categorías ni modifica configuración, resultados de sesiones o archivos multimedia.
+Importar el ZIP desde la opción habitual de importar experimentos. La ruta
+`POST /api/import-experiments` convierte en memoria el documento de trials
+antes de validarlo y restaurarlo. No modifica el ZIP original ni convierte
+experimentos que ya estén en la base de datos. Para estos últimos hay que
+exportar e importar su backup. El siguiente export ya contiene el contrato
+actual y no necesita otra conversión.
 
-Solo actualiza `trials.updatedAt` cuando hay una conversión, para que el grafo tenga una revisión nueva. Un backup que ya cumple el contrato conserva sus registros y timestamps; volver a importar un backup convertido no realiza otra migración.
+Se reconoce un documento anterior solo si carece de todos los campos nuevos:
+`entryItemId`, `nextItemId` y `defaultNextTrialId` en sus respectivos registros
+y resúmenes. Un documento actual pasa intacto; uno parcialmente actual sigue
+sujeto a la validación estricta y no se repara silenciosamente.
 
-Un destino sin entrada, con un primer elemento eliminado o con entradas cíclicas produce un error de importación. Un loop con branching propio no vacío también produce un error: trasladarlo a un trial arbitrario perdería el significado de la conexión. Estos errores incluyen `LEGACY_IMPORT_NOT_MIGRATABLE` y se detectan antes de persistir cualquier experimento o archivo del ZIP.
+## Conversión
 
-## Retirada en versiones posteriores
+- El primer destino de `branches` pasa a `defaultNextTrialId`.
+- Las condiciones anidadas de `branchConditions` pasan a una lista plana,
+  conservando orden, reglas y parámetros. Un destino omitido conserva la
+  anterior selección del primer branch.
+- Las condiciones de navegación de `repeatConditions` pasan a condiciones de
+  Branching, antes de las anteriores condiciones, como ocurría en `on_finish`.
+  `jumpToTrialId` pasa a `nextTrialId`; los campos retirados no se guardan.
+  Los identificadores de condiciones repetidos se hacen únicos.
+- Un destino loop se resuelve a su primer trial, siguiendo sus loops anidados.
+- Se materializan las entradas de ámbitos y las continuaciones estructurales
+  de los loops. La secuencia implícita anterior se convierte en conexiones
+  explícitas. Los destinos root de branches se excluyen de la secuencia normal;
+  una hoja con una sola entrada sigue cerrando su rama. Una unión de varias
+  ramas conserva explícitamente la continuación normal anterior.
+- Se eliminan los campos de navegación vacíos de los loops y se actualizan los
+  resúmenes. Los resúmenes root duplicados de miembros de loops se retiran,
+  conservando su pertenencia. Los destinos se comparan por ID normalizado.
+- `FINISH_EXPERIMENT` conserva el cierre completo, sin convertirse en una arista
+  hacia un trial inexistente. La revisión del documento migrado se actualiza.
 
-Después de publicar la versión de transición:
+El resultado utiliza exclusivamente el comportamiento actual: tras ir al
+destino, sigue sus conexiones. No se conserva el comportamiento antiguo que
+añadía trials posteriores por posición al navegar mediante `repeatConditions`.
+Conviene revisar esos recorridos al probar el experimento importado.
 
-1. Quitar el import y la llamada a `migrateLegacyBranching` en `server/routes/db/import.js`.
-2. Eliminar `server/routes/db/legacy/migrateLegacyBranching.js` y sus pruebas en `server/__tests__/routes/db-legacy-import.test.js`.
-3. Retirar este documento de compatibilidad.
+No se cambian CSV, órdenes, categorías, muestreo, repeticiones, `loopConditions`,
+parámetros, componentes, callbacks personalizados, configuración, resultados
+guardados, contador de sesiones ni medios. El código personalizado se conserva
+como texto; sus referencias a APIs retiradas requieren revisión manual. Las
+sesiones y sus resultados se conservan, pero no se convierten checkpoints de
+ejecución anteriores.
 
-No hay flags, campos de versión ni dependencias de esta conversión en el editor, los generadores o el runtime. Los experimentos importados se exportan con el contrato actual y siguen siendo utilizables cuando se retire el módulo.
+## Casos que requieren revisión manual
+
+Se devuelve HTTP 400 y `LEGACY_IMPORT_NOT_MIGRATABLE` cuando no puede inferirse
+una conversión válida: navegación no vacía directamente en un loop, un destino
+loop sin trial de entrada, referencias inexistentes, condiciones malformadas,
+propiedad ambigua/cíclica o ausencia de una entrada root inferible. El error
+identifica el experimento y el motivo. No se inventan trials de decisión.
+
+Todos los documentos del ZIP se convierten y validan antes de cambiar la base
+o restaurar el primer medio. Un experimento inválido impide importar el lote.
+Los endpoints de edición, el compilador y el runtime mantienen su contrato
+actual; no aceptan ni ejecutan el formato anterior.
+
+## Retirada
+
+Después de exportar los experimentos recuperados con el contrato actual:
+
+1. Eliminar `server/routes/db/legacy/migrateLegacyNavigation.js`.
+2. Quitar su import y llamada de `server/routes/db/import.js`, conservando
+   `assertExperimentNavigation` antes de restaurar documentos o medios.
+3. Eliminar `server/__tests__/routes/db-legacy-import.test.js` y este documento.
+4. Retirar la nota temporal del SDD. Mantener las pruebas estrictas actuales de
+   `db-navigation-import.test.js`.
