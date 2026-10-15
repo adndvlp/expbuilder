@@ -43,7 +43,10 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   await author.createTrial("mega-after-jump");
   await author.createTrial("mega-root-branch-source");
   await author.createTrial("mega-moved-trial");
-  await author.addRootBranch("mega-root-branch-source", "mega-root-branch-target");
+  await author.addRootBranch(
+    "mega-root-branch-source",
+    "mega-root-branch-target",
+  );
 
   await author.configureButtonTrials([
     "mega-conditional-source",
@@ -60,58 +63,79 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   ]);
   await author.configureButtonTrial(
     "mega-exit-target",
-    {},
+    { branches: [author.id("mega-after-jump")] },
     ["Jump", "Continue"],
   );
+  await author.configureButtonTrial("mega-jump-target", {
+    branches: [author.id("mega-exit-target")],
+  });
+  await author.configureButtonTrial("mega-after-jump", {
+    branches: [author.id("mega-root-branch-source")],
+  });
 
-  await author.configureParamsOverride("mega-conditional-target", [{
-    id: 171,
-    rules: [{
-      trialAlias: "mega-conditional-source",
-      column: "response",
-      op: "==",
-      value: "0",
-    }],
-    paramsToOverride: {
-      stimulus: {
-        source: "typed",
-        value: '<main data-runtime-trial="mega-params-applied">mega</main>',
+  await author.configureParamsOverride("mega-conditional-target", [
+    {
+      id: 171,
+      rules: [
+        {
+          trialAlias: "mega-conditional-source",
+          column: "response",
+          op: "==",
+          value: "0",
+        },
+      ],
+      paramsToOverride: {
+        stimulus: {
+          source: "typed",
+          value: '<main data-runtime-trial="mega-params-applied">mega</main>',
+        },
       },
     },
-  }]);
-  await author.configureConditionalLoop("mega-conditional-loop", [{
-    id: 172,
-    rules: [{
-      trialAlias: "mega-conditional-target",
-      column: "trial_index",
-      op: "<",
-      value: "2",
-    }],
-  }]);
-  await author.configureBranchConditions("mega-exit-source", [{
-    id: 173,
-    rules: [{ column: "response", op: "==", value: "0" }],
-    nextTrialAlias: "mega-exit-target",
-  }]);
-  await author.configureRepeatConditions("mega-exit-target", [{
-    id: 174,
-    rules: [{ column: "response", op: "==", value: "0" }],
-    jumpToTrialAlias: "mega-jump-target",
-  }]);
-  await author.configureBranchConditions("mega-root-branch-source", [{
-    id: 175,
-    rules: [{ column: "response", op: "==", value: "0" }],
-    nextTrialAlias: "mega-root-branch-target",
-  }]);
+  ]);
+  await author.configureConditionalLoop("mega-conditional-loop", [
+    {
+      id: 172,
+      rules: [
+        {
+          trialAlias: "mega-conditional-target",
+          column: "trial_index",
+          op: "<",
+          value: "2",
+        },
+      ],
+    },
+  ]);
+  await author.configureBranchConditions("mega-exit-source", [
+    {
+      id: 173,
+      rules: [{ column: "response", op: "==", value: "0" }],
+      nextTrialAlias: "mega-exit-target",
+    },
+  ]);
+  await author.configureRepeatConditions("mega-exit-target", [
+    {
+      id: 174,
+      rules: [{ column: "response", op: "==", value: "0" }],
+      jumpToTrialAlias: "mega-jump-target",
+    },
+  ]);
+  await author.configureBranchConditions("mega-root-branch-source", [
+    {
+      id: 175,
+      rules: [{ column: "response", op: "==", value: "0" }],
+      nextTrialAlias: "mega-root-branch-target",
+    },
+  ]);
 
-  const graph = await author.moveAfter(
-    "mega-moved-trial",
-    "mega-move-anchor",
-  );
-  expect(graph.edges.some((edge) =>
-    String(edge.sourceId) === String(author.id("mega-root-branch-source")) &&
-    String(edge.targetId) === String(author.id("mega-root-branch-target"))
-  )).toBe(true);
+  const graph = await author.moveAfter("mega-moved-trial", "mega-move-anchor");
+  expect(
+    graph.edges.some(
+      (edge) =>
+        String(edge.sourceId) ===
+          String(author.id("mega-root-branch-source")) &&
+        String(edge.targetId) === String(author.id("mega-root-branch-target")),
+    ),
+  ).toBe(true);
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
@@ -134,11 +158,14 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   const preJumpSessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
   const beforeResume = await runtime.snapshot();
-  expect(beforeResume.events.filter((event) => event.type === "params-override"))
-    .toHaveLength(2);
-  expect(beforeResume.events
-    .filter((event) => event.type === "conditional-loop-decision")
-    .map((event) => event.payload.shouldRepeat)).toEqual([true, false]);
+  expect(
+    beforeResume.events.filter((event) => event.type === "params-override"),
+  ).toHaveLength(2);
+  expect(
+    beforeResume.events
+      .filter((event) => event.type === "conditional-loop-decision")
+      .map((event) => event.payload.shouldRepeat),
+  ).toEqual([true, false]);
 
   await page.reload();
   await expect(runtime.trial("mega-exit-target")).toBeVisible();
@@ -166,25 +193,27 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     author.experimentId,
     preJumpSessionId,
   );
-  expect(builderIds(persisted.session.data)).toEqual([
-    "mega-conditional-source",
-    "mega-conditional-target",
-    "mega-conditional-source",
-    "mega-conditional-target",
-    "mega-move-anchor",
-    "mega-moved-trial",
-    "mega-exit-source",
-    "mega-exit-target",
-    "mega-jump-target",
-    "mega-exit-target",
-    "mega-after-jump",
-    "mega-root-branch-source",
-    "mega-root-branch-target",
-  ].map((alias) => String(author.id(alias))));
+  expect(builderIds(persisted.session.data)).toEqual(
+    [
+      "mega-conditional-source",
+      "mega-conditional-target",
+      "mega-conditional-source",
+      "mega-conditional-target",
+      "mega-move-anchor",
+      "mega-moved-trial",
+      "mega-exit-source",
+      "mega-exit-target",
+      "mega-jump-target",
+      "mega-exit-target",
+      "mega-after-jump",
+      "mega-root-branch-source",
+      "mega-root-branch-target",
+    ].map((alias) => String(author.id(alias))),
+  );
   const finalSnapshot = await runtime.snapshot();
   expect(finalSnapshot.events.map((event) => event.type)).toEqual(
     expect.arrayContaining([
-      "jump-reload-resume",
+      "jump-requested",
       "jump-target-enter",
       "branch-decision",
     ]),

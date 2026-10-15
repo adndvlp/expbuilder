@@ -33,25 +33,30 @@ test("[RUNTIME-JUMP-ROOT] [TJ-01] authors a jump condition, restarts at the exac
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
-
   await expect(runtime.trial("jump-target")).toBeVisible();
   await runtime.continue();
   await expect(runtime.trial("jump-trigger")).toBeVisible();
   const originalSessionId = await runtime.sessionId();
+  const originalDocument = await page.evaluate(() => performance.timeOrigin);
   await runtime.choose("Repeat");
   await expect(runtime.trial("jump-target")).toBeVisible();
   const continuedSessionId = await runtime.sessionId();
   expect(continuedSessionId).toBe(originalSessionId);
-  await expect.poll(async () => {
-    const firstRun = await loadPersistedSession(
-      author.experimentId,
-      originalSessionId,
-    );
-    return builderIds(firstRun.session.data);
-  }).toEqual([
-    String(author.id("jump-target")),
-    String(author.id("jump-trigger")),
-  ]);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(
+    originalDocument,
+  );
+  await expect
+    .poll(async () => {
+      const firstRun = await loadPersistedSession(
+        author.experimentId,
+        originalSessionId,
+      );
+      return builderIds(firstRun.session.data);
+    })
+    .toEqual([
+      String(author.id("jump-target")),
+      String(author.id("jump-trigger")),
+    ]);
   await runtime.continue();
   await expect(runtime.trial("jump-trigger")).toBeVisible();
   await runtime.choose("Continue");
@@ -62,12 +67,11 @@ test("[RUNTIME-JUMP-ROOT] [TJ-01] authors a jump condition, restarts at the exac
   const snapshot = await runtime.snapshot();
   expect(snapshot.events).toContainEqual(
     expect.objectContaining({
-      type: "jump-reload-resume",
+      type: "jump-persisted",
       payload: expect.objectContaining({
         conditionId: 71,
         targetId: author.id("jump-target"),
         sourceSessionId: originalSessionId,
-        sessionId: originalSessionId,
       }),
     }),
   );
@@ -105,18 +109,18 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
     "resume-skipped-sequential",
     "resume-target",
   ]);
+  const customParameters = {
+    stimulus: {
+      source: "typed" as const,
+      value: '<main data-runtime-trial="resume-override">restored route</main>',
+    },
+  };
   await author.configureBranchConditions("resume-source", [
     {
       id: 81,
       rules: [{ column: "response", op: "==", value: "0" }],
       nextTrialAlias: "resume-target",
-      customParameters: {
-        stimulus: {
-          source: "typed",
-          value:
-            '<main data-runtime-trial="resume-override">restored route</main>',
-        },
-      },
+      customParameters,
     },
   ]);
 
@@ -124,44 +128,47 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
   const runtime = new RuntimeObserver(page);
   const storageKeys = localRuntimeStorageKeys(author.experimentId);
   await page.goto(artifact.experimentUrl);
-
   await expect(runtime.trial("resume-source")).toBeVisible();
   await runtime.continue();
   await expect(runtime.trial("resume-override")).toBeVisible();
   const originalSessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
-  const checkpoint = await page.evaluate(
-    (resumeTrialKey) =>
-      JSON.parse(localStorage.getItem(resumeTrialKey) ?? "null"),
-    storageKeys.resumeTrial,
-  );
-  expect(checkpoint).toEqual({
-    version: 1,
+  const checkpoint = await runtime.resumeCheckpoint(storageKeys.resumeTrial);
+  expect(checkpoint).toMatchObject({
+    version: 2,
+    experimentRevision: expect.any(String),
     completed: {
       builderId: author.id("resume-source"),
       trialIndex: 0,
     },
-    route: {
-      kind: "branch",
+    cursor: {
       targetId: String(author.id("resume-target")),
-      conditionId: 81,
-      customParameters: {
-        stimulus: {
-          source: "typed",
-          value:
-            '<main data-runtime-trial="resume-override">restored route</main>',
+      afterCompleted: false,
+      loops: [],
+      globalRouting: {
+        nativeTimeline: {
+          index: 1,
+          entries: [
+            { id: String(author.id("resume-source")), kind: "normal" },
+            {
+              id: String(author.id("resume-target")),
+              kind: "branch",
+              parameters: customParameters,
+            },
+          ],
         },
       },
-      usedDefault: false,
     },
   });
-  await expect.poll(async () => {
-    const persisted = await loadPersistedSession(
-      author.experimentId,
-      originalSessionId,
-    );
-    return builderIds(persisted.session.data);
-  }).toEqual([String(author.id("resume-source"))]);
+  await expect
+    .poll(async () => {
+      const persisted = await loadPersistedSession(
+        author.experimentId,
+        originalSessionId,
+      );
+      return builderIds(persisted.session.data);
+    })
+    .toEqual([String(author.id("resume-source"))]);
 
   await page.reload();
   await expect(runtime.trial("resume-override")).toBeVisible();
@@ -173,17 +180,18 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
     expect.objectContaining({
       type: "resume-route-activated",
       payload: expect.objectContaining({
-        kind: "branch",
+        kind: "cursor",
         sourceId: author.id("resume-source"),
         targetId: String(author.id("resume-target")),
-        conditionId: 81,
       }),
     }),
   );
   expect(resumedSnapshot.events).toContainEqual(
     expect.objectContaining({
-      type: "branch-target-enter",
-      payload: expect.objectContaining({ targetId: author.id("resume-target") }),
+      type: "resume-target-enter",
+      payload: expect.objectContaining({
+        targetId: author.id("resume-target"),
+      }),
     }),
   );
 
@@ -199,15 +207,18 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
     String(author.id("resume-target")),
   ]);
   expect(
-    await page.evaluate((keys) => ({
-      checkpoint: localStorage.getItem(keys.resumeTrial),
-      currentSession: localStorage.getItem(keys.sessionId),
-      participant: localStorage.getItem(keys.participant),
-      jumpRequest: localStorage.getItem(keys.jumpRequest),
-      jumpTarget: localStorage.getItem(keys.jumpTarget),
-      jumpReload: sessionStorage.getItem(keys.jumpReload),
-      jumpContext: sessionStorage.getItem(keys.jumpContext),
-    }), storageKeys),
+    await page.evaluate(
+      (keys) => ({
+        checkpoint: localStorage.getItem(keys.resumeTrial),
+        currentSession: localStorage.getItem(keys.sessionId),
+        participant: localStorage.getItem(keys.participant),
+        jumpRequest: localStorage.getItem(keys.jumpRequest),
+        jumpTarget: localStorage.getItem(keys.jumpTarget),
+        jumpReload: sessionStorage.getItem(keys.jumpReload),
+        jumpContext: sessionStorage.getItem(keys.jumpContext),
+      }),
+      storageKeys,
+    ),
   ).toEqual({
     checkpoint: null,
     currentSession: null,
@@ -238,32 +249,27 @@ test("[RUNTIME-RESUME-SEQUENTIAL] [TRES-01] resumes after a completed root trial
   const runtime = new RuntimeObserver(page);
   const storageKeys = localRuntimeStorageKeys(author.experimentId);
   await page.goto(artifact.experimentUrl);
-
   await expect(runtime.trial("resume-first")).toBeVisible();
   await runtime.continue();
   await expect(runtime.trial("resume-second")).toBeVisible();
   const sessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
-  expect(
-    await page.evaluate(
-      (resumeTrialKey) =>
-        JSON.parse(localStorage.getItem(resumeTrialKey) ?? "null"),
-      storageKeys.resumeTrial,
-    ),
-  ).toEqual({
-    version: 1,
-    completed: {
-      builderId: author.id("resume-first"),
-      trialIndex: 0,
+  expect(await runtime.resumeCheckpoint(storageKeys.resumeTrial)).toMatchObject(
+    {
+      version: 2,
+      experimentRevision: expect.any(String),
+      completed: {
+        builderId: author.id("resume-first"),
+        trialIndex: 0,
+      },
+      cursor: {
+        targetId: String(author.id("resume-second")),
+        afterCompleted: false,
+        loops: [],
+        globalRouting: { nativeTimeline: { index: 1 } },
+      },
     },
-    route: {
-      kind: "sequential",
-      targetId: String(author.id("resume-second")),
-      conditionId: null,
-      customParameters: null,
-      usedDefault: false,
-    },
-  });
+  );
 
   await page.reload();
   await expect(runtime.trial("resume-second")).toBeVisible();
@@ -273,7 +279,7 @@ test("[RUNTIME-RESUME-SEQUENTIAL] [TRES-01] resumes after a completed root trial
     expect.objectContaining({
       type: "resume-route-activated",
       payload: expect.objectContaining({
-        kind: "sequential",
+        kind: "cursor",
         sourceId: author.id("resume-first"),
         targetId: String(author.id("resume-second")),
       }),

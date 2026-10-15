@@ -1,34 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateAllCodes } from "../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
 import { toCodeIdentifier } from "../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
-import { loop, timelineLoop, timelineTrial, trial } from "../helpers/trialFactories";
-
-vi.mock(
-  "../../pages/ExperimentBuilder/components/ConfigurationPanel/utils/pluginParameterLoader",
-  () => ({
-    loadPluginParameters: vi.fn(async (pluginName: string) => {
-      if (pluginName === "plugin-dynamic") {
-        return {
-          parameters: [
-            { key: "components", type: "complex", default: [] },
-            { key: "response_components", type: "complex", default: [] },
-            { key: "trial_duration", type: "number", default: null },
-          ],
-          data: [{ key: "response" }, { key: "rt" }],
-        };
-      }
-
-      return {
-        parameters: [
-          { key: "stimulus", type: "html_string", default: "" },
-          { key: "choices", type: "string_array", default: [" "] },
-          { key: "trial_duration", type: "number", default: null },
-        ],
-        data: [{ key: "response" }, { key: "rt" }],
-      };
-    }),
-  }),
-);
+import { getBranchEvaluatorRuntimeCode } from "../../pages/ExperimentBuilder/modules/experiment-runtime/branchEvaluator";
+import { timelineLoop, timelineTrial } from "../helpers/trialFactories";
+import { createMegaFixture } from "./codegenMegaFixture/fixture";
 
 function normalize(code: string) {
   return code.replace(/\s+/g, " ").trim();
@@ -45,194 +20,40 @@ describe("codegen mega regression fixture", () => {
           ok: true,
           json: async () => ({
             timeline: [
-              timelineTrial({ id: 1, name: "Dynamic Survey Trial", branches: [10] }),
+              timelineTrial({
+                id: 1,
+                name: "Dynamic Survey Trial",
+                branches: [10],
+              }),
               timelineLoop({ id: "loop_parent", name: "Parent Loop" }),
               timelineTrial({ id: 99, name: "WebGazer Setup" }),
             ],
           }),
         } as Response;
       }
+      const dynamic = url.endsWith("/api/metadata/plugin-dynamic.json");
       return {
         ok: true,
-        json: async () => ({}),
+        json: async () => ({
+          parameters: dynamic
+            ? {
+                components: { type: "complex", default: [] },
+                response_components: { type: "complex", default: [] },
+                trial_duration: { type: "number", default: null },
+              }
+            : {
+                stimulus: { type: "html_string", default: "" },
+                choices: { type: "string_array", default: [" "] },
+                trial_duration: { type: "number", default: null },
+              },
+          data: { response: { type: "string" }, rt: { type: "number" } },
+        }),
       } as Response;
     }) as unknown as typeof fetch;
   });
 
   it("generates the mixed high-risk timeline without losing branch/loop scope", async () => {
-    const topDynamicTrial = trial({
-      id: 1,
-      name: "Dynamic Survey Trial",
-      plugin: "plugin-dynamic",
-      branches: [10],
-      branchConditions: [
-        {
-          id: 1,
-          nextTrialId: 10,
-          rules: [{ column: "response", op: "==", value: "continue" }],
-        },
-      ],
-      columnMapping: {
-        components: {
-          source: "typed",
-          value: [
-            {
-              type: "SurveyComponent",
-              survey_json: {
-                source: "typed",
-                value: {
-                  pages: [
-                    {
-                      name: "page-1",
-                      elements: [{ type: "text", name: "participant_code" }],
-                    },
-                  ],
-                },
-              },
-            },
-          ],
-        },
-        response_components: {
-          source: "typed",
-          value: [
-            {
-              type: "ButtonResponseComponent",
-              button_text: { source: "typed", value: "Continue" },
-            },
-          ],
-        },
-      },
-    });
-
-    const loopCsvTrial = trial({
-      id: 10,
-      name: "Loop CSV Trial",
-      plugin: "plugin-html-keyboard-response",
-      parentLoopId: "loop_parent",
-      csvFromLoop: true,
-      branches: [20],
-      branchConditions: [
-        {
-          id: 2,
-          nextTrialId: 20,
-          rules: [{ column: "response", op: "==", value: "branch" }],
-        },
-      ],
-      paramsOverride: [
-        {
-          id: 1,
-          rules: [{ trialId: 1, column: "response", op: "==", value: "continue" }],
-          paramsToOverride: {
-            stimulus: { source: "typed", value: "<p>overridden</p>" },
-          },
-        },
-      ],
-      columnMapping: {
-        stimulus: { source: "csv", value: "stimulus" },
-        choices: { source: "typed", value: ["j", "k"] },
-      },
-    });
-
-    const nestedTrial = trial({
-      id: 20,
-      name: "Nested Dynamic Trial",
-      plugin: "plugin-dynamic",
-      parentLoopId: "loop_child",
-      columnMapping: {
-        components: {
-          source: "typed",
-          value: [
-            {
-              type: "TextComponent",
-              text: { source: "typed", value: "Nested text" },
-            },
-          ],
-        },
-        response_components: {
-          source: "typed",
-          value: [
-            {
-              type: "KeyboardResponseComponent",
-              keys: { source: "typed", value: ["space"] },
-            },
-          ],
-        },
-      },
-    });
-
-    const webgazerTrial = trial({
-      id: 99,
-      name: "WebGazer Setup",
-      plugin: "webgazer",
-      trialCode: "const saved_webgazer_phase = { type: jsPsychWebgazerInitCamera };",
-      csvJson: [{ phase: "init" }],
-    });
-
-    const parentLoop = loop({
-      id: "loop_parent",
-      name: "Parent Loop",
-      trials: [10, "loop_child"],
-      repetitions: 2,
-      randomize: true,
-      orders: true,
-      stimuliOrders: [[1, 0]],
-      categories: true,
-      categoryData: ["practice", "main"],
-      csvJson: [{ stimulus: "loop A" }, { stimulus: "loop B" }],
-      isConditionalLoop: true,
-      loopConditions: [
-        {
-          id: 1,
-          rules: [
-            {
-              trialId: 10,
-              column: "response",
-              prop: "response",
-              op: "==",
-              value: "again",
-            },
-          ],
-        },
-      ],
-      repeatConditions: [
-        {
-          id: 1,
-          jumpToTrialId: 10,
-          rules: [{ column: "response", prop: "response", op: "==", value: "jump" }],
-        },
-      ],
-    });
-
-    const childLoop = loop({
-      id: "loop_child",
-      name: "Child Loop",
-      trials: [20],
-      parentLoopId: "loop_parent",
-      repetitions: 1,
-      randomize: false,
-    });
-
-    const trials = new Map([
-      [1, topDynamicTrial],
-      [10, loopCsvTrial],
-      [20, nestedTrial],
-      [99, webgazerTrial],
-    ]);
-    const loops = new Map([
-      ["loop_parent", parentLoop],
-      ["loop_child", childLoop],
-    ]);
-
-    const getTrial = vi.fn(async (id: string | number) => trials.get(Number(id)) ?? null);
-    const getLoop = vi.fn(async (id: string | number) => loops.get(String(id)) ?? null);
-    const getLoopTimeline = vi.fn(async (id: string | number) =>
-      id === "loop_parent"
-        ? [
-            timelineTrial({ id: 10, name: "Loop CSV Trial" }),
-            timelineLoop({ id: "loop_child", name: "Child Loop", trials: [20] }),
-          ]
-        : [timelineTrial({ id: 20, name: "Nested Dynamic Trial" })],
-    );
+    const { getTrial, getLoop, getLoopTimeline } = createMegaFixture();
 
     const codes = await generateAllCodes(
       "mega-exp",
@@ -242,6 +63,7 @@ describe("codegen mega regression fixture", () => {
       getLoop,
     );
     const combined = normalize(codes.join("\n"));
+    expect(console.error).not.toHaveBeenCalled();
 
     expect(codes).toHaveLength(3);
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_parent", {
@@ -270,15 +92,78 @@ describe("codegen mega regression fixture", () => {
     expect(combined).toContain("const repeatConditions =");
     expect(combined).toContain("window.ExpBuilderNavigation.requestJump(");
 
-    expect(combined).toContain("loop_loop_parent_NextTrialId = nextTrialId;");
-    expect(combined).toContain("loop_loop_parent_NextTrialId = pendingBranchTarget;");
-    expect(combined).toContain("loop_loop_parent_SkipRemaining = true;");
-    expect(combined).not.toContain(
-      "const branches = [30]; if (branches.length > 0) { window.nextTrialId = branches[0];",
-    );
-
     expect(combined).toContain(
       "const saved_webgazer_phase = { type: jsPsychWebgazerInitCamera };",
+    );
+
+    type GeneratedNode = {
+      timeline?: GeneratedNode[];
+      on_finish?: (data: Record<string, unknown>) => void;
+    };
+    const registeredTrials = new Map<number, GeneratedNode>();
+    const registeredLoops = new Map<string, GeneratedNode>();
+    const requestBranch = vi.fn();
+    const runtimeWindow = {
+      ExpBuilderNavigation: {
+        registerTrial: (id: number, node: GeneratedNode) =>
+          registeredTrials.set(id, node),
+        registerLoop: (id: string, node: GeneratedNode) =>
+          registeredLoops.set(id, node),
+        requestBranch,
+      },
+      ExpBuilderRuntime: { emit: vi.fn() },
+    };
+    const timeline = new Function(
+      "window",
+      "jsPsych",
+      `
+      const timeline = []; const participantNumber = 1; const trialSessionId = 'mega';
+      const DynamicPlugin = {}; const jsPsychHtmlKeyboardResponse = {};
+      const jsPsychWebgazerInitCamera = {};
+      ${getBranchEvaluatorRuntimeCode()}
+      ${codes.join("\n")}
+      return timeline;
+    `,
+    )(runtimeWindow, {
+      timelineVariable: (name: string) => ({ variable: name }),
+    });
+
+    expect([...registeredTrials.keys()].sort((a, b) => a - b)).toEqual([
+      1, 10, 20, 99,
+    ]);
+    const parent = registeredLoops.get("loop_parent");
+    const child = registeredLoops.get("loop_child");
+    expect(parent?.timeline).toEqual([registeredTrials.get(10), child]);
+    expect(child?.timeline).toEqual([registeredTrials.get(20)]);
+    expect(timeline).toEqual([
+      registeredTrials.get(1),
+      parent,
+      registeredTrials.get(99),
+    ]);
+    expect(registeredTrials.get(99)?.timeline?.[0].timeline).toHaveLength(1);
+
+    const surveyData = { builder_id: 1, response: "continue" };
+    const loopData = { builder_id: 10, response: "branch" };
+    registeredTrials.get(1)?.timeline?.[0].on_finish?.(surveyData);
+    registeredTrials.get(10)?.on_finish?.(loopData);
+    expect(requestBranch).toHaveBeenCalledTimes(2);
+    expect(requestBranch).toHaveBeenNthCalledWith(
+      1,
+      surveyData,
+      expect.objectContaining({
+        targetId: 10,
+        conditionId: 1,
+        usedDefault: false,
+      }),
+    );
+    expect(requestBranch).toHaveBeenNthCalledWith(
+      2,
+      loopData,
+      expect.objectContaining({
+        targetId: 20,
+        conditionId: 2,
+        usedDefault: false,
+      }),
     );
   });
 });

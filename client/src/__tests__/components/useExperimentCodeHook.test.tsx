@@ -179,14 +179,9 @@ describe("useExperimentCode", () => {
     expect(mocks.localProps.evaluateCondition).toContain(
       "window.branchCustomParameters = null",
     );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "const nextTrialId = getNextTrialId(lastTrialData);",
-    );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "jsPsych.abortExperiment(",
-    );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "'Experiment finished by branching condition'",
+    expect(mocks.publicProps.evaluateCondition).toBe(mocks.localProps.evaluateCondition);
+    expect(mocks.publicProps.branchingEvaluation).not.toMatch(
+      /getNextTrialId|abortExperiment|\.decide\(/,
     );
   });
 });

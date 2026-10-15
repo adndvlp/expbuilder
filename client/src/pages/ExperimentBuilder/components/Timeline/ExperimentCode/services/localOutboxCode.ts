@@ -214,7 +214,7 @@ ${buildLocalOutboxDatabaseCode()}
           scheduleRetry();
           throw error;
         }
-        return await flush();
+        return await waitForIdle();
       } finally {
         if (persistenceToken) {
           window.ExpBuilderPersistence?.finish?.(persistenceToken);

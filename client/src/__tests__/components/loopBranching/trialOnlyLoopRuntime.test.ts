@@ -1,87 +1,117 @@
-import { describe, expect, it, vi } from "vitest";
-import useLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
-import { generateOnFinishCode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
+import { describe, expect, it } from "vitest";
+import generateLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
+import {
+  nativeTimelineRuntime,
+  nativeTrial,
+  scopeManifest,
+} from "../../helpers/nativeTimelineRuntime";
 
-const loopCode = () => useLoopCode({
-  id: "outer",
-  repetitions: 2,
+const settings = {
+  repetitions: 1,
   randomize: false,
   orders: false,
   stimuliOrders: [],
   categories: false,
   categoryData: [],
-  unifiedStimuli: [{ row: 1 }, { row: 2 }],
-  trials: [{
-    isLoop: true,
-    loopId: "inner",
-    loopName: "Inner",
-    repetitions: 1,
-    randomize: false,
-    orders: false,
-    stimuliOrders: [],
-    categories: false,
-    categoryData: [],
-    unifiedStimuli: [{}],
-    items: [{
-      id: "loop_trial",
-      trialName: "Target",
-      pluginName: "html-keyboard-response",
-      timelineProps: "const Target_timeline = {};",
-    }],
-  }],
-})();
+};
+const loopCode = () =>
+  generateLoopCode({
+    ...settings,
+    id: "outer",
+    unifiedStimuli: [{ row: 1 }, { row: 2 }],
+    trials: [
+      {
+        ...settings,
+        isLoop: true,
+        loopId: "inner",
+        loopName: "Inner",
+        unifiedStimuli: [{}],
+        items: [nativeTrial("loop_trial", "Target")],
+      },
+    ],
+  })();
 
 describe("trial-only loop runtime", () => {
-  it("generates only trial route state and no loop-owned branch decision or fallback", () => {
+  it("generates only trial route state and no loop-owned branch decision or fallback", async () => {
     const code = loopCode();
     expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
     expect(code).not.toContain("ExpBuilderBranching.decide");
     expect(code).not.toContain("branches[0]");
-    expect(code).not.toContain("abortExperiment");
-    expect(code).toContain('remainingLoopRepetitions("outer", 2) ?? 2');
+    const fixture = nativeTimelineRuntime(
+      code,
+      scopeManifest({
+        root: ["outer"],
+        outer: ["inner"],
+        inner: ["loop_trial"],
+      }),
+    );
+    expect((await fixture.run()).map((row) => row.builder_id)).toEqual([
+      "loop_trial",
+      "loop_trial",
+    ]);
   });
 
   it.each(["outer", "inner", "loop_trial"])(
     "admits only real trial destinations through nested containers: %s",
-    (target) => {
-      const runtime = new Function("window", `
-        const timeline = [];
-        ${loopCode()}
-        return {
-          enter: () => outer_procedure.conditional_function(),
-          start: () => outer_procedure.on_timeline_start(),
-          child: () => Inner_wrapper.conditional_function(),
-        };
-      `)({ skipRemaining: true, nextTrialId: target });
-      expect(runtime.enter()).toBe(target === "loop_trial");
-      runtime.start();
-      if (target === "loop_trial") expect(runtime.child()).toBe(true);
+    async (target) => {
+      const entry = nativeTrial(0, "Entry", { branches: [target] });
+      const fixture = nativeTimelineRuntime(
+        entry.timelineProps + loopCode(),
+        scopeManifest({
+          root: [0, "outer"],
+          outer: ["inner"],
+          inner: ["loop_trial"],
+        }),
+      );
+      if (target === "loop_trial") {
+        const rows = await fixture.run();
+        expect(rows.map((row) => row.builder_id)).toEqual([
+          0,
+          "loop_trial",
+          "loop_trial",
+        ]);
+        expect(rows.slice(1).map((row) => row.timeline_variables)).toEqual([
+          { row: 1 },
+          { row: 2 },
+        ]);
+      } else {
+        await expect(fixture.run()).rejects.toThrow(
+          "branches must target trials",
+        );
+      }
     },
   );
 
   it.each([false, true])(
     "a terminal trial preserves a reached route and uses no loop branch flags (repeat=%s)",
-    (repeat) => {
-      const code = generateOnFinishCode({
-        isInLoop: true,
-        getVarName: (name) => `loop_scope_${name}`,
-        repeatConditions: repeat ? [{ id: 1, jumpToTrialId: 1, rules: [] }] : [],
+    async (repeat) => {
+      const entry = nativeTrial(1, "Entry", { branches: [2] });
+      const target = nativeTrial(2, "Target", {
+        repeatConditions: repeat
+          ? [
+              {
+                id: 9,
+                jumpToTrialId: 1,
+                rules: [{ column: "response", op: "==", value: "never" }],
+              },
+            ]
+          : [],
       });
-    expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
-      const abort = vi.fn();
-      const create = new Function("window", "jsPsych", "reached", `
-        let loop_scope_BranchingActive = reached;
-        let loop_scope_TargetExecuted = reached;
-        return { ${code} };
-      `);
-      const runtimeWindow = {
-        branchingActive: true,
-        ExpBuilderBranching: { evaluateCondition: () => false },
-      };
-      create(runtimeWindow, { abortExperiment: abort }, true).on_finish({});
-      expect(abort).not.toHaveBeenCalled();
-      create(runtimeWindow, { abortExperiment: abort }, false).on_finish({});
-      expect(abort).toHaveBeenCalledOnce();
+      const later = nativeTrial(3, "Later");
+      expect(target.timelineProps).not.toMatch(
+        /ShouldBranchOnFinish|HasBranches/,
+      );
+      const fixture = nativeTimelineRuntime(
+        entry.timelineProps + target.timelineProps + later.timelineProps,
+        scopeManifest({ root: [1, 2, 3] }),
+      );
+      const rows = await fixture.run();
+      expect(rows.map((row) => row.builder_id)).toEqual([1, 2]);
+      expect(
+        fixture.window.ExpBuilderRuntime.emit.mock.calls.filter(
+          ([type]) => type === "branch-decision",
+        ),
+      ).toHaveLength(1);
     },
   );
 });

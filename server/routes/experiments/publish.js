@@ -39,6 +39,11 @@ function getDynamicPluginCdn() {
 }
 
 function injectPublicAssets($, experiment, experimentID) {
+  const favicon = fs.readFileSync(path.join(__dirname, "icon", "fp black.png"));
+  $('link[rel="icon"]').remove();
+  $("head").append(
+    `<link rel="icon" type="image/png" href="data:image/png;base64,${favicon.toString("base64")}" />`,
+  );
   $('link[href*="jspsych-bundle"]').remove();
   $('script[src*="jspsych-bundle"]').remove();
   $('script[src*="webgazer"]').remove();

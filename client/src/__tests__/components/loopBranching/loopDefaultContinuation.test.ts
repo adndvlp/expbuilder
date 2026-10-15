@@ -1,64 +1,64 @@
-import vm from "node:vm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import generateLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
-import { generateOnFinishCode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
-import { getBranchEvaluatorRuntimeCode } from "../../../pages/ExperimentBuilder/modules/experiment-runtime/branchEvaluator";
+import {
+  nativeTimelineRuntime,
+  nativeTrial,
+  scopeManifest,
+} from "../../helpers/nativeTimelineRuntime";
 
 function createRuntime(conditional = false) {
-  const onFinish = generateOnFinishCode({
+  const entry = nativeTrial(0, "Entry", { branches: [1] });
+  const source = nativeTrial(1, "Source", {
     branches: [2],
-    branchConditions: conditional ? [{
-      id: 10, rules: [{ column: "response", op: "==", value: "exit" }],
-      nextTrialId: 2,
-    }] : [],
-    isInLoop: true,
-    getVarName: name => `loop_rows_${name}`,
+    branchConditions: conditional
+      ? [
+          {
+            id: 10,
+            rules: [{ column: "response", op: "==", value: "exit" }],
+            nextTrialId: 2,
+          },
+        ]
+      : [],
   });
-  const code = generateLoopCode({
-    id: "rows", repetitions: 2, randomize: false,
-    orders: false, stimuliOrders: [], categories: false, categoryData: [],
+  const final = nativeTrial(2, "Final");
+  const loop = generateLoopCode({
+    id: "rows",
+    repetitions: 2,
+    randomize: false,
+    orders: false,
+    stimuliOrders: [],
+    categories: false,
+    categoryData: [],
     unifiedStimuli: [{ row: 1 }, { row: 2 }, { row: 3 }],
-    trials: [{ id: 1, trialName: "Source", pluginName: "html-button-response",
-      timelineProps: `const Source_timeline = { ${onFinish} };` }],
+    trials: [source],
   })();
-  const entry = generateOnFinishCode({ branches: [1], getVarName: name => name });
-  return vm.runInNewContext(`
-    const window = {};
-    const timeline = [];
-    ${getBranchEvaluatorRuntimeCode()}
-    ${code}
-    const entry = { ${entry} };
-    entry.on_finish({ builder_id: 0 });
-    rows_procedure.on_timeline_start();
-    ({
-      canRun: () => Source_wrapper.conditional_function(),
-      finishRow: () => {
-        Source_timeline.on_finish({ builder_id: 1, response: 'exit' });
-        rows_iteration.on_timeline_finish();
-      },
-      finishLoop: () => rows_procedure.on_timeline_finish(),
-      state: () => ({ target: window.nextTrialId, active: window.branchingActive }),
-    });
-  `);
+  return nativeTimelineRuntime(
+    entry.timelineProps + loop + final.timelineProps,
+    scopeManifest({ root: [0, "rows", 2], rows: [1] }),
+    { response: "exit" },
+  );
 }
 
 describe("default continuation through CSV loops", () => {
-  it("executes every row and repetition before following its last trial's default exit", () => {
+  it("executes every row and repetition before following its last trial's default exit", async () => {
     const runtime = createRuntime();
-    for (let row = 0; row < 6; row++) {
-      expect(runtime.canRun()).toBe(true);
-      runtime.finishRow();
-    }
-    runtime.finishLoop();
-    expect(runtime.state()).toEqual({ target: 2, active: true });
+    const abort = vi.spyOn(runtime.instance, "abortTimelineByName");
+    const rows = await runtime.run();
+    expect(rows.map((row) => row.builder_id)).toEqual([0, 1, 1, 1, 1, 1, 1, 2]);
+    expect(
+      rows
+        .filter((row) => row.builder_id === 1)
+        .map((row) => row.timeline_variables),
+    ).toEqual([1, 2, 3, 1, 2, 3].map((row) => ({ row })));
+    expect(abort).not.toHaveBeenCalled();
   });
 
-  it("still leaves the loop immediately when its trial selects a conditional exit", () => {
+  it("still leaves the loop immediately when its trial selects a conditional exit", async () => {
     const runtime = createRuntime(true);
-    expect(runtime.canRun()).toBe(true);
-    runtime.finishRow();
-    expect(runtime.canRun()).toBe(false);
-    runtime.finishLoop();
-    expect(runtime.state()).toEqual({ target: 2, active: true });
+    const abort = vi.spyOn(runtime.instance, "abortTimelineByName");
+    const rows = await runtime.run();
+    expect(rows.map((row) => row.builder_id)).toEqual([0, 1, 2]);
+    expect(rows[1].timeline_variables).toEqual({ row: 1 });
+    expect(abort).toHaveBeenCalledOnce();
   });
 });

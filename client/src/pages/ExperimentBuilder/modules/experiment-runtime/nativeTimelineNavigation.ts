@@ -1,3 +1,5 @@
+import { getNativeTimelinePreviewCode } from "./nativeTimelinePreview";
+
 /** Native timelines own CSV iteration; this coordinator only edits their future entries. */
 export function getNativeTimelineNavigationCode(): string {
   return `
@@ -129,6 +131,7 @@ export function getNativeTimelineNavigationCode(): string {
       const targetId = decision.targetId;
       if (targetId === null || targetId === undefined) return;
       if (selectedPreview && targetId !== 'FINISH_EXPERIMENT' && !resolveAddress(targetId)) return;
+      if (resolveAddress(targetId)?.targetKind === 'loop') throw new Error('Invalid branch destination: branches must target trials');
       const sourceId = data.builder_id ?? data.trial_id ?? data.loop_id ?? null;
       const options = {
         kind: 'branch', parameters: decision.customParameters ?? null,
@@ -256,13 +259,11 @@ export function getNativeTimelineNavigationCode(): string {
       if (!currentManifest()?.scopes || !definitions.size) return;
       nativeRuntime = jsPsych;
       nativeResume = deferredResume;
-      if (nativeResume?.experimentRevision && nativeResume.experimentRevision !== currentManifest().revision) {
-        invalidateNavigation('RESUME_REVISION_MISMATCH', null);
-      }
+      const request = getActiveRequest();
       const savedRoot = nativeResume?.globalRouting?.nativeTimeline;
-      const target = activeRequest?.address.targetId ?? nativeResume?.targetId;
-      let entries = savedRoot ? savedRoot.entries.slice(savedRoot.index) : normalEntries(null);
-      if (!savedRoot && target) entries = routeEntries(null, String(target), {
+      const target = request?.address.targetId ?? nativeResume?.targetId;
+      let entries = routingBlocked ? [] : savedRoot ? savedRoot.entries.slice(savedRoot.index) : normalEntries(null);
+      if (!routingBlocked && !savedRoot && target) entries = routeEntries(null, String(target), {
         kind: nativeResume?.kind === 'branch' ? 'branch' : 'resume',
         parameters: nativeResume?.customParameters,
         usedDefault: nativeResume?.usedDefault
@@ -276,33 +277,7 @@ export function getNativeTimelineNavigationCode(): string {
         on_timeline_start() { nativeScopes.push(root); cursorCheckpointsEnabled = true; }
       });
     };
-    const attachPreview = (jsPsych, timeline) => {
-      const idsByNode = new Map([...definitions].map(([id, definition]) => [definition.node, id]));
-      const scopes = { root: [] };
-      const addressesByTarget = {};
-      const visit = (id, ownerId, path) => {
-        if (addressesByTarget[id]) throw new Error('Preview item has multiple owners');
-        const definition = definitions.get(id);
-        addressesByTarget[id] = { targetId: id, targetKind: definition.kind, targetOwnerId: ownerId, enterLoopIds: path };
-        scopes[scopeKey(ownerId)].push(id);
-        if (definition.kind === 'loop') {
-          scopes[id] = [];
-          for (const child of definition.node.timeline) {
-            const childId = idsByNode.get(child);
-            if (childId) visit(childId, id, [...path, id]);
-          }
-        }
-      };
-      for (const node of timeline) {
-        const id = idsByNode.get(node);
-        if (id) visit(id, null, []);
-      }
-      window.ExpBuilderExecutionAddresses = {
-        version: 2, revision: 'selected-preview', nextBySource: {}, scopes, allScopes: scopes, addressesByTarget
-      };
-      selectedPreview = true;
-      attach(jsPsych, timeline);
-    };
+    ${getNativeTimelinePreviewCode()}
     const transitionCheckpoint = (data, fallback) => {
       if (!nativeTransition || nativeTransition.source !== data) return null;
       checkpointNextFrame = nativeTransition.frame;

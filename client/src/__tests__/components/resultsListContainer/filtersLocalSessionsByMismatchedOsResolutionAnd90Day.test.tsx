@@ -127,6 +127,8 @@ const localFiles = [
 describe("ResultsList container", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-10T12:00:00.000Z"));
     vi.spyOn(console, "log").mockImplementation(() => {});
     mocks.socketHandlers = {};
     mocks.experimentID = "exp-123";
@@ -205,6 +207,7 @@ describe("ResultsList container", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });

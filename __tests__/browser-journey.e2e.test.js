@@ -9,6 +9,7 @@ import {
   DATABASE_EMULATOR_PORT,
   DATABASE_EMULATOR_URL,
   getUserDoc,
+  hasProviderToken,
   PROJECT_ID,
   providerEnv,
   signInEmulator,
@@ -275,6 +276,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         'mega-conditional-source',
         'mega-conditional-target',
       ])
+      await author.createTrial('mega-move-anchor')
 
       await author.createTrial('mega-exit-source')
       await author.createTrial('mega-inner-skipped')
@@ -313,13 +315,20 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         'mega-after-jump',
         'mega-jump-target',
         'mega-moved-trial',
+        'mega-move-anchor',
         'mega-root-branch-target',
       ])
       await author.configureButtonTrial(
         'mega-exit-target',
-        {},
+        { branches: [author.id('mega-after-jump')] },
         ['Jump', 'Continue'],
       )
+      await author.configureButtonTrial('mega-jump-target', {
+        branches: [author.id('mega-exit-target')],
+      })
+      await author.configureButtonTrial('mega-after-jump', {
+        branches: [author.id('mega-root-branch-source')],
+      })
 
       await author.configureParamsOverride('mega-conditional-target', [{
         id: 171,
@@ -363,7 +372,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
 
       const graph = await author.moveAfter(
         'mega-moved-trial',
-        'mega-conditional-loop',
+        'mega-move-anchor',
       )
       await author.assertHealthyGraph()
       const aliases = Object.fromEntries(author.aliases)
@@ -393,17 +402,18 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
       await page.goto('http://localhost:5173/#/settings')
       await page.waitForTimeout(1500)
       const popupPromise = context.waitForEvent('page', { timeout: 20000 })
+        .catch(() => null)
       const section = page.locator('.token-item', { hasText: provider.name }).first()
       try {
         await section.waitFor({ state: 'visible', timeout: 10000 })
         await section
-          .getByRole('button', { name: 'Connect' })
+          .getByRole('button', { name: /\bConnect\b/ })
           .dispatchEvent('click')
       } catch (error) {
         console.warn(`[e2e] connect attempt ${attempt + 1} for ${provider.name} failed: ${String(error).slice(0, 120)}`)
         continue
       }
-      const popup = await popupPromise.catch(() => null)
+      const popup = await popupPromise
       if (!popup) {
         continue
       }
@@ -412,14 +422,14 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
       } catch {}
       for (let poll = 0; poll < 30; poll++) {
         const doc = await getUserDoc(session.idToken, session.localId)
-        if (doc.fields?.[provider.tokenField]) {
+        if (hasProviderToken(doc, provider.tokenField)) {
           break
         }
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
       await popup.close().catch(() => {})
       const doc = await getUserDoc(session.idToken, session.localId)
-      if (doc.fields?.[provider.tokenField]) {
+      if (hasProviderToken(doc, provider.tokenField)) {
         return
       }
     }
@@ -431,7 +441,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
   async function expectTokensStored(provider) {
     const session = await signInEmulator(EMAIL, PASSWORD)
     const doc = await getUserDoc(session.idToken, session.localId)
-    if (!doc.fields?.[provider.tokenField]) {
+    if (!hasProviderToken(doc, provider.tokenField)) {
       const fnLogs = emulator
         .getLog()
         .split('\n')
@@ -489,7 +499,12 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
       const button = [...document.querySelectorAll('button')]
         .find((candidate) => candidate.textContent?.trim() === 'Publish to GitHub Pages')
       return button && !button.disabled
-    }, null, { timeout: 30000 })
+    }, null, { timeout: 30000 }).catch(async (error) => {
+      const cachedTokens = await page.evaluate(() => Object.keys(localStorage)
+        .filter((key) => key.startsWith('userTokens_'))
+        .map((key) => ({ key, cached: JSON.parse(localStorage.getItem(key)) })))
+      throw new Error(`${error.message}\nPublishing diagnostics: ${JSON.stringify({ cachedTokens, consoleErrors, dialogs })}`)
+    })
     expect(await publishButton.isEnabled()).toBe(true)
     await publishButton.click()
 
@@ -563,6 +578,9 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         .waitFor({ state: 'visible', timeout: 120000 })
       await continueRuntime()
     }
+    await trial('mega-move-anchor')
+      .waitFor({ state: 'visible', timeout: 120000 })
+    await continueRuntime()
     await trial('mega-moved-trial')
       .waitFor({ state: 'visible', timeout: 120000 })
     await continueRuntime()
@@ -592,12 +610,14 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     expect((await runtimeSnapshot()).events).toContainEqual(
       expect.objectContaining({ type: 'resume-route-activated' }),
     )
+    const originalDocument = await participantPage.evaluate(() => performance.timeOrigin)
     await participantPage.getByRole('button', { name: 'Jump' }).click()
 
     await trial('mega-jump-target')
       .waitFor({ state: 'visible', timeout: 120000 })
     const continuedSessionId = await runtimeSessionId()
     expect(continuedSessionId).toBe(preJumpSessionId)
+    expect(await participantPage.evaluate(() => performance.timeOrigin)).toBe(originalDocument)
     await continueRuntime()
     await trial('mega-exit-target')
       .waitFor({ state: 'visible', timeout: 120000 })
@@ -618,7 +638,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     const finalSnapshot = await runtimeSnapshot()
     expect(finalSnapshot.events.map((event) => event.type)).toEqual(
       expect.arrayContaining([
-        'jump-reload-resume',
+        'jump-requested',
         'jump-target-enter',
         'branch-decision',
       ]),
@@ -654,6 +674,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
       'mega-conditional-target',
       'mega-conditional-source',
       'mega-conditional-target',
+      'mega-move-anchor',
       'mega-moved-trial',
       'mega-exit-source',
       'mega-exit-target',

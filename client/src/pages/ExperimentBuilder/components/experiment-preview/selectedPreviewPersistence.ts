@@ -1,3 +1,4 @@
+import { resumeCode } from "../Timeline/ExperimentCode/ResumeCode";
 import { buildLocalOutboxCode } from "../Timeline/ExperimentCode/services/localOutboxCode";
 
 type SelectedPreviewPersistenceOptions = {
@@ -198,4 +199,66 @@ export function buildSelectedPreviewPersistence({
       }
     }
   `;
+}
+
+export function buildSelectedPreviewCode({
+  experimentID,
+  isSaveMode,
+  selectionName,
+  generatedCode,
+}: SelectedPreviewPersistenceOptions & { generatedCode: string }): string {
+  const previewStoragePrefix = `expbuilder:preview:${experimentID || ""}:${selectionName}`;
+  const previewNavigationKeys = {
+    jumpRequest: `${previewStoragePrefix}:jump-request`,
+    jumpReload: `${previewStoragePrefix}:jump-reload`,
+    resumeTrial: `${previewStoragePrefix}:resume-trial`,
+    jumpTarget: `${previewStoragePrefix}:jump-target`,
+    jumpContext: `${previewStoragePrefix}:jump-context`,
+  };
+  const persistenceCode = buildSelectedPreviewPersistence({
+    experimentID: experimentID || "",
+    isSaveMode,
+    selectionName,
+  });
+  return `
+${persistenceCode}
+${resumeCode(previewNavigationKeys)}
+(async () => {
+localStorage.removeItem(${JSON.stringify(previewNavigationKeys.jumpTarget)});
+  participantNumber = await initParticipant();
+
+  if (!Number.isInteger(participantNumber) || participantNumber < 1) {
+    alert("The participant number is not assigned. Please, wait.");
+    throw new Error("participantNumber not assigned");
+  }
+    const jsPsych = initJsPsych({
+          on_data_update: function (data) {
+            persistPreviewResult(data);
+          },
+
+          on_finish: async function() {
+              let completionRetryDelay = 2000;
+              const attemptPreviewCompletion = async function() {
+                const finishCompleted = await completePreviewSession();
+                if (finishCompleted) {
+                  jsPsych.data.displayData();
+                  return;
+                }
+                const retryAfter = completionRetryDelay;
+                completionRetryDelay = Math.min(completionRetryDelay * 2, 30000);
+                setTimeout(attemptPreviewCompletion, retryAfter);
+              };
+              await attemptPreviewCompletion();
+          },
+    });
+
+      const timeline = [];
+
+      ${generatedCode}
+
+      window.ExpBuilderNavigation.attachPreview(jsPsych, timeline);
+      jsPsych.run(timeline);
+
+      })()
+      `;
 }

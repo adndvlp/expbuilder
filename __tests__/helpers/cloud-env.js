@@ -173,6 +173,10 @@ export async function signInEmulator(email, password) {
   return res.json()
 }
 
+export function hasProviderToken(doc, field) {
+  return Boolean(doc.fields?.[field]?.mapValue?.fields?.access_token?.stringValue)
+}
+
 export async function getUserDoc(idToken, localId) {
   const res = await fetch(
     `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${localId}`,
