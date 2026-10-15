@@ -10,6 +10,13 @@ for (const scenario of [
   { name: "with an empty participant order", participantNumber: 1, rowCount: 480, orders: [[]] },
 ]) {
 test(`an ordered dynamic loop runs ${scenario.rowCount} rows ${scenario.name}`, async ({ page }) => {
+  test.slow(scenario.rowCount > 3, "Executes 480 real WebGL trials, including on CI software renderers");
+  const contextWarnings: string[] = [];
+  page.on("console", message => {
+    if (message.text().includes("Too many active WebGL contexts")) {
+      contextWarnings.push(message.text());
+    }
+  });
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-ordered-preview-${Date.now()}`);
   await author.createTrial("Behavioral Statements");
@@ -41,7 +48,10 @@ test(`an ordered dynamic loop runs ${scenario.rowCount} rows ${scenario.name}`, 
     experimentId: author.experimentId, apiBaseUrl: runtimeApiBaseUrl,
     generatedCode: `
       ${scenario.participantNumber === undefined ? "" : `const participantNumber = ${scenario.participantNumber};`}
-      const jsPsych = initJsPsych({ on_finish: function() {
+      window.previewCompletedRows = 0;
+      const jsPsych = initJsPsych({
+      on_data_update: function() { window.previewCompletedRows += 1; },
+      on_finish: function() {
         window.previewRows = jsPsych.data.get().values();
         document.body.innerHTML = '<p>Preview complete</p>';
       }});
@@ -54,10 +64,17 @@ test(`an ordered dynamic loop runs ${scenario.rowCount} rows ${scenario.name}`, 
   });
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
+  // Detect stalled progress without requiring all 480 renders within one locator timeout.
+  for (let offset = 0; offset < scenario.rowCount; offset += 40) {
+    await expect.poll(() => page.evaluate(() => (
+      window as unknown as { previewCompletedRows?: number }
+    ).previewCompletedRows ?? 0)).toBeGreaterThanOrEqual(Math.min(offset + 40, scenario.rowCount));
+  }
   await expect(page.getByText("Preview complete")).toBeVisible();
   const rows = await page.evaluate(() => (window as unknown as { previewRows: Record<string, unknown>[] }).previewRows);
   expect(rows).toHaveLength(scenario.rowCount);
   expect(rows.map(row => String(row.trial_id))).toEqual(Array(scenario.rowCount).fill(String(trial.id)));
+  expect(contextWarnings, "completed trials must release their WebGL contexts").toEqual([]);
   await runtime.assertNoRuntimeFailures();
 });
 }

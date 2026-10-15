@@ -491,6 +491,7 @@ class WebGLStage extends BaseStage {
     this.gl.deleteBuffer(this.positionBuffer);
     this.gl.deleteBuffer(this.texCoordBuffer);
     this.gl.deleteProgram(this.program);
+    this.gl.getExtension("WEBGL_lose_context")?.loseContext();
     super.destroy();
   }
 

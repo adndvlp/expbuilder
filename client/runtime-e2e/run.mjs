@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
@@ -68,6 +68,16 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 let exitCode = 1;
 try {
   const testEnvironment = { ...process.env };
+  if (!testArguments.includes("--list")) {
+    console.log("Building DynamicPlugin from current sources...");
+    const build = spawnSync(
+      process.platform === "win32" ? "npm.cmd" : "npm",
+      ["run", "build", "--workspace=jspsych-expbuilder-plugin-dynamic"],
+      { cwd: path.dirname(clientRoot), env: testEnvironment, stdio: "inherit" },
+    );
+    if (build.error) throw build.error;
+    if (build.status !== 0) throw new Error("DynamicPlugin build failed");
+  }
   let installExitCode = 0;
   if (
     !isCi &&
