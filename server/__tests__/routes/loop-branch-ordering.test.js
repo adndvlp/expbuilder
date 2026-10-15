@@ -6,15 +6,17 @@ const trial = (id, name, parentLoopId, branches = []) => ({
   type: "Trial",
   name,
   branches,
+  branchConditions: [],
+  defaultNextTrialId: null,
   ...(parentLoopId ? { parentLoopId } : {}),
 });
 
 describe("sequential loop branch ordering", () => {
   test("places a root target before the route it chains into", () => {
     const source = trial(1, "Source", "inner", [2]);
-    const document = {
+    const document = { entryItemId: "inner",
       trials: [source, trial(2, "Existing exit")],
-      loops: [{ id: "inner", name: "Inner", trials: [1], }],
+      loops: [{ nextItemId: null, entryItemId: 1, id: "inner", name: "Inner", trials: [1], }],
       timeline: [
         { id: "inner", type: "loop", name: "Inner" },
         { id: 2, type: "trial", name: "Existing exit" },
@@ -41,16 +43,16 @@ describe("sequential loop branch ordering", () => {
 
   test("places an ancestor-scope target before its existing route", () => {
     const source = trial(1, "Source", "inner", [2]);
-    const document = {
+    const document = { entryItemId: "outer",
       trials: [source, trial(2, "Existing exit", "outer")],
       loops: [
-        {
+        { nextItemId: null, entryItemId: "inner",
           id: "outer",
           name: "Outer",
           trials: ["inner", 2],
 
         },
-        {
+        { nextItemId: null, entryItemId: 1,
           id: "inner",
           name: "Inner",
           parentLoopId: "outer",

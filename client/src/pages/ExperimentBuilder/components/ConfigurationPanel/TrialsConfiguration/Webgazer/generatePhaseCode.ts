@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { usePluginParameters } from "../../hooks/usePluginParameters"; // Make sure path is correct
 import { useCsvMapper } from "../Csv/useCsvMapper";
 import { ColumnMapping, Trial } from "../../types";
-import {
-  generateOnStartCode,
-  generateOnFinishCode,
-} from "../TrialCode/TrialCodeGenerators";
+import { generateOnStartCode } from "../TrialCode/TrialCodeGenerators";
 import {
   generateTrialProps,
   stringifyWithFunctions,
@@ -39,9 +36,6 @@ export const generatePhaseCode = ({
   setIsLoadingTrial,
 }: PhaseProps) => {
   // Extract trial logic properties from selectedTrial
-  const branches = selectedTrial?.branches;
-  const branchConditions = selectedTrial?.branchConditions;
-  const repeatConditions = selectedTrial?.repeatConditions;
   const paramsOverride = selectedTrial?.paramsOverride;
   const parentLoopId = (selectedTrial as any)?.parentLoopId;
   const isInLoop = Boolean(parentLoopId || (selectedTrial as any)?.isInLoop);
@@ -233,13 +227,7 @@ export const generatePhaseCode = ({
           <p>Great, we're done with calibration!</p>
         \`,
         choices: ['OK'],
-        ${generateOnFinishCode({
-          branches,
-          branchConditions,
-          repeatConditions,
-          isInLoop,
-          getVarName,
-        })}
+
       }
     timeline.push(calibration_done);
 `;

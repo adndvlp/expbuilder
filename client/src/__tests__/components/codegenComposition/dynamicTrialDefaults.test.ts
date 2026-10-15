@@ -17,7 +17,7 @@ describe("useTrialCode composition", () => {
   it("generates explicit DynamicPlugin defaults without timeline variables when it has no mapped data", () => {
     const { genTrialCode } = useTrialCode({
       id: 7,
-      branches: ["fallback", 10],
+      branches: ["fallback",10],
       branchConditions: [],
       pluginName: "DynamicPlugin",
       parameters: [],
@@ -39,7 +39,7 @@ describe("useTrialCode composition", () => {
 
     expect(code).toContain("type: DynamicPlugin");
     expect(code).toContain('rt: "rt"');
-    expect(code).toContain('branches: ["fallback", 10]');
+    expect(code).toContain('branches: ["fallback",10]');
     expect(code).not.toContain("components: jsPsych.timelineVariable");
     expect(code).not.toContain("timeline_variables:");
   });
@@ -68,7 +68,7 @@ describe("useTrialCode composition", () => {
     const code = normalize(genTrialCode());
 
     expect(code).toContain("type: DynamicPlugin");
-    expect(code).not.toContain("branches:");
+    expect(code).toContain("branches: []");
     expect(code).not.toContain("timeline_variables:");
   });
 
@@ -114,6 +114,6 @@ describe("useTrialCode composition", () => {
       '__canvasStyles: jsPsych.timelineVariable("__canvasStyles")',
     );
     expect(code).toContain('rt: "rt"');
-    expect(code).not.toContain("branches:");
+    expect(code).toContain("branches: []");
   });
 });

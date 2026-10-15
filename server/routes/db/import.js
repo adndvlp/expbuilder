@@ -5,7 +5,7 @@ import multer from "multer";
 import JSZip from "jszip";
 import { db, dbDir, userDataRoot } from "../../utils/db.js";
 import { ALLOWED_MEDIA_TYPES } from "./zip.js";
-import { migrateLegacyBranching } from "./legacy/migrateLegacyBranching.js";
+import { assertExperimentNavigation } from "../timeline/branchContract.js";
 
 const router = Router();
 const importZipUpload = multer({ dest: dbDir });
@@ -83,24 +83,20 @@ router.post(
         }
 
         if (!data.experiment?.experimentID) continue;
-        // TEMPORARY: remove this call with the legacy compatibility module.
-        data.trials = migrateLegacyBranching(data.trials);
+        if (data.trials) assertExperimentNavigation(data.trials);
         imports.push({ folderName, data });
       }
 
-      // Prepare every migration before changing the database or media files.
+      // Validate every experiment before changing the database or media files.
       let importedCount = 0;
       for (const { folderName, data } of imports) {
-        const {
-          experiment,
-          trials,
-          config,
-          sessionResults,
-          sessionCounter,
-        } = data;
+        const { experiment, trials, config, sessionResults, sessionCounter } =
+          data;
         mergeRecord(db.data.experiments, experiment.experimentID, experiment);
-        if (trials) mergeRecord(db.data.trials, experiment.experimentID, trials);
-        if (config) mergeRecord(db.data.configs, experiment.experimentID, config);
+        if (trials)
+          mergeRecord(db.data.trials, experiment.experimentID, trials);
+        if (config)
+          mergeRecord(db.data.configs, experiment.experimentID, config);
 
         if (Array.isArray(sessionResults) && sessionResults.length > 0) {
           db.data.sessionResults = db.data.sessionResults.filter(

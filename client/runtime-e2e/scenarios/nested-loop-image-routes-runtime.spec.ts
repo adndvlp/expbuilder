@@ -121,7 +121,14 @@ for (const scenario of scenarios) {
       });
     }
     await author.configureButtonTrials(aliases);
+    for (const alias of ["Trial_shared", "Trialotro", "Trial3", "Final1"]) {
+      await author.configureButtonTrial(alias, { defaultNextTrialId: null });
+    }
+    for (const alias of ["Trial1", "Trial2"]) {
+      await author.configureButtonTrial(alias, { defaultNextTrialId: "FINISH_EXPERIMENT" });
+    }
     await author.configureButtonTrial("Welcome", {
+          defaultNextTrialId: author.id("Instructions"),
       branches: [author.id("Instructions")],
     });
     const routes = [
@@ -167,6 +174,7 @@ for (const scenario of scenarios) {
       await author.configureButtonTrial(
         route.source,
         {
+          defaultNextTrialId: null,
           branches: route.targets.map((target) => author.id(target)),
         },
         route.choices,

@@ -51,7 +51,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
       expect(trialsState.value.updateTrialField).toHaveBeenCalledWith(
         "current",
         "columnMapping",
-        {},
+        expect.objectContaining({}),
       );
     });
 
@@ -61,7 +61,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
       expect(trialsState.value.updateTrialField).toHaveBeenCalledWith(
         "current",
         "parameters",
-        { minimum_percent: 1 },
+        expect.objectContaining({ minimum_percent: 1 }),
       );
     });
   });

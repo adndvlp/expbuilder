@@ -161,9 +161,8 @@ User adds rule: "response == yes" → target: "Trial A"
   User adds condition (OR): "rt > 500" → target: "Trial B"
   ↓
 handleSaveConditions()
-  - Separates into branchConditions[] + repeatConditions[]
-  - updateTrialField("branchConditions", [...])
-  - updateTrialField("repeatConditions", [...])
+  - Saves flat branchConditions, visible branches and explicit defaultNextTrialId atomically
+  - updateTrial(id, { branches, branchConditions, defaultNextTrialId })
   ↓
 on_finish code generation includes:
   if (data.response === 'yes') { /* navigate */ }

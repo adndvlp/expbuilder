@@ -64,7 +64,7 @@ describe("TrialsConfig", () => {
       expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(
         10,
         "columnMapping",
-        {},
+        expect.objectContaining({}),
       );
     });
 

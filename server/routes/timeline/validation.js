@@ -64,13 +64,6 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
     const { source, target } = req.query;
 
-    if (source == target) {
-      return res.json({
-        isValid: false,
-        errorMessage: "Cannot connect a trial to itself",
-      });
-    }
-
     const experimentDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
@@ -83,14 +76,6 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
       return res.json({
         isValid: false,
         errorMessage: "Branches must connect trials",
-      });
-    }
-
-    if (isAncestor(experimentDoc, source, target)) {
-      return res.json({
-        isValid: false,
-        errorMessage:
-          "Cannot connect to an ancestor trial (would create a circular dependency)",
       });
     }
 

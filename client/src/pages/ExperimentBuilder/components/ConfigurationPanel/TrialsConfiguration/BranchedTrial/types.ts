@@ -17,12 +17,6 @@ export type Condition = {
   customParameters?: Record<string, ColumnMappingEntry>;
 };
 
-export type RepeatConditionState = {
-  id: number;
-  rules: Rule[];
-  jumpToTrialId: number | string | null;
-};
-
 export type Props = {
   selectedTrial: any;
   onClose?: () => void;

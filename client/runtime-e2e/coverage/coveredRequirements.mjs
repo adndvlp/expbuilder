@@ -22,8 +22,6 @@ const edgeColors =
   "client/src/__tests__/components/canvasExpandedLayout/assignsBranchEdgeColors.test.ts";
 const runtimeStateContract =
   "client/src/pages/ExperimentBuilder/modules/experiment-runtime/runtimeStateContract.test.ts";
-const jumpRequest =
-  "client/src/pages/ExperimentBuilder/modules/experiment-runtime/jumpRequest.test.ts";
 const branchingRuntime =
   "client/runtime-e2e/scenarios/branching-runtime.spec.ts";
 const nestedRuntime =
@@ -374,32 +372,31 @@ export const coveredRequirements = {
     evidence: [
       evidence(
         "client/runtime-e2e/scenarios/navigation-runtime.spec.ts",
-        "[RUNTIME-JUMP-ROOT] [TJ-01]",
+        "[RUNTIME-BRANCH-RETURN] [TJ-01]",
       ),
     ],
   },
   "TJ-04": {
     status: "covered",
-    evidence: [evidence(jumpRequest, "[TJ-04] consumes each path segment")],
+    evidence: [evidence(loopRoutingCodegen, "[TJ-04] restores the selected route through every native ancestor")],
   },
   "TJ-05": {
     status: "covered",
     evidence: [
-      evidence(navigationNegativeRuntime, "[RUNTIME-JUMP-INVALID] [TJ-05]"),
+      evidence(navigationNegativeRuntime, "[TJ-05] [TJ-08] [RUNTIME-BRANCH-INVALID] rejects an invalid saved"),
     ],
   },
   "TJ-06": {
     status: "covered",
-    evidence: [evidence(loopRoutingCodegen, "[TJ-06] keeps a nested jump")],
+    evidence: [evidence(loopRoutingCodegen, "[TJ-06] continues a selected nested destination through its explicit connections")],
   },
   "TJ-08": {
     status: "covered",
     evidence: [
-      evidence(jumpRequest, "[TJ-08] accepts a marked reload"),
-      evidence(navigationCoordinator, "[TJ-08] rejects a reload attempt"),
+      evidence(navigationCoordinator, "[TJ-08] accepts only the current manifest and revision"),
       evidence(
         navigationNegativeRuntime,
-        "[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08]",
+        "[TJ-05] [TJ-08] [RUNTIME-BRANCH-INVALID] rejects an invalid saved",
       ),
     ],
   },

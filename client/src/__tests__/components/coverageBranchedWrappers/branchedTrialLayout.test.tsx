@@ -55,8 +55,8 @@ describe("coverage branched wrappers: BranchedTrialLayout", () => {
 
     rerender(<BranchedTrialLayout {...baseProps} />);
     expect(screen.getByTestId("branch-conditions")).toHaveTextContent("1");
-    fireEvent.mouseEnter(screen.getByText("Branch & Jump Conditions"));
-    fireEvent.mouseLeave(screen.getByText("Branch & Jump Conditions"));
+    fireEvent.mouseEnter(screen.getByText("Branching conditions"));
+    fireEvent.mouseLeave(screen.getByText("Branching conditions"));
     fireEvent.mouseEnter(screen.getByText("Save configuration"));
     fireEvent.mouseLeave(screen.getByText("Save configuration"));
     fireEvent.click(screen.getByText("Save configuration"));
@@ -69,9 +69,9 @@ describe("coverage branched wrappers: BranchedTrialLayout", () => {
 
     fireEvent.mouseEnter(screen.getByText("Params Override"));
     fireEvent.mouseLeave(screen.getByText("Params Override"));
-    fireEvent.mouseEnter(screen.getByText("Branch & Jump Conditions"));
-    fireEvent.mouseLeave(screen.getByText("Branch & Jump Conditions"));
-    fireEvent.click(screen.getByText("Branch & Jump Conditions"));
+    fireEvent.mouseEnter(screen.getByText("Branching conditions"));
+    fireEvent.mouseLeave(screen.getByText("Branching conditions"));
+    fireEvent.click(screen.getByText("Branching conditions"));
     expect(screen.getByTestId("branch-conditions")).toHaveTextContent("1");
   });
 });

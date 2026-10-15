@@ -17,7 +17,6 @@ vi.mock(
       <output data-testid="targets">
         {JSON.stringify({
           branches: props.branchTrials,
-          isJump: props.isJumpCondition(props.conditions[0]),
           selected: props.selectedTrial?.id,
         })}
       </output>
@@ -93,7 +92,6 @@ describe("branch configuration preserves trial destinations across containment",
         name: "Target",
         isLoop: false,
       });
-      expect(targets.isJump).toBe(false);
     },
   );
 });

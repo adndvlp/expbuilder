@@ -290,14 +290,14 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         'mega-outer-skipped',
       ])
 
-      await author.createTrial('mega-jump-target')
+      await author.createTrial('mega-branch-target')
       await author.addLoopExitBranch(
         'mega-exit-source',
         'mega-exit-target',
         null,
         'sequential',
       )
-      await author.createTrial('mega-after-jump')
+      await author.createTrial('mega-after-branch')
       await author.createTrial('mega-root-branch-source')
       await author.createTrial('mega-moved-trial')
       await author.addRootBranch(
@@ -312,22 +312,22 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         'mega-inner-skipped',
         'mega-outer-skipped',
         'mega-root-branch-source',
-        'mega-after-jump',
-        'mega-jump-target',
+        'mega-after-branch',
+        'mega-branch-target',
         'mega-moved-trial',
         'mega-move-anchor',
         'mega-root-branch-target',
       ])
       await author.configureButtonTrial(
         'mega-exit-target',
-        { branches: [author.id('mega-after-jump')] },
-        ['Jump', 'Continue'],
+        { branches: [author.id('mega-after-branch')], defaultNextTrialId: author.id('mega-after-branch') },
+        ['branch', 'Continue'],
       )
-      await author.configureButtonTrial('mega-jump-target', {
-        branches: [author.id('mega-exit-target')],
+      await author.configureButtonTrial('mega-branch-target', {
+        branches: [author.id('mega-exit-target')], defaultNextTrialId: author.id('mega-exit-target'),
       })
-      await author.configureButtonTrial('mega-after-jump', {
-        branches: [author.id('mega-root-branch-source')],
+      await author.configureButtonTrial('mega-after-branch', {
+        branches: [author.id('mega-root-branch-source')], defaultNextTrialId: author.id('mega-root-branch-source'),
       })
 
       await author.configureParamsOverride('mega-conditional-target', [{
@@ -359,10 +359,10 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
         rules: [{ column: 'response', op: '==', value: '0' }],
         nextTrialAlias: 'mega-exit-target',
       }])
-      await author.configureRepeatConditions('mega-exit-target', [{
+      await author.configureBranchConditions('mega-exit-target', [{
         id: 174,
         rules: [{ column: 'response', op: '==', value: '0' }],
-        jumpToTrialAlias: 'mega-jump-target',
+        nextTrialAlias: 'mega-branch-target',
       }])
       await author.configureBranchConditions('mega-root-branch-source', [{
         id: 175,
@@ -459,7 +459,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     }
   }
 
-  test('publishes, resumes, jumps, and retrieves a composed public experiment', async () => {
+  test('publishes, resumes, branches, and retrieves a composed public experiment', async () => {
     await page.goto('http://localhost:5173/#/auth/register')
     await page.locator('input[type="email"]').fill(EMAIL)
     const passwords = page.locator('input[type="password"]')
@@ -592,8 +592,8 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     expect(await trial('mega-inner-skipped').count()).toBe(0)
     expect(await trial('mega-outer-skipped').count()).toBe(0)
 
-    const preJumpSessionId = await runtimeSessionId()
-    expect(preJumpSessionId).not.toBe('')
+    const prebranchSessionId = await runtimeSessionId()
+    expect(prebranchSessionId).not.toBe('')
     await waitForPersistence()
     const beforeResume = await runtimeSnapshot()
     expect(beforeResume.events.filter((event) => event.type === 'params-override'))
@@ -606,23 +606,23 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     await participantPage.reload({ waitUntil: 'domcontentloaded' })
     await trial('mega-exit-target')
       .waitFor({ state: 'visible', timeout: 120000 })
-    expect(await runtimeSessionId()).toBe(preJumpSessionId)
+    expect(await runtimeSessionId()).toBe(prebranchSessionId)
     expect((await runtimeSnapshot()).events).toContainEqual(
       expect.objectContaining({ type: 'resume-route-activated' }),
     )
     const originalDocument = await participantPage.evaluate(() => performance.timeOrigin)
-    await participantPage.getByRole('button', { name: 'Jump' }).click()
+    await participantPage.getByRole('button', { name: 'branch' }).click()
 
-    await trial('mega-jump-target')
+    await trial('mega-branch-target')
       .waitFor({ state: 'visible', timeout: 120000 })
     const continuedSessionId = await runtimeSessionId()
-    expect(continuedSessionId).toBe(preJumpSessionId)
+    expect(continuedSessionId).toBe(prebranchSessionId)
     expect(await participantPage.evaluate(() => performance.timeOrigin)).toBe(originalDocument)
     await continueRuntime()
     await trial('mega-exit-target')
       .waitFor({ state: 'visible', timeout: 120000 })
     await continueRuntime()
-    await trial('mega-after-jump')
+    await trial('mega-after-branch')
       .waitFor({ state: 'visible', timeout: 120000 })
     await continueRuntime()
     await trial('mega-root-branch-source')
@@ -638,8 +638,8 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     const finalSnapshot = await runtimeSnapshot()
     expect(finalSnapshot.events.map((event) => event.type)).toEqual(
       expect.arrayContaining([
-        'jump-requested',
-        'jump-target-enter',
+        'navigation-transition',
+        'branch-target-enter',
         'branch-decision',
       ]),
     )
@@ -654,7 +654,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     expect(runtimeState.resources.some((url) => url.includes('gstatic.com/firebasejs/9.23.0'))).toBe(true)
 
     const researcherSession = await signInEmulator(EMAIL, PASSWORD)
-    const expectedSessionIds = [preJumpSessionId]
+    const expectedSessionIds = [prebranchSessionId]
     const cloudSessions = await waitForCloudSessions(
       researcherSession.idToken,
       experiment.experimentID,
@@ -667,7 +667,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     const completedCsv = await downloadCloudSession(
       researcherSession.idToken,
       experiment.experimentID,
-      preJumpSessionId,
+      prebranchSessionId,
     )
     expect(csvBuilderIds(completedCsv)).toEqual([
       'mega-conditional-source',
@@ -678,9 +678,9 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
       'mega-moved-trial',
       'mega-exit-source',
       'mega-exit-target',
-      'mega-jump-target',
+      'mega-branch-target',
       'mega-exit-target',
-      'mega-after-jump',
+      'mega-after-branch',
       'mega-root-branch-source',
       'mega-root-branch-target',
     ].map((alias) => String(aliases[alias])))
@@ -692,7 +692,7 @@ describeCloud('browser journey e2e (emulators + mocks)', () => {
     await page.getByRole('button', { name: 'Online Experiments' }).click()
     await page.getByRole('heading', { name: 'Online Experiment Sessions' })
       .waitFor({ state: 'visible', timeout: 30000 })
-    await page.getByText(preJumpSessionId, { exact: true })
+    await page.getByText(prebranchSessionId, { exact: true })
       .waitFor({ state: 'visible', timeout: 30000 })
 
     await page.waitForTimeout(500)

@@ -132,7 +132,7 @@ export function addCanonicalBranchEdges(
     );
     targets.forEach((target) => {
       const visibleSources = sources.filter(
-        (source) => source.id !== target.id,
+        (source) => source.id !== target.id || source.type === "trial",
       );
       if (visibleSources.length === 0) return;
       addExpandedFlowEdges(

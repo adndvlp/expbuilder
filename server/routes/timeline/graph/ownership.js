@@ -34,6 +34,19 @@ export function getScopeItemIds(experimentDoc, scopeId) {
 }
 
 export function removeItemFromScopes(experimentDoc, itemId) {
+  const removed = findItem(experimentDoc, itemId);
+  const replacement =
+    removed?.defaultNextTrialId ?? removed?.nextItemId ?? null;
+  for (const scope of [experimentDoc, ...experimentDoc.loops]) {
+    if (idsMatch(scope.entryItemId, itemId))
+      scope.entryItemId =
+        replacement != null &&
+        !idsMatch(replacement, itemId) &&
+        getItemOwnerId(experimentDoc, replacement) ===
+          (scope === experimentDoc ? null : String(scope.id))
+          ? replacement
+          : null;
+  }
   experimentDoc.timeline = experimentDoc.timeline.filter(
     (entry) => !idsMatch(entry.id, itemId),
   );
@@ -61,6 +74,8 @@ export function moveItemToScope(
     throw new Error(`Loop ${normalizedTarget} not found`);
   }
 
+  const oldOwner = getItemOwnerId(experimentDoc, itemId);
+  const previousEntry = (targetLoop ?? experimentDoc).entryItemId;
   removeItemFromScopes(experimentDoc, itemId);
   if (targetLoop) {
     item.parentLoopId = normalizedTarget;
@@ -77,6 +92,10 @@ export function moveItemToScope(
     );
     experimentDoc.timeline.splice(insertion, 0, summary);
   }
+  const targetScope = targetLoop ?? experimentDoc;
+  if (oldOwner === normalizedTarget && idsMatch(previousEntry, itemId))
+    targetScope.entryItemId = item.id;
+  if (targetScope.entryItemId === null) targetScope.entryItemId = item.id;
   return item;
 }
 

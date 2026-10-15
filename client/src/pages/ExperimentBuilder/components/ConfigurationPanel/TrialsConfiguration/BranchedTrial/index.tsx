@@ -8,11 +8,7 @@ import {
   isBranchTargetFromUserContext,
   saveBranchingIntent,
 } from "../../../../modules/experiment-authoring/intents/branching";
-import {
-  idsEqual,
-  includesId,
-  itemIdKey,
-} from "../../../../utils/branchGraphUtils";
+
 import BranchedTrialModalFrame from "./components/BranchedTrialModalFrame";
 import type { Trial, Loop } from "../../types";
 
@@ -21,7 +17,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     updateTrial,
     updateLoop,
     getTrial,
-    getLoop,
+    graph,
     timeline,
     loopTimeline,
     getLoopTimeline,
@@ -85,7 +81,6 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     loadPluginParameters,
     getLoopTimeline,
     setConditions,
-    setRepeatConditions: () => {}, // Empty function since it is not used
   });
 
   // Find trial or loop by ID using the API
@@ -93,26 +88,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     trialId: string | number,
   ): Promise<Trial | Loop | null> => {
     try {
-      const isSavedBranch =
-        selectedTrial &&
-        !("trials" in selectedTrial) &&
-        includesId(selectedTrial.branches, trialId);
-      // Loop metadata is still used by existing jump rules. Structural branch
-      // targets always load trial metadata, independently of their ID spelling.
-      const isLoop =
-        !isSavedBranch &&
-        ([...timeline, ...loopTimeline].some(
-          (item) => item.type === "loop" && idsEqual(item.id, trialId),
-        ) ||
-          String(trialId).startsWith("loop_"));
-
-      if (isLoop) {
-        const loop = await getLoop(trialId);
-        return loop;
-      } else {
-        const trial = await getTrial(trialId);
-        return trial;
-      }
+      return await getTrial(trialId);
     } catch (error) {
       console.error("Error finding trial/loop:", error);
       return null;
@@ -128,7 +104,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
    * Get available trials to reference (trials that come before the current trial)
    * If trial is inside a loop (has parentLoopId):
    *   - Show trials from same loop (loopTimeline) that come before
-   *   - Show ALL trials from main timeline (to allow jumping out of the loop)
+   *   - Show ALL trials from main timeline (to reference parent data of the loop)
    * If trial is outside a loop, show all trials from main timeline
    */
   const getAvailableTrials = (): { id: string | number; name: string }[] => {
@@ -157,7 +133,7 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
         }
       }
 
-      // 2. Add ALL trials from main timeline (to allow jumping out)
+      // 2. Add ALL trials from main timeline (to reference parent data)
       timeline.forEach((item) => {
         // Only add if not already in the list (avoid duplicates)
         if (!allTrials.some((t) => String(t.id) === String(item.id))) {
@@ -187,36 +163,20 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
     return allTrials;
   };
 
-  const getTopLevelLoopTrialIds = () =>
-    new Set(
-      timeline
-        .filter((item) => item.type === "loop")
-        .flatMap((loop) => loop.trials || [])
-        .map((id) => itemIdKey(id)),
-    );
-
-  const getBranchScopeTimeline = () =>
-    selectedTrial?.parentLoopId ? loopTimeline : timeline;
-
   const isBranchTarget = (trialId: string | number | null): boolean => {
-    /* v8 ignore start -- handleSaveConditions exits without a selected trial. */
-    if (!selectedTrial) return false;
-    /* v8 ignore stop */
+    if (!selectedTrial || trialId == null) return false;
+    const items = graph
+      ? [graph.root, ...Object.values(graph.scopes)].flatMap(
+          (scope) => scope.items,
+        )
+      : [...timeline, ...loopTimeline];
     return isBranchTargetFromUserContext({
       selectedItem: selectedTrial,
       targetId: trialId,
-      scopeTimeline: getBranchScopeTimeline(),
-      topLevelLoopTrialIds: getTopLevelLoopTrialIds(),
+      scopeTimeline: items,
     });
   };
 
-  /**
-   * Save conditions to the trial
-   *
-   * This function separates conditions into two categories:
-   * 1. branchConditions: Conditions where nextTrialId points to a branch target in scope.
-   * 2. repeatConditions: Conditions where nextTrialId is outside the branch scope.
-   */
   const handleSaveConditions = (conditionsToSave?: Condition[]) => {
     if (!selectedTrial) return;
 
@@ -226,13 +186,14 @@ function BranchedTrial({ selectedTrial, onClose, isOpen = true }: Props) {
       conditions: currentConditions,
       isBranchTarget,
       dependencies: { updateTrial, updateLoop },
-    }).catch((error) => console.error("Error saving conditions:", error));
-
-    // Show save indicator
-    setSaveIndicator(true);
-    setTimeout(() => {
-      setSaveIndicator(false);
-    }, 1500);
+    })
+      .then(() => {
+        setSaveIndicator(true);
+        setTimeout(() => setSaveIndicator(false), 1500);
+      })
+      .catch((error) => {
+        setError(error instanceof Error ? error.message : String(error));
+      });
   };
 
   return (

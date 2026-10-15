@@ -18,7 +18,7 @@ describe("useTrialCode composition", () => {
   it("generates a data-only normal plugin branch when no mapped values exist", () => {
     const { genTrialCode } = useTrialCode({
       id: 8,
-      branches: ["branch-a", 11],
+      branches: ["branch-a",11],
       branchConditions: [],
       pluginName: "",
       parameters: [],
@@ -41,7 +41,7 @@ describe("useTrialCode composition", () => {
     const identifier = toCodeIdentifier("No Plugin");
     expect(code).toContain(`const ${identifier}_timeline = { type:`);
     expect(code).toContain('response: "response"');
-    expect(code).toContain('branches: ["branch-a", 11]');
+    expect(code).toContain('branches: ["branch-a",11]');
     expect(code).not.toContain("timeline_variables:");
   });
 
@@ -69,7 +69,7 @@ describe("useTrialCode composition", () => {
     const code = normalize(genTrialCode());
 
     expect(code).toContain("type: htmlKeyboardResponse");
-    expect(code).not.toContain("branches:");
+    expect(code).toContain("branches: []");
     expect(code).not.toContain("timeline_variables:");
   });
 

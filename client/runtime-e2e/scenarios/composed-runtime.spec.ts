@@ -19,7 +19,9 @@ test("[RUNTIME-LOOP-TRIAL-MOVE] moves a trial between direct children of a loop 
   const expectedIds = ["loop-move-first", "loop-move-third", "loop-move-second"]
     .map((alias) => String(author.id(alias)));
   expect(graph.scopes[String(author.id("move-container"))].items.map((item) => String(item.id))).toEqual(expectedIds);
-  expect(graph.edges).toEqual([]);
+  expect(graph.edges.map(edge => [String(edge.sourceId), String(edge.targetId)])).toEqual([
+    [expectedIds[0], expectedIds[1]], [expectedIds[1], expectedIds[2]],
+  ]);
   expect(graph.diagnostics).toEqual([]);
 
   const artifact = await author.compileAndBuild();

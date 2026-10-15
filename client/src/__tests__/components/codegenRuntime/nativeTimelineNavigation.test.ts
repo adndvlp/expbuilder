@@ -16,9 +16,7 @@ type Navigation = {
   attachPreview(instance: Row, timeline: NativeNode[]): void;
   sampleLoop(id: string, order: number[], randomize: boolean, conditional: boolean): void;
   requestBranch(data: Row, decision: Row): void;
-  requestJump(target: string, context: Row, data: Row): void;
   onTrialPersisted(data: Row): void;
-  completeTrial(data: Row, merge: boolean): void;
   takeParameters(id: string): Row | null;
   clearTransientState(): void;
   checkpointTrialComplete(data: Row, fallback: Row): {
@@ -39,7 +37,7 @@ function runtime() {
     location: { reload: vi.fn() },
     ExpBuilderRuntime: { emit: vi.fn(), reportError: vi.fn() },
     ExpBuilderExecutionAddresses: {
-      version: 2, revision: "r1", nextBySource: {},
+      version: 3, entries: { root: "outer", outer: "inner", inner: "source" }, loopContinuations: {}, revision: "r1", nextBySource: {},
       scopes: { root: ["outer", "final"], outer: ["inner", "parent"], inner: ["source", "target"] },
       mergePointIds: [],
       allScopes: undefined as Record<string, string[]> | undefined,
@@ -97,9 +95,9 @@ describe("native timeline navigation", () => {
     expect(checkpoint.cursor.loops).toEqual([]);
   });
 
-  it("keeps the active CSV scope for a backward jump and waits for durable source data without reloading", async () => {
+  it("keeps the active CSV scope for a backward branch and waits for durable source data without reloading", async () => {
     const r = runtime();
-    r.nav.requestJump("source", { sourceId: "source" }, { builder_id: "source", trial_index: 3 });
+    r.nav.requestBranch({ builder_id: "source", trial_index: 3 }, { targetId: "source", usedDefault: false });
     expect(r.jsPsych.pauseExperiment).toHaveBeenCalledOnce();
     expect(r.innerRow.timeline).toHaveLength(2);
     const token = r.window.ExpBuilderPersistence.start();
@@ -115,6 +113,8 @@ describe("native timeline navigation", () => {
 
   it("defers an ordinary last-item exit until the entire loop finishes", () => {
     const r = runtime();
+    r.nav.requestBranch({ builder_id: "source" }, { targetId: "target", usedDefault: false });
+    r.jsPsych.abortTimelineByName.mockClear();
     r.innerRow.timeline[1].on_timeline_start();
     r.nav.requestBranch({ builder_id: "target" }, { targetId: "parent", usedDefault: true, conditionId: null });
     expect(r.jsPsych.abortTimelineByName).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("native timeline navigation", () => {
     r.window.ExpBuilderExecutionAddresses.allScopes = { root: ["outer", "final"] };
     r.nav.requestBranch({ builder_id: "source" }, { targetId: "final", usedDefault: false });
     r.root.timeline[1].on_timeline_start();
-    r.nav.completeTrial({ builder_id: "final" }, true);
+    r.nav.requestBranch({ builder_id: "final" }, { targetId: null });
     expect(r.root.timeline).toHaveLength(2);
   });
 
@@ -153,8 +153,8 @@ describe("native timeline navigation", () => {
     r.jsPsych.abortTimelineByName.mockClear();
     r.nav.requestBranch({ builder_id: "target" }, { targetId: "source", usedDefault: false });
     row.timeline[1].on_timeline_start();
-    r.nav.completeTrial({ builder_id: "source" }, false);
-    expect(r.jsPsych.abortTimelineByName).toHaveBeenCalledWith(loop.name);
+    r.nav.requestBranch({ builder_id: "source" }, { targetId: null });
+    expect(r.jsPsych.abortTimelineByName).not.toHaveBeenCalled();
   });
 
   it("checkpoints the selected future route after a cross-scope response", () => {
@@ -179,15 +179,15 @@ describe("native timeline navigation", () => {
     expect(timeline[0].timeline).toHaveLength(1);
   });
 
-  it("handles a second jump requested while the preceding durability barrier is completing", async () => {
+  it("handles a second branch requested while the preceding durability barrier is completing", async () => {
     const r = runtime();
     r.jsPsych.resumeExperiment.mockImplementationOnce(() => {
       const data = { builder_id: "source", trial_index: 4 };
-      r.nav.requestJump("target", { sourceId: "source" }, data);
+      r.nav.requestBranch(data, { targetId: "target", usedDefault: false });
       r.nav.onTrialPersisted(data);
     });
     const data = { builder_id: "source", trial_index: 3 };
-    r.nav.requestJump("source", { sourceId: "source" }, data);
+    r.nav.requestBranch(data, { targetId: "source", usedDefault: false });
     r.nav.onTrialPersisted(data);
     await vi.waitFor(() => expect(r.jsPsych.resumeExperiment).toHaveBeenCalledTimes(2));
     expect(r.window.location.reload).not.toHaveBeenCalled();

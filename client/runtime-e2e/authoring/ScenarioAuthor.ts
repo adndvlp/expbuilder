@@ -12,7 +12,6 @@ import {
   selectLoopBranchLevel,
   startLoopBranchIntent,
 } from "../../src/pages/ExperimentBuilder/modules/experiment-authoring/intents";
-import { itemIdKey } from "../../src/pages/ExperimentBuilder/utils/branchGraphUtils";
 import { addScenarioScopedBranch } from "./addScenarioScopedBranch";
 import { compileScenarioArtifact } from "./compileScenarioArtifact";
 import { moveScenarioItem } from "./moveScenarioItem";
@@ -25,7 +24,6 @@ import type {
   BranchConditionIntent,
   LoopConditionIntent,
   ParamsOverrideConditionIntent,
-  RepeatConditionIntent,
 } from "./scenarioIntentDrafts";
 import {
   configureScenarioButtonTrial,
@@ -224,13 +222,6 @@ export class ScenarioAuthor {
     });
   }
 
-  async configureRepeatConditions(
-    sourceAlias: string,
-    intents: RepeatConditionIntent[],
-  ) {
-    return this.saveRoutingConditions(sourceAlias, intents);
-  }
-
   async configureConditionalLoop(
     loopAlias: string,
     intents: LoopConditionIntent[],
@@ -247,22 +238,14 @@ export class ScenarioAuthor {
 
   private async saveRoutingConditions(
     sourceAlias: string,
-    intents: Array<BranchConditionIntent | RepeatConditionIntent>,
+    intents: BranchConditionIntent[],
   ) {
     const source = await this.client.getTrial(
       this.experimentId,
       this.id(sourceAlias),
     );
     const graph = this.session.graph;
-    const scopeTimeline = source.parentLoopId
-      ? (graph.scopes[String(source.parentLoopId)]?.items ?? [])
-      : graph.root.items;
-    const topLevelLoopTrialIds = new Set(
-      graph.root.items
-        .filter((item) => item.type === "loop")
-        .flatMap((item) => item.trials ?? [])
-        .map((id) => itemIdKey(id)),
-    );
+    const scopeTimeline = [graph.root, ...Object.values(graph.scopes)].flatMap(scope => scope.items);
     const conditions = buildBranchingDraft(intents, (alias) => this.id(alias));
 
     return saveBranchingIntent({
@@ -273,7 +256,6 @@ export class ScenarioAuthor {
           selectedItem: source,
           targetId,
           scopeTimeline,
-          topLevelLoopTrialIds,
         }),
       dependencies: this.dependencies(),
     });

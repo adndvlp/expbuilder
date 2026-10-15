@@ -1,6 +1,5 @@
 import {
   BranchCondition,
-  RepeatCondition,
   ColumnMapping,
   ColumnMappingEntry,
   ParamsOverrideCondition,
@@ -24,7 +23,7 @@ type Props = {
   id: number | undefined;
   branches: (string | number)[] | undefined;
   branchConditions: BranchCondition[] | undefined;
-  repeatConditions?: RepeatCondition[];
+  defaultNextTrialId?: string | number | null;
   paramsOverride?: ParamsOverrideCondition[];
   pluginName: string;
   parameters: any[];
@@ -58,7 +57,7 @@ export function useTrialCode({
   id,
   branches,
   branchConditions,
-  repeatConditions,
+  defaultNextTrialId,
   paramsOverride,
   pluginName,
   parameters,
@@ -132,6 +131,7 @@ export function useTrialCode({
 
     const timelineProps = generateTrialProps({
       branchConditions,
+      defaultNextTrialId,
       branches,
       columnMapping,
       data,
@@ -180,7 +180,7 @@ export function useTrialCode({
     const onFinishCode = generateOnFinishCode({
       branches,
       branchConditions,
-      repeatConditions,
+      defaultNextTrialId,
       isInLoop,
       isMergePoint,
       getVarName,
@@ -212,7 +212,6 @@ export function useTrialCode({
         code += `
     timeline_variables: test_stimuli_${trialNameSanitized},`;
       }
-
 
       if (includesExtensions && extensions !== "") {
         code += `

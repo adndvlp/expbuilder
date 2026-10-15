@@ -30,6 +30,7 @@ test("[RUNTIME-NESTED-PARENT-EXIT] [TR-02] exits only the inner loop and execute
     "parent-scope-target",
   ]);
 
+  await author.configureBranchConditions("parent-exit-source", [{ id: 310, rules: [{ column: "response", op: "==", value: "0" }], nextTrialAlias: "parent-scope-target" }]);
   const graph = await author.assertHealthyGraph();
   const edge = graph.edges.find(
     (candidate) =>
@@ -86,6 +87,7 @@ test("[RUNTIME-NESTED-ANCESTOR-EXIT] [TR-03] exits two nested loops and executes
     "ancestor-scope-target",
   ]);
 
+  await author.configureBranchConditions("ancestor-exit-source", [{ id: 310, rules: [{ column: "response", op: "==", value: "0" }], nextTrialAlias: "ancestor-scope-target" }]);
   const graph = await author.assertHealthyGraph();
   const edge = graph.edges.find(
     (candidate) =>

@@ -41,11 +41,11 @@ describe('POST /api/loop/:experimentID', () => {
   test('removes loop trials from timeline and adds loop entry', async () => {
     const { app, db } = await freshApp()
     // Create experiment doc with trials pre-existing
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
       loops: [],
       timeline: [
@@ -69,12 +69,12 @@ describe('POST /api/loop/:experimentID', () => {
 
   test('preserves branches that reference grouped trials', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [2] },
-        { id: 2, name: 'T2', branches: [] },
-        { id: 3, name: 'T3', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [2] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 3, name: 'T3', branches: [] },
       ],
       loops: [],
       timeline: [
@@ -101,11 +101,11 @@ describe('POST /api/loop/:experimentID', () => {
     // existed. That must not fail with `Item <id> not found`.
     const { app, db } = await freshApp()
     const ghost = 1788987326502
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [ghost] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [ghost] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
       loops: [],
       timeline: [
@@ -130,11 +130,11 @@ describe('POST /api/loop/:experimentID', () => {
 
   test('preserves grouped branches across string/number id types', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: ['2'] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: ['2'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
       loops: [],
       timeline: [
@@ -157,9 +157,9 @@ describe('POST /api/loop/:experimentID', () => {
 
   test('400 when creating a nested loop under a missing parent loop', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
       loops: [],
       timeline: [{ id: 1, type: 'trial', name: 'T1', branches: [] }],
     })
@@ -185,7 +185,7 @@ describe('GET /api/loop/:experimentID/:id', () => {
 
   test('404 when loop not found', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [],
       loops: [],
@@ -197,14 +197,14 @@ describe('GET /api/loop/:experimentID/:id', () => {
 
   test('returns loop with trials metadata', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1' },
-        { id: 2, name: 'T2' },
+        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, name: 'T1' },
+        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 2, name: 'T2' },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', trials: [1, 2] },
+        { nextItemId: null, entryItemId: 1, id: 'loop_1', name: 'L1', trials: [1, 2] },
       ],
       timeline: [],
     })
@@ -217,10 +217,10 @@ describe('GET /api/loop/:experimentID/:id', () => {
 
   test('resolves trials metadata across string/number id types', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1' }],
-      loops: [{ id: 'loop_1', name: 'L1', trials: ['1'] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, name: 'T1' }],
+      loops: [{ nextItemId: null, entryItemId: '1', id: 'loop_1', name: 'L1', trials: ['1'] }],
       timeline: [],
     })
     await db.write()
@@ -241,7 +241,7 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
 
   test('404 when loop not found', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [],
       loops: [],
@@ -256,10 +256,10 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
 
   test('updates loop fields', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'Old', trials: [], }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'Old', trials: [], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1', branches: [] },
         { id: 'loop_1', type: 'loop', name: 'Old',  trials: [] },
@@ -277,10 +277,10 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
 
   test('updates timeline when name changes', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 'loop_1',
       experimentID: 'E1',
       trials: [],
-      loops: [{ id: 'loop_1', name: 'Old', trials: [], }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'Old', trials: [], }],
       timeline: [{ id: 'loop_1', type: 'loop', name: 'Old',  trials: [] }],
     })
     await db.write()
@@ -295,13 +295,13 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
   test('ignores deleted item ids when updating loop membership', async () => {
     const { app, db } = await freshApp()
     const ghost = 1788987326502
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [ghost] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [ghost] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', trials: [], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1', branches: [ghost] },
         { id: 2, type: 'trial', name: 'T2', branches: [] },
@@ -325,10 +325,10 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
   test('rejects loop branching even with a mix of live and deleted targets', async () => {
     const { app, db } = await freshApp()
     const ghost = 1788987326502
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', trials: [], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1', branches: [] },
         { id: 'loop_1', type: 'loop', name: 'L1', trials: [] },
@@ -346,13 +346,13 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
     expect(db.data.trials[0].loops.find(l => l.id === 'loop_1')).not.toHaveProperty('branches')
   })
 
-  test('drops repeat condition entries whose target no longer exists', async () => {
+  test('preserves genuine repetition settings and conditions', async () => {
     const { app, db } = await freshApp()
     const ghost = 1788987326502
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [], }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', trials: [], }],
       timeline: [
         { id: 1, type: 'trial', name: 'T1', branches: [] },
         { id: 'loop_1', type: 'loop', name: 'L1',  trials: [] },
@@ -362,16 +362,14 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
 
     const res = await request(app)
       .patch('/api/loop/E1/loop_1')
-      .send({
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: ghost }],
-      })
+      .send({ repetitions: 3, isConditionalLoop: true, loopConditions: [{ id: 'cycle', rules: [{ trialId: 1, column: 'response', op: '==', value: 'again' }] }] })
       .expect(200)
 
     expect(res.body.success).toBe(true)
     await db.read()
     const loop = db.data.trials[0].loops.find(l => l.id === 'loop_1')
     expect(loop).not.toHaveProperty('branchConditions')
-    expect(loop.repeatConditions).toEqual([])
+    expect(loop.repetitions).toBe(3)
   })
 })
 
@@ -383,7 +381,7 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
 
   test('404 when loop not found', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [],
       loops: [],
@@ -395,13 +393,13 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
 
   test('deletes loop and restores trials to timeline', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 'loop_1',
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
-        { id: 2, name: 'T2', parentLoopId: 'loop_1', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', parentLoopId: 'loop_1', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', parentLoopId: 'loop_1', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1, 2] }],
+      loops: [{ nextItemId: null, entryItemId: 1, id: 'loop_1', name: 'L1', trials: [1, 2] }],
       timeline: [{ id: 'loop_1', type: 'loop', name: 'L1', trials: [1, 2] }],
     })
     await db.write()
@@ -418,10 +416,10 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
 
   test('handles empty loop (no trials)', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 'loop_1',
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
-      loops: [{ id: 'loop_1', name: 'Empty', trials: [], }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
+      loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'Empty', trials: [], }],
       timeline: [{ id: 'loop_1', type: 'loop', name: 'Empty',  trials: [] }],
     })
     await db.write()
@@ -432,13 +430,13 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
 
   test('prunes dangling trial targets when ungrouping', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 'loop_1',
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', parentLoopId: 'loop_1', branches: ['ghost'] },
-        { id: 2, name: 'T2', parentLoopId: null, branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', parentLoopId: 'loop_1', branches: ['ghost'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', parentLoopId: null, branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1] }],
+      loops: [{ nextItemId: null, entryItemId: 1, id: 'loop_1', name: 'L1', trials: [1] }],
       timeline: [
         { id: 'loop_1', type: 'loop', name: 'L1', trials: [1] },
         { id: 2, type: 'trial', name: 'T2', branches: [] },
@@ -454,13 +452,13 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
 
   test('preserves parent branches to the contained trial', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'Parent', branches: ['2'] },
-        { id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'Parent', branches: ['2'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [2], }],
+      loops: [{ nextItemId: null, entryItemId: 2, id: 'loop_1', name: 'L1', trials: [2], }],
       timeline: [
         { id: 1, type: 'trial', name: 'Parent' },
         { id: 'loop_1', type: 'loop', name: 'L1',  trials: [2] },
@@ -477,13 +475,13 @@ describe('DELETE /api/loop/:experimentID/:id', () => {
   test('deletes a loop whose trials list holds deleted item ids', async () => {
     const { app, db } = await freshApp()
     const ghost = 1788987326502
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'Parent', branches: ['2'] },
-        { id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'Parent', branches: ['2'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'Child', parentLoopId: 'loop_1', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [ghost, 2], }],
+      loops: [{ nextItemId: null, entryItemId: ghost, id: 'loop_1', name: 'L1', trials: [ghost, 2], }],
       timeline: [
         { id: 1, type: 'trial', name: 'Parent', branches: ['2'] },
         { id: 'loop_1', type: 'loop', name: 'L1',  trials: [ghost, 2] },

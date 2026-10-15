@@ -7,10 +7,6 @@ export function localRuntimeStorageKeys(experimentId: string) {
     sessionId: `${namespace}session-id`,
     participant: `${namespace}participant-number`,
     resumeTrial: `${namespace}resume-trial`,
-    jumpRequest: `${namespace}jump-request`,
-    jumpTarget: `${namespace}jump-to-trial`,
-    jumpReload: `${namespace}jump-reload`,
-    jumpContext: `${namespace}jump-context`,
   };
 }
 

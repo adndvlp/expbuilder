@@ -213,3 +213,6 @@ Estas decisiones se registran en [06B](./06b-pending-decisions.md), DEC-28 a DEC
 - no convertir los circuitos azules existentes al estilo de la imagen;
 - no cambiar tamaños/formas de nodos salvo necesidad demostrada y aprobada;
 - no añadir mini-mapas, puertos o leyendas nuevas sin decisión de producto.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

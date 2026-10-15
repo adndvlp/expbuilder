@@ -211,8 +211,8 @@ describe("useCanvasWorkspace active action scope", () => {
       await result.current.moveActions.handleMoveItemConfirm(10, true);
     });
 
-    expect(trials.updateTrial).toHaveBeenCalledWith(10, { branches: [11] });
-    expect(trials.updateLoop).toHaveBeenCalledWith("parent", { trials: [10] });
+    expect(trials.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({ branches: [11] }));
+    expect(trials.updateLoop).toHaveBeenCalledWith("parent", { trials: [10, 11] });
     expect(trials.updateTimeline).not.toHaveBeenCalled();
   });
 

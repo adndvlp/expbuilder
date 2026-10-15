@@ -41,7 +41,7 @@ describe("useLoopCode composition", () => {
     });
 
     const code = normalize(genLoopCode());
-    expect(code).toContain('registerLoop("loop_chain", loop_chain_procedure)');
+    expect(code).toContain('registerLoop("loop_chain", loop_chain_procedure,');
     expect(code).not.toMatch(/SkipRemaining|TargetExecuted/);
 
   });
@@ -95,35 +95,21 @@ describe("useLoopCode composition", () => {
     expect(code).toContain(
       `timeline: [${toCodeIdentifier("Trial A")}_timeline, ${toCodeIdentifier("Shared Target")}_timeline, ${toCodeIdentifier("After Merge")}_timeline]`,
     );
-    expect(code).toContain('registerLoop("loop_merge", loop_merge_procedure)');
+    expect(code).toContain('registerLoop("loop_merge", loop_merge_procedure,');
     expect(code).not.toContain("SkipRemaining");
     expect(code).not.toContain("TargetExecuted");
     expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
-  it("preserves repeat conditions without generating loop branch decisions", () => {
+  it("registers native loop iteration without generating loop decisions", () => {
     const genLoopCode = useLoopCode({
       id: "loop_combo",
-      branches: [10, "loop_next"],
+      branches: [10,"loop_next"],
       branchConditions: [
         {
           id: 1,
           rules: [{ column: "response", op: "==", value: "go" }],
           nextTrialId: "loop_next",
-        },
-      ],
-      repeatConditions: [
-        {
-          id: 1,
-          rules: [
-            {
-              componentIdx: "Survey_1",
-              prop: "answer",
-              op: "!=",
-              value: "stop",
-            },
-          ],
-          jumpToTrialId: 10,
         },
       ],
       repetitions: 1,
@@ -146,14 +132,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditions =");
-    expect(code).toContain(
-      'const loopRows = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
-    );
-    expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
-    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
-    expect(code).not.toContain('const branches = [10, "loop_next"];');
+    expect(code).toContain('registerLoop("loop_combo", loop_combo_procedure,');
+    expect(code).toContain('remainingLoopRepetitions("loop_combo", 1)');
     expect(code).not.toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain("on_timeline_finish: function()");
+
   });
 });

@@ -21,7 +21,7 @@ function exitRuntime(target: string, terminalSource = false) {
     1,
     "Source",
     terminalSource
-      ? {}
+      ? { branches: [2], defaultNextTrialId: 2 }
       : {
           branches: [target],
           branchConditions: [
@@ -58,7 +58,7 @@ function exitRuntime(target: string, terminalSource = false) {
     trials: [source, later],
     unifiedStimuli: [{ row: 1 }, { row: 2 }],
   })();
-  const parentTarget = nativeTrial("parent-target", "Parent Target");
+  const parentTarget = nativeTrial("parent-target", "Parent Target", { branches: ["root-target"], defaultNextTrialId: "root-target" });
   const parent = generateLoopCode({
     ...settings,
     id: "parent",
@@ -153,14 +153,14 @@ describe("loop exit code generation", () => {
     ).toEqual(["repeat", "stop"]);
   });
 
-  it("does not reinterpret a reached target as another loop branch", async () => {
+  it("follows the destination only through its own configured default", async () => {
     const fixture = exitRuntime("parent-target");
     await fixture.run();
     expect(
       fixture.window.ExpBuilderRuntime.emit.mock.calls.filter(
         ([type]) => type === "branch-decision",
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 
   it("does not abort a root exit while its exact target is being propagated", async () => {

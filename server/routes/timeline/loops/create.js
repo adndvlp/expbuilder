@@ -21,11 +21,14 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       trials: [],
       loops: [],
       timeline: [],
+      entryItemId: null,
       createdAt: new Date().toISOString(),
     };
 
     const id = allocateLoopId(experimentDoc);
     const newLoop = {
+      entryItemId: null,
+      nextItemId: null,
       ...loopData,
       id,
       name: createUniqueItemName(experimentDoc, loopData.name, "Loop 1"),
@@ -46,13 +49,11 @@ router.post("/api/loop/:experimentID", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 

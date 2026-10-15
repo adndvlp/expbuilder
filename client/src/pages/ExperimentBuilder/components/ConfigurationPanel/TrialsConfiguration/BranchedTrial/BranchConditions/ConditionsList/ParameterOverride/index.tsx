@@ -8,7 +8,6 @@ type Props = {
   paramKey: string;
   targetTrialParameters: Record<string, Parameter[]>;
   findTrialById: (trialId: string | number) => any;
-  isJumpCondition: boolean;
   setConditions: (conditions: Condition[], shouldSave?: boolean) => void;
   conditions: Condition[];
   targetTrialCsvColumns: Record<string, string[]>;

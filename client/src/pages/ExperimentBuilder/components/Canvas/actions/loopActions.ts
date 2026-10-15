@@ -20,6 +20,7 @@ type CreateScopedLoopInput = ScopedActionInput &
 
 function trialInput(input: CreateScopedTrialInput): Omit<Trial, "id"> {
   return {
+    defaultNextTrialId: null,
     type: input.trialType,
     name: generateUniqueName(getScopeNames(input.scope)),
     plugin: "plugin-dynamic",
@@ -48,6 +49,8 @@ export async function createScopedTrial(
 function baseLoopInput(name: string, itemIds: CanvasItemId[]) {
   return {
     name,
+    entryItemId: itemIds[0] ?? null,
+    nextItemId: null,
     repetitions: 1,
     randomize: false,
     orders: false,

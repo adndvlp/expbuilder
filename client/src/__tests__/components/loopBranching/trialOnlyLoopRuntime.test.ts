@@ -35,7 +35,7 @@ describe("trial-only loop runtime", () => {
   it("generates only trial route state and no loop-owned branch decision or fallback", async () => {
     const code = loopCode();
     expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
-    expect(code).not.toContain("ExpBuilderBranching.decide");
+    expect(code).toContain("ExpBuilderBranching.decide");
     expect(code).not.toContain("branches[0]");
     const fixture = nativeTimelineRuntime(
       code,
@@ -76,7 +76,7 @@ describe("trial-only loop runtime", () => {
         ]);
       } else {
         await expect(fixture.run()).rejects.toThrow(
-          "branches must target trials",
+          "Branch destination must be a compiled trial",
         );
       }
     },
@@ -87,15 +87,6 @@ describe("trial-only loop runtime", () => {
     async (repeat) => {
       const entry = nativeTrial(1, "Entry", { branches: [2] });
       const target = nativeTrial(2, "Target", {
-        repeatConditions: repeat
-          ? [
-              {
-                id: 9,
-                jumpToTrialId: 1,
-                rules: [{ column: "response", op: "==", value: "never" }],
-              },
-            ]
-          : [],
       });
       const later = nativeTrial(3, "Later");
       expect(target.timelineProps).not.toMatch(

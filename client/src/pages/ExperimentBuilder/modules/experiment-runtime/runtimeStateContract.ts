@@ -1,6 +1,5 @@
 export const REQUIRED_RUNTIME_STATES = [
   "route",
-  "jump",
   "custom-parameters",
   "cleanup",
 ] as const;
@@ -42,10 +41,7 @@ export function composeRuntimeCode(
   fragments: readonly RuntimeCodeFragment[],
   separator = "",
 ) {
-  const accesses = new Map<
-    RuntimeStateName,
-    Set<RuntimeStateAccessMode>
-  >();
+  const accesses = new Map<RuntimeStateName, Set<RuntimeStateAccessMode>>();
   fragments.forEach((fragment) => {
     fragment.accesses.forEach((access) => {
       if (!containsEvidence(fragment.code, access.evidence)) {
@@ -65,9 +61,7 @@ export function composeRuntimeCode(
       throw new RuntimeStateContractError(`${state} has no reachable writer`);
     }
     if (!modes.has("consumer")) {
-      throw new RuntimeStateContractError(
-        `${state} has no reachable consumer`,
-      );
+      throw new RuntimeStateContractError(`${state} has no reachable consumer`);
     }
   });
   return fragments.map((fragment) => fragment.code).join(separator);

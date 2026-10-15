@@ -9,22 +9,7 @@ A loop can contain trials and other loops. Each item has one direct owner; \`par
 
 ## Recursive Generation
 
-The compiler loads each loop scope and generates its members recursively. The client generator produces an iteration procedure inside each container:
-
-\`\`\`js
-const inner_iteration = {
-  timeline: [trialA_wrapper, trialB_wrapper],
-  on_timeline_finish: function() {
-    // Clear decisions resolved in this row; retain pending trial routes.
-  }
-};
-const inner_procedure = {
-  timeline: [inner_iteration],
-  timeline_variables: stimuli_inner,
-  repetitions: 2,
-  randomize_order: false
-};
-\`\`\`
+The compiler registers each loop's definition, explicit entry and structural continuation. The navigation coordinator creates native jsPsych procedures as those loops are entered. Each procedure owns timeline variables, repetitions, sampling and its active row's future entries.
 
 ## CSV and Repetition
 
@@ -34,24 +19,15 @@ Trials using their owner's CSV read the current loop row. Child mappings are mer
 
 Every structural edge connects actual trials. Grouping, ungrouping, expanding and collapsing preserve those IDs and their conditions and parameters. A collapsed container can display a projected edge to a hidden trial; the container is never the persisted branch endpoint.
 
-Each scope keeps lexical variables such as:
-
-\`\`\`js
-let loop_OUTER_NextTrialId = null;
-let loop_OUTER_SkipRemaining = false;
-let loop_OUTER_BranchCustomParameters = null;
-let loop_INNER_NextTrialId = null;
-let loop_INNER_SkipRemaining = false;
-let loop_INNER_BranchCustomParameters = null;
-\`\`\`
-
-These variables transport decisions made by contained trials. Loops do not own \`branches\` or \`branchConditions\`.
+The coordinator retains the active common ancestor when selecting a destination. It aborts abandoned descendant procedures and creates future entries for the target's remaining ancestry. Selecting a trial inside an active ancestor preserves that ancestor's CSV row and repetition.
 
 ## Completing a Container
 
-At each row boundary, resolved local decisions are cleared. An exit keeps the exact target trial and payload while leaving the nested container. Finishing a container propagates only an unresolved trial route to its parent or root; it never selects a branch of its own.
+Each new row starts at its explicit entry. A selected middle-of-loop destination applies to the first entered row; subsequent rows use the regular entry. Destination parameters are consumed once.
 
-Incoming routes retain the original inherited trial ID and record when it executed. This acknowledges the target once across repeated rows, including when it immediately selects another trial branch. A target can be a non-first trial inside a sibling or nested loop.
+A matched conditional exit leaves the affected loops immediately. An ordinary default exit is deferred until their rows, repetitions and conditional cycles finish. If the last row has no deferred exit, the loop's explicit structural continuation is used. A previous row's decision does not leak into another row.
+
+Resume restores the version 3 cursor, sampled order, row, repetition and future entries without replaying an exited procedure.
 
 ## Moving Items
 

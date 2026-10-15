@@ -36,8 +36,7 @@ function BranchedTrialLayout({
   getAvailableTrials,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"branch" | "params">("branch");
-  const canUseParamsOverride =
-    selectedTrial && !("trials" in selectedTrial);
+  const canUseParamsOverride = selectedTrial && !("trials" in selectedTrial);
 
   return (
     <>
@@ -88,7 +87,7 @@ function BranchedTrialLayout({
               }
             }}
           >
-            Branch & Jump Conditions
+            Branching conditions
           </button>
           {canUseParamsOverride && (
             <button

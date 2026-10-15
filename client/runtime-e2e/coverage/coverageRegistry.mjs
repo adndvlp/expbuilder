@@ -23,8 +23,8 @@ export const verticalCapabilities = {
   "RUNTIME-EXIT-PARAMS": "composed-runtime.spec.ts",
   "RUNTIME-PARAMS-OVERRIDE": "conditions-runtime.spec.ts",
   "RUNTIME-CONDITIONAL-LOOP": "conditions-runtime.spec.ts",
-  "RUNTIME-JUMP-ROOT": "navigation-runtime.spec.ts",
-  "RUNTIME-JUMP-INVALID": "navigation-negative-runtime.spec.ts",
+  "RUNTIME-BRANCH-RETURN": "navigation-runtime.spec.ts",
+  "RUNTIME-BRANCH-INVALID": "navigation-negative-runtime.spec.ts",
   "RUNTIME-RESUME-BRANCH": "navigation-runtime.spec.ts",
   "RUNTIME-RESUME-SEQUENTIAL": "navigation-runtime.spec.ts",
   "RUNTIME-NESTED-ROOT-EXIT": "nested-loop-runtime.spec.ts",
@@ -34,8 +34,8 @@ export const verticalCapabilities = {
   "RUNTIME-LOOP-EXIT-CONDITIONAL-LOOP":
     "interaction-conditions-runtime.spec.ts",
   "RUNTIME-PARAMS-CONDITIONAL-LOOP": "interaction-conditions-runtime.spec.ts",
-  "RUNTIME-BRANCH-JUMP": "interaction-navigation-runtime.spec.ts",
-  "RUNTIME-LOOP-EXIT-JUMP": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-BRANCH-CHAIN": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-LOOP-EXIT-CHAIN": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-NESTED-EXIT-RESUME": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-RESOLVED-MEGA": "mega-runtime.spec.ts",
 };

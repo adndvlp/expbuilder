@@ -133,13 +133,13 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByTitle("Add trial"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
         type: "Trial",
         name: "New Trial",
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
-      });
+      }));
     });
     expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(

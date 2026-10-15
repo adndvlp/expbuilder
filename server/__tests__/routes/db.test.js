@@ -101,7 +101,7 @@ describe('POST /api/app/reset', () => {
   test('clears all data and returns success', async () => {
     const { app, db } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'Exp1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 's1', createdAt: new Date().toISOString(), data: [], state: 'completed', lastUpdate: new Date().toISOString(), metadata: {} })
     db.data.participantFiles.push({ id: 'pf1', experimentID: 'E1' })

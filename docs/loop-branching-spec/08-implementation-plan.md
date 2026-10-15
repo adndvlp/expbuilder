@@ -38,7 +38,7 @@ Primero congelar comportamiento legacy relevante:
 - metadata legacy;
 - layout expand/collapse y colores;
 - condition classification;
-- generated flags, resume fallback y jump actual;
+- generated flags, resume fallback y branching actual;
 - group/move/delete y CSV.
 
 Estas pruebas separan regresión accidental de cambios intencionales aprobados.
@@ -177,7 +177,7 @@ Gate: TL-01 a TL-13 y regresiones de color/circuit pasan.
 Antes de integrar con codegen:
 
 - crear harness del bundle incluido;
-- comparar estrategias A/B/C de [05](./05-runtime-codegen-resume-jump.md);
+- comparar estrategias A/B/C de [05](./05-native-runtime-and-resume.md);
 - registrar orden de callbacks y repetitions;
 - elegir con ADR y aprobación.
 
@@ -205,7 +205,7 @@ Debe retirarse el `branches[0]` hardcoded para conditions y la propagación limi
 
 Gate: todos los casos `TG-*` y `TR-*` pasan.
 
-## Fase 8 — Resume y jump addressable
+## Fase 8 — Resume y branching addressable
 
 Impacto confirmado:
 
@@ -220,12 +220,12 @@ Impacto confirmado:
 Trabajo:
 
 - checkpoint versionado con next address/route;
-- jump request versionada con enter path;
+- branching request versionada con enter path;
 - resolver único para local/public;
 - progress-aware anti-loop guard;
 - compatibility reader/cleanup para keys legacy;
 - exact state según DEC-20;
-- UI de jump según DEC-21.
+- UI de branching según DEC-21.
 
 Gate: TRES-01 a TRES-10 y TJ-01 a TJ-08 pasan.
 
@@ -264,7 +264,7 @@ Gate: TM-01 a TM-08 y COMP-01 a COMP-05 pasan sobre fixtures legacy y nuevos.
 | Resume salta contenedor nested | crítica | execution address con enter path |
 | Partial writes crean huérfanos | alta | comando idempotente atómico |
 | Grouping absorbe exit targets | alta | containment-aware traversal |
-| Conditions cambian a jump | alta | clasificación por semantic edge |
+| Conditions cambian a branching | alta | clasificación por semantic edge |
 | Root target aparece secuencial | alta | projected incoming edge/read model |
 | Legacy se reinterpreta | alta | versioning + no heuristic migration |
 | Expand/collapse cambia edge identity | media | stable semantic/projection IDs |
@@ -280,7 +280,7 @@ Sujeto a aprobación de producto:
 - no borrar campos legacy en el primer rollout;
 - publicación rechaza grafos nuevos si el compiler version no los soporta;
 - rollback desactiva writes pero conserva lectura/diagnóstico de datos ya creados;
-- métricas de `GRAPH_INVALID`, `ROUTE_UNRESOLVED`, resume/jump no consumido y conflictos.
+- métricas de `GRAPH_INVALID`, `ROUTE_UNRESOLVED`, resume/branching no consumido y conflictos.
 
 ## Artefactos de cierre
 
@@ -293,3 +293,6 @@ Sujeto a aprobación de producto:
 - guía de migración/rollback;
 - documentación técnica e in-app aprobada;
 - resumen de archivos/cambios y comandos ejecutados.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

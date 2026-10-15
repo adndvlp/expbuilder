@@ -87,9 +87,9 @@ type Trial = {
   categoryData?: any[];
 
   // Branching
-  branches?: Array<string | number>;          // Target trial IDs, including trials in other scopes
-  branchConditions?: BranchCondition[];        // Conditions selecting target trials
-  repeatConditions?: RepeatCondition[];        // Jump conditions (any target)
+  branches: Array<string | number>;          // Target trial IDs, including trials in other scopes
+  branchConditions: BranchCondition[];        // Conditions selecting target trials
+  defaultNextTrialId: string | number | null;  // Explicit fallback or route end
   paramsOverride?: ParamsOverrideCondition[];  // On-start param overrides
 
   // Code Injection
@@ -130,8 +130,8 @@ type Loop = {
   // Contents
   trials: (string | number)[];  // IDs of direct trials and nested loops
 
-  // Existing repeat/jump navigation
-  repeatConditions?: RepeatCondition[];
+  entryItemId: string | number | null;  // Explicit first child
+  nextItemId: string | number | null;   // Continuation in parent scope after completion
 
   // Conditional Loop
   isConditionalLoop?: boolean;
@@ -158,7 +158,7 @@ type TimelineItem =
       type: "trial";
       name: string;
       branches?: (string | number)[];
-      branchConditions?: BranchCondition[];
+      branchConditions: BranchCondition[];
     }
   | {
       id: string | number;
@@ -180,23 +180,12 @@ The root `timeline` is a flat, ordered array. Each loop owns an ordered scope co
 type BranchCondition = {
   id: number;           // Unique condition ID
   rules: Rule[];        // AND conditions (all must match)
-  nextTrialId: number | string | null;  // Target trial in branches[]; null uses the default branch
+  nextTrialId: number | string;  // Connected trial or FINISH_EXPERIMENT
   customParameters?: Record<string, ColumnMappingEntry>;  // Params to override
 };
 ```
 
-### RepeatCondition (Jump)
-
-```typescript
-type RepeatCondition = {
-  id: number;
-  rules: Rule[];
-  jumpToTrialId: number | string | null;  // Target trial/loop (ANY in experiment)
-  // NOTE: No customParameters support for jumps
-};
-```
-
-### Rule (used by BranchCondition, RepeatCondition, LoopCondition, ParamsOverride)
+### Rule (used by BranchCondition, LoopCondition, ParamsOverride)
 
 ```typescript
 type Rule = {
@@ -392,7 +381,7 @@ Experiment (experiments[])
         ├── Trial[] (trials in experiment)
         │     ├── branches[] → other Trial IDs
         │     ├── branchConditions[] → navigate within branches[]
-        │     ├── repeatConditions[] → navigate to any Trial/Loop
+        │     ├── branchConditions[] → navigate to any Trial/Loop
         │     ├── paramsOverride[] → conditional param changes
         │     └── parentLoopId → Loop
         ├── Loop[] (loops in experiment)

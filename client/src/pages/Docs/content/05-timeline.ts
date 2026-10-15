@@ -54,7 +54,7 @@ jsPsych.run(timeline);
 
 In jsPsych, standalone trials inside a loop must be wrapped in a \`procedure\` object (or nested \`timeline\`). The Builder always wraps each trial in a procedure to:
 
-1. **Support \`conditional_function\`** — skip/branch/jump mechanism between trials
+1. **Support \`conditional_function\`** — skip/branch/branching mechanism between trials
 2. **Support \`timeline_variables\`** — CSV data that parameterizes the trial
 3. **Uniformity** — same format for trials inside and outside loops
 
@@ -77,11 +77,12 @@ data: {
   isInLoop: false,
   branches: [],               // Target trial IDs for branching
   branchConditions: [],       // Active branch conditions on this trial
+  defaultNextTrialId: null,    // End this route when no condition matches
 },
 
 // Callbacks (generated if applicable)
 on_start: function(trial) { /* params override + branch custom params */ },
-on_finish: function(data)  { /* repeat/jump + branch conditions */ },
+on_finish: function(data)  { /* choose a condition or explicit default; requestBranch */ },
 };
 
 // Procedure wrapper
@@ -89,79 +90,20 @@ const myTrial_procedure = {
 timeline: [myTrial_timeline],
 timeline_variables: test_stimuli_myTrial, // CSV object array
 randomize_order: false,
-conditional_function: function() {
-  // Skip/jump/branch logic (see Branching System)
-},
+
 };
 
 timeline.push(myTrial_procedure);
 \`\`\`
 
-## Structure of a Loop
+## Generated native timelines
 
-\`\`\`js
-// Unified variables from all trials inside the loop
-const loop_abc123_stimuli = [
-{ trialA_stimulus: "img1.png", trialB_word: "hello" },
-{ trialA_stimulus: "img2.png", trialB_word: "world" },
-];
+The compiler registers each trial and loop definition with \`window.ExpBuilderNavigation\`. Every scope has an explicit \`entryItemId\`. A loop also declares \`nextItemId\`, the continuation in its parent's scope after completion.
 
-// Individual trials inside the loop (each with its conditional_function)
-const trialA_timeline = { type: ..., data: { isInLoop: true, ... } };
-const trialA_proc = {
-timeline: [trialA_timeline],
-conditional_function: function() { /* skip with loop vars */ }
-};
+The coordinator edits future native timeline entries when a trial selects a destination. It retains active common ancestors and closes abandoned descendants. Navigation follows explicit connections, including returns to an earlier trial or a fresh execution of the same trial.
 
-// One iteration per CSV row
-const loop_abc123_iteration = {
-  timeline: [trialA_proc, trialB_proc],
-  on_timeline_finish: function() {
-    // Clear resolved local decisions; preserve pending trial routes.
-  }
-};
+CSV rows, sampling, repetitions and conditional cycles remain native jsPsych procedures. Ordinary default exits complete those procedures before continuing; matched conditional exits leave them immediately. A null trial default ends the current row or root route.
 
-// Main loop
-const loop_abc123 = {
-timeline: [loop_abc123_iteration],
-timeline_variables: loop_abc123_stimuli,
-randomize_order: false,
-repetitions: 3,
-
-// If conditional loop:
-loop_function: function(data) {
-  // Evaluates loopConditions → true = repeat, false = exit
-},
-
-// Initialize trial routing state when entering the container
-on_timeline_start: function() {
-  loop_abc123_NextTrialId = null;
-  loop_abc123_SkipRemaining = false;
-},
-on_timeline_finish: function() {
-  // Acknowledge inherited trial execution and transport an unresolved exit
-},
-};
-
-const loop_abc123_procedure = {
-timeline: [loop_abc123],
-conditional_function: function() { /* skip entire loop */ }
-};
-
-timeline.push(loop_abc123_procedure);
-\`\`\`
-
-## Branching Variables with Loop Scope
-
-Each loop declares lexical variables to transport its contained trials' decisions. Structural destinations are actual trials, including trials in other scopes. Loops have no branch fields of their own:
-
-| Variable | Scope | Purpose |
-|---|---|---|
-| \`loop_ID_NextTrialId\` | Inside loop ID | Branch target trial |
-| \`loop_ID_SkipRemaining\` | Inside loop ID | Active skip flag |
-| \`loop_ID_BranchingActive\` | Inside loop ID | Indicates ongoing branch |
-| \`loop_ID_BranchCustomParameters\` | Inside loop ID | Active branch params |
-
-Where \`ID\` is the sanitized loop ID. Grouping and ungrouping preserve the trial endpoints; a collapsed loop displays their projected connections. \`Move Item\` accepts trials only.
+Grouping, ungrouping, expanding and collapsing preserve trial endpoints. A collapsed loop displays projected trial connections. \`Move Item\` accepts trials only.
 `,
 };

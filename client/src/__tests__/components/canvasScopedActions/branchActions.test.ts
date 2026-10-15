@@ -1,3 +1,4 @@
+import { updateItemBranches } from "../../../pages/ExperimentBuilder/components/Canvas/actions/itemMutations";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addScopedBranchTrial,
@@ -26,11 +27,11 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ branches: [2] }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [99],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 1, branches: [99] }),
+      expect.objectContaining({ id: 1, branches: [99], defaultNextTrialId: 99 }),
       expect.objectContaining({ id: 99, branches: [2] }),
       expect.objectContaining({ id: 2 }),
       expect.objectContaining({ id: "parent-loop" }),
@@ -55,9 +56,9 @@ describe("scoped Canvas branch actions", () => {
       expect.objectContaining({ parentLoopId: "parent-loop" }),
     );
     expect(dependencies.updateTrialField).not.toHaveBeenCalled();
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({
       branches: [11, 99],
-    });
+    }));
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
     expect(onSelectTrial).toHaveBeenCalled();
   });
@@ -77,9 +78,9 @@ describe("scoped Canvas branch actions", () => {
         branches: [11],
       }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({
       branches: [99],
-    });
+    }));
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
@@ -116,11 +117,11 @@ describe("scoped Canvas branch actions", () => {
     expect(dependencies.createTrial).toHaveBeenCalledWith(
       expect.objectContaining({ branches: [2] }),
     );
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [99],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 1, branches: [99] }),
+      expect.objectContaining({ id: 1, branches: [99], defaultNextTrialId: 99 }),
       expect.objectContaining({ id: 99, branches: [2] }),
       expect.objectContaining({ id: 2 }),
       expect.objectContaining({ id: "parent-loop" }),
@@ -128,5 +129,16 @@ describe("scoped Canvas branch actions", () => {
     expect(onSelectTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99 }),
     );
+  });
+});
+
+it("saves edited edges with only their still-connected conditions", async () => {
+  const dependencies = createDependencies();
+  const retained = { id: 1, rules: [], nextTrialId: 2, customParameters: { stimulus: { source: "typed" as const, value: "kept" } } };
+  dependencies.getTrial.mockResolvedValue({ id: 1, branches: [2, 3], defaultNextTrialId: 3,
+    branchConditions: [retained, { id: 2, rules: [], nextTrialId: 3 }] } as never);
+  await updateItemBranches({ id: 1, type: "trial", name: "Source" }, [2], dependencies);
+  expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    branches: [2], defaultNextTrialId: 2, branchConditions: [retained],
   });
 });

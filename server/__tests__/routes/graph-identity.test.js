@@ -6,13 +6,13 @@ import {
   idsMatch,
 } from "../../routes/timeline/graph/identity.js";
 
-const nestedDoc = () => ({
+const nestedDoc = () => ({ entryItemId: "outer",
   timeline: [{ id: "outer", type: "loop", name: "Outer" }],
-  trials: [{ id: 1, name: "Source", parentLoopId: "inner", branches: [] }],
+  trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: "Source", parentLoopId: "inner", branches: [] }],
   loops: [
-    { id: "outer", name: "Outer", trials: ["middle"] },
-    { id: "middle", name: "Middle", parentLoopId: "outer", trials: ["inner"] },
-    { id: "inner", name: "Inner", parentLoopId: "middle", trials: [1] },
+    { nextItemId: null, entryItemId: "middle", id: "outer", name: "Outer", trials: ["middle"] },
+    { nextItemId: null, entryItemId: "inner", id: "middle", name: "Middle", parentLoopId: "outer", trials: ["inner"] },
+    { nextItemId: null, entryItemId: 1, id: "inner", name: "Inner", parentLoopId: "middle", trials: [1] },
   ],
 });
 
@@ -88,16 +88,16 @@ describe("canonical graph identity and ancestry", () => {
       .toEqual(["inner", "middle", "outer"]);
   });
 
-  test("[TD-09] diagnoses duplicate, self, and cyclic branches by type", () => {
-    const doc = {
+  test("[TD-09] diagnoses duplicate edges while retaining valid return connections", () => {
+    const doc = { entryItemId: 1,
       timeline: [
         { id: 1, type: "trial", name: "One" },
         { id: 2, type: "trial", name: "Two" },
       ],
       loops: [],
       trials: [
-        { id: 1, name: "One", branches: [1, 2, 2] },
-        { id: 2, name: "Two", branches: [1] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: "One", branches: [1, 2, 2] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: "Two", branches: [1] },
       ],
     };
 
@@ -105,10 +105,8 @@ describe("canonical graph identity and ancestry", () => {
     expect(graph.diagnostics.map(({ code }) => code)).toEqual(
       expect.arrayContaining([
         "BRANCH_DUPLICATE",
-        "BRANCH_SELF_REFERENCE",
-        "BRANCH_CYCLE",
       ]),
     );
-    expect(graph.edges).toEqual([]);
+    expect(graph.edges).toHaveLength(3);
   });
 });

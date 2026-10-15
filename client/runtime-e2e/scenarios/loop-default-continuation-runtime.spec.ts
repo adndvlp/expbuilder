@@ -38,9 +38,11 @@ for (const nestingDepth of [0, 1, 2]) {
     }
     await author.configureButtonTrials(["entry", "final"]);
     await author.configureButtonTrial("entry", {
+          defaultNextTrialId: author.id("csv"),
       branches: [author.id("csv")],
     });
     await author.configureButtonTrial("csv", {
+          defaultNextTrialId: author.id("final"),
       csvFromLoop: true,
       branches: [author.id("final")],
       columnMapping: {

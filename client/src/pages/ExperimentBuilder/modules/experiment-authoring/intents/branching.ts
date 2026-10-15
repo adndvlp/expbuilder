@@ -1,25 +1,19 @@
 import type {
   BranchCondition,
   Loop,
-  RepeatCondition,
   Trial,
 } from "../../../components/ConfigurationPanel/types";
 import type { Condition } from "../../../components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/types";
 import type { Parameter } from "../../../components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/types";
 import type { TimelineItem } from "../../../contexts/TrialsContext";
-import {
-  idsEqual,
-  includesId,
-  isForwardSameScopeTarget,
-  itemIdKey,
-} from "../../../utils/branchGraphUtils";
+import { idsEqual, includesId } from "../../../utils/branchGraphUtils";
 
 type BranchRuleField = keyof Condition["rules"][number];
 
 export type BranchingSaveUpdates = {
   branches?: (string | number)[];
   branchConditions: BranchCondition[];
-  repeatConditions: RepeatCondition[];
+  defaultNextTrialId?: string | number | null;
 };
 
 export type BranchingMutationDependencies = {
@@ -162,28 +156,11 @@ export function isBranchTargetFromUserContext(options: {
   topLevelLoopTrialIds?: Set<string>;
 }): boolean {
   const { selectedItem, targetId, scopeTimeline } = options;
-  if (!targetId) return false;
-  if ("trials" in selectedItem) return false;
-  if (
-    scopeTimeline.some(
-      (item) => idsEqual(item.id, targetId) && item.type === "loop",
-    )
-  )
-    return false;
-  if (includesId(selectedItem.branches, targetId)) return true;
-
-  const target = scopeTimeline.find((item) => idsEqual(item.id, targetId));
-  if (!target) return false;
-  if (
-    !("parentLoopId" in selectedItem && selectedItem.parentLoopId) &&
-    target.type === "trial" &&
-    (target.parentLoopId ||
-      options.topLevelLoopTrialIds?.has(itemIdKey(target.id)))
-  ) {
-    return false;
-  }
-
-  return isForwardSameScopeTarget(scopeTimeline, selectedItem.id, targetId);
+  if (targetId == null || "trials" in selectedItem) return false;
+  if (targetId === "FINISH_EXPERIMENT") return true;
+  return scopeTimeline.some(
+    (item) => idsEqual(item.id, targetId) && item.type === "trial",
+  );
 }
 
 export function buildBranchingSaveUpdates(options: {
@@ -191,75 +168,49 @@ export function buildBranchingSaveUpdates(options: {
   existingBranches?: (string | number)[];
   isBranchTarget: (trialId: string | number) => boolean;
 }): BranchingSaveUpdates {
+  const branches = [...(options.existingBranches ?? [])];
   const branchConditions: BranchCondition[] = [];
-  const repeatConditions: RepeatCondition[] = [];
-  const nextBranches = [...(options.existingBranches ?? [])];
-  let addedBranchTarget = false;
-
-  options.conditions.forEach((condition) => {
-    if (!condition.nextTrialId) return;
-
-    if (options.isBranchTarget(condition.nextTrialId)) {
-      if (!includesId(nextBranches, condition.nextTrialId)) {
-        nextBranches.push(condition.nextTrialId);
-        addedBranchTarget = true;
-      }
-      branchConditions.push({
-        id: condition.id,
-        rules: condition.rules,
-        nextTrialId: condition.nextTrialId,
-        customParameters: condition.customParameters,
-      });
-      return;
-    }
-
-    repeatConditions.push({
-      id: condition.id,
-      rules: condition.rules,
-      jumpToTrialId: condition.nextTrialId,
-    });
-  });
-
-  return {
-    ...(addedBranchTarget ? { branches: nextBranches } : {}),
-    branchConditions,
-    repeatConditions,
-  };
+  for (const condition of options.conditions) {
+    if (condition.nextTrialId == null) continue;
+    if (!options.isBranchTarget(condition.nextTrialId))
+      throw new Error("Branch destination must be a trial");
+    if (
+      condition.nextTrialId !== "FINISH_EXPERIMENT" &&
+      !includesId(branches, condition.nextTrialId)
+    )
+      branches.push(condition.nextTrialId);
+    branchConditions.push({ ...condition, nextTrialId: condition.nextTrialId });
+  }
+  return { branches, branchConditions };
 }
 
 export async function saveBranchingIntent(options: {
   item: Trial | Loop;
   conditions: Condition[];
   isBranchTarget: (trialId: string | number) => boolean;
+  defaultNextTrialId?: string | number | null;
   dependencies: BranchingMutationDependencies;
-}): Promise<BranchingSaveUpdates | Pick<Loop, "repeatConditions">> {
-  if ("trials" in options.item) {
-    if (
-      options.conditions.some(
-        (condition) =>
-          condition.nextTrialId != null &&
-          options.isBranchTarget(condition.nextTrialId),
-      )
-    ) {
-      throw new Error("Branch sources must be trials");
-    }
-    // The unified condition editor also saves existing jump rules. A loop
-    // may save those rules without receiving any structural branching fields.
-    const updates = {
-      repeatConditions: buildBranchingSaveUpdates({
-        conditions: options.conditions,
-        isBranchTarget: () => false,
-      }).repeatConditions,
-    };
-    await options.dependencies.updateLoop(options.item.id, updates);
-    return updates;
-  }
+}): Promise<BranchingSaveUpdates> {
+  if ("trials" in options.item)
+    throw new Error("Branch sources must be trials");
   const updates = buildBranchingSaveUpdates({
     conditions: options.conditions,
     existingBranches: options.item.branches ?? [],
     isBranchTarget: options.isBranchTarget,
   });
-
+  updates.defaultNextTrialId =
+    options.defaultNextTrialId === undefined
+      ? options.item.defaultNextTrialId
+      : options.defaultNextTrialId;
+  if (
+    updates.defaultNextTrialId != null &&
+    updates.defaultNextTrialId !== "FINISH_EXPERIMENT" &&
+    !includesId(updates.branches, updates.defaultNextTrialId)
+  ) {
+    if (!options.isBranchTarget(updates.defaultNextTrialId))
+      throw new Error("Branch destination must be a trial");
+    updates.branches?.push(updates.defaultNextTrialId);
+  }
   await options.dependencies.updateTrial(options.item.id, updates);
   return updates;
 }

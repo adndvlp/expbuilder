@@ -51,7 +51,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     expect(screen.getByTestId("modal-shell")).toBeInTheDocument();
     expect(screen.getByTestId("available-trials")).toHaveTextContent("prev-a");
     const loadDataArgs = vi.mocked(useLoadData).mock.calls.at(-1)?.[0] as any;
-    loadDataArgs.setRepeatConditions();
 
     fireEvent.mouseEnter(screen.getAllByRole("button")[0]);
     fireEvent.mouseLeave(screen.getAllByRole("button")[0]);
@@ -67,14 +66,13 @@ describe("coverage zero wrappers: BranchedTrial", () => {
         "current",
         expect.objectContaining({
           branchConditions: [],
-          repeatConditions: [],
         }),
       );
     });
 
     fireEvent.click(screen.getByText("load target loop"));
     await waitFor(() => {
-      expect(trialsState.value.getLoop).toHaveBeenCalledWith("loop_1");
+      expect(trialsState.value.getTrial).toHaveBeenCalledWith("loop_1");
     });
 
     fireEvent.click(screen.getByText("save branch conditions"));
@@ -83,7 +81,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
         "current",
         expect.objectContaining({
           branchConditions: expect.any(Array),
-          repeatConditions: expect.any(Array),
         }),
       );
     });

@@ -14,14 +14,12 @@ Cada regla identifica el trial por `trialId`, su columna, operador y valor. Las 
 
 `utils/codegen/generateLoopCode.ts` compila recursivamente cada scope. `useLoopCode/index.ts` y `LoopProcedureCode.ts` construyen los objetos jsPsych. Cada contenedor mantiene sus propias filas de `timeline_variables`, `repetitions` y `randomize_order`.
 
-`generateLoopIteration.ts` agrega un objeto de iteración por fila. Su finalización limpia decisiones locales resueltas incluso si la ruta omitió el último trial. Las decisiones pendientes hacia otro scope conservan el destino concreto y sus parámetros.
+El coordinador construye un recorrido por fila con la entrada explícita del scope. Los procedimientos nativos conservan muestreo, repeticiones, condiciones de ciclo y callbacks personalizados.
 
 ## Estado de rutas de trials
 
-Las variables lexicales `loop_<id>_NextTrialId`, `SkipRemaining`, `BranchingActive`, `BranchCustomParameters`, `TargetExecuted` y `RouteInherited` transportan decisiones de trials en ese scope. `DescendantTrialIds` contiene únicamente trials y permite admitir un destino dentro de un contenedor anidado.
+`nativeTimelineNavigation.ts` mantiene las colas futuras de los ámbitos activos. `requestBranch` selecciona una conexión del trial; `takeParameters` consume los parámetros pendientes del destino una vez. La dirección compilada permite conservar el ancestro común y abortar los procedimientos abandonados.
 
-`InheritedTrialId` y `InheritedTrialExecuted` reconocen la ejecución del destino recibido del padre aunque ese trial haya seleccionado una nueva rama. Así la entrada se ejecuta una vez aunque el contenedor tenga varias filas o repeticiones.
+Una salida por defecto hacia fuera se difiere hasta completar el procedimiento. Una condición coincidente puede salir inmediatamente. Al comenzar una fila se descarta la salida diferida de la fila anterior. Sin salida diferida final, se usa el `nextItemId` estructural del loop.
 
-`generateLoopFinishLifecycle.ts` propaga al padre o root únicamente una ruta pendiente, con el mismo target y payload. El contenedor no evalúa condiciones de ramas ni elige un destino por defecto.
-
-Las pruebas de Chromium ejecutan el generador del editor con filas, repeticiones, rutas internas y entradas a trials no iniciales con parámetros.
+El checkpoint versión 3 conserva colas, cursores, orden, fila, repetición y resultados del ciclo condicional para resume. Las pruebas de Chromium ejecutan filas, repeticiones, rutas internas, entradas intermedias y salidas entre varios niveles.

@@ -209,11 +209,7 @@ export function buildSelectedPreviewCode({
 }: SelectedPreviewPersistenceOptions & { generatedCode: string }): string {
   const previewStoragePrefix = `expbuilder:preview:${experimentID || ""}:${selectionName}`;
   const previewNavigationKeys = {
-    jumpRequest: `${previewStoragePrefix}:jump-request`,
-    jumpReload: `${previewStoragePrefix}:jump-reload`,
     resumeTrial: `${previewStoragePrefix}:resume-trial`,
-    jumpTarget: `${previewStoragePrefix}:jump-target`,
-    jumpContext: `${previewStoragePrefix}:jump-context`,
   };
   const persistenceCode = buildSelectedPreviewPersistence({
     experimentID: experimentID || "",
@@ -224,7 +220,6 @@ export function buildSelectedPreviewCode({
 ${persistenceCode}
 ${resumeCode(previewNavigationKeys)}
 (async () => {
-localStorage.removeItem(${JSON.stringify(previewNavigationKeys.jumpTarget)});
   participantNumber = await initParticipant();
 
   if (!Number.isInteger(participantNumber) || participantNumber < 1) {

@@ -26,7 +26,7 @@ const freshApp = async () => {
 };
 
 const seedGraph = async (db) => {
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: 1,
     experimentID: "E1",
     updatedAt: "2026-08-20T00:00:00.000Z",
     timeline: [
@@ -42,34 +42,34 @@ const seedGraph = async (db) => {
       { id: 8, type: "trial", name: "Root exit", branches: [] },
     ],
     trials: [
-      { id: 1, type: "Trial", name: "Start", branches: [2, 3] },
-      { id: 2, type: "Trial", name: "Left", branches: [4] },
-      { id: 3, type: "Trial", name: "Right", branches: [] },
-      {
+      { defaultNextTrialId: null, branchConditions: [], id: 1, type: "Trial", name: "Start", branches: [2, 3] },
+      { defaultNextTrialId: null, branchConditions: [], id: 2, type: "Trial", name: "Left", branches: [4] },
+      { defaultNextTrialId: null, branchConditions: [], id: 3, type: "Trial", name: "Right", branches: [] },
+      { defaultNextTrialId: null, branchConditions: [],
         id: 4,
         type: "Trial",
         name: "Outer source",
         parentLoopId: "outer",
         branches: [5, 6, 8],
       },
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 5,
         type: "Trial",
         name: "Outer branch",
         parentLoopId: "outer",
         branches: [],
       },
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 6,
         type: "Trial",
         name: "Inner source",
         parentLoopId: "inner",
         branches: [],
       },
-      { id: 8, type: "Trial", name: "Root exit", branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 8, type: "Trial", name: "Root exit", branches: [] },
     ],
     loops: [
-      {
+      { nextItemId: null, entryItemId: 4,
         id: "outer",
         name: "Outer",
         trials: [4, "inner"],
@@ -77,7 +77,7 @@ const seedGraph = async (db) => {
           { sourceTrialId: 3, targetTrialId: 8 },
         ],
       },
-      {
+      { nextItemId: null, entryItemId: 6,
         id: "inner",
         name: "Inner",
         parentLoopId: "outer",
@@ -93,7 +93,7 @@ const edgeKeys = (graph) =>
 
 describe("canonical experiment graph", () => {
   test("[TD-11] keeps one owned shared target with multiple incoming edges", () => {
-    const graph = buildExperimentGraph({
+    const graph = buildExperimentGraph({ entryItemId: 1,
       timeline: [
         { id: 1, type: "trial", name: "Left" },
         { id: 2, type: "trial", name: "Right" },
@@ -101,9 +101,9 @@ describe("canonical experiment graph", () => {
       ],
       loops: [],
       trials: [
-        { id: 1, name: "Left", branches: [3] },
-        { id: 2, name: "Right", branches: [3] },
-        { id: 3, name: "Shared", branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: "Left", branches: [3] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: "Right", branches: [3] },
+        { defaultNextTrialId: null, branchConditions: [], id: 3, name: "Shared", branches: [] },
       ],
     });
 

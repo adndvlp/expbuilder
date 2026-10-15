@@ -72,7 +72,6 @@ export async function generateLoopCode(
             mappedJson: trialResult.mappedJson,
             branches: fullTrial.branches || [],
             branchConditions: fullTrial.branchConditions || [],
-            repeatConditions: fullTrial.repeatConditions || [],
             customOnFinish: fullTrial.customOnFinish || "",
           };
         } else if (item.type === "loop") {
@@ -126,9 +125,10 @@ export async function generateLoopCode(
       trialsWithCode.forEach((trial) => {
         if (trial.mappedJson && Array.isArray(trial.mappedJson)) {
           // A trial with fixed data participates in every row of the loop.
-          const trialRow = trial.mappedJson.length === 1
-            ? trial.mappedJson[0]
-            : trial.mappedJson[i];
+          const trialRow =
+            trial.mappedJson.length === 1
+              ? trial.mappedJson[0]
+              : trial.mappedJson[i];
           if (trialRow) Object.assign(row, trialRow);
         }
       });
@@ -146,7 +146,10 @@ export async function generateLoopCode(
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const genLoopCode = useLoopCode({
       id: fullLoop.id,
-      repeatConditions: fullLoop.repeatConditions,
+      entryItemId: fullLoop.entryItemId,
+      nextItemId: fullLoop.nextItemId,
+      customOnTimelineStart: fullLoop.customOnTimelineStart,
+      customOnTimelineFinish: fullLoop.customOnTimelineFinish,
       repetitions: fullLoop.repetitions,
       randomize: fullLoop.randomize,
       orders: fullLoop.orders || false,

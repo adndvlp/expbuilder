@@ -14,7 +14,7 @@ import {
 } from "./testHarness";
 
 describe("coverage zero wrappers: BranchedTrial", () => {
-  it("preserves loop jump rules without saving branching fields", async () => {
+  it("rejects loop navigation sources without invoking a writer", async () => {
     trialsState.value = baseTrialsState({
       selectedTrial: {
         id: "loop_1",
@@ -33,14 +33,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     );
 
     fireEvent.click(screen.getByText("save branch conditions"));
-    await waitFor(() => {
-      expect(trialsState.value.updateLoop).toHaveBeenCalledWith("loop_1", {
-        repeatConditions: expect.any(Array),
-      });
-    });
-    const updates = trialsState.value.updateLoop.mock.calls[0][1];
-    expect(updates).not.toHaveProperty("branches");
-    expect(updates).not.toHaveProperty("branchConditions");
+    await waitFor(() => expect(trialsState.value.updateLoop).not.toHaveBeenCalled());
     expect(trialsState.value.updateTrial).not.toHaveBeenCalled();
   });
 
@@ -120,7 +113,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     );
   });
 
-  it("treats top-level loop children and unknown targets as repeat targets", async () => {
+  it("saves a real nested destination and rejects an unknown destination", async () => {
     trialsState.value = baseTrialsState({
       selectedTrial: selectedTrial({ branches: [] }),
       timeline: [
@@ -144,9 +137,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
       expect(trialsState.value.updateTrial).toHaveBeenCalledWith(
         "current",
         expect.objectContaining({
-          repeatConditions: expect.arrayContaining([
-            expect.objectContaining({ jumpToTrialId: "inner-a" }),
-          ]),
         }),
       );
     });
@@ -156,9 +146,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
       expect(trialsState.value.updateTrial).toHaveBeenCalledWith(
         "current",
         expect.objectContaining({
-          repeatConditions: expect.arrayContaining([
-            expect.objectContaining({ jumpToTrialId: "unknown-target" }),
-          ]),
         }),
       );
     });

@@ -13,17 +13,17 @@ const condition = (target, value) => ({
   customParameters: { stimulus: { source: 'typed', value } },
 })
 
-const seedDoc = () => ({
+const seedDoc = () => ({ entryItemId: 1,
   experimentID: 'E1',
   trials: [
-    { id: 1, name: 'A', branches: ['2', 3], branchConditions: [condition('2', 'B'), condition(3, 'C')] },
-    { id: 2, name: 'B', branches: ['5'], branchConditions: [condition('5', 'X')] },
-    { id: 3, name: 'C', branches: [6], branchConditions: [condition(6, 'Y')] },
-    { id: 4, name: 'Nested child', parentLoopId: 'nested', branches: ['2'] },
-    { id: 5, name: 'X', branches: [] },
-    { id: 6, name: 'Y', branches: [] },
+    { defaultNextTrialId: null, id: 1, name: 'A', branches: ['2', 3], branchConditions: [condition('2', 'B'), condition(3, 'C')] },
+    { defaultNextTrialId: null, id: 2, name: 'B', branches: ['5'], branchConditions: [condition('5', 'X')] },
+    { defaultNextTrialId: null, id: 3, name: 'C', branches: [6], branchConditions: [condition(6, 'Y')] },
+    { defaultNextTrialId: null, branchConditions: [], id: 4, name: 'Nested child', parentLoopId: 'nested', branches: ['2'] },
+    { defaultNextTrialId: null, branchConditions: [], id: 5, name: 'X', branches: [] },
+    { defaultNextTrialId: null, branchConditions: [], id: 6, name: 'Y', branches: [] },
   ],
-  loops: [{ id: 'nested', name: 'Nested', trials: [4], repetitions: 3 }],
+  loops: [{ nextItemId: null, entryItemId: 4, id: 'nested', name: 'Nested', trials: [4], repetitions: 3 }],
   timeline: [
     { id: 1, type: 'trial', name: 'A', branches: ['2', 3] },
     { id: 2, type: 'trial', name: 'B', branches: ['5'] },
@@ -193,7 +193,7 @@ describe('REST loop containment', () => {
 
   test('preserves the canonical loop ID when the request uses its string representation', async () => {
     const doc = db.data.trials[0]
-    doc.loops.push({ id: 10, name: 'Numeric container', trials: [], repetitions: 2 })
+    doc.loops.push({ id: 10, name: 'Numeric container', trials: [], repetitions: 2, entryItemId: null, nextItemId: null })
     doc.timeline.push({ id: 10, type: 'loop', name: 'Numeric container', trials: [] })
     await db.write()
     const result = await mutate('update', { loopId: '10', updates: { name: 'Renamed', trials: ['2'] } })

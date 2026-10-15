@@ -151,7 +151,7 @@ Four lifecycle hooks with code editors:
 
 ### 4. `on_finish` (Builder-Managed)
 - Runs after trial ends, before transitioning to next trial
-- **Automatically generated**: Includes branching/jump logic (branchConditions + repeatConditions)
+- **Automatically generated**: Includes branching/branching logic (branchConditions + branchConditions)
 - User code is appended
 - Has access to trial data
 
@@ -160,7 +160,7 @@ These are in `TrialCode/TrialCodeGenerators/`:
 - `generateInitializeCode(userCode)` → wraps user code in `initialize: async function() {...}`
 - `generateOnStartCode({ paramsOverride, isInLoop, getVarName, customOnStart })` → params override + variable injection + user code
 - `generateOnLoadCode(userCode)` → wraps in `on_load: function() {...}`
-- `generateOnFinishCode({ branches, branchConditions, repeatConditions, isInLoop, getVarName, customOnFinish })` → branching logic + user code
+- `generateOnFinishCode({ branches, branchConditions, branchConditions, isInLoop, getVarName, customOnFinish })` → branching logic + user code
 
 ---
 

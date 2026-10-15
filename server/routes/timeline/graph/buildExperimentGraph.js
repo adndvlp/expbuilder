@@ -1,4 +1,9 @@
 import {
+  assertTrialBranching,
+  assertScopeEntry,
+  assertLoopContinuation,
+} from "../branchContract.js";
+import {
   findItem,
   findLoop,
   findTrial,
@@ -12,28 +17,10 @@ import {
 } from "./identity.js";
 
 const uniqueIds = (ids = []) =>
-  ids.filter(
+  (Array.isArray(ids) ? ids : []).filter(
     (id, index) =>
       ids.findIndex((candidate) => idsMatch(candidate, id)) === index,
   );
-
-const reachesSource = (
-  experimentDoc,
-  currentId,
-  sourceId,
-  visited = new Set(),
-) => {
-  const currentKey = itemKey(currentId);
-  if (visited.has(currentKey)) return false;
-  visited.add(currentKey);
-  const current = findTrial(experimentDoc, currentId);
-  if (!current) return false;
-  return (current.branches ?? []).some(
-    (nextId) =>
-      idsMatch(nextId, sourceId) ||
-      reachesSource(experimentDoc, nextId, sourceId, visited),
-  );
-};
 
 function summarizeItem(experimentDoc, item) {
   const ownerId = getItemOwnerId(experimentDoc, item.id);
@@ -45,8 +32,11 @@ function summarizeItem(experimentDoc, item) {
     name: item.name,
     parentLoopId: ownerId ?? null,
     ...(type === "loop"
-      ? { trials: uniqueIds(item.trials ?? []) }
-      : { branches: uniqueIds(item.branches ?? []) }),
+      ? { trials: uniqueIds(item.trials ?? []), nextItemId: item.nextItemId }
+      : {
+          branches: uniqueIds(item.branches ?? []),
+          defaultNextTrialId: item.defaultNextTrialId,
+        }),
   };
 }
 
@@ -86,6 +76,15 @@ function buildBranchEdges(experimentDoc, diagnostics) {
   const edges = [];
 
   for (const source of items) {
+    try {
+      assertTrialBranching(experimentDoc, source);
+    } catch (error) {
+      diagnostics.push({
+        code: error.code,
+        sourceId: source.id,
+        message: error.message,
+      });
+    }
     for (const condition of source.branchConditions ?? []) {
       if (
         condition?.nextTrialId != null &&
@@ -109,14 +108,6 @@ function buildBranchEdges(experimentDoc, diagnostics) {
       diagnostics.push({ code: "BRANCH_DUPLICATE", sourceId: source.id });
     }
     for (const targetId of branchIds) {
-      if (idsMatch(source.id, targetId)) {
-        diagnostics.push({
-          code: "BRANCH_SELF_REFERENCE",
-          sourceId: source.id,
-          targetId,
-        });
-        continue;
-      }
       if (findLoop(experimentDoc, targetId)) {
         diagnostics.push({
           code: "BRANCH_TARGET_NOT_TRIAL",
@@ -134,14 +125,6 @@ function buildBranchEdges(experimentDoc, diagnostics) {
           code: "BRANCH_TARGET_NOT_FOUND",
           sourceId: source.id,
           targetId,
-        });
-        continue;
-      }
-      if (reachesSource(experimentDoc, target.id, source.id)) {
-        diagnostics.push({
-          code: "BRANCH_CYCLE",
-          sourceId: source.id,
-          targetId: target.id,
         });
         continue;
       }
@@ -186,11 +169,38 @@ function buildBranchEdges(experimentDoc, diagnostics) {
 
 export function buildExperimentGraph(experimentDoc) {
   const diagnostics = [];
+  for (const scope of [experimentDoc, ...experimentDoc.loops]) {
+    try {
+      assertScopeEntry(
+        experimentDoc,
+        scope,
+        scope === experimentDoc ? null : String(scope.id),
+      );
+    } catch (error) {
+      diagnostics.push({
+        code: error.code,
+        itemId: scope.id,
+        message: error.message,
+      });
+    }
+  }
+  for (const loop of experimentDoc.loops) {
+    try {
+      assertLoopContinuation(experimentDoc, loop);
+    } catch (error) {
+      diagnostics.push({
+        code: error.code,
+        itemId: loop.id,
+        message: error.message,
+      });
+    }
+  }
   const scopes = Object.fromEntries(
     experimentDoc.loops.map((loop) => [
       itemKey(loop.id),
       {
         scopeId: String(loop.id),
+        entryItemId: loop.entryItemId,
         parentScopeId: normalizeScopeId(loop.parentLoopId),
         items: orderedScopeItems(experimentDoc, loop.id),
       },
@@ -200,6 +210,7 @@ export function buildExperimentGraph(experimentDoc) {
     revision: experimentDoc.updatedAt ?? experimentDoc.createdAt ?? "legacy",
     root: {
       scopeId: null,
+      entryItemId: experimentDoc.entryItemId,
       parentScopeId: null,
       items: orderedScopeItems(experimentDoc, null),
     },

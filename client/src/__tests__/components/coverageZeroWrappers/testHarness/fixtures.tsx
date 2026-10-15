@@ -21,7 +21,6 @@ function selectedTrial(overrides: Record<string, unknown> = {}) {
     plugin: "plugin-html-keyboard-response",
     branches: ["target-a"],
     branchConditions: [],
-    repeatConditions: [],
     parameters: {
       include_instructions: {
         "plugin-webgazer-init-camera": true,

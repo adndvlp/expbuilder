@@ -42,19 +42,17 @@ describe("scoped Canvas move actions", () => {
     });
 
     expect(result).toEqual({ status: "moved" });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({
       branches: [11],
-    });
+    }));
     expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
-      trials: [10],
+      trials: [10, 11],
     });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(11, {
-      parentLoopId: "parent-loop",
-    });
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(11, expect.objectContaining({ parentLoopId: "parent-loop" }));
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
-  it("reorders a direct loop trial sequentially without introducing branch edges", async () => {
+  it("reorders a direct loop trial sequentially by materializing its default connection", async () => {
     const dependencies = createDependencies();
     dependencies.getTrial.mockImplementation(async (id) =>
       makeTrial(Number(id)),
@@ -75,18 +73,18 @@ describe("scoped Canvas move actions", () => {
     expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
       trials: [11, 10],
     });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, { branches: [] });
-    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(10, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({ branches: [] }));
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(10, expect.objectContaining({
       parentLoopId: "parent-loop",
-    });
-    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(11, {
+    }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(11, expect.objectContaining({
       branches: [10],
-    });
+    }));
     expect(dependencies.updateLoop).toHaveBeenCalledTimes(1);
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
-  it("keeps a branchless root move in implicit sequential order", async () => {
+  it("keeps a branchless root move through an explicit default connection", async () => {
     const dependencies = createDependencies();
     dependencies.getTrial.mockImplementation(async (id) =>
       typeof id === "number" ? makeTrial(id) : null,
@@ -103,10 +101,10 @@ describe("scoped Canvas move actions", () => {
     });
 
     expect(result).toEqual({ status: "moved" });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(2, { branches: [] });
-    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({ branches: [] }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 }),
@@ -177,12 +175,12 @@ describe("scoped Canvas move actions", () => {
 
     expect(result).toEqual({ status: "moved" });
     // Detach reconnects the stringified branch ref, attach re-adds it.
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [],
-    });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 }),

@@ -89,8 +89,7 @@ describe("codegen mega regression fixture", () => {
     expect(combined).toContain("const paramsOverrideConditions =");
     expect(combined).toContain("loop_function: function(data)");
     expect(combined).toContain("const loopConditions =");
-    expect(combined).toContain("const repeatConditions =");
-    expect(combined).toContain("window.ExpBuilderNavigation.requestJump(");
+    expect(combined).toContain("window.ExpBuilderNavigation?.requestBranch(");
 
     expect(combined).toContain(
       "const saved_webgazer_phase = { type: jsPsychWebgazerInitCamera };",

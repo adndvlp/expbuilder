@@ -138,14 +138,14 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
         branches: [],
-      });
+      }));
     });
     expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(1);
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2, 3],
-    });
+    }));
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
@@ -203,18 +203,16 @@ describe("Canvas container", () => {
           ),
         ).toBe(false);
       } else if (mode === "branch") {
-        expect(destinationUpdater).toHaveBeenCalledWith(destinationId, {
-          branches: [2],
-        });
+        expect(destinationUpdater).toHaveBeenCalledWith(destinationId, expect.objectContaining({ branches: [2] }));
       } else {
         expect(
           destinationUpdater.mock.calls.some(
             ([id]: [number | string]) => id === destinationId,
           ),
-        ).toBe(false);
-        expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
+        ).toBe(true);
+        expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({
           branches: [],
-        });
+        }));
       }
     },
   );

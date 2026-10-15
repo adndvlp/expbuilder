@@ -180,9 +180,9 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("As Branch (Parallel)"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
         branches: [2, 99],
-      });
+      }));
     });
   });
 

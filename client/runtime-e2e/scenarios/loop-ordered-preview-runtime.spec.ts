@@ -1,3 +1,4 @@
+import { resumeCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/ResumeCode";
 import { expect, test } from "@playwright/test";
 import { generateLoopCode } from "../../src/pages/ExperimentBuilder/utils/codegen/generateLoopCode";
 import { buildExperimentArtifact } from "../../src/pages/ExperimentBuilder/modules/experiment-runtime/experimentArtifact";
@@ -48,17 +49,17 @@ test(`an ordered dynamic loop runs ${scenario.rowCount} rows ${scenario.name}`, 
     experimentId: author.experimentId, apiBaseUrl: runtimeApiBaseUrl,
     generatedCode: `
       ${scenario.participantNumber === undefined ? "" : `const participantNumber = ${scenario.participantNumber};`}
+      ${resumeCode()}
       window.previewCompletedRows = 0;
       const jsPsych = initJsPsych({
-      on_data_update: function() { window.previewCompletedRows += 1; },
+      on_data_update: function(data) { window.previewCompletedRows += 1; window.ExpBuilderNavigation.onTrialPersisted(data); },
       on_finish: function() {
         window.previewRows = jsPsych.data.get().values();
         document.body.innerHTML = '<p>Preview complete</p>';
       }});
       const timeline = [];
-      window.branchingActive = false;
-      window.skipRemaining = false;
       ${code}
+      window.ExpBuilderNavigation.attachPreview(jsPsych, timeline);
       jsPsych.run(timeline);
     `,
   });

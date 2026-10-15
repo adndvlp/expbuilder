@@ -2,7 +2,7 @@
 
 > Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
 
-## Resume y jump
+## Resume y branching
 
 ### DEC-20 — Fidelidad de resume — BLOQUEANTE
 
@@ -12,13 +12,13 @@
 - Opciones reales: restaurar iteración/fila CSV/orden aleatorio exactos; continuar sólo en el próximo execution address; deshabilitar resume en estados de loop no reproducibles.
 - Pregunta: ¿qué estado exacto debe restaurarse y qué pérdida de fidelidad, si alguna, es aceptable?
 
-### DEC-21 — Destinos permitidos de jump — BLOQUEANTE
+### DEC-21 — Destinos permitidos de branching — BLOQUEANTE
 
 - Entendido: el mecanismo actual usa un ID escalar y no entra correctamente a nested targets.
 - Falta: alcance de targets deseado.
 - Impacto: compiler, selector UI, ciclos y enter paths.
 - Opciones reales: cualquier item; sólo scopes ancestros/raíz; same-scope + raíz; lista actual corregida; trials únicamente o trials y loops.
-- Pregunta: ¿a qué scopes y tipos de item puede apuntar jump?
+- Pregunta: ¿a qué scopes y tipos de item puede apuntar branching?
 
 ## Edición, compatibilidad y límites
 
@@ -180,3 +180,6 @@
 ## Orden sugerido para revisión humana
 
 Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, layout y release. Este orden no selecciona respuestas.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

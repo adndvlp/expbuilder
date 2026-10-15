@@ -11,7 +11,8 @@ This documentation covers the complete architecture, data model, API, and system
 | [03-API.md](03-API.md) | Every API endpoint: experiments, trials, loops, configs, plugins, results, files, tunnel, DB |
 | [04-PLUGINS.md](04-PLUGINS.md) | Plugin system: native jsPsych, custom/user plugins, metadata extraction, CDN resolution |
 | [05-TRIALS_AND_LOOPS.md](05-TRIALS_AND_LOOPS.md) | Trial lifecycle, loop system, orders & categories, CSV integration, code injection hooks |
-| [06-BRANCHING.md](06-BRANCHING.md) | Branch conditions, repeat/jump conditions, params override, rule system, condition matching |
+| [06-BRANCHING.md](06-BRANCHING.md) | Explicit branching, default destinations, parameter overrides, loops and resume |
+| [unified-branching-contract-sdd.md](unified-branching-contract-sdd.md) | Single Branching contract, scope entries, loops, persistence, resume and TDD acceptance criteria |
 | [07-DYNAMIC_PLUGIN.md](07-DYNAMIC_PLUGIN.md) | Component types, canvas system, visual designer, screen layout resolution, data collection |
 | [08-EXECUTION.md](08-EXECUTION.md) | Code generation, experiment compilation, preview, local run, Cloudflare publishing |
 | [09-CLIENT_SERVER.md](09-CLIENT_SERVER.md) | Providers, context, hooks, optimistic UI, data flow, autosave patterns |

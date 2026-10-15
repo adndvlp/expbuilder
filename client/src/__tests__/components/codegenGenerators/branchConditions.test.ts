@@ -10,7 +10,7 @@ describe("branch condition delegation", () => {
     const decision = { targetId: 3, conditionId: 7, usedDefault: false, customParameters: conditions[0].customParameters };
     const runtime = { ExpBuilderBranching: { decide: vi.fn(() => decision) }, ExpBuilderNavigation: { requestBranch: vi.fn() } };
     new Function("window", "data", generateBranchConditionsCode({ branches: [3, "fallback"], branchConditions: conditions, isInLoop, getVarName }))(runtime, data);
-    expect(runtime.ExpBuilderBranching.decide).toHaveBeenCalledExactlyOnceWith(data, [3, "fallback"], conditions);
+    expect(runtime.ExpBuilderBranching.decide).toHaveBeenCalledExactlyOnceWith(data, [3, "fallback"], conditions, null);
     expect(runtime.ExpBuilderNavigation.requestBranch).toHaveBeenCalledExactlyOnceWith(data, decision);
   });
 

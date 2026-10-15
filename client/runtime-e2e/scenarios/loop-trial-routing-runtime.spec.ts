@@ -8,7 +8,7 @@ import {
 } from "../support/session";
 
 for (const chain of [false, true]) {
-  test(`[RUNTIME-LOOP-SIBLING-ENTRY] client preserves a trial destination three loops deep and parameters across CSV rows and repetitions (chain=${chain})`, async ({
+  test(`[RUNTIME-LOOP-SIBLING-ENTRY] client enters the exact trial three loops deep with parameters and honors its selected exit (chain=${chain})`, async ({
     page,
   }) => {
     const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -54,7 +54,9 @@ for (const chain of [false, true]) {
       "entry-after",
       "entry-final",
     ]);
+    await author.configureButtonTrial("entry-final", { defaultNextTrialId: "FINISH_EXPERIMENT" });
     await author.configureButtonTrial("entry-source", {
+          defaultNextTrialId: author.id("entry-target"),
       branches: [author.id("entry-target")],
     });
     await author.configureBranchConditions("entry-source", [
@@ -72,9 +74,11 @@ for (const chain of [false, true]) {
       },
     ]);
     if (chain) {
-      await author.configureButtonTrial("entry-target", {
-        branches: [author.id("entry-final")],
-      });
+      await author.configureBranchConditions("entry-target", [{
+        id: 202, rules: [{ column: "response", op: "==", value: "0" }], nextTrialAlias: "entry-final",
+      }]);
+    } else {
+      await author.configureButtonTrial("entry-target", { defaultNextTrialId: "FINISH_EXPERIMENT" });
     }
     const graph = await author.assertHealthyGraph();
     expect(graph.edges).toEqual(

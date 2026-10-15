@@ -72,10 +72,10 @@ describe("ConfigurationPanel loading and metadata", () => {
     fireEvent.change(screen.getByLabelText("plugin select"), {
       target: { value: "" },
     });
-    expect(mocks.updateTrial).not.toHaveBeenCalledWith(1, { plugin: "" });
+    expect(mocks.updateTrial).not.toHaveBeenCalledWith(1, expect.objectContaining({ plugin: "" }));
     fireEvent.click(screen.getByLabelText("Toggle jsPsych plugins"));
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       plugin: "plugin-dynamic",
-    });
+    }));
   });
 });

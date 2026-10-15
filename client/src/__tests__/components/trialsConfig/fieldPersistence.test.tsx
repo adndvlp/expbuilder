@@ -58,10 +58,10 @@ describe("TrialsConfig", () => {
     expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(
       10,
       "parameters",
-      {
+      expect.objectContaining({
         includesExtensions: true,
         extensionType: "jsPsychExtensionMouseTracking",
-      },
+      }),
     );
   });
 

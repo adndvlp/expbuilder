@@ -12,6 +12,7 @@ export async function getExperimentDoc(experimentID, createIfMissing = false) {
       trials: [],
       loops: [],
       timeline: [],
+      entryItemId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

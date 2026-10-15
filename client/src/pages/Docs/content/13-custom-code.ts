@@ -23,12 +23,12 @@ on_start: function(trial) {
 }
 
 on_finish: function(data) {
-// 1. Repeat conditions (evaluates whether to jump)
+// 1. Repeat conditions (evaluates whether to branching)
 
 // --- Your code here ---
 // Access to: data, jsPsych, trialSessionId, participantNumber
 
-// 2. Branch conditions (evaluates where to jump)
+// 2. Branch conditions (evaluates where to branching)
 }
 \`\`\`
 
@@ -41,12 +41,7 @@ on_finish: function(data) {
 | \`jsPsych\` | Both | object | Global jsPsych instance |
 | \`trialSessionId\` | Both | string | Current session ID |
 | \`participantNumber\` | Both | number | Participant number |
-| \`window.branchingActive\` | Both | boolean | Active branch |
-| \`window.nextTrialId\` | Both | string | Branch target trial |
-| \`window.skipRemaining\` | Both | boolean | Skip flag |
-| \`window.branchCustomParameters\` | \`on_start\` | object | Branch params |
 
-> **Do not modify** \`window.nextTrialId\`, \`window.skipRemaining\`, \`window.branchingActive\`, or \`window.branchCustomParameters\` directly. They are managed by the branching system.
 
 ### Example: Conditional Logging
 

@@ -127,33 +127,31 @@ export function evaluateReferencedCondition(
 export function decideBranch(
   trialData: Record<string, unknown>,
   branches: Array<string | number>,
-  nestedConditions: Array<RuntimeBranchCondition | RuntimeBranchCondition[]>,
+  conditions: RuntimeBranchCondition[],
+  defaultNextTrialId: string | number | null,
 ): BranchDecision {
-  if (!Array.isArray(branches) || branches.length === 0) {
+  const assertTarget = (target: string | number | null | undefined) => {
+    if (
+      target != null &&
+      target !== "FINISH_EXPERIMENT" &&
+      !branches.some((id) => String(id) === String(target))
+    ) {
+      throw new Error("Branch destination has no configured connection");
+    }
+  };
+  assertTarget(defaultNextTrialId);
+  for (const condition of conditions) {
+    assertTarget(condition.nextTrialId);
+    if (!evaluateBranchCondition(trialData, condition)) continue;
     return {
-      targetId: null,
-      conditionId: null,
-      customParameters: null,
+      targetId: condition.nextTrialId ?? null,
+      conditionId: condition.id ?? null,
+      customParameters: condition.customParameters ?? null,
       usedDefault: false,
     };
   }
-
-  const conditions: RuntimeBranchCondition[] = [];
-  for (const entry of nestedConditions || []) {
-    if (Array.isArray(entry)) conditions.push(...entry);
-    else conditions.push(entry);
-  }
-  for (const condition of conditions) {
-    if (!condition || !evaluateBranchCondition(trialData, condition)) continue;
-    return {
-      targetId: condition.nextTrialId ?? branches[0],
-      conditionId: condition.id ?? null,
-      customParameters: condition.customParameters ?? null,
-      usedDefault: condition.nextTrialId === null || condition.nextTrialId === undefined,
-    };
-  }
   return {
-    targetId: branches[0],
+    targetId: defaultNextTrialId,
     conditionId: null,
     customParameters: null,
     usedDefault: true,

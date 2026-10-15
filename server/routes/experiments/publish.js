@@ -15,7 +15,6 @@ import {
 } from "./media.js";
 import { applyGeneratedArtifact } from "./artifact.js";
 import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
-import { pruneDanglingBranches } from "../timeline/trials/state.js";
 
 const router = Router();
 
@@ -53,9 +52,7 @@ function injectPublicAssets($, experiment, experimentID) {
     `<link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />`,
   );
   $("head").append(`<script src="https://unpkg.com/jspsych@8.2.2"></script>`);
-  const trialDoc = db.data.trials.find(
-    (t) => t.experimentID === experimentID,
-  );
+  const trialDoc = db.data.trials.find((t) => t.experimentID === experimentID);
   if (trialDoc?.trials?.some((trial) => trial.plugin === "plugin-dynamic")) {
     $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
   }
@@ -72,7 +69,6 @@ function injectPublicAssets($, experiment, experimentID) {
       `<script src="${url}" data-dynamic-plugins="true"></script>`,
     );
   }
-
 }
 
 function readPublishHtml(experiment) {
@@ -179,22 +175,16 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
-    // A published artifact freezes the timeline: heal legacy dangling
-    // references first, then refuse to freeze a graph whose routing is
-    // broken (unresolvable targets, cycles, self-references, invalid
-    // scopes). Duplicates are deduplicated at runtime and orphan items
-    // simply never execute, so neither blocks publishing.
+    // Validate before producing an artifact or modifying any persisted record.
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
     if (trialDoc) {
-      pruneDanglingBranches(trialDoc);
       const blocking = buildExperimentGraph(trialDoc).diagnostics.filter(
         (diagnostic) =>
           diagnostic.code !== "BRANCH_DUPLICATE" &&
           diagnostic.code !== "OWNER_NOT_FOUND",
       );
-      await db.write();
       if (blocking.length > 0) {
         const message =
           `Experiment graph is invalid (${blocking.map((diagnostic) => diagnostic.code).join(", ")}). ` +

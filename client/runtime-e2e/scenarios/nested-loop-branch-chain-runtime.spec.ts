@@ -52,9 +52,11 @@ test(`client chains conditional branches within three nested loops, to a parent,
   }
   await author.configureButtonTrials(aliases);
   await author.configureButtonTrial("entry", {
+          defaultNextTrialId: author.id("source"),
     branches: [author.id("source")],
   });
   await author.configureButtonTrial("source", {
+          defaultNextTrialId: author.id("inner-skipped"),
     branches: [author.id("inner-skipped"), author.id("inner-target")],
   });
   await author.configureBranchConditions("source", [
@@ -83,6 +85,7 @@ test(`client chains conditional branches within three nested loops, to a parent,
   ];
   for (const [index, [source, target, payload]] of hops.entries()) {
     await author.configureButtonTrial(source, {
+          defaultNextTrialId: author.id(target),
       branches: [author.id(target)],
     });
     await author.configureBranchConditions(source, [

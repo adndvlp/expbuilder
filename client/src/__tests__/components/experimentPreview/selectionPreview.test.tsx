@@ -52,7 +52,7 @@ describe("ExperimentPreview selected item previews", () => {
     expect(body.generatedCode).toContain("const finishCompleted = await completePreviewSession()")
     expect(body.generatedCode).toContain("setTimeout(attemptPreviewCompletion, retryAfter)")
     expect(body.generatedCode).toContain("const singleTrial = {};");
-    expect(body.generatedCode).toContain('JUMP_REQUEST_KEY = "expbuilder:preview:test-exp-123:Choice Trial:jump-request"');
+    expect(body.generatedCode).toContain('RESUME_TRIAL_KEY = "expbuilder:preview:test-exp-123:Choice Trial:resume-trial"');
     expect(body.generatedCode).toContain("window.ExpBuilderNavigation.attachPreview(jsPsych, timeline)");
     expect(body.generatedCode).toContain("jsPsych.run(timeline);");
   });

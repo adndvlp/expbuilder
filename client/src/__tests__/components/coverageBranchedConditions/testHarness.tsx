@@ -133,7 +133,6 @@ export function renderConditionsList(overrides: Record<string, unknown> = {}) {
       ],
       "target-dynamic": [],
     },
-    isJumpCondition: vi.fn(() => false),
     triggerSave: vi.fn(),
     addCustomParameter: vi.fn(),
     addRuleToCondition: vi.fn(),
@@ -146,16 +145,14 @@ export function renderConditionsList(overrides: Record<string, unknown> = {}) {
     selectedTrial: { id: "current", plugin: "plugin-html-keyboard-response" },
     setConditionsWrapper: vi.fn(),
     updateNextTrial: vi.fn(),
-    isInBranches: vi.fn(() => true),
-    branchTrials: [{ id: "target-a", name: "Target A", isLoop: false }],
-    allJumpTrials: [
+    branchTrials: [...[{ id: "target-a", name: "Target A", isLoop: false }], ...[
       {
-        id: "jump-a",
-        name: "Jump A",
-        displayName: "Jump A",
+        id: "branch-a",
+        name: "branch A",
+        displayName: "branch A",
         isLoop: false,
       },
-    ],
+    ]],
     targetTrialCsvColumns: {
       "target-a": ["csv_difficulty"],
       "target-dynamic": ["csv_text"],

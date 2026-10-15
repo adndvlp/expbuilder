@@ -4,7 +4,7 @@
 
 ## Método y límites de la auditoría
 
-Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, generación del cliente, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `jump to trial`, pruebas existentes y bundle jsPsych incluido.
+Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, generación del cliente, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `branching to trial`, pruebas existentes y bundle jsPsych incluido.
 
 La evidencia corresponde al commit `15daef2`. Es una auditoría estática del código y de las pruebas existentes. No se presenta como observación runtime porque:
 
@@ -95,15 +95,15 @@ Esto explica por qué una topología parecida puede dibujarse con fixtures actua
 
 Evidencia: `composeExpandedLoopLayout.ts`, `sanitizeLayoutTimeline.ts`, `collapseLoopEdgesToCircuits.ts`, pruebas `canvasExpandedLayout/` y E2E `unified-canvas-*.spec.ts`.
 
-## Configuración de branching frente a jump
+## Configuración de branching frente a branching
 
 La configuración separa condiciones así:
 
 - target en `selectedTrial.branches`, o target forward del mismo scope: `BranchCondition`;
-- cualquier otro target: `RepeatCondition`/jump;
-- branch permite `customParameters`; jump no.
+- cualquier otro target: `RepeatCondition`/branching;
+- branch permite `customParameters`; branching no.
 
-Para un trial dentro de loop, la lista de jumps incluye items anteriores del loop cargado y todos los items de raíz. No construye un path de loops. Un target de salida nuevo debe conservarse explícitamente como branch o corre el riesgo de ser reclasificado como jump.
+Para un trial dentro de loop, la lista de branchings incluye items anteriores del loop cargado y todos los items de raíz. No construye un path de loops. Un target de salida nuevo debe conservarse explícitamente como branch o corre el riesgo de ser reclasificado como branching.
 
 Evidencia: `BranchedTrial/index.tsx::{getAvailableTrials,isBranchTarget}`, `branchingSaveUtils.ts`.
 
@@ -140,22 +140,22 @@ Al recargar, `_resolveResumeBranch`:
 - devuelve `null` con cero branches;
 - devuelve el único target sin evaluar condiciones;
 - con varias branches evalúa condiciones y, si ninguna coincide, usa la primera;
-- guarda sólo ese ID en `jsPsych_jumpToTrial`.
+- guarda sólo ese ID en `jsPsych_branchingToTrial`.
 
 Limitaciones relevantes:
 
 - un último trial interno sin branches propias se interpreta como sesión terminada, aunque su contenedor pudiera continuar;
 - el target no incluye sus ancestros;
-- un wrapper de loop raíz compara el jump con el ID del loop, no con IDs internos; puede saltarse el contenedor que debía abrir;
+- un wrapper de loop raíz compara el branching con el ID del loop, no con IDs internos; puede saltarse el contenedor que debía abrir;
 - la política “sin match” difiere del branching global normal, que devuelve `null`.
 
 Evidencia: `ResumeCode.ts`, `localRuntime.ts`, `publicInitCode.ts`, pruebas `codegenRuntime/resumeBranching.test.ts`.
 
-## Jump to trial actual
+## branching to trial actual
 
-Las repeat conditions guardan un `jumpToTrialId`, limpian el container y vuelven a ejecutar `jsPsych.run(timeline)`. Cada wrapper sólo sabe comparar su ID con el target escalar.
+Las repeat conditions guardan un `nextTrialId`, limpian el container y vuelven a ejecutar `jsPsych.run(timeline)`. Cada wrapper sólo sabe comparar su ID con el target escalar.
 
-Un jump hacia raíz puede funcionar porque el target está en el timeline superior. Un jump hacia un trial anidado no aporta la cadena de loops que debe permitirse ejecutar. La documentación afirma mayor alcance que el mecanismo observable; por ello la nueva spec exige pruebas runtime y no asume ese soporte.
+Un branching hacia raíz puede funcionar porque el target está en el timeline superior. Un branching hacia un trial anidado no aporta la cadena de loops que debe permitirse ejecutar. La documentación afirma mayor alcance que el mecanismo observable; por ello la nueva spec exige pruebas runtime y no asume ese soporte.
 
 ## Capacidad del bundle jsPsych
 
@@ -166,5 +166,8 @@ El bundle incluido expone `abortCurrentTimeline()` y `abortTimelineByName()`, ad
 - **Posible:** sí, con refactor de dominio, metadata, proyección y runtime.
 - **Posible sólo con el modal actual:** no.
 - **Seguro reutilizando ciegamente `branches[]` + `parentLoopId`:** no demostrado; depende de la decisión de contrato y de corregir loaders/mutaciones.
-- **Resume/jump compatibles sin cambios:** no.
+- **Resume/branching compatibles sin cambios:** no.
 - **Layout reutilizable:** sí como base, añadiendo una fase explícita de proyección cross-scope y preservando el theme existente.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

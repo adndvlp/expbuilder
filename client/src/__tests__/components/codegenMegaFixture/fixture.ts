@@ -144,15 +144,6 @@ export function createMegaFixture() {
         ],
       },
     ],
-    repeatConditions: [
-      {
-        id: 1,
-        jumpToTrialId: 10,
-        rules: [
-          { column: "response", prop: "response", op: "==", value: "jump" },
-        ],
-      },
-    ],
   });
 
   const childLoop = loop({

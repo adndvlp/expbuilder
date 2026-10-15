@@ -1,4 +1,4 @@
-# 05 — Codegen, runtime, resume y jump
+# 05 — Codegen, runtime, resume y branching
 
 > Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
 
@@ -19,7 +19,7 @@ No se permite compilar la nueva feature como branches artificiales de los nodos 
 2. Cada wrapper busca targets sólo entre los items generados para ese loop.
 3. Al terminar, un loop propaga sólo `branches[0]` al padre o a globals.
 4. Las condiciones múltiples de `BranchesCode` no se evalúan; hay un `TODO`.
-5. `resume` y `jump` guardan un ID escalar, no el path que permite entrar a loops ancestros.
+5. `resume` y `branching` guardan un ID escalar, no el path que permite entrar a loops ancestros.
 6. `resume` interpreta cero branches del último trial como experimento completo.
 7. la metadata usada por codegen mezcla containment con branch reachability.
 
@@ -179,33 +179,33 @@ type ResumeCheckpoint = {
 
 DEC-20 define si debe restaurarse exactamente iteración, timeline-variable row, random order y condiciones del loop, o sólo continuar en el próximo address compatible con la semántica legacy.
 
-## Jump to trial: address en vez de ID
+## branching to trial: address en vez de ID
 
-Las repeat conditions deben crear un `JumpRequest` versionado:
+Las repeat conditions deben crear un `branchingRequest` versionado:
 
 ```ts
-type JumpRequest = {
+type branchingRequest = {
   version: number;
   address: ExecutionAddress;
   sourceId: string | number;
 };
 ```
 
-- JUMP-01: al reiniciar raíz, se habilita el primer loop de `enterLoopIds`.
-- JUMP-02: cada scope consume sólo su segmento del path.
-- JUMP-03: el target final consume la request exactamente una vez.
-- JUMP-04: un target root tiene path vacío.
-- JUMP-05: un target loop se diferencia de un target trial.
-- JUMP-06: jump y resume no pisan sus keys ni se interpretan como branch normal.
-- JUMP-07: el anti-loop guard comprueba progreso en el path, no sólo si la key quedó sin consumir tras un reload.
-- JUMP-08: la lista de targets de UI sólo ofrece addresses que el compilador puede resolver.
+- branching-01: al reiniciar raíz, se habilita el primer loop de `enterLoopIds`.
+- branching-02: cada scope consume sólo su segmento del path.
+- branching-03: el target final consume la request exactamente una vez.
+- branching-04: un target root tiene path vacío.
+- branching-05: un target loop se diferencia de un target trial.
+- branching-06: branching y resume no pisan sus keys ni se interpretan como branch normal.
+- branching-07: el anti-loop guard comprueba progreso en el path, no sólo si la key quedó sin consumir tras un reload.
+- branching-08: la lista de targets de UI sólo ofrece addresses que el compilador puede resolver.
 
-DEC-21 define el conjunto de targets que jump seguirá ofreciendo.
+DEC-21 define el conjunto de targets que branching seguirá ofreciendo.
 
-## Relación branch vs jump
+## Relación branch vs branching
 
 - Una edge source → target forward, aunque cruce hacia un ancestro, sigue siendo `BranchCondition`.
-- Un repeat/jump reinicia o reposiciona el experimento y usa `RepeatCondition`.
+- Un repeat/branching reinicia o reposiciona el experimento y usa `RepeatCondition`.
 - La clasificación debe usar el grafo y el tipo de acción, no “target está en el array local cargado”.
 - `buildBranchingSaveUpdates` requiere un predicate de dominio que reconozca cross-scope branches.
 
@@ -216,7 +216,7 @@ Si DEC-16 lo habilita en loops:
 - se modela como acción terminal, no item ni owner;
 - aborta el experimento una sola vez;
 - permite completar/guardar datos conforme a la política aprobada;
-- limpia route, jump y resume;
+- limpia route, branching y resume;
 - tiene tests local/public y desde cada profundidad.
 
 ## Spike obligatorio de viabilidad runtime
@@ -237,7 +237,7 @@ Debe probar:
 10. custom `on_timeline_start` y `on_timeline_finish`;
 11. custom parameters;
 12. resume a cada target;
-13. jump a root, loop y trial anidado;
+13. branching a root, loop y trial anidado;
 14. no-match, corrupt route y finish experiment si aplica.
 
 Cada escenario se ejecuta mediante las entradas de preview, ejecución local y publicación del cliente.
@@ -247,3 +247,6 @@ El spike registra los callbacks omitidos por abort y los compara con DEC-41. Si 
 ## Criterio de viabilidad final
 
 La feature es implementable si una estrategia demuestra los 14 casos sin duplicar trials, perder datos, iniciar repeticiones extra o depender de metadata contaminada. Si ninguna lo demuestra, se documenta la limitación exacta y se vuelve a decisión de arquitectura; no se entrega sólo el canvas como si la ejecución estuviera soportada.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

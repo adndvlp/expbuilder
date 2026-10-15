@@ -108,7 +108,11 @@ for (const scenario of scenarios) {
       });
     }
     await author.configureButtonTrials(aliases);
+    for (const alias of ["main-final", "main-alternate"]) {
+      await author.configureButtonTrial(alias, { defaultNextTrialId: null });
+    }
     await author.configureButtonTrial("entry", {
+          defaultNextTrialId: author.id("inner-source"),
       branches: [author.id("inner-source")],
     });
     const routes = [
@@ -132,6 +136,7 @@ for (const scenario of scenarios) {
       await author.configureButtonTrial(
         source,
         {
+          defaultNextTrialId: null,
           branches: [...new Set(targets)].map((target) => author.id(target)),
         },
         targets.length === 1

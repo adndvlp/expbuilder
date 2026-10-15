@@ -44,7 +44,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         if (window.ExpBuilderNavigation.isTransitionPending()) {
           window.ExpBuilderRuntime?.emit(
             'experiment-finish-suppressed',
-            { reason: 'jump' }
+            { reason: 'branching' }
           );
           return;
         }

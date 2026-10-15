@@ -74,7 +74,7 @@ it("sends a result enqueued while the preceding flush is observing an empty queu
   outbox.onAcknowledged(acknowledged);
   const first = outbox.enqueue({ builder_id: "source" });
   await emptyRead;
-  const second = outbox.enqueue({ builder_id: "jump-trigger" });
+  const second = outbox.enqueue({ builder_id: "branch-trigger" });
   // Drain the enqueue microtasks while the old read remains blocked.
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(records.get(1)?.status).toBe("pending");

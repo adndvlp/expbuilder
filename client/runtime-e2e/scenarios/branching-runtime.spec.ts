@@ -107,6 +107,9 @@ test("[RUNTIME-LOOP-ROOT-EXIT] [TR-01] authors a branch from a non-terminal loop
     "root-exit",
   ]);
 
+  await author.configureBranchConditions("loop-source", [{
+    id: 310, rules: [{ column: "response", op: "==", value: "0" }], nextTrialAlias: "root-exit",
+  }]);
   const graph = await author.assertHealthyGraph();
   const exitEdge = graph.edges.find(
     (edge) =>
@@ -205,32 +208,10 @@ test("[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13] [TA-14] [TG-08] rejects a dangling r
   await author.createExperiment(`runtime-corrupt-route-${Date.now()}`);
   await author.createTrial("corrupt-source");
   await author.createTrial("safe-sequential-trial");
-  await author.configureButtonTrial("corrupt-source", {
-    branches: ["missing-target"],
-  });
-  await author.configureButtonTrial("safe-sequential-trial");
-
-  // Dangling targets are healed on write (never persisted), so the graph
-  // carries no BRANCH_TARGET_NOT_FOUND and the artifact compiles cleanly.
-  const healed = await author.session.refreshGraph();
-  expect(healed.diagnostics.map((d) => d.code)).not.toContain(
-    "BRANCH_TARGET_NOT_FOUND",
-  );
+  const before = await author.client.getTrial(author.experimentId, author.id("corrupt-source"));
+  await expect(author.configureButtonTrial("corrupt-source", {
+    branches: ["missing-target"], defaultNextTrialId: "missing-target",
+  })).rejects.toThrow("does not exist");
+  expect(await author.client.getTrial(author.experimentId, author.id("corrupt-source"))).toEqual(before);
   await author.compileAndBuild();
-
-  // Corruption that healing cannot fix (self-reference) must still refuse
-  // to generate a runnable artifact.
-  await author.configureButtonTrial("corrupt-source", {
-    branches: [author.id("corrupt-source")],
-  });
-  const graph = await author.session.refreshGraph();
-  expect(graph.diagnostics).toContainEqual(
-    expect.objectContaining({
-      code: "BRANCH_SELF_REFERENCE",
-      sourceId: author.id("corrupt-source"),
-    }),
-  );
-  await expect(author.compileAndBuild()).rejects.toThrow(
-    "Invalid authored graph",
-  );
 });

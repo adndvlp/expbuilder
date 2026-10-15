@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { loop, registerCodegenCoverageLifecycle } from "./testHarness";
 import { generateSingleLoopCode } from "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
-import { generateLoopRepeatLifecycle } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/services/generateLoopRepeatLifecycle";
+import { generateConditionalLoopFunction } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/services/generateConditionalLoopFunction";
 
 describe("loop and branch code generation coverage", () => {
   registerCodegenCoverageLifecycle();
@@ -24,66 +24,16 @@ describe("loop and branch code generation coverage", () => {
     );
   });
 
-  it.each([true, false])(
-    "preserves repeat navigation with matching condition = %s",
-    (matches) => {
-      const condition = {
-        id: 1,
-        jumpToTrialId: 10,
-        rules: [{ column: "response", op: "==", value: "retry" }],
-      };
-      const code = generateLoopRepeatLifecycle({
-        id: "loop-a",
-        repeatConditions: [condition],
-      });
-      const lastRow = { response: "retry", trial_id: 2 };
-      const runtime = {
-        ExpBuilderBranching: {
-          evaluateCondition: vi.fn(() => matches),
-          decide: vi.fn(),
-        },
-        ExpBuilderNavigation: {
-          requestJump:
-            vi.fn<
-              (
-                target: number,
-                source: Record<string, unknown>,
-                data: unknown,
-                pause: () => void,
-              ) => void
-            >(),
-        },
-      };
-      const jsPsych = {
-        data: {
-          get: () => ({ filter: () => ({ values: () => [lastRow] }) }),
-        },
-        pauseExperiment: vi.fn(),
-      };
-      const lifecycle = new Function(
-        "window",
-        "jsPsych",
-        "trialSessionId",
-        `return ({${code}});`,
-      )(runtime, jsPsych, "session-a");
-      lifecycle.on_timeline_finish();
-
-      expect(
-        runtime.ExpBuilderBranching.evaluateCondition,
-      ).toHaveBeenCalledWith(lastRow, condition);
-      expect(runtime.ExpBuilderBranching.decide).not.toHaveBeenCalled();
-      if (matches) {
-        expect(runtime.ExpBuilderNavigation.requestJump).toHaveBeenCalledWith(
-          10,
-          { sourceId: 2, conditionId: 1, sourceSessionId: "session-a" },
-          lastRow,
-          expect.any(Function),
-        );
-        runtime.ExpBuilderNavigation.requestJump.mock.calls[0][3]();
-        expect(jsPsych.pauseExperiment).toHaveBeenCalledOnce();
-      } else {
-        expect(runtime.ExpBuilderNavigation.requestJump).not.toHaveBeenCalled();
-      }
-    },
-  );
+  it.each([true, false])("preserves a genuine conditional loop (matches=%s)", matches => {
+    const condition = { id: 1, rules: [{ trialId: 2, column: "response", op: "==", value: "retry" }] };
+    const code = generateConditionalLoopFunction(true, [condition], "loop-a");
+    const rows = [{ builder_id: 2, response: "retry" }];
+    const finishLoopCycle = vi.fn();
+    const evaluateReferencedCondition = vi.fn(() => matches);
+    const window = { ExpBuilderBranching: { evaluateReferencedCondition }, ExpBuilderNavigation: { loopResults: () => rows, finishLoopCycle } };
+    const lifecycle = new Function("window", `return ({${code}});`)(window);
+    expect(lifecycle.loop_function({ values: () => [] })).toBe(matches);
+    expect(evaluateReferencedCondition).toHaveBeenCalledWith(rows, condition);
+    expect(finishLoopCycle).toHaveBeenCalledWith("loop-a", matches);
+  });
 });

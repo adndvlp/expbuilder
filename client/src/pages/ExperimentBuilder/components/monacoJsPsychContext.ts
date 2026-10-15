@@ -124,10 +124,6 @@ declare const _mturkWorkerID: string | null;
 
 // ─── Builder window globals — augment global Window interface ─────────────────
 interface Window {
-  nextTrialId?: string | null;
-  skipRemaining?: boolean;
-  branchingActive?: boolean;
-  branchCustomParameters?: Record<string, any> | null;
   _socketReady?: boolean;
   [key: string]: any;
 }

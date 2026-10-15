@@ -10,7 +10,7 @@ Hoy una branch es sólo un target en `source.branches[]`. El owner se encuentra,
 - mover un target cambia intencionalmente la ruta o está prohibido;
 - loaders no duplican targets entre scopes;
 - el código generado recibe el grafo completo, no timelines locales contaminadas;
-- resume/jump pueden reconstruir la misma ruta.
+- resume/branching pueden reconstruir la misma ruta.
 
 No se autoriza en esta spec a escoger entre derivación y persistencia explícita. La decisión está en DEC-11. Sí se fija un **modelo conceptual común** que ambas alternativas deben satisfacer.
 
@@ -203,7 +203,7 @@ La API que guarda condiciones debe validar:
 
 - cada `nextTrialId` pertenece a `branchesFrom(source)`;
 - no quedan conditions de un target borrado;
-- el target de salida no se transforma en `repeatConditions`;
+- el target de salida no se transforma en `branchConditions`;
 - custom parameters son compatibles con el plugin target;
 - no hay más de una política contradictoria para la misma condición/target;
 - el orden/fallback coincide con DEC-15.
@@ -253,3 +253,6 @@ El usuario confirmó que no hay experimentos que conservar. No se implementa lec
 - API-04: no se persisten respuestas de participantes en logs de validación.
 - API-05: publicación toma un snapshot/revision consistente del grafo.
 - API-06: una compilación nunca mezcla revisiones de root y cachés de loops.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

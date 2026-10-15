@@ -39,7 +39,7 @@ describe("useLoopCode composition", () => {
     const trialB = toCodeIdentifier("Loop Trial B");
     expect(code).toContain(`timeline: [${trialA}_timeline, ${trialB}_timeline]`);
     expect(code).not.toContain("SkipRemaining");
-    expect(code).toContain('registerLoop("loop_1", loop_1_procedure)');
+    expect(code).toContain('registerLoop("loop_1", loop_1_procedure,');
     expect(code).toContain("const loop_1_procedure =");
     expect(code).toContain(
       `timeline: [${trialA}_timeline, ${trialB}_timeline]`,
@@ -88,21 +88,14 @@ describe("useLoopCode composition", () => {
     expect(code).toContain(
       "window.ExpBuilderBranching.evaluateReferencedCondition",
     );
-    expect(code).toContain('registerLoop("loop_2", loop_2_procedure)');
+    expect(code).toContain('registerLoop("loop_2", loop_2_procedure,');
     expect(code).not.toContain("SkipRemaining");
     expect(code).not.toContain("window.nextTrialId = branches[0];");
   });
 
-  it("generates loop repeat/jump conditions in on_timeline_finish", () => {
+  it("generates loop repeat/branch conditions in on_timeline_finish", () => {
     const genLoopCode = useLoopCode({
       id: "loop_repeat",
-      repeatConditions: [
-        {
-          id: 1,
-          rules: [{ prop: "response", op: "==", value: "again" }],
-          jumpToTrialId: 10,
-        },
-      ],
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -123,8 +116,6 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditions =");
-    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
     expect(code).not.toContain("jsPsych.run(timeline)");
   });
 });

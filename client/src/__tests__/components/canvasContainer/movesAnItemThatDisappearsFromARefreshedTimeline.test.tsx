@@ -83,9 +83,9 @@ describe("Canvas container", () => {
     await waitFor(() => {
       expect(mocks.trialsContext.updateTimeline).toHaveBeenCalled();
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [],
-    });
+    }));
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
     expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);

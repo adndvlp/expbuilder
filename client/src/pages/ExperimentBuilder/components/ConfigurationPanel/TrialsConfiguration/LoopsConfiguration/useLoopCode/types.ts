@@ -1,10 +1,6 @@
-import type {
-  BranchCondition,
-  LoopCondition,
-  RepeatCondition,
-} from "../../../types";
+import type { BranchCondition, LoopCondition } from "../../../types";
 
-export type { BranchCondition, LoopCondition, RepeatCondition };
+export type { LoopCondition } from "../../../types";
 
 export type Trial = {
   id?: string | number;
@@ -14,13 +10,14 @@ export type Trial = {
   mappedJson?: Record<string, unknown>[];
   branches?: (string | number)[];
   branchConditions?: BranchCondition[];
-  repeatConditions?: RepeatCondition[];
   customOnFinish?: string;
 };
 
 // LoopData: Similar to Loop but with 'items' instead of 'trials' (for processed data)
 // and only the properties needed for code generation
 export type LoopData = {
+  entryItemId?: string | number | null;
+  nextItemId?: string | number | null;
   id?: string | number;
   name?: string;
   loopName: string; // Equivalent to Loop.name
@@ -32,7 +29,6 @@ export type LoopData = {
   stimuliOrders: unknown[];
   categories: boolean;
   categoryData: unknown[];
-  repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   items: TimelineItem[]; // Recursive: contains processed Trial[] or LoopData[]

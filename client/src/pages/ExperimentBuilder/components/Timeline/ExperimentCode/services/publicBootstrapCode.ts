@@ -1,8 +1,8 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
 import {
   activateResumeRouteDecisionCode,
-  resumeJumpStartupCode,
-} from "./resumeJumpStartupCode";
+  resumeStartupCode,
+} from "./resumeStartupCode";
 import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
 
 export function publicBootstrapCode(
@@ -50,7 +50,6 @@ export function publicBootstrapCode(
   return `
   (async () => {
     // --- CAPTCHA gate (hCaptcha / reCAPTCHA) ---
-    // Se omite en recargas por jump (sessionStorage persiste entre reloads del mismo tab)
     if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
       const _loadingEl = document.getElementById('jspsych-loading-overlay');
       if (_loadingEl) _loadingEl.style.display = 'none';
@@ -60,7 +59,7 @@ export function publicBootstrapCode(
       _setLoadingMsg('Creating session\u2026');
     }
 
-${resumeJumpStartupCode(storageKeys.resumeTrial)}
+${resumeStartupCode(storageKeys.resumeTrial)}
     
     // --- Configuración de Batching (cargada desde Firestore) ---
     const BATCH_CONFIG = {

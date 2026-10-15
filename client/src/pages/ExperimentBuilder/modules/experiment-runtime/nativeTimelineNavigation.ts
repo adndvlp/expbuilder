@@ -9,36 +9,21 @@ export function getNativeTimelineNavigationCode(): string {
     let nativeRuntime = null;
     let nativeSerial = 0;
     let nativeResume = null;
+    let resumeArrived = false;
     let skippedCompletedTarget = false;
     let nativeTransition = null;
     let checkpointNextFrame = null;
     let selectedPreview = false;
     const scopeKey = id => id === null ? 'root' : String(id);
-    const scopeItems = id => currentManifest()?.scopes?.[scopeKey(id)] || [];
     const scopeSnapshot = scope => ({
       entries: cloneResumeValue(scope.entries), index: scope.index + (checkpointNextFrame === scope ? 1 : 0),
       deferred: scope.deferred || null
     });
     const nativeRootSnapshot = () => nativeScopes.length
       ? scopeSnapshot(nativeScopes[0]) : null;
-    const firstDescendant = loopId => {
-      let id = scopeItems(loopId)[0];
-      const visited = new Set();
-      while (id && resolveAddress(id)?.targetKind === 'loop') {
-        if (visited.has(id)) throw new Error('Cyclic native timeline entry');
-        visited.add(id);
-        id = scopeItems(id)[0];
-      }
-      return normalizeId(id);
-    };
-    const normalEntries = id => scopeItems(id).map(itemId => ({ id: String(itemId), kind: 'normal' }));
-    const continuationEntries = (ownerId, itemId) => {
-      const all = currentManifest()?.allScopes?.[scopeKey(ownerId)] ?? scopeItems(ownerId);
-      const index = all.indexOf(itemId);
-      if (index < 0) throw new Error('Timeline continuation has no compiled position');
-      const sequential = new Set(scopeItems(ownerId));
-      return all.slice(index + 1).filter(id => sequential.has(id))
-        .map(id => ({ id, kind: 'normal' }));
+    const normalEntries = id => {
+      const entry = currentManifest()?.entries?.[scopeKey(id)];
+      return entry == null ? [] : [{ id: String(entry) }];
     };
     const routeEntries = (ownerId, targetId, options = {}) => {
       const address = resolveAddress(targetId);
@@ -47,18 +32,11 @@ export function getNativeTimelineNavigationCode(): string {
       const ownerIndex = ownerId === null ? -1 : path.indexOf(ownerId);
       if (ownerId !== null && ownerIndex < 0) throw new Error('Target is outside the retained scope');
       const entryId = path[ownerIndex + 1] ?? String(targetId);
-      const ordinaryLoopEntry = options.usedDefault && entryId !== String(targetId) &&
-        firstDescendant(entryId) === String(targetId);
       const entry = {
-        id: entryId, targetId: entryId === String(targetId) || ordinaryLoopEntry ? null : String(targetId),
-        kind: ordinaryLoopEntry ? 'normal' : options.kind || 'branch',
-        stopOwner: Object.hasOwn(options, 'stopOwner') ? options.stopOwner : ownerId,
+        id: entryId, targetId: entryId === String(targetId) ? null : String(targetId),
         parameterTarget: String(targetId), parameters: options.parameters ?? null
       };
       const entries = [entry];
-      if (options.kind === 'jump' || options.kind === 'resume') {
-        entries.push(...continuationEntries(ownerId, entryId));
-      }
       return entries;
     };
     const replaceFuture = (scope, entries) => {
@@ -86,7 +64,7 @@ export function getNativeTimelineNavigationCode(): string {
           closeNativeScopes(1);
           nativeRuntime.abortTimelineByName(name);
         }
-        return;
+        return root;
       }
       const address = resolveAddress(targetId);
       if (!address) throw new Error('Navigation target has no compiled execution address');
@@ -97,71 +75,50 @@ export function getNativeTimelineNavigationCode(): string {
       }
       const common = nativeScopes[commonIndex];
       if (!common) throw new Error('There is no active native timeline');
-      const sourceEntry = nativeScopes[nativeScopes.length - 1].current;
-      const inheritedStop = sourceEntry?.kind === 'branch'
-        ? nativeScopes.findIndex(scope => scope.id === sourceEntry.stopOwner) : -1;
-      const stopOwner = options.kind === 'branch' && inheritedStop >= 0 && inheritedStop < commonIndex
-        ? sourceEntry.stopOwner : common.id;
-      replaceFuture(common, routeEntries(common.id, String(targetId), {
-        ...options, stopOwner
-      }));
+      replaceFuture(common, routeEntries(common.id, String(targetId), options));
       if (nativeScopes.length > commonIndex + 1) {
         const name = nativeScopes[commonIndex + 1].name;
         // Aborted timelines do not run on_timeline_finish: clean their state now.
         closeNativeScopes(commonIndex + 1);
         nativeRuntime.abortTimelineByName(name);
       }
-      emit('navigation-transition', { targetId: String(targetId), kind: options.kind, retainedScope: common.id });
+      emit('navigation-transition', { targetId: String(targetId), retainedScope: common.id });
       return common;
     };
     const deferOrdinaryExit = (sourceId, targetId, options) => {
       const frame = nativeScopes[nativeScopes.length - 1];
-      const ids = frame && scopeItems(frame.id);
       const address = resolveAddress(targetId);
       if (!frame || frame.id === null || !options.usedDefault || !address ||
-          ids[ids.length - 1] !== String(sourceId) ||
-          address.enterLoopIds.includes(frame.id) ||
-          (frame.current?.kind === 'branch' && frame.current.stopOwner !== frame.id)) return false;
+          address.enterLoopIds.includes(frame.id)) return false;
       frame.deferred = { targetId: String(targetId), options };
       replaceFuture(frame, []);
       return true;
     };
     const requestBranch = (data, decision) => {
       branchDecisions.set(data, decision);
-      const targetId = decision.targetId;
-      if (targetId === null || targetId === undefined) return;
-      if (selectedPreview && targetId !== 'FINISH_EXPERIMENT' && !resolveAddress(targetId)) return;
-      if (resolveAddress(targetId)?.targetKind === 'loop') throw new Error('Invalid branch destination: branches must target trials');
-      const sourceId = data.builder_id ?? data.trial_id ?? data.loop_id ?? null;
-      const options = {
-        kind: 'branch', parameters: decision.customParameters ?? null,
-        usedDefault: Boolean(decision.usedDefault && decision.conditionId == null)
-      };
-      emit('branch-decision', { sourceId, targetId, conditionId: decision.conditionId ?? null,
-        usedDefault: decision.usedDefault, scope: resolveAddress(sourceId)?.targetOwnerId ?? 'global' });
-      if (!deferOrdinaryExit(sourceId, targetId, options)) {
-        const frame = performTransition(targetId, options);
-        nativeTransition = frame ? { source: data, targetId, frame } : null;
-      }
-    };
-    const completeTrial = (data, mergePoint) => {
-      if (!nativeRuntime || pendingJump) return;
+      let targetId = decision.targetId;
+      if (selectedPreview && targetId != null && targetId !== 'FINISH_EXPERIMENT' && !resolveAddress(targetId)) targetId = null;
       const frame = nativeScopes[nativeScopes.length - 1];
-      if (!frame || frame.current?.kind !== 'branch') return;
-      if (mergePoint) {
-        for (const scope of nativeScopes) {
-          replaceFuture(scope, continuationEntries(scope.id, scope.current.id));
-          scope.current.kind = 'normal';
+      if (!frame) return;
+      const sourceId = data.builder_id ?? data.trial_id ?? null;
+      if (targetId == null) {
+        replaceFuture(frame, []);
+      } else {
+        if (targetId !== 'FINISH_EXPERIMENT' && resolveAddress(targetId)?.targetKind !== 'trial') {
+          throw new Error('Branch destination must be a compiled trial');
         }
-        return;
+        const options = { parameters: decision.customParameters ?? null,
+          usedDefault: Boolean(decision.usedDefault && decision.conditionId == null) };
+        emit('branch-decision', { sourceId, targetId, conditionId: decision.conditionId ?? null,
+          usedDefault: options.usedDefault });
+        if (!deferOrdinaryExit(sourceId, targetId, options)) {
+          const retained = performTransition(targetId, options);
+          nativeTransition = retained ? { source: data, targetId, frame: retained } : null;
+        }
       }
-      replaceFuture(frame, []);
-      const stopIndex = nativeScopes.findIndex(scope => scope.id === frame.current.stopOwner);
-      if (stopIndex !== -1 && stopIndex < nativeScopes.length - 1) {
-        const name = nativeScopes[stopIndex + 1].name;
-        closeNativeScopes(stopIndex + 1);
-        nativeRuntime.abortTimelineByName(name);
-      }
+      // on_finish must return so on_data_update can durably acknowledge this result.
+      pendingBranch = { source: data, targetId, acknowledged: false };
+      nativeRuntime.pauseExperiment();
     };
     const takeParameters = targetId => {
       for (let index = nativeScopes.length - 1; index >= 0; index--) {
@@ -185,13 +142,11 @@ export function getNativeTimelineNavigationCode(): string {
         on_timeline_start() {
           scope.index = scope.entries.indexOf(entry);
           scope.current = entry;
-          if (activeRequest && String(activeRequest.address.targetId) === entry.id) {
-            const request = activeRequest;
-            activeRequest = null;
-            deferredResume = null;
-            persistActiveJump(null);
-            sessionStorage.removeItem(JUMP_RELOAD_KEY);
-            emit(request.context?.navigationKind === 'resume' ? 'resume-target-enter' : 'jump-target-enter', targetPayload(request));
+          if (nativeResume && !resumeArrived && entry.id === String(nativeResume.targetId)) {
+            resumeArrived = true;
+            emit('resume-target-enter', { targetId: resolveAddress(entry.id)?.targetId });
+          } else if (entry.parameterTarget === entry.id) {
+            emit('branch-target-enter', { targetId: resolveAddress(entry.id)?.targetId });
           }
         },
         conditional_function() {
@@ -202,7 +157,7 @@ export function getNativeTimelineNavigationCode(): string {
             scope.current = entry;
             return false;
           }
-          return !routingBlocked;
+          return true;
         }
       };
     }
@@ -215,6 +170,7 @@ export function getNativeTimelineNavigationCode(): string {
       const row = {
         timeline: [],
         on_timeline_start() {
+          scope.deferred = null;
           let entries;
           if (firstRow && savedRow) {
             entries = savedRow.entries.slice(savedRow.index);
@@ -246,28 +202,29 @@ export function getNativeTimelineNavigationCode(): string {
           if (index !== -1) nativeScopes.splice(index);
           finishLoop(id);
           definition.on_timeline_finish?.();
-          if (deferred && !pendingJump &&
+          if (deferred &&
               !deferOrdinaryExit(id, deferred.targetId, deferred.options)) {
             performTransition(deferred.targetId, deferred.options);
+          } else if (!deferred) {
+            const next = currentManifest()?.loopContinuations?.[id];
+            const parent = nativeScopes[nativeScopes.length - 1];
+            if (parent && next != null) replaceFuture(parent, [{ id: String(next) }]);
           }
         }
       };
     }
     const registerTrial = (id, node) => definitions.set(String(id), { kind: 'trial', node });
-    const registerLoop = (id, node) => definitions.set(String(id), { kind: 'loop', node });
+    const registerLoop = (id, node, metadata) => definitions.set(String(id), { kind: 'loop', node, metadata });
     const attach = (jsPsych, timeline) => {
-      if (!currentManifest()?.scopes || !definitions.size) return;
+      if (!definitions.size) return;
+      if (!currentManifest()?.scopes) throw new Error('Unsupported execution manifest');
       nativeRuntime = jsPsych;
       nativeResume = deferredResume;
-      const request = getActiveRequest();
-      const savedRoot = nativeResume?.globalRouting?.nativeTimeline;
-      const target = request?.address.targetId ?? nativeResume?.targetId;
-      let entries = routingBlocked ? [] : savedRoot ? savedRoot.entries.slice(savedRoot.index) : normalEntries(null);
-      if (!routingBlocked && !savedRoot && target) entries = routeEntries(null, String(target), {
-        kind: nativeResume?.kind === 'branch' ? 'branch' : 'resume',
-        parameters: nativeResume?.customParameters,
-        usedDefault: nativeResume?.usedDefault
-      });
+      if (nativeResume) validateResume(nativeResume);
+      skippedCompletedTarget = false;
+      resumeArrived = false;
+      const savedRoot = nativeResume?.globalRouting.nativeTimeline;
+      const entries = savedRoot ? savedRoot.entries.slice(savedRoot.index) : normalEntries(null);
       const root = { id: null, name: 'expbuilder-root', entries, queue: [], index: -1 };
       root.queue = entries.map(entry => makeEntry(root, entry));
       const authored = new Set([...definitions.values()].map(item => item.node));

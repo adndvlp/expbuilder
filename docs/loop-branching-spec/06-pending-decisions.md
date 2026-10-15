@@ -144,12 +144,15 @@ Cada decisión sigue el formato exigido por `SPEC.md`: entendido, dato faltante,
 
 ### DEC-19 — Conditional loop y precedencia — BLOQUEANTE
 
-- Entendido: pueden coincidir branch del trial, repeat/jump y `loop_function` del contenedor.
+- Entendido: pueden coincidir branch del trial, repeat/branching y `loop_function` del contenedor.
 - Falta: prioridad entre decisiones.
 - Impacto: máquina de estados, callbacks y repeticiones.
-- Opciones reales: exit branch > jump > loop condition; jump > exit > loop; evaluar al final con tabla de prioridad; declarar combinaciones inválidas.
+- Opciones reales: exit branch > branching > loop condition; branching > exit > loop; evaluar al final con tabla de prioridad; declarar combinaciones inválidas.
 - Pregunta: ¿qué orden de precedencia debe regir cuando se activan varias decisiones?
 
 ## Continuación
 
 Las decisiones de resume, edición, merges, publicación y callbacks están en [06B — Decisiones pendientes](./06b-pending-decisions.md).
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

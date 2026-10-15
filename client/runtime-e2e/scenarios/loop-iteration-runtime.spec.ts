@@ -78,8 +78,10 @@ test(`[RUNTIME-LOOP-CSV-BRANCH] client trial branches select a path independentl
     "row-skipped",
   ]);
   await author.configureButtonTrial("row-source", {
+          defaultNextTrialId: author.id("row-target"),
     branches: [author.id("row-target")],
   });
+  await author.configureButtonTrial("row-target", { defaultNextTrialId: null });
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);

@@ -24,7 +24,14 @@ function createTrialInput(
   input: ScopedBranchInput,
   branches?: CanvasItemId[],
 ): Omit<Trial, "id"> {
+  const parent = getParentItem(input);
   return {
+    defaultNextTrialId: branches
+      ? parent?.type === "trial"
+        ? (parent.defaultNextTrialId ?? null)
+        : null
+      : null,
+    detached: true,
     type: "Trial",
     name,
     plugin: "plugin-dynamic",
@@ -68,7 +75,7 @@ function reorderRootItems(
   const nextItems = items
     .map((item) =>
       item.type === "trial" && String(item.id) === parentKey
-        ? { ...item, branches: [trial.id] }
+        ? { ...item, branches: [trial.id], defaultNextTrialId: trial.id }
         : item,
     )
     .filter((item) => String(item.id) !== String(trial.id));
@@ -80,6 +87,7 @@ function reorderRootItems(
     id: trial.id,
     type: "trial",
     name: trial.name,
+    defaultNextTrialId: trial.defaultNextTrialId,
     branches: trial.branches ?? [],
   });
   return nextItems;

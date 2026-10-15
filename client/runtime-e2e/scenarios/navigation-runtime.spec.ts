@@ -8,38 +8,38 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("[RUNTIME-JUMP-ROOT] [TJ-01] authors a jump condition, restarts at the exact target, and completes once", async ({
+test("[RUNTIME-BRANCH-RETURN] [TJ-01] authors a return condition, continues at the exact target, and completes once", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
-  await author.createExperiment(`runtime-jump-${Date.now()}`);
-  await author.createTrial("jump-target");
-  await author.createTrial("jump-trigger");
-  await author.createTrial("after-jump");
+  await author.createExperiment(`runtime-return-${Date.now()}`);
+  await author.createTrial("return-target");
+  await author.createTrial("return-trigger");
+  await author.createTrial("after-return");
   await author.configureButtonTrials([
-    "jump-target",
-    "jump-trigger",
-    "after-jump",
+    "return-target",
+    "return-trigger",
+    "after-return",
   ]);
-  await author.configureButtonTrial("jump-trigger", {}, ["Repeat", "Continue"]);
-  await author.configureRepeatConditions("jump-trigger", [
+  await author.configureButtonTrial("return-trigger", {}, ["Repeat", "Continue"]);
+  await author.configureBranchConditions("return-trigger", [
     {
       id: 71,
       rules: [{ column: "response", op: "==", value: "0" }],
-      jumpToTrialAlias: "jump-target",
+      nextTrialAlias: "return-target",
     },
   ]);
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
-  await expect(runtime.trial("jump-target")).toBeVisible();
+  await expect(runtime.trial("return-target")).toBeVisible();
   await runtime.continue();
-  await expect(runtime.trial("jump-trigger")).toBeVisible();
+  await expect(runtime.trial("return-trigger")).toBeVisible();
   const originalSessionId = await runtime.sessionId();
   const originalDocument = await page.evaluate(() => performance.timeOrigin);
   await runtime.choose("Repeat");
-  await expect(runtime.trial("jump-target")).toBeVisible();
+  await expect(runtime.trial("return-target")).toBeVisible();
   const continuedSessionId = await runtime.sessionId();
   expect(continuedSessionId).toBe(originalSessionId);
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(
@@ -54,31 +54,29 @@ test("[RUNTIME-JUMP-ROOT] [TJ-01] authors a jump condition, restarts at the exac
       return builderIds(firstRun.session.data);
     })
     .toEqual([
-      String(author.id("jump-target")),
-      String(author.id("jump-trigger")),
+      String(author.id("return-target")),
+      String(author.id("return-trigger")),
     ]);
   await runtime.continue();
-  await expect(runtime.trial("jump-trigger")).toBeVisible();
+  await expect(runtime.trial("return-trigger")).toBeVisible();
   await runtime.choose("Continue");
-  await expect(runtime.trial("after-jump")).toBeVisible();
+  await expect(runtime.trial("after-return")).toBeVisible();
   await runtime.continue();
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
   const snapshot = await runtime.snapshot();
   expect(snapshot.events).toContainEqual(
     expect.objectContaining({
-      type: "jump-persisted",
+      type: "branch-persisted",
       payload: expect.objectContaining({
-        conditionId: 71,
-        targetId: author.id("jump-target"),
-        sourceSessionId: originalSessionId,
+        targetId: author.id("return-target"),
       }),
     }),
   );
   expect(snapshot.events).toContainEqual(
     expect.objectContaining({
-      type: "jump-target-enter",
-      payload: expect.objectContaining({ targetId: author.id("jump-target") }),
+      type: "branch-target-enter",
+      payload: expect.objectContaining({ targetId: author.id("return-target") }),
     }),
   );
 
@@ -87,11 +85,11 @@ test("[RUNTIME-JUMP-ROOT] [TJ-01] authors a jump condition, restarts at the exac
     continuedSessionId,
   );
   expect(builderIds(persisted.session.data)).toEqual([
-    String(author.id("jump-target")),
-    String(author.id("jump-trigger")),
-    String(author.id("jump-target")),
-    String(author.id("jump-trigger")),
-    String(author.id("after-jump")),
+    String(author.id("return-target")),
+    String(author.id("return-trigger")),
+    String(author.id("return-target")),
+    String(author.id("return-trigger")),
+    String(author.id("after-return")),
   ]);
   await runtime.assertNoRuntimeFailures();
 });
@@ -135,7 +133,7 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
   await runtime.waitForPersistence();
   const checkpoint = await runtime.resumeCheckpoint(storageKeys.resumeTrial);
   expect(checkpoint).toMatchObject({
-    version: 2,
+    version: 3,
     experimentRevision: expect.any(String),
     completed: {
       builderId: author.id("resume-source"),
@@ -149,10 +147,9 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
         nativeTimeline: {
           index: 1,
           entries: [
-            { id: String(author.id("resume-source")), kind: "normal" },
+            { id: String(author.id("resume-source")),  },
             {
               id: String(author.id("resume-target")),
-              kind: "branch",
               parameters: customParameters,
             },
           ],
@@ -212,10 +209,6 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
         checkpoint: localStorage.getItem(keys.resumeTrial),
         currentSession: localStorage.getItem(keys.sessionId),
         participant: localStorage.getItem(keys.participant),
-        jumpRequest: localStorage.getItem(keys.jumpRequest),
-        jumpTarget: localStorage.getItem(keys.jumpTarget),
-        jumpReload: sessionStorage.getItem(keys.jumpReload),
-        jumpContext: sessionStorage.getItem(keys.jumpContext),
       }),
       storageKeys,
     ),
@@ -223,10 +216,6 @@ test("[RUNTIME-RESUME-BRANCH] [TRES-02] [TRES-09] resumes the resolved route wit
     checkpoint: null,
     currentSession: null,
     participant: null,
-    jumpRequest: null,
-    jumpTarget: null,
-    jumpReload: null,
-    jumpContext: null,
   });
   await runtime.assertNoRuntimeFailures();
 });
@@ -256,7 +245,7 @@ test("[RUNTIME-RESUME-SEQUENTIAL] [TRES-01] resumes after a completed root trial
   await runtime.waitForPersistence();
   expect(await runtime.resumeCheckpoint(storageKeys.resumeTrial)).toMatchObject(
     {
-      version: 2,
+      version: 3,
       experimentRevision: expect.any(String),
       completed: {
         builderId: author.id("resume-first"),

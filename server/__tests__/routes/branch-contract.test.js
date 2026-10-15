@@ -20,15 +20,15 @@ const condition = (target) => ({
   customParameters: { stimulus: { source: "typed", value: "keep" } },
 });
 
-const seedDoc = () => ({
+const seedDoc = () => ({ entryItemId: 1,
   experimentID: "E1",
   updatedAt: "before",
   trials: [
-    { id: 1, name: "A", branches: ["2"], branchConditions: [condition("2")] },
-    { id: 2, name: "B", parentLoopId: "container", branches: [3] },
-    { id: 3, name: "C", branches: [] },
+    { defaultNextTrialId: null, id: 1, name: "A", branches: ["2"], branchConditions: [condition("2")] },
+    { defaultNextTrialId: null, branchConditions: [], id: 2, name: "B", parentLoopId: "container", branches: [3] },
+    { defaultNextTrialId: null, branchConditions: [], id: 3, name: "C", branches: [] },
   ],
-  loops: [{ id: "container", name: "Container", trials: [2], repetitions: 2 }],
+  loops: [{ nextItemId: null, entryItemId: 2, id: "container", name: "Container", trials: [2], repetitions: 2 }],
   timeline: [
     { id: 1, type: "trial", name: "A", branches: ["2"] },
     { id: "container", type: "loop", name: "Container", trials: [2] },
@@ -260,6 +260,11 @@ describe("trial-only branching contract", () => {
           doc.timeline.push({ id: trial.id, type: "trial", name: trial.name });
         }
       }
+      doc.entryItemId = "container";
+      for (const loop of doc.loops) {
+        loop.entryItemId = loop.trials[0] ?? null;
+        loop.nextItemId = null;
+      }
       const graph = buildExperimentGraph(doc);
       expect(graph.diagnostics).toEqual([]);
       expect(graph.edges.find(({ sourceId }) => sourceId === 1)).toEqual({
@@ -296,7 +301,7 @@ describe("trial-only branching contract", () => {
   test("API accepts conditional trial destinations across scopes", async () => {
     const updates = {
       branches: ["2", 3],
-      branchConditions: [condition("2"), condition(null)],
+      branchConditions: [condition("2"), condition(3)],
     };
     const result = (
       await request(app).patch("/api/trial/E1/1").send(updates).expect(200)

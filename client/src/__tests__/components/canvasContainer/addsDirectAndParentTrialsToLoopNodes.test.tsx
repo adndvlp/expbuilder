@@ -120,18 +120,18 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("As Parent (Sequential)"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
         type: "Trial",
         name: "New Trial",
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
         branches: [2],
-      });
+      }));
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [99],
-    });
+    }));
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];

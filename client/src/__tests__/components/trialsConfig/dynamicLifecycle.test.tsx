@@ -48,10 +48,10 @@ describe("TrialsConfig", () => {
       expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(
         10,
         "columnMapping",
-        {
+        expect.objectContaining({
           stimulus: { source: "typed", value: "<p>Dynamic</p>" },
           choices: { source: "typed", value: ["y", "n"] },
-        },
+        }),
       );
     });
     expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(

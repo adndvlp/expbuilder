@@ -18,7 +18,6 @@ type Navigation = {
   attach(instance: Instance, timeline: Node[]): void;
   registerTrial(id: string | number, node: Node): void;
   activateResume(decision: Row): boolean;
-  requestJump(target: string | number, context: Row, data: Row): void;
   onTrialPersisted(data: Row): void;
   takeParameters(id: string | number): Row | null;
   checkpointTrialStart(data: Row): void;
@@ -34,9 +33,11 @@ export function scopeManifest(
   scopes: Record<string, (string | number)[]>,
 ): ExecutionAddressManifest {
   const manifest: ExecutionAddressManifest = {
-    version: 2,
+    version: 3,
     revision: "fixture-r1",
     nextBySource: {},
+    entries: Object.fromEntries(Object.entries(scopes).map(([id, items]) => [id, items[0] == null ? null : String(items[0])])),
+    loopContinuations: {},
     scopes: {},
     allScopes: {},
     addressesByTarget: {},
@@ -74,7 +75,7 @@ export function nativeTrial(
     pluginName: "html-keyboard-response",
     timelineProps: `const ${variable} = {
       type: AutoTrial, save_timeline_variables: true, data: { builder_id: ${JSON.stringify(id)} },
-      ${generateOnFinishCode({ ...options, getVarName: (name) => name })}
+      ${generateOnFinishCode({ defaultNextTrialId: options.branches?.[0] ?? null, ...options, getVarName: (name) => name })}
     }; window.ExpBuilderNavigation.registerTrial(${JSON.stringify(id)}, ${variable});`,
   };
 }
@@ -84,7 +85,6 @@ export function nativeTimelineRuntime(
   manifest: ExecutionAddressManifest,
   options: {
     resume?: Row;
-    storedJump?: string;
     response?: string;
     onTrial?: (data: Row, nav: Navigation) => void;
   } = {},
@@ -94,9 +94,7 @@ export function nativeTimelineRuntime(
     "document",
     `${bundle}; return window.initJsPsych;`,
   )(window, document);
-  const storage = new Map<string, string>(
-    options.storedJump ? [["jsPsych_jumpRequest", options.storedJump]] : [],
-  );
+  const storage = new Map<string, string>();
   const store = {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => void storage.set(key, value),
@@ -105,6 +103,7 @@ export function nativeTimelineRuntime(
   const runtimeWindow = {
     ExpBuilderExecutionAddresses: manifest,
     ExpBuilderNavigation: undefined as unknown as Navigation,
+    ExpBuilderPersistence: undefined as unknown as { start(): object; finish(token: object): void },
     ExpBuilderRuntime: { emit: vi.fn(), reportError: vi.fn() },
     location: { reload: vi.fn() },
   };
@@ -118,7 +117,7 @@ export function nativeTimelineRuntime(
         runtimeWindow.ExpBuilderNavigation.checkpointTrialStart(trial.data);
     },
     on_data_update(data: Row) {
-      checkpoint(data);
+      store.setItem("jsPsych_resumeTrial", JSON.stringify(checkpoint(data)));
       runtimeWindow.ExpBuilderNavigation.onTrialPersisted(data);
     },
   });
@@ -156,7 +155,7 @@ export function nativeTimelineRuntime(
     const timeline = [];
     ${resumeCode()}
     ${code}
-    return { timeline, checkpoint: _createResumeCheckpoint };
+    return { timeline, checkpoint: _createResumeCheckpoint, resolveCheckpoint: _resolveResumeBranch };
   `,
   )(runtimeWindow, store, store, instance, AutoTrial);
   const timeline: Node[] = compiled.timeline;
@@ -169,6 +168,7 @@ export function nativeTimelineRuntime(
     instance,
     timeline,
     storage,
+    resolveCheckpoint: compiled.resolveCheckpoint as (raw: string) => Row | null,
     async run() {
       nav.attach(instance, timeline);
       try {

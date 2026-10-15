@@ -43,8 +43,8 @@ describe("coverage branched conditions list", () => {
       undefined,
     );
 
-    fireEvent.change(selects[2], { target: { value: "jump-a" } });
-    expect(props.updateNextTrial).toHaveBeenCalledWith(1, "jump-a");
+    fireEvent.change(selects[2], { target: { value: "branch-a" } });
+    expect(props.updateNextTrial).toHaveBeenCalledWith(1, "branch-a");
 
     fireEvent.change(selects[3], { target: { value: "duration" } });
     expect(props.setConditionsWrapper).toHaveBeenCalledWith(

@@ -14,7 +14,7 @@ TrialCode/
     ├── paramsOverrideGenerator.ts     # Lógica de params override
     ├── branchConditionsGenerator.ts   # Lógica de branching
     ├── branchCustomParamsGenerator.ts # Params de branching
-    └── repeatConditionsGenerator.ts   # Lógica de repeat/jump
+    └── branchConditionsGenerator.ts   # Lógica de repeat/branching
 
 LoopsConfiguration/useLoopCode/
 ├── index.ts                           # Generador principal de loops
@@ -105,48 +105,8 @@ const propValue = data[columnName];
 
 Los generadores de trials delegan en `window.ExpBuilderBranching`: `decide` evalúa ramas del trial y `evaluateReferencedCondition` consulta los datos del trial referenciado. `generateConditionalLoopFunction.ts` usa ese evaluador para `loopConditions`. Los contenedores transportan decisiones de trials sin evaluar ramas propias.
 
-### 3. Variables Globales vs Loop-Scoped
+### 3. Estado de navegación
 
-#### Variables Globales (Timeline Principal)
+`window.ExpBuilderNavigation` registra las definiciones y coordina las colas futuras de los timelines nativos. El manifiesto versión 3 declara entradas y continuaciones por ID. Las condiciones del trial seleccionan una salida; no hay banderas globales ni variables de navegación separadas por loop.
 
-```javascript
-// Definidas una vez, accesibles en todo el experimento
-window.nextTrialId = null;
-window.skipRemaining = false;
-window.branchingActive = false;
-window.branchCustomParameters = null;
-```
-
-**Uso**: Branching entre trials que no están en loops
-
-#### Variables Loop-Scoped (Dentro de Loops)
-
-```javascript
-// Definidas para cada loop, solo accesibles dentro del loop
-let loop_myLoop_NextTrialId = null;
-let loop_myLoop_SkipRemaining = false;
-let loop_myLoop_BranchingActive = false;
-let loop_myLoop_BranchCustomParameters = null;
-let loop_myLoop_TargetExecuted = false;
-let loop_myLoop_RouteInherited = false;
-let loop_myLoop_InheritedTrialId = null;
-let loop_myLoop_InheritedTrialExecuted = false;
-```
-
-**Uso**: transporte de decisiones entre trials dentro del scope y hacia otros scopes. El objeto de iteración limpia decisiones locales resueltas después de cada fila; la finalización propaga sólo un destino pendiente con sus parámetros. El ID heredado permite reconocer que el destino recibido ya se ejecutó aunque encadene otra rama.
-
-**Función de nombres dinámicos**:
-
-```typescript
-const getVarName = (baseName: string): string => {
-  if (!isInLoop || parentLoopId === null || parentLoopId === undefined) {
-    return baseName; // Trial fuera de loop
-  }
-  // Trial dentro de loop
-  const parentLoopIdSanitized = sanitizeName(parentLoopId);
-  return `loop_${parentLoopIdSanitized}_${baseName}`;
-  // Ej: "loop_myLoop_NextTrialId"
-};
-```
-
----
+Los frames activos conservan las filas, órdenes, repeticiones, resultados condicionales y parámetros pendientes para resume. El checkpoint guarda este estado después del resultado del origen, antes de continuar.

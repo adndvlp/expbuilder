@@ -176,9 +176,7 @@ describe("useExperimentCode", () => {
     expect(mocks.localProps.evaluateCondition).toContain(
       "const evaluateCondition = window.ExpBuilderBranching.evaluateCondition",
     );
-    expect(mocks.localProps.evaluateCondition).toContain(
-      "window.branchCustomParameters = null",
-    );
+    expect(mocks.localProps.evaluateCondition).not.toContain("window.nextTrialId");
     expect(mocks.publicProps.evaluateCondition).toBe(mocks.localProps.evaluateCondition);
     expect(mocks.publicProps.branchingEvaluation).not.toMatch(
       /getNextTrialId|abortExperiment|\.decide\(/,

@@ -8,12 +8,14 @@ type TimelineItemBase = {
 
 export type TrialTimelineItem = TimelineItemBase & {
   type: "trial";
+  defaultNextTrialId: string | number | null;
   branches?: (string | number)[];
   trials?: never;
 };
 
 export type LoopTimelineItem = TimelineItemBase & {
   type: "loop";
+  nextItemId: string | number | null;
   trials?: (string | number)[];
   branches?: never;
   branchConditions?: never;
@@ -30,6 +32,7 @@ export type GraphBranchEdge = {
 };
 
 export type GraphScopeView = {
+  entryItemId: string | number | null;
   scopeId: GraphScopeId;
   parentScopeId: GraphScopeId;
   items: TimelineItem[];

@@ -74,6 +74,7 @@ export async function generateTrialCode(
           trial_name: ${JSON.stringify(fullTrial.name)},
           ${isInLoop ? "isInLoop: true," : ""}
           branches: ${JSON.stringify(branches)},
+          defaultNextTrialId: ${JSON.stringify(fullTrial.defaultNextTrialId)},
           branchConditions: ${JSON.stringify(branchConditions)}
         }
       );
@@ -82,8 +83,12 @@ export async function generateTrialCode(
     if (${trialName}_webgazer_completion) {
       const previousFinish = ${trialName}_webgazer_completion.on_finish;
       const navigate = ({${generateOnFinishCode({
-        branches, branchConditions, repeatConditions: fullTrial.repeatConditions,
-        isMergePoint: isMergePointInScope, getVarName: name => name,
+        branches,
+        branchConditions,
+        defaultNextTrialId: fullTrial.defaultNextTrialId,
+        customOnFinish: fullTrial.customOnFinish,
+        isMergePoint: isMergePointInScope,
+        getVarName: (name) => name,
       })}}).on_finish;
       ${trialName}_webgazer_completion.on_finish = async function(data) {
         await previousFinish?.(data);
@@ -153,7 +158,7 @@ export async function generateTrialCode(
       id: fullTrial.id,
       branches: fullTrial.branches,
       branchConditions: fullTrial.branchConditions,
-      repeatConditions: fullTrial.repeatConditions,
+      defaultNextTrialId: fullTrial.defaultNextTrialId,
       paramsOverride: fullTrial.paramsOverride,
       pluginName: fullTrial.plugin,
       parameters,

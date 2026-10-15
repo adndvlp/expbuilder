@@ -24,9 +24,9 @@ Leyenda:
 | Un destino compartido o destinos diferentes | VIS-05/06, VC1/VC2 | TD-11, TL-01–06, TR-06 |
 | Mantener estructura al expandir/comprimir | PROJ-01–10 | TL-01–13 |
 | No copiar estilos de Canva | alcance visual, VIS-08 | regresión de theme/color |
-| Branching y código generado | [01](./01-current-state.md), [05](./05-runtime-codegen-resume-jump.md) | TG/TR |
-| Loops, trials y código generado | [01](./01-current-state.md), [03](./03-domain-data-api.md), [05](./05-runtime-codegen-resume-jump.md) | TA/TG/TR |
-| Resume y jump to trial | contratos RES/JUMP | TRES/TJ |
+| Branching y código generado | [01](./01-current-state.md), [05](./05-native-runtime-and-resume.md) | TG/TR |
+| Loops, trials y código generado | [01](./01-current-state.md), [03](./03-domain-data-api.md), [05](./05-native-runtime-and-resume.md) | TA/TG/TR |
+| Resume y branching to trial | contratos RES/branching | TRES/TJ |
 | Identificar límites de viabilidad | veredicto técnico y spike | TR-01–16 + ADR runtime |
 | No asumir decisiones faltantes | [06A](./06-pending-decisions.md) y [06B](./06b-pending-decisions.md) | gate previo a TDD |
 | Cumplir `SPEC.md` | arquitectura y fases de [08](./08-implementation-plan.md) | gates de calidad de [07](./07-test-acceptance-plan.md) |
@@ -81,11 +81,11 @@ Las seis lecturas se limitan a topología. DEC-28–30 evitan inferir de ellas c
 | `collapseLoopEdgesToCircuits.ts` | colapsa control edges | mantener control separado de exits |
 | edge theme/color/clearance helpers | visual React Flow actual | reutilizar IDs/slots y extender routing sin redesign |
 
-### Condiciones de branch y jump
+### Condiciones de branch y branching
 
 | Superficie | Hecho confirmado | Consecuencia requerida |
 |---|---|---|
-| `BranchedTrial/index.tsx` | clasifica por branches o forward local; otros son jumps | clasificar por semantic edge/action |
+| `BranchedTrial/index.tsx` | clasifica por branches o forward local; otros son branchings | clasificar por semantic edge/action |
 | `branchingSaveUtils.ts` | separa BranchCondition y RepeatCondition | aceptar branches cross-scope como branch |
 | BranchConditions UI | conditions apuntan a target IDs | identidad final según DEC-13 |
 | custom parameter UI/generators | sólo branch lleva overrides | transportar por resolved route |
@@ -100,14 +100,14 @@ Las seis lecturas se limitan a topología. DEC-28–30 evitan inferir de ellas c
 | `useLoopCode/BranchesCode.ts` | branch múltiple de loop conserva TODO/primera branch | evaluator único sin fallback accidental |
 | `generateItemWrappers.ts` | busca target sólo en items del loop y resetea flags localmente | address/router con cleanup probado |
 
-### Resume, jump y sesiones
+### Resume, branching y sesiones
 
 | Superficie | Hecho confirmado | Consecuencia requerida |
 |---|---|---|
 | `ExperimentCode/ResumeCode.ts` | persiste branches/conditions/data del último trial | checkpoint con next address/route |
 | `services/localRuntime.ts` | reanuda con ID escalar | resolver versionado compartido |
 | `services/publicInitCode.ts` | lógica pública equivalente pero separada | misma serialización/evaluator |
-| repeat condition generators | reload con `jumpToTrialId` | `JumpRequest` con enter path |
+| repeat condition generators | reload con `nextTrialId` | `branchingRequest` con enter path |
 | wrappers raíz/loops | sólo comparan su propio ID/target local | consumir cada segmento del address |
 | bundle jsPsych | expone abort de timeline, efecto de callbacks no demostrado | spike sobre la versión incluida |
 
@@ -130,7 +130,7 @@ La matriz no exhaustiva de interacciones, su evidencia vertical y sus bloqueos c
 | Modal/creación | DEC-06–10, DEC-12, DEC-30/31 |
 | Persistencia | DEC-11–14, DEC-22/24, DEC-36 |
 | Continuación runtime | DEC-15–19, DEC-28/32, DEC-39–41 |
-| Resume/jump | DEC-20/21, DEC-34/35 |
+| Resume/branching | DEC-20/21, DEC-34/35 |
 | Visual/layout | DEC-08, DEC-23, DEC-27 |
 | Límites | DEC-23/38 |
 | Release | DEC-25/26/37 |
@@ -138,3 +138,6 @@ La matriz no exhaustiva de interacciones, su evidencia vertical y sus bloqueos c
 ## Cierre de trazabilidad
 
 Ninguna de las superficies anteriores puede considerarse compatible por similitud visual. El gate final exige que un mismo fixture persistido produzca: ownership único, proyecciones correctas, condiciones conservadas y la misma traza en preview, local y publicación.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

@@ -16,9 +16,9 @@ export function buildLocalExperimentCode(
       code: prelude,
       accesses: [
         {
-          state: "jump",
+          state: "custom-parameters",
           mode: "writer",
-          evidence: "localStorage.setItem(JUMP_REQUEST_KEY, JSON.stringify(request))",
+          evidence: "parameters: options.parameters ?? null",
         },
         {
           state: "cleanup",
@@ -40,17 +40,7 @@ export function buildLocalExperimentCode(
         {
           state: "route",
           mode: "consumer",
-          evidence: "resumeRouteDecision = _resolveResumeBranch(resumeRaw)",
-        },
-        {
-          state: "jump",
-          mode: "consumer",
-          evidence: "window.ExpBuilderNavigation.consumeReloadMarker()",
-        },
-        {
-          state: "custom-parameters",
-          mode: "writer",
-          evidence: "window.branchCustomParameters =",
+          evidence: "_resolveResumeBranch(resumeRaw)",
         },
         {
           state: "custom-parameters",

@@ -3,11 +3,10 @@ import {
   BranchCondition,
   DataDefinition,
   FieldDefinition,
-  RepeatCondition,
   Trial,
   Loop,
 } from "../../types";
-import { Condition, Parameter, RepeatConditionState } from "./types";
+import { Condition, Parameter } from "./types";
 import type { TimelineItem } from "../../../../contexts/TrialsContext";
 
 type Props = {
@@ -25,7 +24,6 @@ type Props = {
   }>;
   getLoopTimeline: (loopId: string | number) => Promise<TimelineItem[]>;
   setConditions: Dispatch<SetStateAction<Condition[]>>;
-  setRepeatConditions: Dispatch<SetStateAction<RepeatConditionState[]>>;
 };
 
 export default function useLoadData({
@@ -40,7 +38,6 @@ export default function useLoadData({
   loadPluginParameters,
   getLoopTimeline,
   setConditions,
-  setRepeatConditions,
 }: Props) {
   const hasLoaded = useRef(false);
   const requestedTargetIds = useRef<Set<string>>(new Set());
@@ -81,7 +78,7 @@ export default function useLoadData({
       });
   }, [selectedTrial?.id]);
 
-  // Load existing branch conditions and repeat conditions when modal opens
+  // Load branch conditions when modal opens
   useEffect(() => {
     if (!isOpen) {
       hasLoaded.current = false;
@@ -119,32 +116,7 @@ export default function useLoadData({
       });
     }
 
-    // Load repeat conditions (jump to any trial) and convert them to Condition format
-    if (selectedTrial && selectedTrial.repeatConditions) {
-      const loadedRepeatConditions = selectedTrial.repeatConditions.map(
-        (rc: RepeatCondition) => ({
-          id: rc.id,
-          rules: rc.rules,
-          nextTrialId: rc.jumpToTrialId, // Map jumpToTrialId to nextTrialId
-          customParameters: {}, // Jump conditions don't have custom parameters
-        }),
-      );
-      allConditions.push(...loadedRepeatConditions);
-    }
-
     setConditions(allConditions);
-
-    // Keep separate repeat conditions for the old Repeat tab (will be removed later)
-    if (selectedTrial && selectedTrial.repeatConditions) {
-      const loadedRepeatConditions = selectedTrial.repeatConditions.map(
-        (rc: RepeatCondition) => ({
-          ...rc,
-        }),
-      );
-      setRepeatConditions(loadedRepeatConditions);
-    } else {
-      setRepeatConditions([]);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 

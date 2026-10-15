@@ -35,10 +35,14 @@ export function buildLocalDataCallback({
         });
       }
 
-      ${branchingEvaluation}${localParams.on_data_update?.trim() ? `
+      ${branchingEvaluation}${
+        localParams.on_data_update?.trim()
+          ? `
 
       // --- User code (on_data_update) ---
-      ${localParams.on_data_update.trim()}` : ""}
+      ${localParams.on_data_update.trim()}`
+          : ""
+      }
     },
 `;
 }
@@ -51,7 +55,7 @@ export function buildLocalFinishCallback({
   return `
     on_finish: async function() {
       if (window.ExpBuilderNavigation.isTransitionPending()) {
-        _runtimeTrace('experiment-finish-suppressed', { reason: 'jump' });
+        _runtimeTrace('experiment-finish-suppressed', { reason: 'branching' });
         return;
       }
       _showLoading('Saving your data…');
@@ -100,7 +104,9 @@ export function buildLocalFinishCallback({
           experimentID: ${JSON.stringify(id)},
           sessionId: trialSessionId
         });
-        _showSuccess();${localParams.on_finish?.trim() ? `
+        _showSuccess();${
+          localParams.on_finish?.trim()
+            ? `
         try {
         // --- User code (on_finish) ---
         ${localParams.on_finish.trim()}
@@ -108,7 +114,9 @@ export function buildLocalFinishCallback({
           console.error('[experiment] on_finish failed', {
             error: userError && userError.message ? userError.message : String(userError)
           });
-        }` : ""}
+        }`
+            : ""
+        }
         return true;
       } catch (error) {
         _runtimeError(error, { source: 'session-completion' });

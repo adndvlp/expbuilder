@@ -1,206 +1,30 @@
-# 08 - Experiment Execution & Publishing
+# Execution and code generation
 
-## Code Generation
+Every navigation connection goes from a trial to a trial. A destination may precede its source, be shared by several routes, or belong to a different loop. Loops are containers; they are not navigation sources or destinations.
 
-### When Code is Generated
+Each trial stores `branches`, a flat ordered `branchConditions` list, and `defaultNextTrialId`. The first matching condition selects its `nextTrialId` and optional `customParameters`. If none matches, the explicit default is used. A null default closes the current route; `FINISH_EXPERIMENT` ends the experiment. Configured condition and default destinations must have visible edges. Their creation dates and positions in arrays do not choose the route.
 
-Code is generated **dynamically at execution time**, not stored in the database (except WebGazer). This happens in two contexts:
-
-1. **Run Experiment**: Local execution on `http://localhost:3000/{experimentName}`
-2. **Run Demo/Preview**: Preview a single trial at `http://localhost:3000/{experimentID}/preview`
-3. **Publish**: Generate public CDN-compatible code for GitHub Pages
-
-### Generation Pipeline
-
-```
-Timeline (ordered Trial/Loop IDs)
-  ↓
-LoopTimelineCode: Wraps loops in jsPsych timeline structure
-  ↓
-TrialCode: Generates individual trial configurations
-  ↓
-ExperimentBase: Assembles timeline + extensions + preload + fullscreen
-  ↓
-Client sends to server: POST /api/run-experiment or /api/trials-preview
-  ↓
-Server: Injects code into HTML template via cheerio
-  ↓
-HTML file served at /experimentName or /experimentID/preview
-```
-
-### Trial Code Structure
-
-```javascript
+```json
 {
-  type: jsPsychHtmlKeyboardResponse,  // from plugin registry
-  timeline: [{                         // single trial or array for CSV
-    stimulus: '<p>Hello</p>',
-    trial_duration: 2000,
-    data: { trial_name: 'Trial 1' },
-    on_start: function(trial) { /* paramsOverride logic */ },
-    on_finish: function(data) { /* branching/jump logic */ }
+  "branches": [10, 20],
+  "branchConditions": [{
+    "id": 1,
+    "rules": [{ "column": "response", "op": "==", "value": "yes" }],
+    "nextTrialId": 20,
+    "customParameters": { "stimulus": { "source": "typed", "value": "Selected" } }
   }],
-  timeline_variables: csvData,        // if CSV is attached
-  randomize_order: true,              // from loop config
-  repetitions: 3,                     // from loop config
-  conditional_function: function() {  // loop conditions
-    /* return true to repeat */
-  }
+  "defaultNextTrialId": 10
 }
 ```
 
-### Loop Code Generation
+Every root or loop scope has an explicit `entryItemId`. A loop additionally stores its structural `nextItemId`, used when its native procedure completes. Sequential authoring operations edit these connections explicitly. Reordering stored definitions alone does not add navigation.
 
-Loops generate jsPsych timeline arrays:
-- `timeline_variables`: Array of CSV row objects
-- `sample`: Uses `jsPsych.randomization.sampleWithReplacement` or `repeat`
-- `randomize_order`: From loop's `randomize` config
-- `repetitions`: From loop's `repetitions` config
-- `conditional_function`: Checks loop conditions against trial data
+Entering a destination follows its own outgoing connections. Sharing that destination does not make unrelated later trials execute. Selecting a previous or current trial creates a fresh execution in the future of the active jsPsych timeline.
 
-### Orders Implementation
+Within an active loop, a same-scope transition retains its CSV row and repetition. A conditional exit closes the abandoned descendant timelines immediately. An ordinary default exit is deferred until the containing loop completes its rows, repetitions and conditional cycles. Closing a route inside a loop completes its row and allows native iteration to continue.
 
-When orders are configured:
-```javascript
-if (trial.orders) {
-  trialData['stimuliOrders'] = JSON.parse(trialColumnMapping.stimuliOrders.value);
-}
-// In generated code:
-var order = jsPsych.randomization.shuffle(stimuliOrders);
-```
+Loop `repetitions`, `loopConditions`, `isConditionalLoop`, CSV sampling, orders, categories and custom lifecycle callbacks retain their roles. Navigation conditions belong to trials.
 
-### Categories Implementation
-```javascript
-if (trial.categories) {
-  trialData['categoryColumn'] = trialColumnMapping.trialCategory.value;
-}
-```
+All destinations support one-time parameter overrides and the same persistence barrier. The source callback returns, its result is saved once, and execution continues after durable acknowledgement. Navigation does not reload the document. Resume restores the version 3 cursor, loop sampling state, future entries and pending destination parameters without reevaluating the completed source.
 
----
-
-## Local Execution (`Run Experiment`)
-
-1. Frontend generates complete experiment code
-2. `POST /api/run-experiment/:experimentID` with `{ generatedCode, canvasStyles }`
-3. Server:
-   - Reads experiment name from DB
-   - Resolves canvasStyles (body → DB fallback → experiment appearance settings)
-   - Copies fresh `experiment_template.html` to `experiments_html/{name}.html`
-   - Injects generated code as `<script id="generated-script">`
-   - Injects canvas background color
-   - Returns `{ experimentUrl: "http://localhost:3000/{name}" }`
-4. Opens in in-app browser or system browser
-
-### Experiment HTML Template
-```html
-<html>
-<head>
-  <!-- jsPsych CSS -->
-  <!-- jsPsych core script -->
-  <!-- All plugin scripts (CDN or local) -->
-  <!-- Custom plugin scripts -->
-  <!-- webgazer.js if needed -->
-</head>
-<body>
-  <!-- Generated experiment script injected here -->
-</body>
-</html>
-```
-
----
-
-## Trial Preview (`Run Demo`)
-
-Similar to full experiment but for a single trial:
-1. Frontend generates single-trial code
-2. `POST /api/trials-preview/:experimentID` with `{ generatedCode }`
-3. Server uses `trials_preview_template.html`
-4. Served at `/experimentID/preview`
-
----
-
-## Publishing (`Publish`)
-
-### Overview
-Publishes the experiment to GitHub Pages via Firebase Cloud Functions.
-
-### Steps (Server-side)
-
-1. **Validate**: Requires `uid` and `generatedPublicCode`
-2. **Read experiment HTML**: Uses existing compiled HTML or falls back to template
-3. **Replace scripts**: Swaps local jsPsych bundle for CDN versions:
-   ```html
-   <!-- Removed: jspsych-bundle.js, webgazer.js, dynamicplugin.js -->
-   <!-- Added: -->
-   <script src="https://unpkg.com/jspsych@8.2.2"></script>
-   <script src="https://unpkg.com/jspsych-expbuilder-plugin-dynamic@1.0.2/dist/index.iife.js"></script>
-   ```
-4. **Inject used plugins**: Only plugins actually used by the experiment's trials
-5. **Inject preload**: If experiment has uploaded media files
-6. **Inject fullscreen**: If fullScreen mode is enabled
-7. **Convert media**: All uploaded images/videos/audio → base64
-8. **Replace generated code**: Swap local generated code with public code
-9. **Send to Firebase**:
-   ```json
-   POST {FIREBASE_URL}/publishExperiment
-   {
-     uid, repoName, htmlContent, description, isPrivate: false,
-     mediaFiles: [{ type, filename, content: base64 }],
-     experimentID, storageProvider
-   }
-   ```
-10. Firebase creates/updates GitHub repo with `index.html` + media files
-11. Returns `{ repoUrl, pagesUrl }`
-12. Server saves `pagesUrl` to experiment document
-
-### Public Code Generation
-The frontend generates special "public" code that:
-- Uses CDN plugin references instead of local imports
-- Has base64-encoded media instead of local file references
-- References dynamic plugin from CDN instead of local server
-
----
-
-## Development vs Production Modes
-
-### DevMode (`isDevMode: true`)
-- Experiments show developer toolbar
-- Trial boundaries are visible
-- Console logging is enabled
-- Running experiments are tracked in `configs[]`
-
-### SaveMode (`isSaveMode: false`)
-- Results are NOT saved to the database
-- Useful for testing without generating data
-- Participant number still increments
-
-### Toggle
-Both are configurable via the UI (stored in `configs.isDevMode` and `configs.isSaveMode`)
-
----
-
-## Appearance Settings
-
-Stored per-experiment in `experiment.appearanceSettings`:
-- `backgroundColor`: CSS hex color for experiment background
-- `fullScreen`: Whether the experiment fills the viewport
-- `progressBar`: Whether to show a progress bar
-
-Applied during compilation:
-- Background color injected as CSS
-- FullScreen mode adds `plugin-fullscreen` trial to timeline start
-- Progress bar is handled by jsPsych timeline configuration
-
----
-
-## Session Name Configuration
-
-Customizable session naming for local experiments:
-- Tokens: `{ type: "text" | "participantId" | "counter" | "custom", value: string }`
-- Separator: string (default `_`)
-- Example: `[participantId, text("session"), counter(1)]` with separator `_` → `P1_session_1`
-
-Session names with `participantId` or `counter` tokens are resolved after the session is first created:
-1. Create a durable UUID session and receive a positive participant number.
-2. Resolve the visible name from the participant number and configured tokens.
-3. `PATCH /api/rename-session/:experimentID` updates only `displayName`; session identity does not change.
+Imports and artifact generation require the current contract. Invalid navigation is rejected before changing experiment data or restoring media. There is no conversion of old navigation records or checkpoints.

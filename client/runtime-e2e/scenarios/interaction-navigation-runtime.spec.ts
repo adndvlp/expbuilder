@@ -9,60 +9,61 @@ import {
   localRuntimeStorageKeys,
 } from "../support/session";
 
-test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without replaying the branch source", async ({
+test("[RUNTIME-BRANCH-CHAIN] chains an authored branch into a root return without replaying the branch source", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
-  await author.createExperiment(`runtime-branch-jump-${Date.now()}`);
-  await author.createTrial("branch-jump-source");
-  await author.createTrial("branch-jump-skipped");
-  await author.createTrial("branch-jump-target");
-  await author.addRootBranch("branch-jump-source", "branch-jump-trigger");
+  await author.createExperiment(`runtime-branch-return-${Date.now()}`);
+  await author.createTrial("branch-return-source");
+  await author.createTrial("branch-return-skipped");
+  await author.createTrial("branch-return-target");
+  await author.addRootBranch("branch-return-source", "branch-return-trigger");
   await author.configureButtonTrials([
-    "branch-jump-source",
-    "branch-jump-skipped",
-    "branch-jump-target",
+    "branch-return-source",
+    "branch-return-skipped",
+    "branch-return-target",
   ]);
   await author.configureButtonTrial(
-    "branch-jump-trigger",
+    "branch-return-trigger",
     {},
-    ["Jump", "Continue"],
+    ["Return", "Continue"],
   );
-  // The trigger is a branch destination; select it explicitly after the jump.
-  await author.configureButtonTrial("branch-jump-target", {
-    branches: [author.id("branch-jump-trigger")],
+  // The trigger is a branch destination; select it explicitly after the return.
+  await author.configureButtonTrial("branch-return-target", {
+    branches: [author.id("branch-return-trigger")],
+    defaultNextTrialId: author.id("branch-return-trigger"),
   });
-  await author.configureBranchConditions("branch-jump-source", [{
+  await author.configureBranchConditions("branch-return-source", [{
     id: 131,
     rules: [{ column: "response", op: "==", value: "0" }],
-    nextTrialAlias: "branch-jump-trigger",
+    nextTrialAlias: "branch-return-trigger",
   }]);
-  await author.configureRepeatConditions("branch-jump-trigger", [{
+  await author.configureBranchConditions("branch-return-trigger", [{
     id: 132,
     rules: [{ column: "response", op: "==", value: "0" }],
-    jumpToTrialAlias: "branch-jump-target",
+    nextTrialAlias: "branch-return-target",
   }]);
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
-  await expect(runtime.trial("branch-jump-source")).toBeVisible();
+  await expect(runtime.trial("branch-return-source")).toBeVisible();
   await runtime.continue();
-  await expect(runtime.trial("branch-jump-trigger")).toBeVisible();
+  await expect(runtime.trial("branch-return-trigger")).toBeVisible();
   const branchSessionId = await runtime.sessionId();
   const documentId = await page.evaluate(() => {
     const token = crypto.randomUUID();
     Object.assign(window, { navigationDocumentId: token });
     return token;
   });
-  await runtime.choose("Jump");
-  await expect(runtime.trial("branch-jump-target")).toBeVisible();
+  await runtime.choose("Return");
+  await expect(runtime.trial("branch-return-target")).toBeVisible();
   expect(await page.evaluate(() => Reflect.get(window, "navigationDocumentId")))
     .toBe(documentId);
-  const jumpSessionId = await runtime.sessionId();
-  expect(jumpSessionId).toBe(branchSessionId);
+  const returnSessionId = await runtime.sessionId();
+  expect(returnSessionId).toBe(branchSessionId);
   await runtime.continue();
-  await expect(runtime.trial("branch-jump-trigger")).toBeVisible();
+  await expect(runtime.trial("branch-return-trigger")).toBeVisible();
   await runtime.choose("Continue");
   await test.info().attach("navigation-events", {
     body: JSON.stringify(await runtime.snapshot(), null, 2),
@@ -75,10 +76,10 @@ test("[RUNTIME-BRANCH-JUMP] chains an authored branch into a root jump without r
     branchSessionId,
   );
   expect(builderIds(persisted.session.data)).toEqual([
-    author.id("branch-jump-source"),
-    author.id("branch-jump-trigger"),
-    author.id("branch-jump-target"),
-    author.id("branch-jump-trigger"),
+    author.id("branch-return-source"),
+    author.id("branch-return-trigger"),
+    author.id("branch-return-target"),
+    author.id("branch-return-trigger"),
   ].map(String));
   await runtime.assertNoRuntimeFailures();
 });
@@ -119,69 +120,70 @@ test("resumes a cross-scope branch during the source's inter-trial gap", async (
   await runtime.assertNoRuntimeFailures();
 });
 
-test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump in one persisted session", async ({
+test("[RUNTIME-LOOP-EXIT-CHAIN] chains a loop exit into a root return in one persisted session", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
-  await author.createExperiment(`runtime-loop-exit-jump-${Date.now()}`);
-  await author.createTrial("exit-jump-source");
-  await author.createTrial("exit-jump-inside-skipped");
-  await author.createLoop("exit-jump-loop", [
-    "exit-jump-source",
-    "exit-jump-inside-skipped",
+  await author.createExperiment(`runtime-loop-exit-return-${Date.now()}`);
+  await author.createTrial("exit-return-source");
+  await author.createTrial("exit-return-inside-skipped");
+  await author.createLoop("exit-return-loop", [
+    "exit-return-source",
+    "exit-return-inside-skipped",
   ]);
-  await author.createTrial("exit-jump-target");
+  await author.createTrial("exit-return-target");
   await author.addLoopExitBranch(
-    "exit-jump-source",
-    "exit-jump-trigger",
+    "exit-return-source",
+    "exit-return-trigger",
     null,
     "sequential",
   );
   await author.configureButtonTrials([
-    "exit-jump-source",
-    "exit-jump-inside-skipped",
-    "exit-jump-target",
+    "exit-return-source",
+    "exit-return-inside-skipped",
+    "exit-return-target",
   ]);
   await author.configureButtonTrial(
-    "exit-jump-trigger",
+    "exit-return-trigger",
     {},
-    ["Jump", "Continue"],
+    ["Return", "Continue"],
   );
-  await author.configureButtonTrial("exit-jump-target", {
-    branches: [author.id("exit-jump-trigger")],
+  await author.configureButtonTrial("exit-return-target", {
+    branches: [author.id("exit-return-trigger")],
+    defaultNextTrialId: author.id("exit-return-trigger"),
   });
-  await author.configureBranchConditions("exit-jump-source", [{
+  await author.configureBranchConditions("exit-return-source", [{
     id: 141,
     rules: [{ column: "response", op: "==", value: "0" }],
-    nextTrialAlias: "exit-jump-trigger",
+    nextTrialAlias: "exit-return-trigger",
   }]);
-  await author.configureRepeatConditions("exit-jump-trigger", [{
+  await author.configureBranchConditions("exit-return-trigger", [{
     id: 142,
     rules: [{ column: "response", op: "==", value: "0" }],
-    jumpToTrialAlias: "exit-jump-target",
+    nextTrialAlias: "exit-return-target",
   }]);
 
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.goto(artifact.experimentUrl);
-  await expect(runtime.trial("exit-jump-source")).toBeVisible();
+  await expect(runtime.trial("exit-return-source")).toBeVisible();
   await runtime.continue();
-  await expect(runtime.trial("exit-jump-trigger")).toBeVisible();
-  await expect(runtime.trial("exit-jump-inside-skipped")).toHaveCount(0);
+  await expect(runtime.trial("exit-return-trigger")).toBeVisible();
+  await expect(runtime.trial("exit-return-inside-skipped")).toHaveCount(0);
   const exitSessionId = await runtime.sessionId();
   const documentId = await page.evaluate(() => {
     const token = crypto.randomUUID();
     Object.assign(window, { navigationDocumentId: token });
     return token;
   });
-  await runtime.choose("Jump");
-  await expect(runtime.trial("exit-jump-target")).toBeVisible();
+  await runtime.choose("Return");
+  await expect(runtime.trial("exit-return-target")).toBeVisible();
   expect(await page.evaluate(() => Reflect.get(window, "navigationDocumentId")))
     .toBe(documentId);
-  const jumpSessionId = await runtime.sessionId();
-  expect(jumpSessionId).toBe(exitSessionId);
+  const returnSessionId = await runtime.sessionId();
+  expect(returnSessionId).toBe(exitSessionId);
   await runtime.continue();
-  await expect(runtime.trial("exit-jump-trigger")).toBeVisible();
+  await expect(runtime.trial("exit-return-trigger")).toBeVisible();
   await runtime.choose("Continue");
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
 
@@ -190,10 +192,10 @@ test("[RUNTIME-LOOP-EXIT-JUMP] chains a loop exit into a root jump in one persis
     exitSessionId,
   );
   expect(builderIds(persisted.session.data)).toEqual([
-    author.id("exit-jump-source"),
-    author.id("exit-jump-trigger"),
-    author.id("exit-jump-target"),
-    author.id("exit-jump-trigger"),
+    author.id("exit-return-source"),
+    author.id("exit-return-trigger"),
+    author.id("exit-return-target"),
+    author.id("exit-return-trigger"),
   ].map(String));
   await runtime.assertNoRuntimeFailures();
 });

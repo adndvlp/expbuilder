@@ -20,7 +20,7 @@ export const TroubleshootingSection: DocSection = {
 1. Verify that the **column names** in the conditions match the generated names exactly (case-sensitive).
 2. For DynamicPlugin, the format is \`ComponentType_Index_Property\` (e.g. \`ButtonResponseComponent_1_response\`).
 3. For SurveyComponent, access the nested property: \`SurveyComponent_1_response.questionName\`. The branching system handles this automatically if you select the question from the Builder's dropdown.
-4. Check that the target trial **exists** in the timeline and is **after** the source trial (for branch, not jump).
+4. Check that the target trial **exists** in the timeline and is **after** the source trial (for branch, not branching).
 
 ## Resume doesn't work
 

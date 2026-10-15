@@ -28,12 +28,12 @@ function nestedCode(targetName = "Target") {
         loopName: "Inner",
         unifiedStimuli: [{ innerRow: 1 }],
         items: [
-          nativeTrial(41, "Before"),
-          nativeTrial(42, targetName),
-          nativeTrial(43, "After"),
+          nativeTrial(41, "Before", { branches: [42], defaultNextTrialId: 42 }),
+          nativeTrial(42, targetName, { branches: [43], defaultNextTrialId: 43 }),
+          nativeTrial(43, "After", { branches: [20], defaultNextTrialId: 20 }),
         ],
       },
-      nativeTrial(20, "Parent Tail"),
+      nativeTrial(20, "Parent Tail", { branches: [99], defaultNextTrialId: 99 }),
     ],
   })();
 }
@@ -48,11 +48,11 @@ const tail = () => nativeTrial(99, "Final").timelineProps;
 describe("nested loop route generation", () => {
   it("[TG-07] preserves domain IDs while sanitizing generated names", async () => {
     const manifest = scopes();
-    manifest.scopes.root = ["outer"];
+    manifest.entries.root = "outer";
     const code = nestedCode("Target / punctuation");
     expect(code).toContain("const Target$20$$2f$$20$punctuation_timeline =");
-    const rows = await nativeTimelineRuntime(code, manifest).run();
-    expect(rows.map((row) => row.builder_id)).toEqual([41, 42, 43, 20]);
+    const rows = await nativeTimelineRuntime(code + tail(), manifest).run();
+    expect(rows.map((row) => row.builder_id)).toEqual([41, 42, 43, 20, 99]);
   });
 
   it("executes an exact branch target inside a nested loop", async () => {
@@ -72,56 +72,30 @@ describe("nested loop route generation", () => {
       scopes(),
     );
     const rows = await fixture.run();
-    expect(rows.map((row) => row.builder_id)).toEqual([0, 42]);
+    expect(rows.map((row) => row.builder_id)).toEqual([0, 42, 43, 20, 99]);
     expect(rows[1].parameters).toEqual(payload);
     expect(rows[1].timeline_variables).toEqual({ outerRow: 1, innerRow: 1 });
     expect(fixture.window.ExpBuilderRuntime.reportError).not.toHaveBeenCalled();
   });
 
-  it("[TJ-06] keeps a nested jump separate from exit-branch state", async () => {
-    const entry = nativeTrial(0, "Entry", {
-      repeatConditions: [
-        {
-          id: 8,
-          jumpToTrialId: 42,
-          rules: [{ column: "response", op: "==", value: "go" }],
-        },
-      ],
-    });
-    const fixture = nativeTimelineRuntime(
-      entry.timelineProps + nestedCode() + tail(),
-      scopes(),
-    );
-    const rows = await fixture.run();
-    expect(rows.map((row) => row.builder_id)).toEqual([0, 42, 43, 20, 99]);
-    expect(fixture.storage.has("jsPsych_jumpRequest")).toBe(false);
+  it("[TJ-06] continues a selected nested destination through its explicit connections", async () => {
+    const entry = nativeTrial(0, "Entry", { branches: [42], defaultNextTrialId: 42 });
+    const fixture = nativeTimelineRuntime(entry.timelineProps + nestedCode() + tail(), scopes());
+    expect((await fixture.run()).map(row => row.builder_id)).toEqual([0, 42, 43, 20, 99]);
     expect(fixture.window.location.reload).not.toHaveBeenCalled();
-    expect(
-      fixture.window.ExpBuilderRuntime.emit.mock.calls.filter(
-        ([type]) => type === "jump-target-enter",
-      ),
-    ).toHaveLength(1);
-    expect(
-      fixture.window.ExpBuilderRuntime.emit.mock.calls.some(
-        ([type]) => type === "branch-decision",
-      ),
-    ).toBe(false);
   });
 
-  it("routes a sequential resume through every nested-loop ancestor", async () => {
+  it("[TJ-04] restores the selected route through every native ancestor", async () => {
     const manifest = scopes();
-    manifest.scopes.root = ["outer", "99"];
-    const fixture = nativeTimelineRuntime(nestedCode() + tail(), manifest, {
-      resume: {
-        kind: "sequential",
-        sourceId: "source",
-        targetId: "42",
-        conditionId: null,
-      },
-    });
-    const rows = await fixture.run();
-    expect(rows.map((row) => row.builder_id)).toEqual([42, 43, 20, 99]);
+    const code = nativeTrial(0, "Entry", { branches: [42], defaultNextTrialId: 42 }).timelineProps + nestedCode() + tail();
+    let checkpoint = "";
+    const first = nativeTimelineRuntime(code, manifest, { onTrial(data) {
+      if (data.builder_id === 42) checkpoint = first.storage.get("jsPsych_resumeTrial")!;
+    } });
+    await first.run();
+    const resumed = nativeTimelineRuntime(code, manifest, { resume: first.resolveCheckpoint(checkpoint)! });
+    const rows = await resumed.run();
+    expect(rows.map(row => row.builder_id)).toEqual([42, 43, 20, 99]);
     expect(rows[0].timeline_variables).toEqual({ outerRow: 1, innerRow: 1 });
-    expect(fixture.storage.has("jsPsych_jumpRequest")).toBe(false);
   });
 });

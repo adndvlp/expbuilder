@@ -27,9 +27,9 @@ describe("ConfigurationPanel custom plugin options", () => {
     fireEvent.change(screen.getByLabelText("plugin select"), {
       target: { value: "plugin-custom" },
     });
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       plugin: "plugin-custom",
-    });
+    }));
     expect(screen.getByTestId("plugin-editor")).toHaveTextContent(
       "plugin-custom",
     );
@@ -44,7 +44,7 @@ describe("ConfigurationPanel custom plugin options", () => {
     fireEvent.change(screen.getByLabelText("plugin select"), {
       target: { value: "custom" },
     });
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, { plugin: "custom" });
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({ plugin: "custom" }));
     expect(screen.queryByTestId("trials-config")).not.toBeInTheDocument();
   });
 
@@ -65,7 +65,7 @@ describe("ConfigurationPanel custom plugin options", () => {
       { name: "2", scripTag: "/plugins/2.js", pluginCode: "", index: 1 },
       { name: "3", scripTag: "/plugins/3.js", pluginCode: "", index: 2 },
     ]);
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, { plugin: "3" });
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({ plugin: "3" }));
   });
 
   it("exposes webgazer for uploaded webgazer plugins", async () => {

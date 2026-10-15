@@ -4,7 +4,6 @@ import { compileScenarioArtifact } from "../authoring/compileScenarioArtifact";
 import { RuntimeObserver } from "../runtime/RuntimeObserver";
 import { builderIds, localRuntimeStorageKeys, loadPersistedSession, runtimeApiBaseUrl } from "../support/session";
 
-
 test(`client resumes the current CSV row without taking the loop's deferred exit`, async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-loop-resume-${Date.now()}`);
@@ -17,8 +16,10 @@ test(`client resumes the current CSV row without taking the loop's deferred exit
     repetitions: 2,
   });
   await author.configureButtonTrials(["entry", "final"]);
-  await author.configureButtonTrial("entry", { branches: [author.id("csv")] });
+  await author.configureButtonTrial("entry", {
+          defaultNextTrialId: author.id("csv"), branches: [author.id("csv")] });
   await author.configureButtonTrial("csv", {
+          defaultNextTrialId: author.id("final"),
     csvFromLoop: true, branches: [author.id("final")],
     columnMapping: {
       stimulus: { source: "csv", value: "stimulus" },
@@ -52,7 +53,6 @@ test(`client resumes the current CSV row without taking the loop's deferred exit
   await runtime.assertNoRuntimeFailures();
 });
 
-
 test("restores three loop levels, including an unfinished repetition and the root continuation", async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-nested-resume-${Date.now()}`);
@@ -67,7 +67,8 @@ test("restores three loop levels, including an unfinished repetition and the roo
     });
   }
   await author.configureButtonTrials(["entry", "final"]);
-  await author.configureButtonTrial("entry", { branches: [author.id("OuterMarker")] });
+  await author.configureButtonTrial("entry", {
+          defaultNextTrialId: author.id("OuterMarker"), branches: [author.id("OuterMarker")] });
   for (const [alias, column] of [["OuterMarker", "outerRow"], ["MiddleMarker", "middleRow"]]) {
     await author.configureButtonTrial(alias, {
       csvFromLoop: true,
@@ -79,6 +80,7 @@ test("restores three loop levels, including an unfinished repetition and the roo
     });
   }
   await author.configureButtonTrial("csv", {
+          defaultNextTrialId: author.id("final"),
     csvFromLoop: true, branches: [author.id("final")],
     columnMapping: {
       stimulus: { source: "csv", value: "innerRow" },
@@ -126,7 +128,6 @@ test("restores three loop levels, including an unfinished repetition and the roo
   expect(builderIds(persisted.session.data)).toHaveLength(tuples.length + 8);
   await runtime.assertNoRuntimeFailures();
 });
-
 test("keeps the sampled random order and remaining repetitions on reload", async ({ page }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`runtime-random-resume-${Date.now()}`);
@@ -138,6 +139,7 @@ test("keeps the sampled random order and remaining repetitions on reload", async
   });
   await author.configureButtonTrial("final");
   await author.configureButtonTrial("csv", {
+          defaultNextTrialId: author.id("final"),
     csvFromLoop: true, branches: [author.id("final")],
     columnMapping: {
       stimulus: { source: "csv", value: "stimulus" },
@@ -186,6 +188,7 @@ test("resumes after a saved response during the inter-trial gap without repeatin
   });
   await author.configureButtonTrial("final");
   await author.configureButtonTrial("csv", {
+          defaultNextTrialId: author.id("final"),
     csvFromLoop: true, branches: [author.id("final")],
     columnMapping: {
       stimulus: { source: "csv", value: "stimulus" },
@@ -225,8 +228,10 @@ test("restores a selected branch and its parameters inside the current loop row"
     csvJson: [{ row: 1 }, { row: 2 }],
   });
   await author.configureButtonTrials(["source", "skipped", "target", "final"]);
-  await author.configureButtonTrial("source", { branches: [author.id("target")] });
-  await author.configureButtonTrial("target", { branches: [author.id("final")] });
+  await author.configureButtonTrial("source", {
+          defaultNextTrialId: author.id("target"), branches: [author.id("target")] });
+  await author.configureButtonTrial("target", {
+          defaultNextTrialId: author.id("final"), branches: [author.id("final")] });
   await author.configureBranchConditions("source", [{
     id: 901, rules: [{ column: "response", op: "==", value: "0" }],
     nextTrialAlias: "target",

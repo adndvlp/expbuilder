@@ -7,7 +7,7 @@ import {
   runtimeApiBaseUrl,
 } from "../support/session";
 
-test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, resume, jump, move, and root branching", async ({
+test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, resume, return, move, and root branching", async ({
   page,
 }) => {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
@@ -33,14 +33,14 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-outer-skipped",
   ]);
 
-  await author.createTrial("mega-jump-target");
+  await author.createTrial("mega-return-target");
   await author.addLoopExitBranch(
     "mega-exit-source",
     "mega-exit-target",
     null,
     "sequential",
   );
-  await author.createTrial("mega-after-jump");
+  await author.createTrial("mega-after-return");
   await author.createTrial("mega-root-branch-source");
   await author.createTrial("mega-moved-trial");
   await author.addRootBranch(
@@ -55,22 +55,24 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
     "mega-inner-skipped",
     "mega-outer-skipped",
     "mega-root-branch-source",
-    "mega-after-jump",
-    "mega-jump-target",
+    "mega-after-return",
+    "mega-return-target",
     "mega-moved-trial",
     "mega-move-anchor",
     "mega-root-branch-target",
   ]);
   await author.configureButtonTrial(
     "mega-exit-target",
-    { branches: [author.id("mega-after-jump")] },
-    ["Jump", "Continue"],
+    { branches: [author.id("mega-after-return")], defaultNextTrialId: author.id("mega-after-return") },
+    ["Return", "Continue"],
   );
-  await author.configureButtonTrial("mega-jump-target", {
+  await author.configureButtonTrial("mega-return-target", {
     branches: [author.id("mega-exit-target")],
+    defaultNextTrialId: author.id("mega-exit-target"),
   });
-  await author.configureButtonTrial("mega-after-jump", {
+  await author.configureButtonTrial("mega-after-return", {
     branches: [author.id("mega-root-branch-source")],
+    defaultNextTrialId: author.id("mega-root-branch-source"),
   });
 
   await author.configureParamsOverride("mega-conditional-target", [
@@ -112,11 +114,11 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
       nextTrialAlias: "mega-exit-target",
     },
   ]);
-  await author.configureRepeatConditions("mega-exit-target", [
+  await author.configureBranchConditions("mega-exit-target", [
     {
       id: 174,
       rules: [{ column: "response", op: "==", value: "0" }],
-      jumpToTrialAlias: "mega-jump-target",
+      nextTrialAlias: "mega-return-target",
     },
   ]);
   await author.configureBranchConditions("mega-root-branch-source", [
@@ -155,7 +157,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   await expect(runtime.trial("mega-exit-target")).toBeVisible();
   await expect(runtime.trial("mega-inner-skipped")).toHaveCount(0);
   await expect(runtime.trial("mega-outer-skipped")).toHaveCount(0);
-  const preJumpSessionId = await runtime.sessionId();
+  const beforeReturnSessionId = await runtime.sessionId();
   await runtime.waitForPersistence();
   const beforeResume = await runtime.snapshot();
   expect(
@@ -169,19 +171,19 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
 
   await page.reload();
   await expect(runtime.trial("mega-exit-target")).toBeVisible();
-  expect(await runtime.sessionId()).toBe(preJumpSessionId);
+  expect(await runtime.sessionId()).toBe(beforeReturnSessionId);
   expect((await runtime.snapshot()).events).toContainEqual(
     expect.objectContaining({ type: "resume-route-activated" }),
   );
-  await runtime.choose("Jump");
+  await runtime.choose("Return");
 
-  await expect(runtime.trial("mega-jump-target")).toBeVisible();
-  const postJumpSessionId = await runtime.sessionId();
-  expect(postJumpSessionId).toBe(preJumpSessionId);
+  await expect(runtime.trial("mega-return-target")).toBeVisible();
+  const afterReturnSessionId = await runtime.sessionId();
+  expect(afterReturnSessionId).toBe(beforeReturnSessionId);
   await runtime.continue();
   await expect(runtime.trial("mega-exit-target")).toBeVisible();
   await runtime.choose("Continue");
-  await expect(runtime.trial("mega-after-jump")).toBeVisible();
+  await expect(runtime.trial("mega-after-return")).toBeVisible();
   await runtime.continue();
   await expect(runtime.trial("mega-root-branch-source")).toBeVisible();
   await runtime.continue();
@@ -191,7 +193,7 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
 
   const persisted = await loadPersistedSession(
     author.experimentId,
-    preJumpSessionId,
+    beforeReturnSessionId,
   );
   expect(builderIds(persisted.session.data)).toEqual(
     [
@@ -203,9 +205,9 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
       "mega-moved-trial",
       "mega-exit-source",
       "mega-exit-target",
-      "mega-jump-target",
+      "mega-return-target",
       "mega-exit-target",
-      "mega-after-jump",
+      "mega-after-return",
       "mega-root-branch-source",
       "mega-root-branch-target",
     ].map((alias) => String(author.id(alias))),
@@ -213,8 +215,8 @@ test("[RUNTIME-RESOLVED-MEGA] composes conditional loop, params, nested exit, re
   const finalSnapshot = await runtime.snapshot();
   expect(finalSnapshot.events.map((event) => event.type)).toEqual(
     expect.arrayContaining([
-      "jump-requested",
-      "jump-target-enter",
+      "branch-decision",
+      "branch-target-enter",
       "branch-decision",
     ]),
   );

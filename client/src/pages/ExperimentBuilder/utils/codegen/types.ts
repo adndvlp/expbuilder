@@ -35,7 +35,6 @@ export type TrialWithCode = {
   mappedJson?: Record<string, any>[];
   branches?: (string | number)[];
   branchConditions?: unknown[];
-  repeatConditions?: unknown[];
   customOnFinish?: string;
   isLoop?: boolean;
   id?: string | number;

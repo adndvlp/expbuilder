@@ -201,8 +201,8 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
       mode: "query",
     });
-    expect(code).toContain('registerLoop("loop_child", loop_child_procedure)');
-    expect(code).toContain('registerLoop("loop_parent", loop_parent_procedure)');
+    expect(code).toContain('registerLoop("loop_child", loop_child_procedure,');
+    expect(code).toContain('registerLoop("loop_parent", loop_parent_procedure,');
     expect(code).toContain("timeline: [loop_child_procedure]");
     expect(code).not.toContain(
       "const branches = [99]; if (branches.length > 0) { window.nextTrialId = branches[0];",

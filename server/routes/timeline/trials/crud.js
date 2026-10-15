@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
 import {
-  filterLiveConditions,
   getExperimentDoc,
   pruneDanglingBranches,
   reconnectParentsToChildren,
@@ -35,7 +34,12 @@ router.post("/api/trial/:experimentID", async (req, res) => {
     }
     trialData = normalizeTrialBranching(
       experimentDoc ?? { trials: [], loops: [] },
-      trialData,
+      {
+        branches: [],
+        branchConditions: [],
+        defaultNextTrialId: null,
+        ...trialData,
+      },
     );
     experimentDoc ??= await getExperimentDoc(experimentID, true);
 
@@ -50,6 +54,28 @@ router.post("/api/trial/:experimentID", async (req, res) => {
       ...((parentLoop?.csvJson?.length ?? 0) > 0 ? { csvFromLoop: true } : {}),
     };
 
+    const scope = parentLoop ?? experimentDoc;
+    const scopeIds = parentLoop
+      ? parentLoop.trials
+      : experimentDoc.timeline.map((item) => item.id);
+    const previousId = scopeIds[scopeIds.length - 1];
+    const previous = experimentDoc.trials.find((item) =>
+      idsMatch(item.id, previousId),
+    );
+    const previousLoop = findLoop(experimentDoc, previousId);
+    if (!trialData.detached) {
+      if (
+        previous &&
+        previous.defaultNextTrialId === null &&
+        previous.branches.length === 0
+      ) {
+        previous.defaultNextTrialId = id;
+        previous.branches = [id];
+      }
+      if (previousLoop && previousLoop.nextItemId === null)
+        previousLoop.nextItemId = id;
+    }
+    delete newTrial.detached;
     experimentDoc.trials.push(newTrial);
     moveItemToScope(experimentDoc, newTrial.id, targetScopeId);
 
@@ -62,13 +88,11 @@ router.post("/api/trial/:experimentID", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -90,13 +114,11 @@ router.get("/api/trial/:experimentID/:id", async (req, res) => {
 
     res.json({ success: true, trial });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -121,14 +143,17 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: "Trial not found" });
     }
 
-    updates = normalizeTrialBranching(experimentDoc, updates);
-    if (updates.repeatConditions !== undefined) {
-      updates.repeatConditions = filterLiveConditions(
-        experimentDoc,
-        updates.repeatConditions,
-        "jumpToTrialId",
-      );
+    if (Object.hasOwn(updates, "parentLoopId")) {
+      const target = normalizeScopeId(updates.parentLoopId);
+      if (target !== null && !findLoop(experimentDoc, target))
+        return res
+          .status(400)
+          .json({ success: false, error: `Loop ${target} not found` });
     }
+    normalizeTrialBranching(experimentDoc, {
+      ...experimentDoc.trials[trialIndex],
+      ...updates,
+    });
 
     experimentDoc.trials[trialIndex] = {
       ...experimentDoc.trials[trialIndex],
@@ -173,13 +198,11 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -212,13 +235,11 @@ router.delete("/api/trial/:experimentID/:id", async (req, res) => {
 
     res.json({ success: true, graph: buildExperimentGraph(experimentDoc) });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -234,13 +255,11 @@ router.delete("/api/trials/:experimentID", async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    res
-      .status(error.status ?? 500)
-      .json({
-        success: false,
-        error: error.message,
-        ...(error.code ? { code: error.code } : {}),
-      });
+    res.status(error.status ?? 500).json({
+      success: false,
+      error: error.message,
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 });
 

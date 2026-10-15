@@ -347,7 +347,7 @@ const { files } = await res.json();
      - CAPTCHA gate (hCaptcha/reCAPTCHA)
      - Recruitment platform redirects (Prolific/MTurk)
      - Batch data sending logic
-     - Resume/jump support
+     - Resume/branching support
      - `customPreInitCode.public` + `customInitJsPsychParams.public`
      - All trial/loop code with CDN plugin references
 

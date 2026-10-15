@@ -5,14 +5,7 @@ export function getLoopResumeRuntimeCode(): string {
     let restoredLoops = new Map();
     let cursorCheckpointsEnabled = false;
     const cloneResumeValue = value => JSON.parse(JSON.stringify(value));
-    const globalRouteSnapshot = () => ({
-      nextTrialId: window.nextTrialId ?? null,
-      skipRemaining: Boolean(window.skipRemaining),
-      branchingActive: Boolean(window.branchingActive),
-      branchUsedDefault: Boolean(window.branchUsedDefault),
-      branchCustomParameters: window.branchCustomParameters ?? null
-      ,nativeTimeline: nativeRootSnapshot()
-    });
+    const globalRouteSnapshot = () => ({ nativeTimeline: nativeRootSnapshot() });
     const loopSnapshots = () => loopFrames.map(frame => ({
       loopId: frame.loopId,
       order: frame.order,
@@ -22,7 +15,7 @@ export function getLoopResumeRuntimeCode(): string {
       routing: frame.readRouting()
     }));
     const cursorCheckpoint = (targetId, completed, afterCompleted) => ({
-      version: 2,
+      version: 3,
       experimentRevision: currentManifest()?.revision ?? null,
       completed,
       cursor: {
@@ -107,7 +100,7 @@ export function getLoopResumeRuntimeCode(): string {
     const loopResults = loopId =>
       preparedLoops.get(String(loopId))?.cycleRows ?? null;
     const checkpointTrialStart = trialData => {
-      if (!cursorCheckpointsEnabled || pendingJump) return;
+      if (!cursorCheckpointsEnabled) return;
       nativeTransition = null;
       const targetId = trialData?.builder_id ?? trialData?.trial_id;
       if (targetId === undefined || targetId === null) return;
@@ -120,7 +113,7 @@ export function getLoopResumeRuntimeCode(): string {
       )));
     };
     const checkpointTrialComplete = (data, fallback) => {
-      if (!cursorCheckpointsEnabled || pendingJump) return fallback;
+      if (!cursorCheckpointsEnabled) return fallback;
       for (const frame of loopFrames) {
         if (frame.conditional) frame.cycleRows.push(cloneResumeValue(data));
       }

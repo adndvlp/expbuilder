@@ -1,8 +1,8 @@
 import type { LocalExperimentCodeOptions } from "./localCodeTypes";
 import {
   activateResumeRouteDecisionCode,
-  resumeJumpStartupCode,
-} from "./resumeJumpStartupCode";
+  resumeStartupCode,
+} from "./resumeStartupCode";
 
 export function buildLocalRuntimeStart({
   customPreInitCode,
@@ -20,21 +20,11 @@ export function buildLocalRuntimeStart({
     const _runtimeError = function(error, context) {
       window.ExpBuilderRuntime?.reportError(error, context || {});
     };
-    const hasStoredJumpRequest =
-      localStorage.getItem(_sessionKeys.jumpRequest) !== null;
     const candidate = await _selectSessionCandidate();
 
     let persisted = await _findPersistedSession(candidate);
     if (candidate && persisted.status === 'unavailable') {
       throw new Error('The existing session could not be verified');
-    }
-    if (
-      hasStoredJumpRequest &&
-      (!candidate ||
-        persisted.status !== 'valid' ||
-        persisted.session.state === 'completed')
-    ) {
-      throw new Error('The jump cannot continue without its original session');
     }
     if (candidate && persisted.status === 'valid' && persisted.session.state !== 'completed') {
       trialSessionId = candidate;
@@ -74,7 +64,7 @@ export function buildLocalRuntimeStart({
       );
     }
 
-${resumeJumpStartupCode(resumeTrialKey)}
+${resumeStartupCode(resumeTrialKey)}
 
     const socketReady = await waitForSocket(5000);
     if (socketReady) {

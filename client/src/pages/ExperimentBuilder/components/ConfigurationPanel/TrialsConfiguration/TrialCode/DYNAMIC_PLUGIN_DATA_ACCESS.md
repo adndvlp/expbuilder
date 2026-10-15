@@ -132,7 +132,7 @@ Todos estos archivos DEBEN seguir el patrón documentado arriba:
 
 - Los generadores de branching de trials (`TrialCodeGenerators/branchConditions/`) usan `window.ExpBuilderBranching.decide`.
 - `LoopsConfiguration/useLoopCode/services/generateConditionalLoopFunction.ts` usa `evaluateReferencedCondition` para `loopConditions`.
-- `paramsOverrideGenerator.ts` y `repeatConditionsGenerator.ts` conservan sus condiciones de parámetros y navegación.
+- `paramsOverrideGenerator.ts` conserva las condiciones de parámetros; `onFinishGenerator.ts` emite la única decisión de navegación.
 - El runtime compartido de condiciones resuelve los nombres de columnas y valores de DynamicPlugin.
 
 Los loops transportan destinos y parámetros decididos por trials. No tienen `branches` ni `branchConditions` propios.

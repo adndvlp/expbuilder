@@ -1,6 +1,5 @@
-import { generateLoopRepeatLifecycle } from "./services/generateLoopRepeatLifecycle";
 import LoopProcedureCode from "./LoopProcedureCode";
-import { LoopCondition, RepeatCondition, TimelineItem } from "./types";
+import { LoopCondition, TimelineItem } from "./types";
 import {
   getLoopId,
   getTimelineItemName,
@@ -10,7 +9,10 @@ import { toCodeIdentifier } from "../../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: string | undefined;
-  repeatConditions?: RepeatCondition[];
+  entryItemId?: string | number | null;
+  nextItemId?: string | number | null;
+  customOnTimelineStart?: string;
+  customOnTimelineFinish?: string;
   repetitions: number;
   randomize: boolean;
   orders: boolean;
@@ -27,7 +29,10 @@ type Props = {
 
 export default function useLoopCode({
   id,
-  repeatConditions,
+  entryItemId,
+  nextItemId,
+  customOnTimelineStart,
+  customOnTimelineFinish,
   repetitions,
   randomize,
   orders,
@@ -61,7 +66,8 @@ export default function useLoopCode({
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
             id: nestedLoopId === null ? undefined : String(nestedLoopId),
-            repeatConditions: item.repeatConditions,
+            entryItemId: item.entryItemId,
+            nextItemId: item.nextItemId,
             repetitions: item.repetitions || 1,
             randomize: item.randomize || false,
             orders: item.orders || false,
@@ -84,9 +90,13 @@ export default function useLoopCode({
       })
       .join("\n\n");
 
-    const timelineRefs = trials.map(item => isLoopData(item)
-      ? `${sanitizeName(String(getLoopId(item)))}_procedure`
-      : `${sanitizeName(getTimelineItemName(item))}_timeline`).join(", ");
+    const timelineRefs = trials
+      .map((item) =>
+        isLoopData(item)
+          ? `${sanitizeName(String(getLoopId(item)))}_procedure`
+          : `${sanitizeName(getTimelineItemName(item))}_timeline`,
+      )
+      .join(", ");
 
     let code = "";
 
@@ -193,14 +203,16 @@ export default function useLoopCode({
     loop_id: "${id}"
   },`;
 
-    code += generateLoopRepeatLifecycle({ id, repeatConditions });
-
+    if (customOnTimelineStart?.trim())
+      code += `on_timeline_start: function() { ${customOnTimelineStart} },`;
+    if (customOnTimelineFinish?.trim())
+      code += `on_timeline_finish: function() { ${customOnTimelineFinish} },`;
     const appendRootProcedure = parentLoopId
       ? ""
       : `timeline.push(${loopIdSanitized}_procedure);`;
     code += `
 };
-window.ExpBuilderNavigation?.registerLoop(${JSON.stringify(id)}, ${loopIdSanitized}_procedure);
+window.ExpBuilderNavigation?.registerLoop(${JSON.stringify(id)}, ${loopIdSanitized}_procedure, ${JSON.stringify({ entryItemId: entryItemId ?? null, nextItemId: nextItemId ?? null })});
 ${appendRootProcedure}
 `;
 

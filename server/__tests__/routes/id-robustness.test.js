@@ -41,17 +41,17 @@ const freshApp = async () => {
 // Trial "3" is intentionally stored as a string while the rest are numeric;
 // loop_2 carries a legacy ghost branch.
 const seedMatrix = async (db) => {
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: 1,
     experimentID: 'E1',
     trials: [
-      { id: 1, name: 'T1', branches: [2] },
-      { id: 2, name: 'T2', branches: [] },
-      { id: '3', name: 'T3-string-id', branches: [] },
-      { id: 4, name: 'T4-in-loop', parentLoopId: 'loop_1', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [2] },
+      { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: '3', name: 'T3-string-id', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 4, name: 'T4-in-loop', parentLoopId: 'loop_1', branches: [] },
     ],
     loops: [
-      { id: 'loop_1', name: 'L1', trials: [4] },
-      { id: 'loop_2', name: 'L2', trials: [] },
+      { nextItemId: null, entryItemId: 4, id: 'loop_1', name: 'L1', trials: [4] },
+      { nextItemId: null, entryItemId: null, id: 'loop_2', name: 'L2', trials: [] },
     ],
     timeline: [
       { id: 1, type: 'trial', name: 'T1', branches: [2] },
@@ -133,24 +133,12 @@ describe('PATCH /api/trial/:experimentID/:id', () => {
       .expect(200)
   })
 
-  test('filters ghost branches and condition targets', async () => {
-    const { app, db } = await freshApp()
-    await seedMatrix(db)
-    const res = await request(app)
-      .patch('/api/trial/E1/1')
-      .send({
-        branches: [2, GHOST],
-        branchConditions: [
-          { id: 'c1', rules: [], nextTrialId: 2 },
-          { id: 'c2', rules: [], nextTrialId: GHOST },
-        ],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: GHOST }],
-      })
-      .expect(200)
-    expect(res.body.trial.branches).toEqual([2])
-    expect(res.body.trial.branchConditions.map((c) => c.id)).toEqual(['c1'])
-    expect(res.body.trial.repeatConditions).toEqual([])
-  })
+  test('rejects a missing destination before changing the experiment', async () => {
+ const { app, db } = await freshApp(); await seedMatrix(db);
+ const before = JSON.stringify(db.data);
+ await request(app).patch('/api/trial/E1/1').send({ branches: [2, GHOST] }).expect(400);
+ await db.read(); expect(JSON.stringify(db.data)).toBe(before);
+})
 
   test('finds trials stored with string ids', async () => {
     const { app, db } = await freshApp()
@@ -226,7 +214,6 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
       .patch('/api/trial/E1/1')
       .send({
         branchConditions: [{ id: 'c1', rules: [], nextTrialId: 2 }],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: 2 }],
       })
       .expect(200)
     const res = await request(app).delete('/api/trial/E1/2').expect(200)
@@ -234,7 +221,6 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     await db.read()
     const doc = db.data.trials[0]
     expect(doc.trials.find((t) => t.id === 1).branchConditions).toEqual([])
-    expect(doc.trials.find((t) => t.id === 1).repeatConditions).toEqual([])
     expect(
       res.body.graph.diagnostics.map((d) => d.code),
     ).not.toContain('BRANCH_TARGET_NOT_FOUND')

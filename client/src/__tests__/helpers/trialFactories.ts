@@ -17,6 +17,7 @@ export function timelineTrial(
   return {
     type: "trial",
     name: `Trial ${overrides.id}`,
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
@@ -28,6 +29,8 @@ export function timelineLoop(
   return {
     type: "loop",
     name: `Loop ${overrides.id}`,
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     ...overrides,
   };
@@ -43,6 +46,7 @@ export function trial(overrides: Partial<Trial> = {}): Trial {
     plugin: "html-keyboard-response",
     parameters: {},
     trialCode: "",
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
@@ -57,6 +61,7 @@ export function trialDraft(
     plugin: "html-keyboard-response",
     parameters: {},
     trialCode: "",
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
@@ -76,6 +81,8 @@ export function loop(overrides: Partial<Loop> = {}): Loop {
     categories: false,
     categoryColumn: "",
     categoryData: [],
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     code: "",
     ...overrides,
@@ -95,6 +102,8 @@ export function loopDraft(
     categories: false,
     categoryColumn: "",
     categoryData: [],
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     code: "",
     ...overrides,
@@ -122,7 +131,7 @@ export function graphSnapshot(
 ): ExperimentGraphSnapshot {
   return {
     revision: "test-revision",
-    root: { scopeId: null, parentScopeId: null, items: rootItems },
+    root: { entryItemId: rootItems[0]?.id ?? null, scopeId: null, parentScopeId: null, items: rootItems },
     scopes,
     edges,
     diagnostics: [],

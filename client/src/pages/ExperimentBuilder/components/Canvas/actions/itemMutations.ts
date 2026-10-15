@@ -8,12 +8,28 @@ export function getScopeNames(scope: CanvasActionScope): string[] {
 }
 
 export async function updateItemBranches(
-  item: TimelineItem,
+  item: Pick<TimelineItem, "type" | "id">,
   branches: (string | number)[],
   dependencies: CanvasActionDependencies,
 ) {
   if (item.type === "trial") {
-    return dependencies.updateTrial(item.id, { branches });
+    const source = await dependencies.getTrial(item.id);
+    const previous = source?.defaultNextTrialId ?? null;
+    const defaultNextTrialId =
+      previous !== null &&
+      branches.some((id) => String(id) === String(previous))
+        ? previous
+        : (branches[0] ?? null);
+    const branchConditions = (source?.branchConditions ?? []).filter(
+      (condition) =>
+        condition.nextTrialId === "FINISH_EXPERIMENT" ||
+        branches.some((id) => String(id) === String(condition.nextTrialId)),
+    );
+    return dependencies.updateTrial(item.id, {
+      branches,
+      defaultNextTrialId,
+      branchConditions,
+    });
   }
   throw new Error("Branch sources must be trials");
 }

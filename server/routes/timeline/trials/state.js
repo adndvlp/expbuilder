@@ -19,6 +19,7 @@ export async function getExperimentDoc(experimentID, createIfMissing = false) {
       trials: [],
       loops: [],
       timeline: [],
+      entryItemId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -79,18 +80,13 @@ export function reconnectParentsToChildren(
       trial.branches.some((branchId) => idsMatch(branchId, trialId))
     ) {
       trial.branches = inherit(trial.branches);
+      if (idsMatch(trial.defaultNextTrialId, trialId))
+        trial.defaultNextTrialId =
+          findTrial(experimentDoc, trialId)?.defaultNextTrialId ?? null;
     }
   });
 }
 
-/**
- * Drops condition entries whose jump target references no existing trial or
- * loop. A branch/repeat condition pointing at a deleted item can never fire
- * correctly at runtime (a ghost nextTrialId stalls skipRemaining; a ghost
- * jumpToTrialId throws on resolve), so the entry is meaningless once its
- * target is gone. Null targets are kept: they mean "fall through to the
- * default branch".
- */
 export function filterLiveConditions(experimentDoc, conditions, targetKey) {
   if (!Array.isArray(conditions)) return conditions;
   return conditions.filter(
@@ -112,6 +108,12 @@ export function filterLiveConditions(experimentDoc, conditions, targetKey) {
  */
 export function pruneDanglingBranches(experimentDoc) {
   for (const trial of experimentDoc.trials ?? []) {
+    if (
+      trial.defaultNextTrialId != null &&
+      trial.defaultNextTrialId !== "FINISH_EXPERIMENT" &&
+      !findTrial(experimentDoc, trial.defaultNextTrialId)
+    )
+      trial.defaultNextTrialId = null;
     if (Array.isArray(trial.branches)) {
       const pruned = trial.branches.filter((branchId) =>
         findTrial(experimentDoc, branchId),
@@ -136,16 +138,6 @@ export function pruneDanglingBranches(experimentDoc) {
       );
       if (pruned.length !== item.branchConditions.length) {
         item.branchConditions = pruned;
-      }
-    }
-    if (Array.isArray(item.repeatConditions)) {
-      const pruned = filterLiveConditions(
-        experimentDoc,
-        item.repeatConditions,
-        "jumpToTrialId",
-      );
-      if (pruned.length !== item.repeatConditions.length) {
-        item.repeatConditions = pruned;
       }
     }
   }

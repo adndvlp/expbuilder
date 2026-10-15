@@ -5,7 +5,6 @@ import { AddParamButtonCell, ParameterOverride } from "./ParameterOverride";
 import { Trial } from "../../../../types";
 
 type Props = {
-  isJumpCondition: (condition: Condition) => boolean;
   findTrialById: (trialId: string | number) => any;
   updateRule: (
     conditionId: number,
@@ -20,7 +19,6 @@ type Props = {
     newConditionsOrFn: SetStateAction<Condition[]>,
     shouldSave?: boolean,
   ) => void;
-  isInBranches: (trialId: string | number | null) => boolean;
   triggerSave: () => void;
   removeRuleFromCondition: (conditionId: number, ruleIndex: number) => void;
   getAvailableColumns: () => {
@@ -33,12 +31,7 @@ type Props = {
     name: string;
     isLoop: boolean;
   }[];
-  allJumpTrials: {
-    id: string | number;
-    name: string;
-    displayName: string;
-    isLoop: boolean;
-  }[];
+
   condition: Condition;
   conditions: Condition[];
   targetTrialParameters: Record<string, Parameter[]>;
@@ -48,7 +41,6 @@ type Props = {
 
 function TableBody({
   findTrialById,
-  isJumpCondition,
   updateRule,
   addCustomParameter,
   updateNextTrial,
@@ -61,7 +53,6 @@ function TableBody({
   targetTrialCsvColumns,
   branchTrials,
   conditions,
-  allJumpTrials,
   selectedTrial,
 }: Props) {
   return (
@@ -84,9 +75,7 @@ function TableBody({
         // For dynamic plugins, always show add param button (unlimited params)
         // For normal plugins, only show if there are more params available
         const showAddParamButton =
-          !isJumpCondition(condition) &&
-          condition.nextTrialId &&
-          (isTargetDynamic || canAddMoreParams);
+          condition.nextTrialId && (isTargetDynamic || canAddMoreParams);
 
         const totalRows = Math.max(
           condition.rules.length,
@@ -139,10 +128,7 @@ function TableBody({
                       style={{
                         color: "var(--text-dark)",
                         backgroundColor: "var(--neutral-light)",
-                        borderColor:
-                          condition.nextTrialId && isJumpCondition(condition)
-                            ? "var(--gold)"
-                            : "var(--primary-blue)",
+                        borderColor: "var(--primary-blue)",
                       }}
                     >
                       <option style={{ textAlign: "center" }} value="">
@@ -157,24 +143,10 @@ function TableBody({
                           ))}
                         </optgroup>
                       )}
-                      {allJumpTrials.length > 0 && (
-                        <optgroup label="Jump (Any Trial)">
-                          {allJumpTrials.map((trial) => (
-                            <option key={trial.id} value={trial.id}>
-                              {trial.displayName} {trial.isLoop ? "(Loop)" : ""}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
+                      <option value="FINISH_EXPERIMENT">
+                        Finish experiment
+                      </option>
                     </select>
-                    {condition.nextTrialId && isJumpCondition(condition) && (
-                      <span
-                        className="text-xs mt-1 font-semibold"
-                        style={{ color: "var(--gold)" }}
-                      >
-                        Jump mode: Parameter override disabled
-                      </span>
-                    )}
                   </div>
                 </td>
               )}
@@ -211,7 +183,6 @@ function TableBody({
                       isTargetDynamic={isTargetDynamic}
                       targetTrialParameters={targetTrialParameters}
                       findTrialById={findTrialById}
-                      isJumpCondition={isJumpCondition(condition)}
                       setConditions={setConditionsWrapper as any}
                       conditions={conditions}
                       targetTrialCsvColumns={targetTrialCsvColumns}
@@ -239,7 +210,6 @@ function TableBody({
                       isTargetDynamic={isTargetDynamic}
                       targetTrialParameters={targetTrialParameters}
                       findTrialById={findTrialById}
-                      isJumpCondition={isJumpCondition(condition)}
                       setConditions={setConditionsWrapper as any}
                       conditions={conditions}
                       targetTrialCsvColumns={targetTrialCsvColumns}

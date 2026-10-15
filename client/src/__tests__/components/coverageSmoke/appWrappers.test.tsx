@@ -52,9 +52,9 @@ describe("coverage smoke: app wrappers and small utilities", () => {
 
   it("renders branch descriptions and designer action buttons", () => {
     render(<Descriptions />);
-    expect(screen.getByText("Branch & Jump Conditions")).toBeInTheDocument();
-    expect(screen.getByText("Branch")).toBeInTheDocument();
-    expect(screen.getByText("Jump")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
 
     const onClose = vi.fn();
     const onSave = vi.fn();

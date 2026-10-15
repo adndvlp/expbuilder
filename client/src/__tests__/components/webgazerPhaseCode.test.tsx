@@ -1,3 +1,4 @@
+import { generateTrialCode } from "../../pages/ExperimentBuilder/utils/codegen/generateTrialCode";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
@@ -209,12 +210,13 @@ describe("generatePhaseCode for WebGazer phases", () => {
     });
   });
 
-  it("delegates final recalibration branching to the coordinator when parentLoopId exists", () => {
+  it("makes one navigation decision for the complete WebGazer trial", async () => {
     const selectedTrial = webgazerTrial({
       id: 10,
-      name: "Eye tracking",
+      name: "EyeTracking",
       parentLoopId: "loop-A",
       branches: [99],
+      defaultNextTrialId: 99,
     });
 
     const { result } = renderHook(() =>
@@ -239,17 +241,15 @@ describe("generatePhaseCode for WebGazer phases", () => {
     };
     const decide = vi.fn(() => decision);
     const requestBranch = vi.fn();
-    const done = evaluateWebgazerPhase(
-      result.current.phase.trialCode,
-      "calibration_done",
-      {
-        ExpBuilderBranching: { decide },
-        ExpBuilderNavigation: { requestBranch },
-      },
-    );
+    expect(code).not.toContain("ExpBuilderBranching.decide");
+    const fullTrial = { ...selectedTrial, trialCode: result.current.phase.trialCode };
+    const compiled = await generateTrialCode(fullTrial, [], "fixture", async () => fullTrial, true);
+    const done = evaluateWebgazerPhase(compiled.code, "EyeTracking_webgazer_completion", {
+      ExpBuilderBranching: { decide }, ExpBuilderNavigation: { requestBranch, registerTrial: vi.fn() },
+    });
     const data = { builder_id: 10, response: "go" };
-    done.on_finish(data);
-    expect(decide).toHaveBeenCalledExactlyOnceWith(data, [99], []);
+    await done.on_finish(data);
+    expect(decide).toHaveBeenCalledExactlyOnceWith(data, [99], [], 99);
     expect(requestBranch).toHaveBeenCalledExactlyOnceWith(data, decision);
   });
 

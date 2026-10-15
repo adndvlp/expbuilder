@@ -14,7 +14,7 @@
 - **Arista semántica:** relación canónica origen → destino, independiente de qué loops estén comprimidos.
 - **Proyección:** arista/nodo que el canvas deriva para representar la misma relación cuando oculta scopes.
 - **Terminal:** propiedad de ejecución que no participa en la elegibilidad de autoría del selector de nivel.
-- **Branch:** flujo forward elegido al terminar un item; no es un `jump`/repeat.
+- **Branch:** flujo forward elegido al terminar un item; no es un `branching`/repeat.
 
 ## Invariantes de dominio
 
@@ -28,7 +28,7 @@
 | INV-06 | Una arista no puede apuntar al origen, quedar dangling, duplicarse ni introducir ciclos de ejecución. |
 | INV-07 | Los IDs se comparan con una estrategia canónica común; `1` y `"1"` no crean identidades lógicas diferentes. |
 | INV-08 | Toda `BranchCondition.nextTrialId` referencia una branch semántica real del mismo origen. |
-| INV-09 | Una branch de salida conserva custom parameters y sigue siendo branch; no se reclasifica como repeat/jump por estar fuera del scope directo. |
+| INV-09 | Una branch de salida conserva custom parameters y sigue siendo branch; no se reclasifica como repeat/branching por estar fuera del scope directo. |
 | INV-10 | Una proyección visual no se persiste como una segunda branch ni altera condiciones. |
 | INV-11 | Cargar metadata de un scope no cambia el owner de un item ni lo duplica como item ejecutable en otro scope. |
 | INV-12 | Agrupar items en un loop no auto-incluye destinos cuya arista fue definida como salida de ese loop. |
@@ -180,3 +180,6 @@ La UX exacta para operaciones que cambiarían una ruta depende de DEC-22.
 - COMP-03 (resuelta 2026-10-01): los loops no tienen ramas propias ni pueden ser destinos de ramas. Se rechazan los campos legacy; no hay experimentos que requieran migración.
 - COMP-04: datos legacy no se reinterpretan como cross-scope sólo porque un loader los encuentre en otra caché.
 - COMP-05: no se escriben nuevos campos hasta que el contrato y migración estén aprobados.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

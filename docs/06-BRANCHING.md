@@ -1,229 +1,30 @@
-# 06 - Branching & Conditions
+# Branching
 
-The application has three distinct systems for conditional behavior:
+Every navigation connection goes from a trial to a trial. A destination may precede its source, be shared by several routes, or belong to a different loop. Loops are containers; they are not navigation sources or destinations.
 
-## Overview
+Each trial stores `branches`, a flat ordered `branchConditions` list, and `defaultNextTrialId`. The first matching condition selects its `nextTrialId` and optional `customParameters`. If none matches, the explicit default is used. A null default closes the current route; `FINISH_EXPERIMENT` ends the experiment. Configured condition and default destinations must have visible edges. Their creation dates and positions in arrays do not choose the route.
 
-| System | When it runs | What it does | Can override params? | Target scope |
-|--------|-------------|--------------|---------------------|--------------|
-| **BranchConditions** | `on_finish` of current trial | Navigate to another trial | Yes | Only trials in `branches[]` |
-| **RepeatConditions** | `on_finish` of current trial | Jump to any trial/loop | No | ANY trial/loop in experiment |
-| **ParamsOverride** | `on_start` of current trial | Override own parameters | Yes (own params) | Based on previous trials' data |
-
----
-
-## BranchConditions
-
-### Concept
-Branch conditions allow a trial to navigate to different subsequent trials based on the participant's response. The target must be an actual trial in the source trial's `branches[]`. It can belong to another scope, including a nested or sibling loop. Loops own containment and repetition settings, never `branches` or `branchConditions`. Grouping and ungrouping preserve the trial endpoints; collapsed canvas connections are visual projections.
-
-### Data Structure
-```typescript
-type BranchCondition = {
-  id: number;
-  rules: Rule[];          // AND logic — ALL rules must match
-  nextTrialId: number | string | null;  // Target (must be in branches[])
-  customParameters?: Record<string, ColumnMappingEntry>;  // Params to override on target
-};
-
-type Rule = {
-  column: string;   // Data column to check (e.g., "response", "rt")
-  op: string;       // "==", "!=", ">", "<", ">=", "<=", "includes"
-  value: string;    // Value to compare against
-};
-```
-
-### UI Flow
-1. In canvas, user connects trials with arrows → sets `branches[]`
-2. User clicks "Branch" button → opens `BranchedTrial` modal
-3. Modal shows conditions with rules table:
-   - Each condition is an OR group (if any condition matches)
-   - Each rule within a condition is AND (all must match)
-4. Available columns come from trial data definitions (± `data` array)
-5. Available target trials = only trials in `branches[]`
-6. Parameter override available for branch targets (but NOT for jump targets)
-
-### Conditional Parameters
-When a branch target is in `branches[]`, its parameters can be overridden via `customParameters`. This is a `ColumnMappingEntry` map:
-```typescript
-customParameters: {
-  "stimulus": { source: "typed", value: "new_stimulus.jpg" },
-  "trial_duration": { source: "typed", value: 5000 }
+```json
+{
+  "branches": [10, 20],
+  "branchConditions": [{
+    "id": 1,
+    "rules": [{ "column": "response", "op": "==", "value": "yes" }],
+    "nextTrialId": 20,
+    "customParameters": { "stimulus": { "source": "typed", "value": "Selected" } }
+  }],
+  "defaultNextTrialId": 10
 }
 ```
 
-### Generated Code (on_finish)
+Every root or loop scope has an explicit `entryItemId`. A loop additionally stores its structural `nextItemId`, used when its native procedure completes. Sequential authoring operations edit these connections explicitly. Reordering stored definitions alone does not add navigation.
 
-The runtime evaluates trial conditions in order (AND between rules, first matching condition wins), selects the specified target or the first default branch, and carries `customParameters` to that exact target. The generated handler writes root globals for root trials or scoped state for trials inside a loop.
+Entering a destination follows its own outgoing connections. Sharing that destination does not make unrelated later trials execute. Selecting a previous or current trial creates a fresh execution in the future of the active jsPsych timeline.
 
-Pending exits are transported through containers without selecting a different target. Per-row cleanup clears decisions already resolved inside the loop and preserves unresolved exits and inherited targets. See [13-CODE_GENERATION.md](13-CODE_GENERATION.md).
+Within an active loop, a same-scope transition retains its CSV row and repetition. A conditional exit closes the abandoned descendant timelines immediately. An ordinary default exit is deferred until the containing loop completes its rows, repetitions and conditional cycles. Closing a route inside a loop completes its row and allows native iteration to continue.
 
----
+Loop `repetitions`, `loopConditions`, `isConditionalLoop`, CSV sampling, orders, categories and custom lifecycle callbacks retain their roles. Navigation conditions belong to trials.
 
-## RepeatConditions (Jump)
+All destinations support one-time parameter overrides and the same persistence barrier. The source callback returns, its result is saved once, and execution continues after durable acknowledgement. Navigation does not reload the document. Resume restores the version 3 cursor, loop sampling state, future entries and pending destination parameters without reevaluating the completed source.
 
-### Concept
-Jump conditions allow a trial to jump to ANY trial/loop in the experiment (regardless of scope). This is for non-linear navigation (e.g., repeat a block, skip to end).
-
-### Data Structure
-```typescript
-type RepeatCondition = {
-  id: number;
-  rules: Rule[];              // Same rule structure as BranchCondition
-  jumpToTrialId: number | string | null;  // Target (any trial/loop)
-  // NOTE: NO customParameters
-};
-```
-
-### Key Difference from BranchConditions
-- **No parameter override**: Jumps cannot customize target trial parameters
-- **Any target**: Can jump anywhere in the experiment (not limited to `branches[]`)
-- **Detection**: The UI auto-detects if a selected target is in `branches[]` or not
-
-### UI
-In the `BranchedTrial` modal, when a target trial is selected:
-- If target is in `branches[]` → BranchCondition (with param override enabled)
-- If target is NOT in `branches[]` → RepeatCondition/Jump (param override disabled)
-
-### Separation Logic
-```typescript
-// In BranchedTrial/index.tsx::handleSaveConditions()
-conditions.forEach(condition => {
-  if (isInBranches(condition.nextTrialId)) {
-    branchConditions.push({ ...condition });    // Branch: can override params
-  } else if (condition.nextTrialId) {
-    repeatConditions.push({                     // Jump: no params
-      id: condition.id,
-      rules: condition.rules,
-      jumpToTrialId: condition.nextTrialId
-    });
-  }
-});
-```
-
-### Generated Code (on_finish)
-
-Matching repeat conditions call `window.ExpBuilderNavigation.requestJump(...)` with the compiled target and source metadata. Scope wrappers admit the target's path and the actual entry consumes it once. This navigation remains unchanged by the removal of loop branch fields.
-
----
-
-## ParamsOverride
-
-### Concept
-ParamsOverride runs `on_start` and overrides the **current trial's own** parameters based on conditions evaluated on **previous trials' data**. This is distinct from BranchConditions which affect the _next_ trial.
-
-### Data Structure
-```typescript
-type ParamsOverrideCondition = {
-  id: number;
-  rules: ParamsOverrideRule[];    // AND conditions (checking other trials)
-  paramsToOverride: Record<string, ColumnMappingEntry>;  // Own params to change
-};
-
-type ParamsOverrideRule = {
-  trialId: string | number;  // Which trial's data to check
-  column: string;            // Which column in that trial's data
-  op: string;                // Comparison operator
-  value: string;             // Threshold
-};
-```
-
-### Example
-```
-Trial A → Trial B (with paramsOverride)
-If Trial A's response was 'yes', Trial B uses stimulus 'positive.jpg'
-```
-
-### UI
-- Dedicated "Params Override" button in trial config
-- Opens a full-screen modal (`ParamsOverride` component)
-- Conditions reference data from **previous trials** in the same scope
-- Parameter values are typed or CSV-based (ColumnMappingEntry)
-
-### Generated Code (on_start)
-```javascript
-on_start: function(trial) {
-  // Fetch data from referenced trials
-  var trialData = jsPsych.data.get().filter({ trial_index: 0 }).values()[0];
-  
-  // Condition 1: if previous trial response was 'yes'
-  if (trialData && trialData.response === 'yes') {
-    trial.stimulus = 'happy_face.jpg';
-    trial.trial_duration = 5000;
-  }
-  
-  // User custom code appended here
-}
-```
-
----
-
-## Rule System (Unified)
-
-All three systems use the same `Rule` structure:
-
-```typescript
-type Rule = {
-  column: string;    // Direct column name from trial data
-  op: string;        // "==", "!=", ">", "<", ">=", "<=", "includes"
-  value: string;     // Comparison value
-};
-```
-
-### Column Naming Convention
-- **Native plugins**: Simple names like `"response"`, `"rt"`, `"correct"`
-- **Dynamic Plugin**: Prefixed names like `"ButtonResponseComponent_1_response"`, `"ImageComponent_1_stimulus"`
-- **Legacy fields** (`prop`, `fieldType`, `componentIdx`) still exist for backward compatibility but are no longer actively used
-
-### Condition Evaluation
-- Within a condition: rules are ANDed (all must match)
-- Across conditions: ORed (first matching condition wins)
-- Conditions are evaluated in order
-
-### Available Columns for Rules
-The UI shows available data columns from:
-1. **Trial data definitions** (`data` array): Columns that the trial generates
-2. **Current trial's own data**: `response`, `rt`, `correct`, `trial_index`, etc.
-3. **For ParamsOverride**: Columns from referenced previous trials (loaded dynamically)
-
----
-
-## LoopConditions
-
-Separate from branch/jump — these control whether a loop repeats.
-
-```typescript
-type LoopCondition = {
-  id: number;
-  rules: LoopConditionRule[];  // Reference trial + column + op + value
-};
-
-type LoopConditionRule = {
-  trialId: string | number;  // Which trial inside the loop
-  column: string;
-  op: string;
-  value: string;
-};
-```
-
-When `isConditionalLoop` is true, the loop repeats as long as conditions are met:
-- Checked at the end of each loop iteration
-- Configurable through `ConditionalLoop` modal (nested in LoopsConfig)
-- Overrides `repetitions` — loop doesn't stop at a fixed count
-
-### Generated Code
-```javascript
-loop_function: function(data) {
-  // Check conditions from trial data
-  var lastTrialData = jsPsych.data.get().last(1).values()[0];
-  return lastTrialData.response === 'repeat';  // true = repeat again
-}
-```
-
----
-
-## Target Availability
-
-- Branch conditions use actual trial IDs already saved in `branches[]`, including targets outside the current scope. Loops are excluded as structural branch endpoints.
-- Parameter overrides reference data from previously executed trials; their data picker is separate from branch target selection.
-- Existing repeat/jump navigation uses its compiled address contract. It is preserved by this refactor.
+Imports and artifact generation require the current contract. Invalid navigation is rejected before changing experiment data or restoring media. There is no conversion of old navigation records or checkpoints.

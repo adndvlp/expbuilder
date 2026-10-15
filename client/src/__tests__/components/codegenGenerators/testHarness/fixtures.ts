@@ -4,12 +4,10 @@ import { generateBranchConditionsCode } from "../../../../pages/ExperimentBuilde
 import { generateOnFinishCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
 import { generateOnStartCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onStartGenerator";
 import { generateParamsOverrideCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/paramsOverrideGenerator";
-import { generateRepeatConditionsCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/repeatConditionsGenerator";
 import type {
   BranchCondition,
   ColumnMappingEntry,
   ParamsOverrideCondition,
-  RepeatCondition,
 } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 
 function normalize(code: string) {
@@ -43,7 +41,6 @@ export {
   generateOnFinishCode,
   generateOnStartCode,
   generateParamsOverrideCode,
-  generateRepeatConditionsCode,
   getColumnValue,
   getVarName,
   it,
@@ -54,5 +51,4 @@ export type {
   BranchCondition,
   ColumnMappingEntry,
   ParamsOverrideCondition,
-  RepeatCondition,
 };
