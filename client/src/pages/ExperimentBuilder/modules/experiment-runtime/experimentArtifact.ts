@@ -1,4 +1,3 @@
-import type { ExperimentAppearance } from "../../appearance";
 import {
   AuthoringRequestError,
   createJsonTransport,
@@ -46,7 +45,6 @@ export async function buildExperimentArtifact(options: {
   fetchImpl?: FetchLike;
   saveConfiguration?: boolean;
   isDevMode?: boolean;
-  appearance?: ExperimentAppearance;
   onStage?: (stage: ArtifactBuildStage) => void;
 }): Promise<ExperimentArtifactResult> {
   if (!options.experimentId) throw new Error("Experiment ID is required");
@@ -93,7 +91,6 @@ export async function buildExperimentArtifact(options: {
       `/api/run-experiment/${options.experimentId}`,
       requestOptions({
         generatedCode: options.generatedCode,
-        canvasStyles: options.appearance,
       }),
     );
   } catch (error) {

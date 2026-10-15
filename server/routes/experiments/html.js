@@ -7,6 +7,7 @@ import { db, ensureDbData } from "../../utils/db.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { applyGeneratedArtifact } from "./artifact.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
+import { assertNoAppearanceOverride } from "./appearanceSettings.js";
 
 const router = Router();
 
@@ -17,16 +18,11 @@ function setExperimentBase($, experimentID) {
   );
 }
 
-function resolveExperimentAppearance(appearanceFromBody, experiment) {
-  return experiment.appearanceSettings
-    ? { ...appearanceFromBody, ...experiment.appearanceSettings }
-    : appearanceFromBody;
-}
-
 /* istanbul ignore next -- run HTML permutations are covered by route integration tests. */
 router.post("/api/run-experiment/:experimentID", async (req, res) => {
   try {
-    const { generatedCode, canvasStyles: canvasStylesFromBody } = req.body;
+    assertNoAppearanceOverride(req.body);
+    const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 
     await db.read();
@@ -41,11 +37,6 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
-    const canvasStyles = resolveExperimentAppearance(
-      canvasStylesFromBody,
-      experiment,
-    );
-
     const templatePath = ensureTemplate("experiment_template.html");
     const experimentHtmlPath = path.join(
       experimentsHtmlDir,
@@ -62,7 +53,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     }
 
     setExperimentBase($, experimentID);
-    applyGeneratedArtifact($, generatedCode, canvasStyles, {
+    applyGeneratedArtifact($, generatedCode, experiment, {
       requiresDynamicPlugin: trialDoc?.trials?.some(
         (trial) => trial.plugin === "plugin-dynamic",
       ),
@@ -75,7 +66,7 @@ router.post("/api/run-experiment/:experimentID", async (req, res) => {
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.status || 500).json({ success: false, error: error.message });
   }
 });
 
@@ -122,7 +113,8 @@ router.get("/:experimentID/preview", async (req, res) => {
 /* istanbul ignore next -- preview HTML permutations are covered by route integration tests. */
 router.post("/api/trials-preview/:experimentID", async (req, res) => {
   try {
-    const { generatedCode, canvasStyles: canvasStylesFromBody } = req.body;
+    assertNoAppearanceOverride(req.body);
+    const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 
     await db.read();
@@ -137,11 +129,6 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
-    const canvasStyles = resolveExperimentAppearance(
-      canvasStylesFromBody,
-      experiment,
-    );
-
     const templatePath = ensureTemplate("trials_preview_template.html");
     const previewHtmlPath = path.join(
       trialsPreviewsHtmlDir,
@@ -158,7 +145,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     }
 
     setExperimentBase($, experimentID);
-    applyGeneratedArtifact($, generatedCode, canvasStyles, {
+    applyGeneratedArtifact($, generatedCode, experiment, {
       requiresDynamicPlugin: trialDoc?.trials?.some(
         (trial) => trial.plugin === "plugin-dynamic",
       ),
@@ -171,7 +158,7 @@ router.post("/api/trials-preview/:experimentID", async (req, res) => {
     });
   } catch (error) {
     console.error(`Error running experiment: ${error.message}`);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.status || 500).json({ success: false, error: error.message });
   }
 });
 

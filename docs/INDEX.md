@@ -13,6 +13,7 @@ This documentation covers the complete architecture, data model, API, and system
 | [05-TRIALS_AND_LOOPS.md](05-TRIALS_AND_LOOPS.md) | Trial lifecycle, loop system, orders & categories, CSV integration, code injection hooks |
 | [06-BRANCHING.md](06-BRANCHING.md) | Explicit branching, default destinations, parameter overrides, loops and resume |
 | [unified-branching-contract-sdd.md](unified-branching-contract-sdd.md) | Single Branching contract, scope entries, loops, persistence, resume and TDD acceptance criteria |
+| [experiment-background-sdd.md](experiment-background-sdd.md) | Single experiment background for local execution, preview and publication; removal of per-trial background copies and verification results |
 | [07-DYNAMIC_PLUGIN.md](07-DYNAMIC_PLUGIN.md) | Component types, canvas system, visual designer, screen layout resolution, data collection |
 | [08-EXECUTION.md](08-EXECUTION.md) | Code generation, experiment compilation, preview, local run, Cloudflare publishing |
 | [09-CLIENT_SERVER.md](09-CLIENT_SERVER.md) | Providers, context, hooks, optimistic UI, data flow, autosave patterns |

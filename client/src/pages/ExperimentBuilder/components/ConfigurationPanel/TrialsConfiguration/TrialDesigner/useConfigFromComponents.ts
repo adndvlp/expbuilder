@@ -1,5 +1,4 @@
 import { TrialComponent, PreviewViewport } from "./types";
-import type { ExperimentAppearance } from "../../../../appearance";
 import { makeGrapesHtmlPortable } from "./GrapesEditors/portableHtml";
 
 type Props = {
@@ -12,14 +11,12 @@ type Props = {
   };
   columnMapping: Record<string, any>;
   previewViewport?: PreviewViewport;
-  appearance?: ExperimentAppearance;
 };
 
 export default function useConfigComponents({
   toJsPsychCoords,
   columnMapping,
   previewViewport,
-  appearance,
 }: Props) {
   const generateConfigFromComponents = (comps: TrialComponent[]) => {
     const stimulusComponents: any[] = [];
@@ -212,14 +209,7 @@ export default function useConfigComponents({
       delete dynamicPluginConfig.response_components;
     }
 
-    if (appearance) {
-      dynamicPluginConfig.__canvasStyles = {
-        source: "typed",
-        value: { ...appearance },
-      };
-    } else {
-      delete dynamicPluginConfig.__canvasStyles;
-    }
+    delete dynamicPluginConfig.__canvasStyles;
 
     return dynamicPluginConfig;
   };

@@ -110,9 +110,7 @@ describe("useTrialCode composition", () => {
     expect(code).toContain(
       'trial_duration: jsPsych.timelineVariable("trial_duration")',
     );
-    expect(code).toContain(
-      '__canvasStyles: jsPsych.timelineVariable("__canvasStyles")',
-    );
+    expect(code).not.toContain("__canvasStyles");
     expect(code).toContain('rt: "rt"');
     expect(code).toContain("branches: []");
   });

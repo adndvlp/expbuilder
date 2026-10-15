@@ -50,7 +50,6 @@ export function generateTrialProps({
       "response_ends_trial",
       "require_response_components",
       "dynamic_csv_diagnostics",
-      "__canvasStyles",
     ];
     const dynamicParamProps = dynamicPassthroughParams
       .filter(

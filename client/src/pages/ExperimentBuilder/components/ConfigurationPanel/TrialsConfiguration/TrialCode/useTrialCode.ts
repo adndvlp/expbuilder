@@ -87,7 +87,8 @@ export function useTrialCode({
   const safeCategoryData = categoryData || [];
 
   const activeParameters = parameters.filter(
-    (p) => columnMapping[p.key] && columnMapping[p.key].source !== "none",
+    (p) => !(["plugin-dynamic", "DynamicPlugin"].includes(pluginName) && p.key === "__canvasStyles") &&
+      columnMapping[p.key] && columnMapping[p.key].source !== "none",
   );
   const trialNameSanitized = toCodeIdentifier(trialName);
 

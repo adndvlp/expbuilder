@@ -12,11 +12,6 @@ it("resizes the running iframe without rebuilding or reloading it", async () => 
     <ExperimentPreview
       autoStart
       previewViewport={{ width: 1440, height: 900 }}
-      appearance={{
-        backgroundColor: "#ffffff",
-        fullScreen: true,
-        progressBar: false,
-      }}
     />,
   );
   await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
@@ -28,11 +23,6 @@ it("resizes the running iframe without rebuilding or reloading it", async () => 
     <ExperimentPreview
       autoStart
       previewViewport={{ width: 1478, height: 903 }}
-      appearance={{
-        backgroundColor: "#ffffff",
-        fullScreen: true,
-        progressBar: false,
-      }}
     />,
   );
   await act(async () => {
@@ -41,9 +31,5 @@ it("resizes the running iframe without rebuilding or reloading it", async () => 
   expect(screen.getByTitle("Experiment Preview")).toBe(iframe);
   expect(iframe).toHaveStyle({ width: "1478px", height: "903px" });
   expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-  expect(requestBodyFromLastPreviewPost().canvasStyles).toEqual({
-    backgroundColor: "#ffffff",
-    fullScreen: true,
-    progressBar: false,
-  });
+  expect(requestBodyFromLastPreviewPost()).not.toHaveProperty("canvasStyles");
 });

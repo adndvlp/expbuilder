@@ -151,7 +151,7 @@ describe("TrialDesigner screen preview", () => {
     const { onSave, onAutoSave, setAppearance } = renderDesigner(mapping);
     const originalComponents = screen.getByTestId("canvas").textContent;
     const baseline = save(onSave);
-    expect(baseline.__canvasStyles.value).toEqual(DEFAULT_EXPERIMENT_APPEARANCE);
+    expect(baseline).not.toHaveProperty("__canvasStyles");
     expect(JSON.parse(originalComponents!)[0]).toMatchObject({
       x: expect.closeTo(792),
       y: 360,
@@ -239,10 +239,7 @@ describe("TrialDesigner screen preview", () => {
     vi.stubGlobal("screen", { width: 1440, height: 900 });
     const { onSave, onAutoSave } = renderDesigner({});
     const baseline = save(onSave);
-    expect(baseline.__canvasStyles).toEqual({
-      source: "typed",
-      value: DEFAULT_EXPERIMENT_APPEARANCE,
-    });
+    expect(baseline).not.toHaveProperty("__canvasStyles");
     for (const preset of DEVICE_PRESETS) {
       fireEvent.click(
         screen.getByTitle(`${preset.label} — ${preset.description}`),

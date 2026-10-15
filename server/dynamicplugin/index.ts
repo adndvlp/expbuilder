@@ -1,6 +1,6 @@
 import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
 
-const version = "1.0.0";
+const version = "1.0.8";
 
 // Import all component types
 import ImageComponent from "./components/ImageComponent";
@@ -123,21 +123,7 @@ function preserveCanvasVisualBridge(
   monitorPreservedVisualBridge(displayElement);
 }
 
-function styleVisualContainer(
-  container: HTMLElement,
-  width: number,
-  height: number,
-  backgroundColor: string,
-) {
-  container.style.background = backgroundColor;
-  styleSurface(container, { width, height, dpr: window.devicePixelRatio || 1, revision: 0 }, { left: 0, top: 0 });
-}
-
-function getPersistentVisualSurface(
-  width: number,
-  height: number,
-  backgroundColor: string,
-) {
+function getPersistentVisualSurface() {
   if (!persistentVisualSurface) {
     persistentVisualSurface = document.createElement("div");
     persistentVisualSurface.id = DYNAMIC_PERSISTENT_VISUAL_ID;
@@ -146,7 +132,6 @@ function getPersistentVisualSurface(
     persistentVisualSurface.style.zIndex = "2147483646";
     document.body.appendChild(persistentVisualSurface);
   }
-  styleVisualContainer(persistentVisualSurface, width, height, backgroundColor);
   return persistentVisualSurface;
 }
 
@@ -192,11 +177,6 @@ const info = <const>{
   name: "DynamicPlugin",
   version: version,
   parameters: {
-    /** Presentation appearance. Legacy screen dimensions are ignored. */
-    __canvasStyles: {
-      type: ParameterType.COMPLEX,
-      default: {},
-    },
     /** Array of component configurations for stimulus display */
     components: {
       type: ParameterType.COMPLEX,
@@ -1271,8 +1251,6 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     const mainContainer = document.createElement("div");
     mainContainer.id = DYNAMIC_CONTAINER_ID;
     mainContainer.style.visibility = "hidden";
-    mainContainer.style.background =
-      trial.__canvasStyles?.backgroundColor ?? "transparent";
     display_element.appendChild(mainContainer);
 
     let viewportController: RuntimeViewportController;
@@ -1933,11 +1911,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       );
       if (visualFrameBoundaryHandoff) {
         removePreservedVisualBridge();
-        visualRenderContainer = getPersistentVisualSurface(
-          layoutContext.getViewport().width,
-          layoutContext.getViewport().height,
-          trial.__canvasStyles?.backgroundColor ?? "transparent",
-        );
+        visualRenderContainer = getPersistentVisualSurface();
         styleSurface(visualRenderContainer, layoutContext.getViewport(), viewportController.origin);
         for (const stage of getCanvasStages(visualRenderContainer)) {
           stage.resize(layoutContext.getViewport().width, layoutContext.getViewport().height, layoutContext.getViewport().dpr);

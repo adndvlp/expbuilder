@@ -14,13 +14,14 @@ import {
   isPublishableMediaFile,
 } from "./media.js";
 import { applyGeneratedArtifact } from "./artifact.js";
+import { assertNoAppearanceOverride, resolveExperimentAppearance } from "./appearanceSettings.js";
 import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
 
 const router = Router();
 
 function getDynamicPluginCdn() {
   let dynamicName = "jspsych-expbuilder-plugin-dynamic";
-  let dynamicVersion = "1.0.2";
+  let dynamicVersion = "1.0.8";
   try {
     const dynamicPkgPath = path.resolve(
       __dirname,
@@ -143,6 +144,7 @@ async function publishToGithub(payload, authorization) {
 /* istanbul ignore next -- publish filesystem/Firebase permutations are covered by route integration tests. */
 router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
+    assertNoAppearanceOverride(req.body);
     const { experimentID } = req.params;
     const { uid, storage, generatedPublicCode } = req.body;
 
@@ -221,7 +223,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     console.log(
       "Replacing script with PUBLIC experiment code for publishing...",
     );
-    applyGeneratedArtifact($, generatedPublicCode);
+    applyGeneratedArtifact($, generatedPublicCode, experiment);
 
     injectPublicAssets($, experiment, experimentID);
 
@@ -244,7 +246,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
     }
 
-    if (experiment.appearanceSettings?.fullScreen ?? true) {
+    if (resolveExperimentAppearance(experiment).fullScreen) {
       $("head").append(
         `<script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0" data-dynamic-plugins="true"></script>`,
       );
@@ -299,7 +301,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     }
   } catch (error) {
     console.error(`Error publishing experiment: ${error.message}`);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.status || 500).json({ success: false, error: error.message });
   }
 });
 

@@ -1,13 +1,13 @@
 import { getRuntimeGuardSource } from "../../runtime/runtimeGuard.js";
+import { resolveExperimentAppearance } from "./appearanceSettings.js";
 
-export function applyBackgroundStyle($, canvasStyles) {
-  $("style#canvas-styles").remove();
-  if (!canvasStyles?.backgroundColor) return;
-  const background = canvasStyles.backgroundColor;
+export function applyBackgroundStyle($, experiment) {
+  $("style#experiment-appearance, style#canvas-styles").remove();
+  const { backgroundColor } = resolveExperimentAppearance(experiment);
   $("head").append(
-    `<style id="canvas-styles">
-  body { background-color: ${background}; }
-  .jspsych-display-element { background-color: ${background}; }
+    `<style id="experiment-appearance">
+  body { background-color: ${backgroundColor}; }
+  .jspsych-display-element:not(body) { background-color: transparent; }
 </style>`,
   );
 }
@@ -15,7 +15,7 @@ export function applyBackgroundStyle($, canvasStyles) {
 export function applyGeneratedArtifact(
   $,
   generatedCode,
-  canvasStyles,
+  experiment,
   options = {},
 ) {
   $("script#expbuilder-runtime-guard").remove();
@@ -23,7 +23,7 @@ export function applyGeneratedArtifact(
   if (options.requiresDynamicPlugin === false) {
     $('script[src*="dynamicplugin"]').remove();
   }
-  applyBackgroundStyle($, canvasStyles);
+  applyBackgroundStyle($, experiment);
   $("body").append(
     `<script id="expbuilder-runtime-guard">\n${getRuntimeGuardSource()}\n</script>`,
   );

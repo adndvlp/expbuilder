@@ -12,6 +12,12 @@ export async function compileScenarioArtifact(options: {
   baseCodeOverride?: string;
   appearance?: typeof scenarioAppearance;
 }) {
+  const response = await fetch(`${options.apiBaseUrl}/api/appearance-settings/${options.experimentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options.appearance ?? scenarioAppearance),
+  });
+  if (!response.ok) throw new Error(`Saving scenario appearance failed: ${response.status}`);
   const getLoopTimeline = async (loopId: string | number) => {
     const graph = await options.client.getGraph(options.experimentId);
     return graph.scopes[String(loopId)]?.items ?? [];
@@ -32,6 +38,5 @@ export async function compileScenarioArtifact(options: {
     generatedCode,
     apiBaseUrl: options.apiBaseUrl,
     saveConfiguration: true,
-    appearance: options.appearance ?? scenarioAppearance,
   });
 }

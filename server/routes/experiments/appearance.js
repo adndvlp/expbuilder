@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, ensureDbData } from "../../utils/db.js";
+import { resolveExperimentAppearance } from "./appearanceSettings.js";
 
 const router = Router();
 
@@ -17,11 +18,7 @@ router.get("/api/appearance-settings/:experimentID", async (req, res) => {
     }
     res.json({
       success: true,
-      settings: exp.appearanceSettings ?? {
-        backgroundColor: "#ffffff",
-        fullScreen: true,
-        progressBar: false,
-      },
+      settings: resolveExperimentAppearance(exp),
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

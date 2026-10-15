@@ -53,7 +53,6 @@ export function configureScenarioDynamicButtonTrial(
       },
       require_response: { source: "typed", value: true },
       response_ends_trial: { source: "typed", value: true },
-      __canvasStyles: { source: "typed", value: scenarioAppearance },
     },
   });
 }

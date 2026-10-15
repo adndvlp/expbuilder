@@ -1,7 +1,7 @@
 import { MappedJson, expect, getColumnValue, it } from "./testHarness";
 
 it.each([false, true])(
-  "generates appearance and relative geometry with CSV for loop=%s",
+  "generates relative geometry with CSV without a trial background for loop=%s",
   (isInLoop) => {
     const { mappedJson } = MappedJson({
       isInLoop,
@@ -46,11 +46,7 @@ it.each([false, true])(
     });
     const suffix = isInLoop ? "_responsive" : "";
     for (const [index, row] of mappedJson.entries()) {
-      expect(row[`__canvasStyles${suffix}`]).toEqual({
-        backgroundColor: "#abcdef",
-        fullScreen: false,
-        progressBar: false,
-      });
+      expect(row).not.toHaveProperty(`__canvasStyles${suffix}`);
       expect(row[`components${suffix}`][0]).toMatchObject({
         type: "TextComponent",
         coordinates: { x: -88, y: 88 },

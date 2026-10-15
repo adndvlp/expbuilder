@@ -77,7 +77,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     toJsPsychCoords,
     columnMapping,
     previewViewport,
-    appearance,
   });
 
   const autoSaveComponents = useCallback(
@@ -194,7 +193,6 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
       isDemoRunning={isDemoRunning}
       previewProps={{
         uploadedFiles,
-        appearance,
         previewViewport,
         autoStart: true,
       }}

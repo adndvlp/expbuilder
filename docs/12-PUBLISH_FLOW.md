@@ -309,7 +309,7 @@ const { files } = await res.json();
    - Gets timeline from context
    - Fetches all trial/loop data
    - Generates jsPsych timeline code with local file references
-4. `POST /api/run-experiment/:experimentID` with `{ generatedCode, canvasStyles }`
+4. `POST /api/run-experiment/:experimentID` with `{ generatedCode }`
 5. Server builds HTML file at `experiments_html/{name}.html`
 6. Experiment URL: `http://localhost:3000/{experimentName}`
 

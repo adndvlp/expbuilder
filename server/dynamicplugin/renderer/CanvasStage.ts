@@ -175,7 +175,7 @@ abstract class BaseStage {
     this.dpr = visible.dpr;
     this.width = options.width;
     this.height = options.height;
-    this.backgroundColor = options.backgroundColor || "#ffffff";
+    this.backgroundColor = options.backgroundColor || "transparent";
     this.backgroundRgba = parseCssColor(this.backgroundColor);
     this.metrics = createBaseMetrics(
       "webgl-strict",

@@ -275,8 +275,7 @@ columnMapping: {
   },
   "response_components": { ... },
   "trial_duration": { source: "typed", value: null },
-  "response_ends_trial": { source: "typed", value: true },
-  "__canvasStyles": { source: "typed", value: { width: 1024, height: 768 } }
+  "response_ends_trial": { source: "typed", value: true }
 }
 ```
 

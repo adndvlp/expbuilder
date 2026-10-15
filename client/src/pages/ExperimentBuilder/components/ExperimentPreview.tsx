@@ -1,5 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import type { ExperimentAppearance } from "../appearance";
+import { useEffect, useState, useRef } from "react";
 import type { PreviewViewport } from "./ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 import useExperimentAppearance from "../hooks/useExperimentAppearance";
 import useUrl from "../hooks/useUrl";
@@ -19,7 +18,6 @@ type UploadedFile = { name: string; url: string; type: string };
 
 type Props = {
   uploadedFiles?: UploadedFile[];
-  appearance?: ExperimentAppearance;
   previewViewport?: PreviewViewport;
   autoStart?: boolean;
 };
@@ -28,17 +26,10 @@ const EMPTY_UPLOADED_FILES: UploadedFile[] = [];
 
 function ExperimentPreview({
   uploadedFiles = EMPTY_UPLOADED_FILES,
-  appearance: previewAppearance,
   previewViewport,
   autoStart = false,
 }: Props) {
-  const { appearance: experimentAppearance } = useExperimentAppearance();
-  const { backgroundColor, fullScreen, progressBar } =
-    previewAppearance ?? experimentAppearance;
-  const appearance = useMemo(
-    () => ({ backgroundColor, fullScreen, progressBar }),
-    [backgroundColor, fullScreen, progressBar],
-  );
+  const { appearance } = useExperimentAppearance();
   const { generateLocalExperiment } = useExperimentCode(uploadedFiles);
   const { trialUrl } = useUrl();
   const [started, setStarted] = useState(autoStart);
@@ -152,7 +143,6 @@ function ExperimentPreview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           generatedCode: generatedPreviewCode,
-          canvasStyles: appearance,
         }),
         credentials: "include",
         mode: "cors",
@@ -243,7 +233,6 @@ function ExperimentPreview({
                 transform: `scale(${scale})`,
                 transformOrigin: "center center",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
-                background: appearance.backgroundColor || "transparent",
               }}
             />
           </div>

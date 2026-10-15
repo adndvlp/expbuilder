@@ -300,7 +300,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
     expect(res.body.error).toBe('No generated code provided')
   })
 
-  test('builds runnable HTML with body styles from request, DB fallback, and appearance override', async () => {
+  test('builds runnable HTML with the saved experiment appearance', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({
       experimentID: 'E1',
@@ -331,7 +331,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
     expect(html).toContain('<base id="experiment-base" href="/E1/">')
   })
 
-  test('uses request canvas styles when experiment appearance is absent', async () => {
+  test('rejects request canvas styles when experiment appearance is absent', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'StyledRun', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     await db.write()
@@ -339,10 +339,9 @@ describe('POST /api/run-experiment/:experimentID', () => {
     await request(app)
       .post('/api/run-experiment/E1')
       .send({ generatedCode: 'const generated = true;', canvasStyles: { backgroundColor: '#112233' } })
-      .expect(200)
+      .expect(400)
 
-    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), 'utf8')
-    expect(html).toContain('background-color: #112233')
+    expect(fs.existsSync(path.join(tmpDir, 'experiments_html', 'E1.html'))).toBe(false)
   })
 })
 

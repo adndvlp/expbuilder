@@ -51,10 +51,6 @@ const RESPONSE_COMPONENT_MAP = {
 
 ```typescript
 {
-  __canvasStyles: {
-    type: COMPLEX,
-    default: { width: 1024, height: 768 }
-  },
   components: {
     type: COMPLEX, array: true,  // Array of stimulus component configs
     default: []
@@ -78,7 +74,7 @@ const RESPONSE_COMPONENT_MAP = {
 ### Trial Execution Flow
 
 1. Create main container (`#jspsych-dynamic-plugin-container`)
-2. Scale to viewport using `__canvasStyles` dimensions
+2. Size transparent surfaces to the current runtime viewport
 3. Instantiate all stimulus and response components
 4. Sort by `zIndex` for layering
 5. Render all components in parallel

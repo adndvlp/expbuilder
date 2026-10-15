@@ -175,12 +175,13 @@ type AppearanceSettings = {
 - **Full Screen**: When true, adds `plugin-fullscreen` trial at start of timeline and injects CDN script
 - **Progress Bar**: Handled by jsPsych timeline configuration
 
-### Priority during compilation
-```
-1. Request body (canvasStyles from frontend)
-2. DB: First trial's __canvasStyles columnMapping
-3. Experiment's appearanceSettings (always wins for backgroundColor and fullScreen)
-```
+### Appearance during compilation
+
+The server resolves `experiment.appearanceSettings` for local execution, preview
+and publication. Missing fields use the same defaults as GET appearance settings:
+white (`#ffffff`), fullscreen enabled and progress bar disabled. Construction
+requests do not accept a separate appearance. Dynamic surfaces are transparent;
+trials do not store or apply a copy of the global background.
 
 ---
 

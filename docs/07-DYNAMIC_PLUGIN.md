@@ -12,7 +12,6 @@ Implements `JsPsychPlugin<Info>` with a single `trial()` method.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `__canvasStyles` | COMPLEX | `{width:1024, height:768}` | Virtual canvas dimensions |
 | `components` | COMPLEX[] | `[]` | Array of stimulus component configs |
 | `response_components` | COMPLEX[] | `[]` | Array of response component configs |
 | `require_response` | BOOL | `false` | Require all response components to pass validation |
@@ -51,7 +50,6 @@ type ComponentConfig = {
   width?: number;        // Width in pixels
   height?: number;       // Height in pixels
   screenLayouts?: Record<string, ScreenLayout>;  // Per-screen-size layouts
-  __canvasStyles?: { width: number; height: number };  // Canvas dimensions
   // ... component-specific params
 };
 ```
@@ -291,8 +289,7 @@ await fetch(`/api/trial/${experimentID}/${trialId}`, {
         }]
       },
       trial_duration: { source: "typed", value: null },
-      response_ends_trial: { source: "typed", value: true },
-      __canvasStyles: { source: "typed", value: { width: 1024, height: 768 } }
+      response_ends_trial: { source: "typed", value: true }
     }
   })
 });
@@ -312,7 +309,7 @@ File upload. Parameters: `accept` (file types), `max_file_size`, `multiple`, `bu
 
 ```
 1. Create container (#jspsych-dynamic-plugin-container)
-2. Scale to viewport (based on __canvasStyles)
+2. Size transparent surfaces to the current runtime viewport
 3. ResizeObserver for responsive scaling
 4. Instantiate all components (via COMPONENT_MAP / RESPONSE_COMPONENT_MAP)
 5. Auto-name components: "Type_1", "Type_2"...
@@ -401,3 +398,11 @@ The `TrialDesigner` component provides:
 ### Tabs
 - **Components**: Opens the visual designer
 - **General Settings**: Standard ParameterMapper for trial-level params (trial_duration, response_ends_trial, require_response)
+
+### Experiment background
+
+The global background belongs to the experiment appearance settings and is
+applied once in the generated HTML. Dynamic containers and renderer layers stay
+transparent, including transitions and persistent image surfaces. Component
+backgrounds (buttons, text boxes, surveys and Sketchpad) remain local to each
+component. See [the background SDD](experiment-background-sdd.md).

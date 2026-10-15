@@ -23,11 +23,6 @@ describe("ExperimentPreview full previews", () => {
         uploadedFiles={[
           { name: "image.png", url: "uploads/img/image.png", type: "img" },
         ]}
-        appearance={{
-          backgroundColor: "#111111",
-          fullScreen: false,
-          progressBar: false,
-        }}
         previewViewport={{ width: 800, height: 600 }}
       />,
     );
@@ -42,15 +37,11 @@ describe("ExperimentPreview full previews", () => {
 
     expect(requestBodyFromLastPreviewPost()).toEqual({
       generatedCode: "local-preview-code",
-      canvasStyles: {
-        backgroundColor: "#111111",
-        fullScreen: false,
-        progressBar: false,
-      },
     });
     expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
 
     const iframe = screen.getByTitle("Experiment Preview");
+    expect(iframe.style.background).toBe("");
     expect(iframe).toHaveAttribute(
       "src",
       "http://localhost:3000/test-exp-123/preview",
@@ -58,7 +49,6 @@ describe("ExperimentPreview full previews", () => {
     expect(iframe).toHaveStyle({
       width: "800px",
       height: "600px",
-      background: "#111111",
     });
   });
 

@@ -10,13 +10,17 @@ All routes are prefixed with the Express server URL. `experimentID` refers to th
 | GET | `/api/experiment/:experimentID` | Get a single experiment by ID |
 | POST | `/api/create-experiment` | Create new experiment. Body: `{ name, description?, author?, uid?, storage? }` |
 | DELETE | `/api/delete-experiment/:experimentID` | Delete experiment + trials + configs + results + HTML + files. Body: `{ uid? }` |
-| POST | `/api/run-experiment/:experimentID` | Compile experiment to HTML. Body: `{ generatedCode, canvasStyles? }` |
-| POST | `/api/trials-preview/:experimentID` | Compile trial preview HTML. Body: `{ generatedCode, canvasStyles? }` |
+| POST | `/api/run-experiment/:experimentID` | Compile experiment to HTML. Body: `{ generatedCode }` |
+| POST | `/api/trials-preview/:experimentID` | Compile trial preview HTML. Body: `{ generatedCode }` |
 | GET | `/:experimentID` | Serve compiled experiment HTML |
 | GET | `/:experimentID/preview` | Serve compiled trial preview HTML |
 | POST | `/api/publish-experiment/:experimentID` | Publish to GitHub Pages. Body: `{ uid, storage?, generatedPublicCode }` |
 | GET | `/api/appearance-settings/:experimentID` | Get appearance settings |
 | PUT | `/api/appearance-settings/:experimentID` | Save appearance settings. Body: `{ backgroundColor, fullScreen, progressBar }` |
+
+Run, preview and publication resolve appearance from the saved experiment,
+defaulting to white when unset. A parallel `canvasStyles` field in construction
+requests is rejected with HTTP 400 before creating an artifact.
 
 ### Static File Serving
 - Files under an experiment's `img|aud|vid|others/` directories are resolved by exact `experimentID`

@@ -206,7 +206,7 @@ Frontend generates code:
   - TrialCode: individual trials
   ↓
 POST /api/run-experiment/:experimentID
-body: { generatedCode: "...", canvasStyles: { ... } }
+body: { generatedCode: "..." }
   ↓
 Server:
   - Resolves canvas styles (body → DB → appearance settings)
