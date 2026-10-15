@@ -7,6 +7,7 @@ import PreviewViewportBar from "../PreviewViewportBar";
 import ComponentSidebar from "../ComponentSidebar";
 import KonvaCanvas from "../KonvaCanvas";
 import KonvaParameterMapper from "../KonvaParameterMapper";
+import TrialMemoryMeter from "../memory/TrialMemoryMeter";
 
 interface TrialDesignerLayoutProps {
   actionProps: ComponentProps<typeof ActionButtons>;
@@ -39,6 +40,12 @@ export default function TrialDesignerLayout({
     <Modal {...modalProps}>
       <div style={rootStyle}>
         <PreviewViewportBar {...toolbarProps} />
+        {!isDemoRunning && (
+          <TrialMemoryMeter
+            components={canvasProps.components}
+            uploadedFiles={canvasProps.uploadedFiles}
+          />
+        )}
         {isDemoRunning && (
           <div style={previewOverlayStyle}>
             <ExperimentPreview {...previewProps} />

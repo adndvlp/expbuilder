@@ -1,0 +1,101 @@
+.trial-memory {
+  flex-shrink: 0;
+  color: var(--text-light);
+  background: var(--neutral-dark, #22272f);
+  border-bottom: 1px solid var(--neutral-mid);
+  font-size: 12px;
+}
+.trial-memory summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 7px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.trial-memory summary::before {
+  content: "▸";
+}
+.trial-memory[open] summary::before {
+  content: "▾";
+}
+.trial-memory summary > span {
+  opacity: 0.85;
+}
+.trial-memory-risk {
+  color: var(--gold, #f5cc50);
+}
+.trial-memory[data-level="high"] .trial-memory-risk {
+  color: #ff998f;
+}
+.trial-memory-content {
+  max-height: 32vh;
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+.trial-memory-content p {
+  margin: 7px 0;
+  line-height: 1.5;
+}
+.trial-memory-content button {
+  padding: 4px 8px;
+  border: 1px solid var(--neutral-mid);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.trial-memory-content meter {
+  display: block;
+  width: 100%;
+  height: 12px;
+  accent-color: #d2a72b;
+}
+.trial-memory-content meter::-webkit-meter-optimum-value {
+  background: #d2a72b;
+}
+.trial-memory-content meter::-moz-meter-bar {
+  background: #d2a72b;
+}
+.trial-memory-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 8px 0;
+}
+.trial-memory-table {
+  overflow: auto;
+}
+.trial-memory table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.trial-memory th,
+.trial-memory td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--neutral-mid);
+  vertical-align: top;
+}
+.trial-memory-name {
+  display: block;
+  max-width: 35vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trial-memory small {
+  display: block;
+  opacity: 0.75;
+}
+.trial-memory-warning {
+  border-left: 3px solid var(--gold, #f5cc50);
+  background: #9d7a1f20;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+.trial-memory-unresolved {
+  padding-left: 20px;
+}
