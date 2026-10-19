@@ -1,0 +1,294 @@
+import React, { useState } from "react";
+import { PreviewViewport } from "./types";
+import GridToggleButton from "./previewViewport/GridToggleButton";
+import {
+  DEVICE_PRESETS,
+  type DevicePreset,
+} from "./previewViewport/devicePresets";
+
+type Props = {
+  gridEnabled?: boolean;
+  onToggleGrid?: () => void;
+  previewViewport: PreviewViewport;
+  setPreviewViewport: React.Dispatch<React.SetStateAction<PreviewViewport>>;
+  stageScale: number;
+  // Run Demo (ExperimentPreview) integration
+  onRunDemo: () => void;
+  onStopDemo: () => void;
+  isDemoRunning: boolean;
+};
+
+function PreviewViewportBar({
+  gridEnabled = true,
+  onToggleGrid,
+  previewViewport,
+  setPreviewViewport,
+  stageScale,
+  onRunDemo,
+  onStopDemo,
+  isDemoRunning,
+}: Props) {
+  const [showCustomSize, setShowCustomSize] = useState(false);
+  const [customW, setCustomW] = useState(String(previewViewport.width));
+  const [customH, setCustomH] = useState(String(previewViewport.height));
+
+  const isDeviceActive = (preset: DevicePreset) =>
+    previewViewport.width === preset.width &&
+    previewViewport.height === preset.height;
+
+  const handleDeviceSelect = (preset: DevicePreset) => {
+    setShowCustomSize(false);
+    setCustomW(String(preset.width));
+    setCustomH(String(preset.height));
+    setPreviewViewport({
+      width: preset.width,
+      height: preset.height,
+    });
+  };
+
+  const applyCustomSize = () => {
+    const w = parseInt(customW, 10);
+    const h = parseInt(customH, 10);
+    if (w > 0 && h > 0) {
+      setPreviewViewport({ width: w, height: h });
+      setShowCustomSize(false);
+    }
+  };
+
+  const scalePercent = Math.round(stageScale * 100);
+
+  const divider = (
+    <div
+      style={{
+        width: 1,
+        height: 20,
+        background: "rgba(255,255,255,0.25)",
+        margin: "0 4px",
+      }}
+    />
+  );
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "6px 12px",
+        background: "var(--primary-blue)",
+        borderBottom: "2px solid var(--neutral-mid)",
+        flexWrap: "wrap",
+        minHeight: "42px",
+        position: "relative",
+        zIndex: 10,
+      }}
+    >
+      {/* Title */}
+      <span
+        style={{
+          fontWeight: 700,
+          fontSize: "13px",
+          color: "var(--text-light)",
+          marginRight: "4px",
+          letterSpacing: "0.3px",
+        }}
+      >
+        Screen Preview
+      </span>
+      {divider}
+
+      {/* Device preset icon buttons */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+        {DEVICE_PRESETS.map((preset) => {
+          const Icon = preset.icon;
+          const active = isDeviceActive(preset);
+          return (
+            <button
+              key={`${preset.label}-${preset.width}-${preset.height}`}
+              onClick={() => handleDeviceSelect(preset)}
+              title={`${preset.label} — ${preset.description}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "28px",
+                height: "26px",
+                borderRadius: "4px",
+                border: active
+                  ? "2px solid var(--gold)"
+                  : "2px solid rgba(255,255,255,0.2)",
+                background: active
+                  ? "rgba(255,255,255,0.18)"
+                  : "rgba(255,255,255,0.07)",
+                color: active ? "var(--gold)" : "rgba(255,255,255,0.7)",
+                cursor: "pointer",
+                padding: 0,
+                transition: "all 0.15s",
+                fontSize: "14px",
+              }}
+              onMouseEnter={(e) => {
+                if (!active)
+                  e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+              }}
+              onMouseLeave={(e) => {
+                if (!active)
+                  e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+              }}
+            >
+              <Icon />
+            </button>
+          );
+        })}
+        {/* Custom size toggle */}
+        <button
+          onClick={() => setShowCustomSize((v) => !v)}
+          title="Custom size"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "26px",
+            padding: "0 7px",
+            borderRadius: "4px",
+            border: showCustomSize
+              ? "2px solid var(--gold)"
+              : "2px solid rgba(255,255,255,0.2)",
+            background: showCustomSize
+              ? "rgba(255,255,255,0.18)"
+              : "rgba(255,255,255,0.07)",
+            color: showCustomSize ? "var(--gold)" : "rgba(255,255,255,0.7)",
+            cursor: "pointer",
+            fontSize: "11px",
+            fontWeight: 600,
+            transition: "all 0.15s",
+          }}
+        >
+          Custom
+        </button>
+      </div>
+
+      {/* Custom size inputs */}
+      {showCustomSize && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <input
+            type="number"
+            value={customW}
+            onChange={(e) => setCustomW(e.target.value)}
+            placeholder="W"
+            style={{
+              width: "60px",
+              fontSize: "12px",
+              padding: "2px 4px",
+              borderRadius: "4px",
+              border: "1px solid rgba(255,255,255,0.4)",
+              background: "rgba(255,255,255,0.1)",
+              color: "var(--text-light)",
+            }}
+          />
+          <span style={{ color: "var(--text-light)", fontSize: "12px" }}>
+            ×
+          </span>
+          <input
+            type="number"
+            value={customH}
+            onChange={(e) => setCustomH(e.target.value)}
+            placeholder="H"
+            style={{
+              width: "60px",
+              fontSize: "12px",
+              padding: "2px 4px",
+              borderRadius: "4px",
+              border: "1px solid rgba(255,255,255,0.4)",
+              background: "rgba(255,255,255,0.1)",
+              color: "var(--text-light)",
+            }}
+          />
+          <button
+            onClick={applyCustomSize}
+            style={{
+              fontSize: "11px",
+              padding: "2px 8px",
+              borderRadius: "4px",
+              border: "none",
+              background: "var(--gold)",
+              color: "var(--text-light)",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Apply
+          </button>
+        </div>
+      )}
+
+      {/* Current dimensions (read-only) */}
+      <span
+        style={{
+          fontSize: "11px",
+          color: "rgba(255,255,255,0.6)",
+          fontFamily: "monospace",
+        }}
+      >
+        {previewViewport.width}×{previewViewport.height}px
+      </span>
+
+      {divider}
+
+      {/* Zoom level */}
+      <span
+        title="Current zoom level"
+        style={{
+          fontSize: "11px",
+          color: "rgba(255,255,255,0.6)",
+          fontFamily: "monospace",
+          minWidth: "32px",
+        }}
+      >
+        Zoom {scalePercent}%
+      </span>
+
+      {/* Spacer */}
+      <GridToggleButton enabled={gridEnabled} onToggle={onToggleGrid} />
+      <div style={{ flex: 1 }} />
+
+      {/* Run / Stop Demo button */}
+      <button
+        onClick={isDemoRunning ? onStopDemo : onRunDemo}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "5px 14px",
+          borderRadius: "6px",
+          border: "none",
+          background: isDemoRunning
+            ? "var(--danger)"
+            : "linear-gradient(135deg, var(--gold), var(--dark-gold))",
+          color: "var(--text-light)",
+          fontWeight: 600,
+          fontSize: "12px",
+          cursor: "pointer",
+          transition: "opacity 0.2s",
+          whiteSpace: "nowrap",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        title={
+          isDemoRunning
+            ? "Stop the preview"
+            : "Run a live preview of this trial"
+        }
+      >
+        {isDemoRunning ? "Stop Demo" : "Run Demo"}
+      </button>
+    </div>
+  );
+}
+
+export default PreviewViewportBar;

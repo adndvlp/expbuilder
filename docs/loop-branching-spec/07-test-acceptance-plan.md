@@ -1,5 +1,7 @@
 # 07 — Estrategia TDD y criterios de aceptación
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Regla de ejecución
 
 Conforme a `SPEC.md`, cada slice comienza con una prueba roja que expresa comportamiento de negocio. Después se implementa lo mínimo, se refactoriza y se ejecutan regresiones. No se aceptan snapshots de strings como única prueba del runtime generado.
@@ -12,7 +14,7 @@ Conforme a `SPEC.md`, cada slice comienza con una prueba roja que expresa compor
 4. **Codegen estructural:** IR y código generado, incluyendo parse/syntax.
 5. **Runtime:** ejecutar timelines mínimos sobre el bundle jsPsych incluido.
 6. **E2E React Flow:** flujo del usuario y topología expand/collapse.
-7. **Regresión:** branching, loops, resume, jump, CSV, delete/move existentes.
+7. **Regresión:** branching, loops, resume, branching, CSV, delete/move existentes.
 
 ## Fixtures canónicos
 
@@ -97,10 +99,9 @@ Variantes cartesianas acotadas:
 - TA-10: read models de root/outer/nested clasifican exit edge sin duplicarla.
 - TA-11: condiciones cross-scope permanecen branch conditions.
 - TA-12: custom parameters sobreviven round-trip.
-- TA-13: migración legacy es idempotente y no adivina datos ambiguos.
+- TA-13 (decisión vigente): REST rechaza campos de branching de loops y destinos de tipo loop antes de mutar o escribir; no hay migración legacy.
 - TA-14: invalid graph bloquea publicación con diagnóstico.
-- TA-15: create/update/delete por agente y REST respetan los mismos invariantes.
-- TA-16: la tool del agente no borra, re-owna ni reconecta una exit con su algoritmo legacy.
+- TA-15: create/update/delete por REST respetan los mismos invariantes.
 
 ## Layout y proyección
 
@@ -130,9 +131,9 @@ Variantes cartesianas acotadas:
 - TG-08: grafo inválido no devuelve `[]`/string vacío como éxito silencioso.
 - TG-09: output parsea como JavaScript válido.
 - TG-10: branches legacy same-scope generan comportamiento equivalente.
-- TG-11: el fixture compilado por cliente y agente produce una traza runtime equivalente.
+- TG-11: el fixture compilado por cliente produce trazas equivalentes en preview, local y publicación.
 - TG-12: un compiler/entrypoint incompatible rechaza el schema nuevo; no emite timeline parcial.
-- TG-13: cada state emitido por el runtime (`route`, jump, custom params, cleanup) tiene al menos un writer y consumer alcanzables, o falla validación de generación.
+- TG-13: cada state emitido por el runtime (`route`, branching, custom params, cleanup) tiene al menos un writer y consumer alcanzables, o falla validación de generación.
 
 ## Runtime jsPsych
 
@@ -173,14 +174,14 @@ El harness registra `trial-start`, `trial-finish`, `timeline-start`, `timeline-f
 - TRES-09: finish limpia keys; branch consumida no reaparece.
 - TRES-10: fidelidad de iteración/random row cumple DEC-20.
 
-## Jump to trial
+## branching to trial
 
-- TJ-01: jump a trial raíz usa path vacío.
-- TJ-02: jump a loop habilita ese loop como target de unidad.
-- TJ-03: jump a trial nested habilita todos sus ancestros.
+- TJ-01: branching a trial raíz usa path vacío.
+- TJ-02: branching a loop habilita ese loop como target de unidad.
+- TJ-03: branching a trial nested habilita todos sus ancestros.
 - TJ-04: cada segmento se consume una vez.
 - TJ-05: target inexistente/version inválida no reinicia infinitamente.
-- TJ-06: jump desde trial interno no se confunde con exit branch.
+- TJ-06: branching desde trial interno no se confunde con exit branch.
 - TJ-07: UI no ofrece destinos que no tengan address resoluble.
 - TJ-08: anti-loop guard verifica progreso real.
 
@@ -218,7 +219,7 @@ El fixture debe declarar explícitamente si cada confirmación crea un target o 
 4. verificar target, parámetros y trials omitidos;
 5. repetir publicado/local según plataformas aprobadas.
 
-### E2E-03 — Resume y jump
+### E2E-03 — Resume y branching
 
 Interrumpir después del source, recargar, verificar route; luego disparar un repeat condition hacia un target nested y verificar ancestry/consumo.
 
@@ -230,7 +231,7 @@ La ampliación vertical de combinaciones está inventariada en [10 — Cobertura
 
 - branches raíz existentes;
 - branches same-scope dentro de loop;
-- branches de nodo loop;
+- rechazo de loops como origen o destino de ramas; proyecciones visuales con endpoints reales de trials;
 - merge points y cleanup;
 - loop CSV y typed values;
 - loop repetitions/randomize/conditional sin exits;
@@ -240,7 +241,6 @@ La ampliación vertical de combinaciones está inventariada en [10 — Cobertura
 - branch edge colors;
 - preview de trial dentro de parent loop;
 - local/public generation y session completion.
-- build y mutaciones iniciadas por el agente del servidor.
 
 ## Gates de calidad
 
@@ -265,8 +265,11 @@ La feature se considera terminada sólo cuando:
 
 - todas las decisiones bloqueantes están incorporadas;
 - casos 1 y 2 pasan expandidos/comprimidos;
-- runtime, resume y jump pasan para cada nivel aprobado;
+- runtime, resume y branching pasan para cada nivel aprobado;
 - no existen escrituras parciales ni contaminación de ownership;
 - regresiones completas pasan;
 - documentación aprobada está actualizada;
 - preview, local y publicación muestran la misma conducta.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

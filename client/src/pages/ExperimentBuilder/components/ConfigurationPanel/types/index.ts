@@ -10,6 +10,8 @@ export type ColumnMappingEntry = {
 export type ColumnMapping = Record<string, ColumnMappingEntry>;
 
 export interface Loop {
+  entryItemId: string | number | null;
+  nextItemId: string | number | null;
   id: string;
   name: string;
   repetitions: number;
@@ -20,13 +22,10 @@ export interface Loop {
   categories: boolean;
   categoryColumn: string;
   categoryData: any[];
-  trials: (string | number)[]; // Solo IDs de trials, estructura plana
+  trials: (string | number)[]; // IDs de elementos contenidos (trials o loops)
   code: string;
   csvJson?: any[];
   csvColumns?: string[];
-  branches?: Array<string | number>;
-  branchConditions?: BranchCondition[];
-  repeatConditions?: RepeatCondition[];
   loopConditions?: LoopCondition[];
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // ID del loop padre para nested loops
@@ -45,22 +44,8 @@ export type BranchCondition = {
     fieldType?: string;
     componentIdx?: string;
   }>;
-  nextTrialId: number | string | null;
+  nextTrialId: number | string;
   customParameters?: Record<string, ColumnMappingEntry>;
-};
-
-export type RepeatCondition = {
-  id: number;
-  rules: Array<{
-    column: string; // Direct column name
-    op: string;
-    value: string;
-    // Legacy fields for backward compatibility
-    prop?: string;
-    fieldType?: string;
-    componentIdx?: string;
-  }>;
-  jumpToTrialId: number | string | null;
 };
 
 export type LoopConditionRule = {
@@ -97,6 +82,8 @@ export type ParamsOverrideCondition = {
 };
 
 export type Trial = {
+  detached?: boolean;
+  defaultNextTrialId: string | number | null;
   id: number;
   type: string;
   name: string;
@@ -120,8 +107,6 @@ export type Trial = {
   branches?: Array<string | number>;
   branchConditions?: BranchCondition[];
 
-  repeatConditions?: RepeatCondition[];
-
   paramsOverride?: ParamsOverrideCondition[];
 
   customInitialize?: string;
@@ -131,12 +116,6 @@ export type Trial = {
 
   // Loop context - assigned when trial is inside a loop
   parentLoopId?: string | null;
-};
-
-export type MoveItemParams = {
-  dragged: { type: "trial" | "loop"; id: string | number };
-  target: { type: "trial" | "loop"; id: string | number | null };
-  position: "before" | "after" | "inside";
 };
 
 export type FieldType =

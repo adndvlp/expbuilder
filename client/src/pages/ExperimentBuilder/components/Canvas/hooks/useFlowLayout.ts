@@ -1,10 +1,11 @@
+import type { TimelineItem } from "../../../contexts/TrialsContext";
 import { useMemo } from "react";
 import type { Loop, Trial } from "../../ConfigurationPanel/types";
 import { buildFlowLayout } from "../services/buildFlowLayout";
 import { buildUnifiedFlowLayout } from "../services/buildUnifiedFlowLayout";
 
 type LegacyFlowLayoutProps = {
-  timeline: unknown[];
+  timeline: TimelineItem[];
   selectedTrial: Trial | null;
   selectedLoop: Loop | null;
   onSelectTrial: (trial: Trial) => void;
@@ -30,7 +31,7 @@ export function useFlowLayout(props: UseFlowLayoutProps) {
       selectedLoopId: props.selectedLoop?.id,
       openLoopId: props.openLoop?.id,
       onSelectTrial: props.onSelectTrial,
-      onSelectLoop: props.onSelectLoop,
+      onSelectLoop: (item) => props.onSelectLoop(item as unknown as Loop),
       onAddBranch: props.onAddBranch,
       onOpenLoop: props.onOpenLoop,
     });

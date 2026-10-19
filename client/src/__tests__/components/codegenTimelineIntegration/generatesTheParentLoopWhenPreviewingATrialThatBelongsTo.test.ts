@@ -207,7 +207,7 @@ describe("generateTrialLoopCodes integration", () => {
     expect(code).toContain("WebGazer_webgazer_items.push(calibration_done)");
     expect(code).toContain("const WebGazer_timeline = {");
     expect(code).toContain("builder_id: 2");
-    expect(code).toContain("const currentId = 2");
+    expect(code).toContain("registerTrial(2, WebGazer_procedure)");
     expect(code).toContain("timeline.push(WebGazer_procedure)");
     expect(() => new Function("const timeline = [];\n" + code)).not.toThrow();
   });

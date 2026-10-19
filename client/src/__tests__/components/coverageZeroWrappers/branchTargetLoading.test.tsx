@@ -14,6 +14,29 @@ import {
 } from "./testHarness";
 
 describe("coverage zero wrappers: BranchedTrial", () => {
+  it("loads a saved trial destination whose ID starts with loop_ as a trial", async () => {
+    trialsState.value = baseTrialsState({
+      selectedTrial: {
+        ...trialsState.value.selectedTrial,
+        branches: ["loop_1"],
+      },
+    });
+    render(
+      <BranchedTrial
+        selectedTrial={trialsState.value.selectedTrial}
+        onClose={vi.fn()}
+        isOpen
+      />,
+    );
+    fireEvent.click(screen.getByText("load target loop"));
+    await waitFor(() =>
+      expect(screen.getByTestId("branched-layout")).toHaveTextContent(
+        "layout-params:loop_1",
+      ),
+    );
+    expect(trialsState.value.getTrial).toHaveBeenCalledWith("loop_1");
+    expect(trialsState.value.getLoop).not.toHaveBeenCalled();
+  });
   it("loads target metadata, exposes available trials, closes and saves a trial", async () => {
     const onClose = vi.fn();
 
@@ -28,7 +51,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     expect(screen.getByTestId("modal-shell")).toBeInTheDocument();
     expect(screen.getByTestId("available-trials")).toHaveTextContent("prev-a");
     const loadDataArgs = vi.mocked(useLoadData).mock.calls.at(-1)?.[0] as any;
-    loadDataArgs.setRepeatConditions();
 
     fireEvent.mouseEnter(screen.getAllByRole("button")[0]);
     fireEvent.mouseLeave(screen.getAllByRole("button")[0]);
@@ -44,14 +66,13 @@ describe("coverage zero wrappers: BranchedTrial", () => {
         "current",
         expect.objectContaining({
           branchConditions: [],
-          repeatConditions: [],
         }),
       );
     });
 
     fireEvent.click(screen.getByText("load target loop"));
     await waitFor(() => {
-      expect(trialsState.value.getLoop).toHaveBeenCalledWith("loop_1");
+      expect(trialsState.value.getTrial).toHaveBeenCalledWith("loop_1");
     });
 
     fireEvent.click(screen.getByText("save branch conditions"));
@@ -60,7 +81,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
         "current",
         expect.objectContaining({
           branchConditions: expect.any(Array),
-          repeatConditions: expect.any(Array),
         }),
       );
     });

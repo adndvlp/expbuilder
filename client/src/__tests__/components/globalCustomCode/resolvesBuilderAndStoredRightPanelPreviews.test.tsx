@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
     },
   },
   plugins: [{ name: "plugin-custom" }],
-  canvasStyles: { progressBar: true } as { progressBar?: boolean } | undefined,
+  appearance: { progressBar: true } as { progressBar?: boolean } | undefined,
   experimentID: "experiment-1" as string | undefined,
   readonlyModelMissing: false,
 }));
@@ -97,8 +97,8 @@ vi.mock("../../../pages/ExperimentBuilder/hooks/usePlugins", () => ({
   default: () => ({ plugins: mocks.plugins }),
 }));
 
-vi.mock("../../../pages/ExperimentBuilder/hooks/useCanvasStyles", () => ({
-  default: () => ({ canvasStyles: mocks.canvasStyles }),
+vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentAppearance", () => ({
+  default: () => ({ appearance: mocks.appearance }),
 }));
 
 vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
@@ -123,7 +123,7 @@ describe("GlobalCustomCode", () => {
       },
     };
     mocks.plugins = [{ name: "plugin-custom" }];
-    mocks.canvasStyles = { progressBar: true };
+    mocks.appearance = { progressBar: true };
     mocks.experimentID = "experiment-1";
     mocks.readonlyModelMissing = false;
   });

@@ -4,7 +4,6 @@ import useLoadData from "../../../pages/ExperimentBuilder/components/Configurati
 import type { DataDefinition } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import type {
   Condition,
-  RepeatConditionState,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/types";
 
 export function useLoadDataHarness({
@@ -31,9 +30,6 @@ export function useLoadDataHarness({
   getLoopTimeline?: (loopId: string | number) => Promise<any>;
 }) {
   const [conditions, setConditions] = useState<Condition[]>(initialConditions);
-  const [repeatConditions, setRepeatConditions] = useState<
-    RepeatConditionState[]
-  >([]);
   const [data, setData] = useState<DataDefinition[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,11 +46,9 @@ export function useLoadDataHarness({
     loadPluginParameters,
     getLoopTimeline,
     setConditions,
-    setRepeatConditions,
   });
   return {
     conditions,
-    repeatConditions,
     data,
     error,
     loading,

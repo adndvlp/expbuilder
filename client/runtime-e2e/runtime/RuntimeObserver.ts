@@ -57,16 +57,24 @@ export class RuntimeObserver {
 
   async snapshot(): Promise<{ events: RuntimeEvent[]; errors: unknown[] }> {
     return this.page.evaluate(() => {
-      const runtime = (window as unknown as {
-        ExpBuilderRuntime?: {
-          snapshot(): { events: RuntimeEvent[]; errors: unknown[] };
-        };
-      }).ExpBuilderRuntime;
+      const runtime = (
+        window as unknown as {
+          ExpBuilderRuntime?: {
+            snapshot(): { events: RuntimeEvent[]; errors: unknown[] };
+          };
+        }
+      ).ExpBuilderRuntime;
       return runtime?.snapshot() ?? { events: [], errors: [] };
     });
   }
 
   async sessionId() {
+    await this.page.waitForFunction(() =>
+      Boolean(
+        (window as unknown as { JSPSYCH_SESSION_ID?: string })
+          .JSPSYCH_SESSION_ID,
+      ),
+    );
     return this.page.evaluate(() =>
       String(
         (window as unknown as { JSPSYCH_SESSION_ID?: string })
@@ -75,11 +83,20 @@ export class RuntimeObserver {
     );
   }
 
+  async resumeCheckpoint(key: string) {
+    return this.page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key) ?? "null"),
+      key,
+    );
+  }
+
   async waitForPersistence() {
     await this.page.evaluate(async () => {
-      const persistence = (window as unknown as {
-        ExpBuilderPersistence?: { whenIdle(): Promise<void> };
-      }).ExpBuilderPersistence;
+      const persistence = (
+        window as unknown as {
+          ExpBuilderPersistence?: { whenIdle(): Promise<void> };
+        }
+      ).ExpBuilderPersistence;
       if (!persistence) throw new Error("Runtime persistence API is missing");
       await persistence.whenIdle();
     });
@@ -89,10 +106,14 @@ export class RuntimeObserver {
     const snapshot = await this.snapshot();
     if (this.failures.length || snapshot.errors.length) {
       throw new Error(
-        `Runtime failures:\n${JSON.stringify({
-          browser: this.failures,
-          runtime: snapshot.errors,
-        }, null, 2)}`,
+        `Runtime failures:\n${JSON.stringify(
+          {
+            browser: this.failures,
+            runtime: snapshot.errors,
+          },
+          null,
+          2,
+        )}`,
       );
     }
   }

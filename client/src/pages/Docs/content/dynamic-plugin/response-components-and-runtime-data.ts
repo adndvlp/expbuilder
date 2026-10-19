@@ -145,20 +145,13 @@ Components use normalized coordinates:
 - \`zIndex\`: stacking control (higher = on top)
 - \`rotation\`: rotation degrees (0–360)
 
-## Canvas Size and Scaling
+## Screen Preview and Runtime Layout
 
-The Trial Designer stores the design canvas size in \`__canvasStyles\`:
-
-\`\`\`js
-"__canvasStyles": {
-  "width": 1440,
-  "height": 900
-}
-\`\`\`
+Screen dimensions selected in the Trial Designer are temporary preview state. They size the editor and preview iframe and are not saved or sent as trial screen dimensions.
 
 Background color, full screen mode and progress bar are experiment-level settings configured in **Experiment Settings → Experiment Appearance**, not per trial.
 
-Component positions are saved as normalized coordinates. Width and height are saved as percentages relative to the design canvas width, so the runtime can recreate the visual layout at the participant's viewport size without saving separate per-device layout maps.
+Component positions are saved as normalized coordinates. Component width, height and relative font sizes use percentages of the viewport width. DynamicPlugin measures the available jsPsych display area and updates the layout when that area changes.
 
 ## stimulus_onset / stimulus_duration
 

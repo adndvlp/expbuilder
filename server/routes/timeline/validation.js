@@ -1,17 +1,9 @@
 import { Router } from "express";
 import { db } from "../../utils/db.js";
 
+import { findLoop, findTrial } from "./graph/identity.js";
+
 const router = Router();
-
-function findItemById(experimentDoc, id) {
-  const numId =
-    typeof id === "string" && !id.startsWith("loop_") ? parseInt(id) : id;
-
-  if (typeof numId === "number") {
-    return experimentDoc.trials.find((t) => t.id === numId);
-  }
-  return experimentDoc.loops.find((l) => l.id === numId);
-}
 
 /* istanbul ignore next -- recursive cycle permutations are covered by route-level validity cases. */
 function isAncestor(experimentDoc, sourceId, targetId, visited = new Set()) {
@@ -24,7 +16,7 @@ function isAncestor(experimentDoc, sourceId, targetId, visited = new Set()) {
     return true;
   }
 
-  const targetItem = findItemById(experimentDoc, targetId);
+  const targetItem = findTrial(experimentDoc, targetId);
   if (!targetItem || !targetItem.branches) {
     return false;
   }
@@ -72,13 +64,6 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
     const { source, target } = req.query;
 
-    if (source == target) {
-      return res.json({
-        isValid: false,
-        errorMessage: "Cannot connect a trial to itself",
-      });
-    }
-
     const experimentDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
@@ -87,11 +72,10 @@ router.get("/api/validate-connection/:experimentID", async (req, res) => {
       return res.json({ isValid: true });
     }
 
-    if (isAncestor(experimentDoc, source, target)) {
+    if (findLoop(experimentDoc, source) || findLoop(experimentDoc, target)) {
       return res.json({
         isValid: false,
-        errorMessage:
-          "Cannot connect to an ancestor trial (would create a circular dependency)",
+        errorMessage: "Branches must connect trials",
       });
     }
 

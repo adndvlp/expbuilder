@@ -69,7 +69,7 @@ export default function TrialLifecycleCode({ onSave, trial }: Props) {
             generateOnFinishCode({
               branches: trial?.branches,
               branchConditions: trial?.branchConditions,
-              repeatConditions: trial?.repeatConditions,
+              defaultNextTrialId: trial?.defaultNextTrialId,
               isInLoop: isTrialInLoop,
               getVarName: getVarNameForTrial,
               customOnFinish: userCode,

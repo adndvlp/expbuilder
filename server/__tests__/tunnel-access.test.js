@@ -40,7 +40,6 @@ describe('remote tunnel surface', () => {
     ['DELETE', '/api/session-results/session-1/experiment-1'],
     ['GET', '/database/db.json'],
     ['GET', '/img/stimulus.png'],
-    ['GET', '/api/agent/providers'],
     ['GET', '/api/participant-files-serve/experiment-1/../../database/db.json'],
   ])('hides administrative request %s %s', async (method, path) => {
     await request(app())[method.toLowerCase()](path)

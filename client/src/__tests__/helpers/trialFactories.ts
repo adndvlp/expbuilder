@@ -1,28 +1,36 @@
 import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
-import type { Loop, Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
+import type {
+  Loop,
+  Trial,
+} from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import type {
   ExperimentGraphSnapshot,
   GraphScopeView,
 } from "../../pages/ExperimentBuilder/modules/experiment-graph/types";
 
+type TimelineTrial = Extract<TimelineItem, { type: "trial" }>;
+type TimelineLoop = Extract<TimelineItem, { type: "loop" }>;
+
 export function timelineTrial(
-  overrides: Partial<TimelineItem> & Pick<TimelineItem, "id">,
-): TimelineItem {
+  overrides: Partial<TimelineTrial> & Pick<TimelineTrial, "id">,
+): TimelineTrial {
   return {
     type: "trial",
     name: `Trial ${overrides.id}`,
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
 }
 
 export function timelineLoop(
-  overrides: Partial<TimelineItem> & Pick<TimelineItem, "id">,
-): TimelineItem {
+  overrides: Partial<TimelineLoop> & Pick<TimelineLoop, "id">,
+): TimelineLoop {
   return {
     type: "loop",
     name: `Loop ${overrides.id}`,
-    branches: [],
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     ...overrides,
   };
@@ -38,18 +46,22 @@ export function trial(overrides: Partial<Trial> = {}): Trial {
     plugin: "html-keyboard-response",
     parameters: {},
     trialCode: "",
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
 }
 
-export function trialDraft(overrides: Partial<Omit<Trial, "id">> = {}): Omit<Trial, "id"> {
+export function trialDraft(
+  overrides: Partial<Omit<Trial, "id">> = {},
+): Omit<Trial, "id"> {
   return {
     type: "trial",
     name: "Draft Trial",
     plugin: "html-keyboard-response",
     parameters: {},
     trialCode: "",
+    defaultNextTrialId: null,
     branches: [],
     ...overrides,
   };
@@ -69,14 +81,17 @@ export function loop(overrides: Partial<Loop> = {}): Loop {
     categories: false,
     categoryColumn: "",
     categoryData: [],
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     code: "",
-    branches: [],
     ...overrides,
   };
 }
 
-export function loopDraft(overrides: Partial<Omit<Loop, "id">> = {}): Omit<Loop, "id"> {
+export function loopDraft(
+  overrides: Partial<Omit<Loop, "id">> = {},
+): Omit<Loop, "id"> {
   return {
     name: "Draft Loop",
     repetitions: 1,
@@ -87,9 +102,10 @@ export function loopDraft(overrides: Partial<Omit<Loop, "id">> = {}): Omit<Loop,
     categories: false,
     categoryColumn: "",
     categoryData: [],
+    nextItemId: null,
+    entryItemId: null,
     trials: [],
     code: "",
-    branches: [],
     ...overrides,
   };
 }
@@ -115,7 +131,7 @@ export function graphSnapshot(
 ): ExperimentGraphSnapshot {
   return {
     revision: "test-revision",
-    root: { scopeId: null, parentScopeId: null, items: rootItems },
+    root: { entryItemId: rootItems[0]?.id ?? null, scopeId: null, parentScopeId: null, items: rootItems },
     scopes,
     edges,
     diagnostics: [],

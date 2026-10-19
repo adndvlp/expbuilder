@@ -19,7 +19,7 @@ import type { RenderComponentProps } from "./types";
 
 type Props = Pick<
   RenderComponentProps,
-  | "canvasStyles"
+  | "previewViewport"
   | "comp"
   | "editingTextId"
   | "htmlSceneMetrics"
@@ -37,7 +37,7 @@ type Props = Pick<
 
 export default function VisualComponentRenderer(props: Props) {
   const {
-    canvasStyles,
+    previewViewport,
     comp,
     editingTextId,
     htmlSceneMetrics = {},
@@ -68,7 +68,7 @@ export default function VisualComponentRenderer(props: Props) {
       <TextComponent
         {...shared}
         key={comp.id}
-        canvasWidth={canvasStyles?.width}
+        canvasWidth={previewViewport?.width}
         isEditing={editingTextId === comp.id}
         onEditStart={() => onEditTextStart?.(comp.id)}
       />
@@ -79,7 +79,7 @@ export default function VisualComponentRenderer(props: Props) {
       <EditorHitBox
         {...shared}
         key={comp.id}
-        canvasStyles={canvasStyles}
+        previewViewport={previewViewport}
         metric={htmlSceneMetrics[comp.id]}
         onActivateDom={() => setActiveDomId?.(comp.id)}
         onEditText={() => onEditTextStart?.(comp.id)}

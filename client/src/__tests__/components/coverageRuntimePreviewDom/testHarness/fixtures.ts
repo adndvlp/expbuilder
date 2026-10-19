@@ -94,12 +94,8 @@ function trialComponent(
   };
 }
 
-const canvasStyles = {
-  backgroundColor: "#ffffff",
-  width: 800,
+const previewViewport = {  width: 800,
   height: 600,
-  fullScreen: false,
-  progressBar: false,
 };
 
 beforeEach(() => {
@@ -128,7 +124,7 @@ export {
   afterEach,
   beforeEach,
   canvasContext,
-  canvasStyles,
+  previewViewport,
   config,
   describe,
   ensurePreviewSketchpadStyles,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { moveScopedItem } from "../../../pages/ExperimentBuilder/components/Canvas/actions";
+import type { CanvasItemToMove } from "../../../pages/ExperimentBuilder/components/Canvas/actions";
 import {
   createDependencies,
   createLoopScope,
@@ -29,7 +30,7 @@ describe("scoped Canvas move actions", () => {
     ]);
   });
 
-  it("moves loop items through canonical mutation responses", async () => {
+  it("moves trials inside loops through canonical mutation responses", async () => {
     const dependencies = createDependencies();
 
     const result = await moveScopedItem({
@@ -41,19 +42,49 @@ describe("scoped Canvas move actions", () => {
     });
 
     expect(result).toEqual({ status: "moved" });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({
       branches: [11],
-    });
+    }));
     expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
-      trials: [10],
+      trials: [10, 11],
     });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(11, {
-      parentLoopId: "parent-loop",
-    });
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(11, expect.objectContaining({ parentLoopId: "parent-loop" }));
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
-  it("keeps a branchless root move in implicit sequential order", async () => {
+  it("reorders a direct loop trial sequentially by materializing its default connection", async () => {
+    const dependencies = createDependencies();
+    dependencies.getTrial.mockImplementation(async (id) =>
+      makeTrial(Number(id)),
+    );
+    const scope = createLoopScope();
+    scope.items = scope.items.map((item) => ({ ...item, branches: [] }));
+
+    expect(
+      await moveScopedItem({
+        scope,
+        item: { id: 10, type: "trial", name: "Task" },
+        destinationId: "11",
+        addAsBranch: false,
+        dependencies,
+      }),
+    ).toEqual({ status: "moved" });
+
+    expect(dependencies.updateLoop).toHaveBeenCalledWith("parent-loop", {
+      trials: [11, 10],
+    });
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(10, expect.objectContaining({ branches: [] }));
+    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(10, expect.objectContaining({
+      parentLoopId: "parent-loop",
+    }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(11, expect.objectContaining({
+      branches: [10],
+    }));
+    expect(dependencies.updateLoop).toHaveBeenCalledTimes(1);
+    expect(dependencies.updateTimeline).not.toHaveBeenCalled();
+  });
+
+  it("keeps a branchless root move through an explicit default connection", async () => {
     const dependencies = createDependencies();
     dependencies.getTrial.mockImplementation(async (id) =>
       typeof id === "number" ? makeTrial(id) : null,
@@ -70,10 +101,10 @@ describe("scoped Canvas move actions", () => {
     });
 
     expect(result).toEqual({ status: "moved" });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(2, { branches: [] });
-    expect(dependencies.updateTrial).not.toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({ branches: [] }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 }),
@@ -96,6 +127,34 @@ describe("scoped Canvas move actions", () => {
     expect(dependencies.updateTimeline).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [{ id: "parent-loop", type: "loop" as const, name: "Loop" }, 1],
+    [{ id: "parent-loop", type: "trial" as const, name: "Loop" }, 1],
+    [{ id: 2, type: "trial" as const, name: "End" }, "parent-loop"],
+  ])(
+    "rejects loop endpoints before detaching any trial: %j → %s",
+    async (item, destinationId) => {
+      const dependencies = createDependencies();
+      const scope = createRootScope();
+      const before = structuredClone(scope);
+
+      await expect(
+        moveScopedItem({
+          scope,
+          item: item as CanvasItemToMove,
+          destinationId,
+          addAsBranch: false,
+          dependencies,
+        }),
+      ).rejects.toThrow("Only trials can be moved");
+
+      expect(scope).toEqual(before);
+      for (const dependency of Object.values(dependencies)) {
+        expect(dependency).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("resolves moves across string/number id types", async () => {
     const dependencies = createDependencies();
     const scope = createRootScope();
@@ -116,12 +175,12 @@ describe("scoped Canvas move actions", () => {
 
     expect(result).toEqual({ status: "moved" });
     // Detach reconnects the stringified branch ref, attach re-adds it.
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [],
-    });
-    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, {
+    }));
+    expect(dependencies.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2],
-    });
+    }));
     expect(dependencies.updateTimeline).toHaveBeenCalledWith([
       expect.objectContaining({ id: 1 }),
       expect.objectContaining({ id: 2 }),

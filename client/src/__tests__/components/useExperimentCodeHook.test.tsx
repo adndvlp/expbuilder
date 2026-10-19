@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     getLoopTimeline: vi.fn(),
     getLoop: vi.fn(),
   },
-  canvasStyles: {
+  appearance: {
     fullScreen: false,
     progressBar: true,
   },
@@ -31,8 +31,8 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useTrials", () => ({
   default: () => mocks.trialsContext,
 }));
 
-vi.mock("../../pages/ExperimentBuilder/hooks/useCanvasStyles", () => ({
-  default: () => ({ canvasStyles: mocks.canvasStyles }),
+vi.mock("../../pages/ExperimentBuilder/hooks/useExperimentAppearance", () => ({
+  default: () => ({ appearance: mocks.appearance }),
 }));
 
 vi.mock(
@@ -105,14 +105,14 @@ describe("useExperimentCode", () => {
         getTrial: mocks.trialsContext.getTrial,
         getLoopTimeline: mocks.trialsContext.getLoopTimeline,
         getLoop: mocks.trialsContext.getLoop,
-        canvasStyles: mocks.canvasStyles,
+        appearance: mocks.appearance,
       }),
     );
     expect(mocks.baseProps).toEqual(
       expect.objectContaining({
         experimentID: "exp-123",
         uploadedFiles,
-        canvasStyles: mocks.canvasStyles,
+        appearance: mocks.appearance,
       }),
     );
 
@@ -176,17 +176,10 @@ describe("useExperimentCode", () => {
     expect(mocks.localProps.evaluateCondition).toContain(
       "const evaluateCondition = window.ExpBuilderBranching.evaluateCondition",
     );
-    expect(mocks.localProps.evaluateCondition).toContain(
-      "window.branchCustomParameters = null",
-    );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "const nextTrialId = getNextTrialId(lastTrialData);",
-    );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "jsPsych.abortExperiment(",
-    );
-    expect(mocks.publicProps.branchingEvaluation).toContain(
-      "'Experiment finished by branching condition'",
+    expect(mocks.localProps.evaluateCondition).not.toContain("window.nextTrialId");
+    expect(mocks.publicProps.evaluateCondition).toBe(mocks.localProps.evaluateCondition);
+    expect(mocks.publicProps.branchingEvaluation).not.toMatch(
+      /getNextTrialId|abortExperiment|\.decide\(/,
     );
   });
 });

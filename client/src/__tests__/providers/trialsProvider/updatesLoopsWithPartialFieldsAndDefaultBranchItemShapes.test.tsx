@@ -33,20 +33,20 @@ describe("TrialsProvider canonical full-loop updates", () => {
   it("applies one structural update without issuing child ownership patches", async () => {
     const initial = [timelineLoop({ id: "loop-1", trials: [1] })];
     const view = await renderLoadedProvider(initial);
-    const updated = loop({ id: "loop-1", trials: [2], branches: [50] });
+    const updated = loop({ id: "loop-1", trials: [2] });
     const rootAfter = [
-      timelineLoop({ id: "loop-1", trials: [2], branches: [50] }),
+      timelineLoop({ id: "loop-1", trials: [2] }),
       timelineTrial({ id: 50, name: "Exit" }),
     ];
-    const scopeAfter = [timelineTrial({ id: 2, parentLoopId: "loop-1" })];
+    const scopeAfter = [
+      timelineTrial({ id: 2, parentLoopId: "loop-1", branches: [50] }),
+    ];
     queueFetchResponses(
       mutationJson({ loop: updated }, rootAfter, loopScope(scopeAfter)),
     );
 
     const result = await act(async () =>
-      view
-        .getContext()
-        ?.updateLoop("loop-1", { trials: [2], branches: [50] }),
+      view.getContext()?.updateLoop("loop-1", { trials: [2] }),
     );
 
     expect(result).toEqual(updated);
@@ -61,20 +61,26 @@ describe("TrialsProvider canonical full-loop updates", () => {
     );
   });
 
-  it("does not synthesize placeholder branch items absent from the server graph", async () => {
+  it("does not synthesize top-level placeholders for members owned by a loop", async () => {
     const view = await renderLoadedProvider([
-      timelineLoop({ id: "loop-1", branches: [] }),
+      timelineLoop({ id: "loop-1" }),
       timelineTrial({ id: 99, name: "Bystander" }),
     ]);
-    const updated = loop({ id: "loop-1", branches: [50] });
+    const updated = loop({ id: "loop-1", trials: [50] });
     const rootAfter = [
-      timelineLoop({ id: "loop-1", branches: [50] }),
+      timelineLoop({ id: "loop-1", trials: [50] }),
       timelineTrial({ id: 99, name: "Bystander" }),
     ];
-    queueFetchResponses(mutationJson({ loop: updated }, rootAfter));
+    queueFetchResponses(
+      mutationJson(
+        { loop: updated },
+        rootAfter,
+        loopScope([timelineTrial({ id: 50, parentLoopId: "loop-1" })]),
+      ),
+    );
 
     await act(async () =>
-      view.getContext()?.updateLoop("loop-1", { branches: [50] }),
+      view.getContext()?.updateLoop("loop-1", { trials: [50] }),
     );
 
     expect(view.getContext()?.timeline).toEqual(rootAfter);

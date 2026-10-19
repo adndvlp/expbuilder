@@ -1,6 +1,5 @@
 import {
   BranchCondition,
-  RepeatCondition,
   ColumnMapping,
   ColumnMappingEntry,
   ParamsOverrideCondition,
@@ -11,7 +10,6 @@ import {
   generateOnStartCode,
   generateOnLoadCode,
   generateOnFinishCode,
-  generateConditionalFunctionCode,
 } from "./TrialCodeGenerators";
 import { generateStimuliSetupCode } from "./services/generateStimuliSetupCode";
 import { generateTrialProps } from "./services/generateTrialProps";
@@ -25,7 +23,7 @@ type Props = {
   id: number | undefined;
   branches: (string | number)[] | undefined;
   branchConditions: BranchCondition[] | undefined;
-  repeatConditions?: RepeatCondition[];
+  defaultNextTrialId?: string | number | null;
   paramsOverride?: ParamsOverrideCondition[];
   pluginName: string;
   parameters: any[];
@@ -59,7 +57,7 @@ export function useTrialCode({
   id,
   branches,
   branchConditions,
-  repeatConditions,
+  defaultNextTrialId,
   paramsOverride,
   pluginName,
   parameters,
@@ -89,7 +87,8 @@ export function useTrialCode({
   const safeCategoryData = categoryData || [];
 
   const activeParameters = parameters.filter(
-    (p) => columnMapping[p.key] && columnMapping[p.key].source !== "none",
+    (p) => !(["plugin-dynamic", "DynamicPlugin"].includes(pluginName) && p.key === "__canvasStyles") &&
+      columnMapping[p.key] && columnMapping[p.key].source !== "none",
   );
   const trialNameSanitized = toCodeIdentifier(trialName);
 
@@ -133,6 +132,7 @@ export function useTrialCode({
 
     const timelineProps = generateTrialProps({
       branchConditions,
+      defaultNextTrialId,
       branches,
       columnMapping,
       data,
@@ -181,7 +181,7 @@ export function useTrialCode({
     const onFinishCode = generateOnFinishCode({
       branches,
       branchConditions,
-      repeatConditions,
+      defaultNextTrialId,
       isInLoop,
       isMergePoint,
       getVarName,
@@ -200,6 +200,7 @@ export function useTrialCode({
     }
 
     if (isInLoop) {
+      code += `\nwindow.ExpBuilderNavigation?.registerTrial(${JSON.stringify(id)}, ${trialNameSanitized}_timeline);`;
       return code;
     } else {
       code += `
@@ -212,10 +213,6 @@ export function useTrialCode({
         code += `
     timeline_variables: test_stimuli_${trialNameSanitized},`;
       }
-
-      code += `
-    ${generateConditionalFunctionCode(id)}
-    `;
 
       if (includesExtensions && extensions !== "") {
         code += `
@@ -230,6 +227,7 @@ export function useTrialCode({
   `;
       }
 
+      code += `\nwindow.ExpBuilderNavigation?.registerTrial(${JSON.stringify(id)}, ${trialNameSanitized}_procedure);`;
       return code;
     }
   };

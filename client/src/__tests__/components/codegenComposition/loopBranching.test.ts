@@ -2,11 +2,9 @@ import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
 import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
-  it("checks a newly requested loop branch target before suppressing remaining wrappers", () => {
+  it("registers loop definitions without a second branching engine", () => {
     const genLoopCode = useLoopCode({
       id: "loop_chain",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -43,21 +41,14 @@ describe("useLoopCode composition", () => {
     });
 
     const code = normalize(genLoopCode());
-    const skipCheckIndex = code.indexOf("if (loop_loop_chain_SkipRemaining)");
-    const targetExecutedIndex = code.indexOf(
-      "if (loop_loop_chain_TargetExecuted)",
-    );
+    expect(code).toContain('registerLoop("loop_chain", loop_chain_procedure,');
+    expect(code).not.toMatch(/SkipRemaining|TargetExecuted/);
 
-    expect(skipCheckIndex).toBeGreaterThan(-1);
-    expect(targetExecutedIndex).toBeGreaterThan(-1);
-    expect(skipCheckIndex).toBeLessThan(targetExecutedIndex);
   });
 
-  it("resets loop branch state after a shared terminal target so later wrappers continue", () => {
+  it("retains the shared destination and its continuation in the loop definition", () => {
     const genLoopCode = useLoopCode({
       id: "loop_merge",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -102,37 +93,23 @@ describe("useLoopCode composition", () => {
     const code = normalize(genLoopCode());
 
     expect(code).toContain(
-      `const ${toCodeIdentifier("Shared Target")}_wrapper =`,
+      `timeline: [${toCodeIdentifier("Trial A")}_timeline, ${toCodeIdentifier("Shared Target")}_timeline, ${toCodeIdentifier("After Merge")}_timeline]`,
     );
-    expect(code).toContain("loop_loop_merge_NextTrialId = null;");
-    expect(code).toContain("loop_loop_merge_SkipRemaining = false;");
-    expect(code).toContain("loop_loop_merge_TargetExecuted = false;");
-    expect(code).toContain("loop_loop_merge_ShouldBranchOnFinish = false;");
+    expect(code).toContain('registerLoop("loop_merge", loop_merge_procedure,');
+    expect(code).not.toContain("SkipRemaining");
+    expect(code).not.toContain("TargetExecuted");
+    expect(code).not.toMatch(/ShouldBranchOnFinish|HasBranches/);
   });
 
-  it("generates loop repeat conditions together with branch conditions", () => {
+  it("registers native loop iteration without generating loop decisions", () => {
     const genLoopCode = useLoopCode({
       id: "loop_combo",
-      branches: [10, "loop_next"],
+      branches: [10,"loop_next"],
       branchConditions: [
         {
           id: 1,
           rules: [{ column: "response", op: "==", value: "go" }],
           nextTrialId: "loop_next",
-        },
-      ],
-      repeatConditions: [
-        {
-          id: 1,
-          rules: [
-            {
-              componentIdx: "Survey_1",
-              prop: "answer",
-              op: "!=",
-              value: "stop",
-            },
-          ],
-          jumpToTrialId: 10,
         },
       ],
       repetitions: 1,
@@ -155,15 +132,9 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("const repeatConditions =");
-    expect(code).toContain(
-      'const loopRows = jsPsych.data.get().filter({loop_id: "loop_combo"}).values();',
-    );
-    expect(code).toContain("window.ExpBuilderBranching.evaluateCondition");
-    expect(code).toContain("window.ExpBuilderNavigation.requestJump(");
-    // Loop-level branches are ignored: loops always iterate their rows and
-    // branching lives on the trials inside them.
-    expect(code).toContain("loop_loop_combo_HasBranches = false;");
+    expect(code).toContain('registerLoop("loop_combo", loop_combo_procedure,');
+    expect(code).toContain('remainingLoopRepetitions("loop_combo", 1)');
     expect(code).not.toContain("window.ExpBuilderBranching.decide(");
+
   });
 });

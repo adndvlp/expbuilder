@@ -1,7 +1,8 @@
 import type React from "react";
-import type { CanvasGuide, SnapBox, SnapResult } from "../editorGuides";
+import type { CanvasGuide } from "../editorGuides";
+import type { SnapHandlers } from "../snapKonvaNode";
 import type { HtmlSceneMetrics } from "../experimentalScene/sceneModel";
-import type { CanvasStyles, TrialComponent } from "../types";
+import type { PreviewViewport, TrialComponent } from "../types";
 
 export type RenderComponentProps = {
   comp: TrialComponent;
@@ -16,12 +17,13 @@ export type RenderComponentProps = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>;
   components: TrialComponent[];
   uploadedFiles?: any[];
-  canvasStyles?: CanvasStyles;
+  previewViewport?: PreviewViewport;
   htmlSceneMetrics?: HtmlSceneMetrics;
   setActiveDomId?: React.Dispatch<React.SetStateAction<string | null>>;
   editingTextId?: string | null;
   onEditTextStart?: (id: string) => void;
   onRecordHistory?: () => void;
-  onSnap?: (box: SnapBox) => SnapResult;
+  shouldSkipMutation?: () => boolean;
+  onSnap?: SnapHandlers["onSnap"];
   onGuidesChange?: (guides: CanvasGuide[]) => void;
 };

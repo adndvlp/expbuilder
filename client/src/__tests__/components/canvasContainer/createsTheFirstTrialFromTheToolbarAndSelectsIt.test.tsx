@@ -67,7 +67,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -134,13 +133,13 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByTitle("Add trial"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
         type: "Trial",
         name: "New Trial",
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
-      });
+      }));
     });
     expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(

@@ -3,6 +3,7 @@ import type { BranchCondition, ColumnMapping } from "../../../types";
 interface Options {
   branchConditions?: BranchCondition[];
   branches?: (string | number)[];
+  defaultNextTrialId?: string | number | null;
   columnMapping: ColumnMapping;
   data: Array<{ key: string }>;
   hasData?: boolean;
@@ -17,6 +18,7 @@ interface Options {
 export function generateTrialProps({
   branchConditions,
   branches,
+  defaultNextTrialId,
   columnMapping,
   data,
   hasData = true,
@@ -43,13 +45,11 @@ export function generateTrialProps({
       })
       .join("\n");
 
-    const hasBranches = branches && branches.length > 0;
     const dynamicPassthroughParams = [
       "trial_duration",
       "response_ends_trial",
       "require_response_components",
       "dynamic_csv_diagnostics",
-      "__canvasStyles",
     ];
     const dynamicParamProps = dynamicPassthroughParams
       .filter(
@@ -69,14 +69,9 @@ data: {
     trial_id: ${id},
     builder_id: ${id},
     trial_name: "${trialName}",
-    ${
-      hasBranches
-        ? `
-    branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
-    branchConditions: [${JSON.stringify(branchConditions)}] 
-    `
-        : ""
-    }
+    branches: ${JSON.stringify(branches ?? [])},
+    branchConditions: ${JSON.stringify(branchConditions ?? [])},
+    defaultNextTrialId: ${JSON.stringify(defaultNextTrialId ?? null)},
   },`;
     }
 
@@ -89,14 +84,9 @@ data: {
     builder_id: ${id},
     trial_name: "${trialName}",
     ${isInLoop ? `isInLoop: true,` : ""}
-    ${
-      hasBranches
-        ? `
-    branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
-    branchConditions: [${JSON.stringify(branchConditions)}] 
-    `
-        : ""
-    }
+    branches: ${JSON.stringify(branches ?? [])},
+    branchConditions: ${JSON.stringify(branchConditions ?? [])},
+    defaultNextTrialId: ${JSON.stringify(defaultNextTrialId ?? null)},
   },`;
   }
 
@@ -109,7 +99,6 @@ data: {
     .join("\n");
 
   // Incluir branches tanto para trials en loop como fuera de loop
-  const hasBranches = branches && branches.length > 0;
 
   // If no data and not in loop, don't use timelineVariable for parameters
   if (!hasData && !isInLoop) {
@@ -118,14 +107,9 @@ data: {
     trial_id: ${id},
     builder_id: ${id},
     trial_name: "${trialName}",
-    ${
-      hasBranches
-        ? `
-    branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
-    branchConditions: [${JSON.stringify(branchConditions)}] 
-    `
-        : ""
-    }
+    branches: ${JSON.stringify(branches ?? [])},
+    branchConditions: ${JSON.stringify(branchConditions ?? [])},
+    defaultNextTrialId: ${JSON.stringify(defaultNextTrialId ?? null)},
   },`;
   }
 
@@ -143,13 +127,8 @@ data: {
     builder_id: ${id},
     trial_name: "${trialName}",
     ${isInLoop ? `isInLoop: true,` : ""}
-    ${
-      hasBranches
-        ? `
-    branches: [${branches.map((b: string | number) => (typeof b === "string" ? `"${b}"` : b)).join(", ")}],
-    branchConditions: [${JSON.stringify(branchConditions)}] 
-    `
-        : ""
-    }
+    branches: ${JSON.stringify(branches ?? [])},
+    branchConditions: ${JSON.stringify(branchConditions ?? [])},
+    defaultNextTrialId: ${JSON.stringify(defaultNextTrialId ?? null)},
   },`;
 }

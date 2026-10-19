@@ -1,3 +1,4 @@
+import { writeSurveyQuestions } from "../../../utils/surveyElements";
 import { Question } from "./types";
 
 type Props = {
@@ -11,6 +12,10 @@ export const useQuestionActions = ({
   onChange,
   surveyJson,
 }: Props) => {
+  const applyQuestions = (nextQuestions: Question[]) => {
+    onChange(writeSurveyQuestions(surveyJson, nextQuestions));
+  };
+
   const addQuestion = () => {
     const newQuestion: Question = {
       type: "text",
@@ -19,29 +24,17 @@ export const useQuestionActions = ({
       isRequired: false,
     };
 
-    onChange({
-      ...surveyJson,
-      elements: [...questions, newQuestion],
-    });
+    applyQuestions([...questions, newQuestion]);
   };
 
   const updateQuestion = (index: number, updates: Partial<Question>) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index] = { ...updatedQuestions[index], ...updates };
-    onChange({
-      ...surveyJson,
-      elements: updatedQuestions,
-    });
+    applyQuestions(updatedQuestions);
   };
 
   const deleteQuestion = (index: number) => {
-    const updatedQuestions = questions.filter(
-      (_: unknown, i: number) => i !== index,
-    );
-    onChange({
-      ...surveyJson,
-      elements: updatedQuestions,
-    });
+    applyQuestions(questions.filter((_: unknown, i: number) => i !== index));
   };
 
   const moveQuestion = (index: number, direction: "up" | "down") => {
@@ -53,10 +46,8 @@ export const useQuestionActions = ({
       updatedQuestions[newIndex],
       updatedQuestions[index],
     ];
-    onChange({
-      ...surveyJson,
-      elements: updatedQuestions,
-    });
+    applyQuestions(updatedQuestions);
   };
+
   return { addQuestion, updateQuestion, deleteQuestion, moveQuestion };
 };

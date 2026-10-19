@@ -1,5 +1,7 @@
 # 02 — Requisitos funcionales y reglas
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Glosario operativo
 
 - **Scope raíz:** `timeline[]` del experimento; no tiene loop owner.
@@ -12,7 +14,7 @@
 - **Arista semántica:** relación canónica origen → destino, independiente de qué loops estén comprimidos.
 - **Proyección:** arista/nodo que el canvas deriva para representar la misma relación cuando oculta scopes.
 - **Terminal:** propiedad de ejecución que no participa en la elegibilidad de autoría del selector de nivel.
-- **Branch:** flujo forward elegido al terminar un item; no es un `jump`/repeat.
+- **Branch:** flujo forward elegido al terminar un item; no es un `branching`/repeat.
 
 ## Invariantes de dominio
 
@@ -26,7 +28,7 @@
 | INV-06 | Una arista no puede apuntar al origen, quedar dangling, duplicarse ni introducir ciclos de ejecución. |
 | INV-07 | Los IDs se comparan con una estrategia canónica común; `1` y `"1"` no crean identidades lógicas diferentes. |
 | INV-08 | Toda `BranchCondition.nextTrialId` referencia una branch semántica real del mismo origen. |
-| INV-09 | Una branch de salida conserva custom parameters y sigue siendo branch; no se reclasifica como repeat/jump por estar fuera del scope directo. |
+| INV-09 | Una branch de salida conserva custom parameters y sigue siendo branch; no se reclasifica como repeat/branching por estar fuera del scope directo. |
 | INV-10 | Una proyección visual no se persiste como una segunda branch ni altera condiciones. |
 | INV-11 | Cargar metadata de un scope no cambia el owner de un item ni lo duplica como item ejecutable en otro scope. |
 | INV-12 | Agrupar items en un loop no auto-incluye destinos cuya arista fue definida como salida de ese loop. |
@@ -169,13 +171,15 @@ La UX exacta para operaciones que cambiarían una ruta depende de DEC-22.
 - ERR-04: conflictos de revisión devuelven el grafo actual y permiten reintentar conscientemente.
 - ERR-05: logs de builder/codegen pueden identificar source, target y scopes sin incluir respuestas del participante.
 - ERR-06: si el grafo persistido es inválido, preview/publicación falla con diagnóstico; no genera silenciosamente un timeline parcial.
-- ERR-07: mutaciones iniciadas por el canvas, endpoints REST o herramientas del agente pasan por las mismas validaciones de ownership/routing.
+- ERR-07: mutaciones iniciadas por el canvas o endpoints REST pasan por las mismas validaciones de ownership/routing.
 
 ## Compatibilidad
 
 - COMP-01: experiments sin branches cross-scope deben conservar layout y runtime.
 - COMP-02: branches existentes de trial dentro del mismo scope conservan su semántica.
-- COMP-03: branches existentes de nodos loop conservan su semántica hasta que una migración aprobada diga lo contrario.
+- COMP-03 (resuelta 2026-10-01): los loops no tienen ramas propias ni pueden ser destinos de ramas. Se rechazan los campos legacy; no hay experimentos que requieran migración.
 - COMP-04: datos legacy no se reinterpretan como cross-scope sólo porque un loader los encuentre en otra caché.
 - COMP-05: no se escriben nuevos campos hasta que el contrato y migración estén aprobados.
-- COMP-06: el build iniciado por el agente y el iniciado por el cliente producen la misma traza para el mismo snapshot, o la ruta no compatible se bloquea explícitamente.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

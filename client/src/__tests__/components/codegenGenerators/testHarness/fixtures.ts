@@ -1,16 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import MappedJson from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/MappedJson";
 import { generateBranchConditionsCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/branchConditionsGenerator";
-import { generateConditionalFunctionCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
 import { generateOnFinishCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
 import { generateOnStartCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onStartGenerator";
 import { generateParamsOverrideCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/paramsOverrideGenerator";
-import { generateRepeatConditionsCode } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/repeatConditionsGenerator";
 import type {
   BranchCondition,
   ColumnMappingEntry,
   ParamsOverrideCondition,
-  RepeatCondition,
 } from "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 
 function normalize(code: string) {
@@ -41,11 +38,9 @@ export {
   describe,
   expect,
   generateBranchConditionsCode,
-  generateConditionalFunctionCode,
   generateOnFinishCode,
   generateOnStartCode,
   generateParamsOverrideCode,
-  generateRepeatConditionsCode,
   getColumnValue,
   getVarName,
   it,
@@ -56,5 +51,4 @@ export type {
   BranchCondition,
   ColumnMappingEntry,
   ParamsOverrideCondition,
-  RepeatCondition,
 };

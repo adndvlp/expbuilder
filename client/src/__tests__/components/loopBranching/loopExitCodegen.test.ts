@@ -1,183 +1,185 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import generateLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
-import { generateOnFinishCode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
+import {
+  nativeTimelineRuntime,
+  nativeTrial,
+  scopeManifest,
+} from "../../helpers/nativeTimelineRuntime";
 
-const generateLoop = (parentLoopId: string | null) =>
-  generateLoopCode({
+const payload = { stimulus: { source: "typed", value: "outer payload" } };
+const settings = {
+  repetitions: 1,
+  randomize: false,
+  orders: false,
+  stimuliOrders: [],
+  categories: false,
+  categoryData: [],
+};
+
+function exitRuntime(target: string, terminalSource = false) {
+  const source = nativeTrial(
+    1,
+    "Source",
+    terminalSource
+      ? { branches: [2], defaultNextTrialId: 2 }
+      : {
+          branches: [target],
+          branchConditions: [
+            {
+              id: 7,
+              rules: [{ column: "response", op: "==", value: "go" }],
+              nextTrialId: target,
+              customParameters: payload,
+            },
+          ],
+        },
+  );
+  const later = nativeTrial(
+    2,
+    "Later Trial",
+    terminalSource
+      ? {
+          branches: [target],
+          branchConditions: [
+            {
+              id: 8,
+              rules: [{ column: "response", op: "==", value: "go" }],
+              nextTrialId: target,
+              customParameters: payload,
+            },
+          ],
+        }
+      : {},
+  );
+  const inner = generateLoopCode({
+    ...settings,
     id: "inner",
-    parentLoopId,
-    branches: [],
-    branchConditions: [],
-    repetitions: 1,
-    randomize: false,
-    orders: false,
-    stimuliOrders: [],
-    categories: false,
-    categoryData: [],
+    parentLoopId: "parent",
+    trials: [source, later],
+    unifiedStimuli: [{ row: 1 }, { row: 2 }],
+  })();
+  const parentTarget = nativeTrial("parent-target", "Parent Target", { branches: ["root-target"], defaultNextTrialId: "root-target" });
+  const parent = generateLoopCode({
+    ...settings,
+    id: "parent",
+    unifiedStimuli: [{ parentRow: 1 }],
     trials: [
       {
-        id: 1,
-        trialName: "Source",
-        pluginName: "html-keyboard-response",
-        timelineProps: "const Source_timeline = {};",
+        ...settings,
+        isLoop: true,
+        loopId: "inner",
+        loopName: "Inner",
+        timelineProps: inner,
+        items: [source, later],
       },
-      {
-        id: 2,
-        trialName: "Later Trial",
-        pluginName: "html-keyboard-response",
-        timelineProps: "const Later$20$Trial_timeline = {};",
-      },
+      parentTarget,
     ],
-    unifiedStimuli: [],
   })();
+  const final = nativeTrial("root-target", "Root Target");
+  return nativeTimelineRuntime(
+    parent + final.timelineProps,
+    scopeManifest({
+      root: ["parent", "root-target"],
+      parent: ["inner", "parent-target"],
+      inner: [1, 2],
+    }),
+  );
+}
 
 describe("loop exit code generation", () => {
-  it("propagates the exact unresolved target and custom parameters to its parent", () => {
-    const code = generateLoop("parent");
-
-    expect(code).toContain(
-      "const pendingBranchTarget = loop_inner_NextTrialId;",
-    );
-    expect(code).toContain(
-      "const pendingBranchCustomParameters = loop_inner_BranchCustomParameters;",
-    );
-    expect(code).toContain(
-      "loop_parent_NextTrialId = pendingBranchTarget;",
-    );
-    expect(code).toContain(
-      "loop_parent_BranchCustomParameters = pendingBranchCustomParameters;",
-    );
-    expect(code).toContain("if (hasUnresolvedExit)");
+  it("propagates the exact unresolved target and custom parameters to its parent", async () => {
+    const rows = await exitRuntime("parent-target").run();
+    expect(rows.map((row) => row.builder_id)).toEqual([
+      1,
+      "parent-target",
+      "root-target",
+    ]);
+    expect(rows[1].parameters).toEqual(payload);
+    expect(rows[1].timeline_variables).toEqual({ parentRow: 1 });
   });
 
-  it("propagates the exact unresolved target to the root timeline", () => {
-    const code = generateLoop(null);
-
-    expect(code).toContain("window.nextTrialId = pendingBranchTarget;");
-    expect(code).toContain(
-      "window.branchCustomParameters = pendingBranchCustomParameters;",
-    );
+  it("propagates the exact unresolved target to the root timeline", async () => {
+    const rows = await exitRuntime("root-target").run();
+    expect(rows.map((row) => row.builder_id)).toEqual([1, "root-target"]);
+    expect(rows[1].parameters).toEqual(payload);
+    expect(rows[1].timeline_variables).toEqual({});
   });
 
-  it("does not erase an unresolved exit in the last wrapper", () => {
-    const code = generateLoop("parent");
-    const wrapperStart = code.indexOf("const Later$20$Trial_wrapper =");
-    const loopStart = code.indexOf("const inner_procedure =");
-    const wrapperCode = code.slice(wrapperStart, loopStart);
-
-    expect(wrapperCode).toContain(
-      "const hasUnresolvedExit = loop_inner_BranchingActive &&",
-    );
-    expect(wrapperCode).toContain(
-      "if (!loop_inner_RouteInherited &&",
-    );
-    expect(wrapperCode).toContain(
-      "!hasUnresolvedExit && !hasResolvedExit)",
-    );
+  it("does not erase an unresolved exit at the row boundary", async () => {
+    const rows = await exitRuntime("parent-target", true).run();
+    expect(rows.map((row) => row.builder_id)).toEqual([
+      1,
+      2,
+      "parent-target",
+      "root-target",
+    ]);
+    expect(rows[2].parameters).toEqual(payload);
   });
 
-  it("clears a resolved same-loop branch before a conditional repeat", () => {
-    const code = generateLoop("parent");
-    const factory = new Function(`
-      const timeline = [];
-      let loop_parent_NextTrialId = null;
-      let loop_parent_SkipRemaining = false;
-      let loop_parent_BranchingActive = false;
-      let loop_parent_BranchCustomParameters = null;
-      ${code}
-      return {
-        routeInside: () => {
-          loop_inner_NextTrialId = 2;
-          loop_inner_SkipRemaining = true;
-          loop_inner_BranchingActive = true;
-          loop_inner_TargetExecuted = true;
+  it("clears a resolved same-loop branch before a conditional repeat", async () => {
+    const source = nativeTrial(1, "Source", { branches: [2] });
+    const target = nativeTrial(2, "Target");
+    const skipped = nativeTrial(3, "Skipped");
+    const loop = generateLoopCode({
+      ...settings,
+      id: "inner",
+      trials: [source, target, skipped],
+      unifiedStimuli: [{}],
+      isConditionalLoop: true,
+      loopConditions: [
+        {
+          id: 9,
+          rules: [
+            { trialId: 1, column: "response", op: "==", value: "repeat" },
+          ],
         },
-        finishIteration: () => Later$20$Trial_wrapper.on_timeline_finish(),
-        state: () => ({
-          target: loop_inner_NextTrialId,
-          active: loop_inner_BranchingActive,
-          executed: loop_inner_TargetExecuted,
-        }),
-      };
-    `)() as {
-      routeInside: () => void;
-      finishIteration: () => void;
-      state: () => { target: number | null; active: boolean; executed: boolean };
-    };
-
-    factory.routeInside();
-    factory.finishIteration();
-
-    expect(factory.state()).toEqual({
-      target: null,
-      active: false,
-      executed: false,
-    });
-  });
-
-  it("does not reinterpret a reached target as another loop branch", () => {
-    const code = generateOnFinishCode({
-      isInLoop: true,
-      getVarName: (name) => `loop_scope_${name}`,
-    });
-
-    expect(code).toContain(
-      "loop_scope_BranchingActive && loop_scope_TargetExecuted",
-    );
-    expect(code).toContain("loop_scope_ShouldBranchOnFinish = false;");
-  });
-
-  it("does not abort a root exit while its exact target is being propagated", () => {
-    const code = generateLoop(null);
-
-    expect(code).toContain(
-      "if (window.branchingActive && !loop_inner_BranchingActive)",
-    );
-  });
-
-  it("transfers an exit from a non-terminal source without losing its payload", () => {
-    const code = generateLoop("parent");
-    const factory = new Function(`
-      const timeline = [];
-      let loop_parent_NextTrialId = null;
-      let loop_parent_SkipRemaining = false;
-      let loop_parent_BranchingActive = false;
-      let loop_parent_BranchCustomParameters = null;
-      ${code}
-      return {
-        finishSource: () => Source_wrapper.on_timeline_finish(),
-        finishLoop: () => inner_procedure.on_timeline_finish(),
-        route: (target, parameters) => {
-          loop_inner_NextTrialId = target;
-          loop_inner_SkipRemaining = true;
-          loop_inner_BranchingActive = true;
-          loop_inner_BranchCustomParameters = parameters;
+      ],
+    })();
+    let cycle = 0;
+    const fixture = nativeTimelineRuntime(
+      loop,
+      scopeManifest({ root: ["inner"], inner: [1, 2, 3] }),
+      {
+        onTrial(data) {
+          if (data.builder_id === 1)
+            data.response = cycle++ === 0 ? "repeat" : "stop";
         },
-        result: () => ({
-          target: loop_parent_NextTrialId,
-          parameters: loop_parent_BranchCustomParameters,
-          active: loop_parent_BranchingActive,
-        }),
-      };
-    `)() as {
-      finishSource: () => void;
-      finishLoop: () => void;
-      route: (target: number, parameters: Record<string, string>) => void;
-      result: () => {
-        target: number;
-        parameters: Record<string, string>;
-        active: boolean;
-      };
-    };
+      },
+    );
+    const rows = await fixture.run();
+    expect(rows.map((row) => row.builder_id)).toEqual([1, 2, 1, 2]);
+    expect(
+      rows.filter((row) => row.builder_id === 1).map((row) => row.response),
+    ).toEqual(["repeat", "stop"]);
+  });
 
-    factory.route(777, { condition: "outer" });
-    factory.finishSource();
-    factory.finishLoop();
+  it("follows the destination only through its own configured default", async () => {
+    const fixture = exitRuntime("parent-target");
+    await fixture.run();
+    expect(
+      fixture.window.ExpBuilderRuntime.emit.mock.calls.filter(
+        ([type]) => type === "branch-decision",
+      ),
+    ).toHaveLength(2);
+  });
 
-    expect(factory.result()).toEqual({
-      target: 777,
-      parameters: { condition: "outer" },
-      active: true,
-    });
+  it("does not abort a root exit while its exact target is being propagated", async () => {
+    const fixture = exitRuntime("root-target");
+    const abort = vi.spyOn(fixture.instance, "abortTimelineByName");
+    const rows = await fixture.run();
+    expect(rows.at(-1)?.builder_id).toBe("root-target");
+    expect(abort).toHaveBeenCalledOnce();
+    expect(abort.mock.calls[0][0]).toMatch(/^expbuilder-loop-parent-/);
+  });
+
+  it("transfers an exit from a non-terminal source without losing its payload", async () => {
+    const rows = await exitRuntime("parent-target").run();
+    expect(rows.some((row) => row.builder_id === 2)).toBe(false);
+    expect(rows.filter((row) => row.parameters)).toEqual([
+      expect.objectContaining({
+        builder_id: "parent-target",
+        parameters: payload,
+      }),
+    ]);
   });
 });

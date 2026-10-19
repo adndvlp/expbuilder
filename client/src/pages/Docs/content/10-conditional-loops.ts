@@ -5,76 +5,59 @@ export const ConditionalLoopsSection: DocSection = {
   title: "Conditional Loops (While)",
   content: `# Conditional Loops (While)
 
-A **conditional loop** repeats its content as long as a condition is met, similar to a \`while\` in programming.
-
-Configured in **Builder → Loop → Conditional Loop Settings**.
+A conditional loop repeats its content while its configured conditions match. Configure it in **Builder → Loop → Conditional Loop Settings**.
 
 ## loop_function
 
-The generated code includes a \`loop_function\` that jsPsych evaluates after each iteration:
+jsPsych evaluates \`loop_function\` after completing the container's row pass. It receives a DataCollection for that pass and reads the referenced trial's latest row:
 
 \`\`\`js
 loop_function: function(data) {
-// data = latest data generated in this loop iteration
-const loopConditions = [
-  {
-    rules: [
-      { column: "ButtonResponseComponent_1_response", op: "!=", value: "Done" }
-    ]
-  }
-];
-
-// OR between conditions, AND between rules
-for (const condition of loopConditions) {
-  const allMatch = condition.rules.every(rule => {
-    let propValue = data[rule.column];
-    // ... same evaluation as branch conditions ...
-  });
-  if (allMatch) return true; // repeat the loop
-}
-
-return false; // exit the loop
+  const loopConditions = [{
+    id: 1,
+    rules: [{
+      trialId: 20,
+      column: "ButtonResponseComponent_1_response",
+      op: "!=",
+      value: "Done"
+    }]
+  }];
+  return loopConditions.some(condition =>
+    window.ExpBuilderBranching.evaluateReferencedCondition(
+      data.values(), condition
+    )
+  );
 }
 \`\`\`
+
+Rules within a condition use AND; conditions use OR. Conditional repetition uses \`loop_function\`; fixed repetition uses \`repetitions\`.
 
 ## Flow
 
 \`\`\`mermaid
 flowchart TD
-  A["Loop start"] --> B["on_timeline_start: reset loop vars"]
-  B --> C["Run iteration"]
-  C --> D["loop_function(data)"]
-  D -->|true| E["on_timeline_finish"]
-  E --> C
-  D -->|false| F["on_timeline_finish final"]
+  A["Container start: initialize routing state"] --> B["Run one CSV row"]
+  B --> C["Row finish: clear resolved local decisions"]
+  C --> D{"More rows?"}
+  D -->|yes| B
+  D -->|no| E["loop_function(data)"]
+  E -->|true| B
+  E -->|false| F["Container finish: transport pending trial exit"]
   F --> G["Continue timeline"]
 \`\`\`
 
-## Interaction with Branching Inside the Loop
+## Trial Branches Inside the Loop
 
-Branching code inside a conditional loop uses loop-scoped variables:
+Only trials evaluate \`branches\` and \`branchConditions\`. Their targets remain trial IDs, including targets outside the loop. The scope keeps lexical routing variables for these decisions.
 
-\`\`\`js
-// on_finish of a trial inside the conditional loop:
-if (allMatch && rule.nextTrialId) {
-window.loop_LOOPID_NextTrialId = rule.nextTrialId;
-window.loop_LOOPID_SkipRemaining = true;
-window.loop_LOOPID_BranchingActive = true;
-}
+A pending exit transports its concrete target and custom parameters to the enclosing scope. A decision resolved inside the loop is cleared at the row boundary so later rows can run. When a route enters a trial inside a repeated container, the inherited target is acknowledged once.
 
-// on_timeline_finish of the loop:
-// Syncs the loop state to the global scope so branching continues after exiting
-if (window.loop_LOOPID_BranchingActive) {
-window.skipRemaining = true;
-window.nextTrialId = window.loop_LOOPID_NextTrialId;
-window.branchingActive = true;
-}
-\`\`\`
+Loops have no branch decision or fallback destination of their own. \`loopConditions\` continue to control repetition.
 
-## Limitations
+## Data Used by Conditions
 
-- Loop conditions only access data from the **current iteration** (not accumulated from previous iterations)
-- Loop conditions are evaluated with the same operators as branching (\`==\`, \`!=\`, \`>\`, \`<\`, \`>=\`, \`<=\`)
-- For accumulated data across iterations, use \`jsPsych.data.get().last(N)\` in custom code
+- Conditions reference trial data generated in the current container pass.
+- Comparison operators match the trial condition evaluator.
+- Custom code can query accumulated data through \`jsPsych.data.get()\`.
 `,
 };

@@ -164,27 +164,6 @@ export async function setupApiRoutes(page: Page) {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true, imported: 2 })});
     }
 
-    // Chat
-    if (url.includes("/api/providers")) {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-        providers: [
-          { id: "openai", name: "OpenAI", models: ["gpt-4o"] },
-          { id: "anthropic", name: "Anthropic", models: ["claude-sonnet-4-20250514"] },
-        ],
-      })});
-    }
-    if (url.includes("/api/chat/settings")) {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-        provider: "anthropic", model: "claude-sonnet-4-20250514", apiKey: "",
-      })});
-    }
-    if (url.includes("/api/chat/conversations")) {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ conversations: [] })});
-    }
-    if (url.includes("/api/chat/stream")) {
-      return route.fulfill({ status: 200, contentType: "text/event-stream", body: 'data: [DONE]\n\n' });
-    }
-
     // Default: empty object
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
   });

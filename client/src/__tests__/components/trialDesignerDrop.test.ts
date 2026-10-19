@@ -10,27 +10,28 @@ function createDropEvent(clientX = 180, clientY = 260) {
     preventDefault: vi.fn(),
     clientX,
     clientY,
+    currentTarget: {
+      getBoundingClientRect: () => ({ left: 30, top: 40 }),
+    },
   } as unknown as React.DragEvent;
 }
 
-function createStageRef(left = 30, top = 40) {
+function createStageRef(scale = 1) {
   return {
     current: {
-      container: () => ({
-        getBoundingClientRect: () => ({
-          left,
-          top,
-        }),
-      }),
+      scaleX: () => scale,
+      scaleY: () => scale,
     },
   } as any;
 }
 
 function createSetComponents(initial: TrialComponent[]) {
   let current = initial;
-  const setComponents = vi.fn((update: React.SetStateAction<TrialComponent[]>) => {
-    current = typeof update === "function" ? update(current) : update;
-  });
+  const setComponents = vi.fn(
+    (update: React.SetStateAction<TrialComponent[]>) => {
+      current = typeof update === "function" ? update(current) : update;
+    },
+  );
 
   return {
     setComponents,
@@ -147,6 +148,22 @@ describe("TrialDesigner handleDrop", () => {
       value: "uploads/img/cat.png",
     });
   });
+
+  it.each([0.5, 2])(
+    "places dropped files in design coordinates at zoom %s",
+    (scale) => {
+      const toJsPsychCoords = vi.fn(() => ({ x: 0, y: 0 }));
+      const result = dropComponent("ImageComponent", {
+        stageRef: createStageRef(scale),
+        toJsPsychCoords,
+      });
+      expect(result.getComponents()[1]).toMatchObject({
+        x: 150 / scale,
+        y: 220 / scale,
+      });
+      expect(toJsPsychCoords).toHaveBeenCalledWith(150 / scale, 220 / scale);
+    },
+  );
 
   it("does not update state when the stage is not available", () => {
     const state = createSetComponents(existingComponents);

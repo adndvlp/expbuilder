@@ -30,7 +30,7 @@ describe("renderComponent switch coverage", () => {
         <Harness
           initial={component(type, { id: `${type}-case` })}
           selectedIds={[`${type}-case`]}
-          withCanvasStyles={type === "ImageComponent"}
+          withPreviewViewport={type === "ImageComponent"}
         />,
       );
 

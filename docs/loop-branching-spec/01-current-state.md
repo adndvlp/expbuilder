@@ -1,8 +1,10 @@
 # 01 — Auditoría del estado actual
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Método y límites de la auditoría
 
-Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, herramientas de creación del agente, ambos codegens, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `jump to trial`, pruebas existentes y bundle jsPsych incluido.
+Se revisaron el modelo cliente, provider, acciones del canvas, endpoints de timeline, generación del cliente, layout expandido, configuración de condiciones, sesión local y pública, `resume`, `branching to trial`, pruebas existentes y bundle jsPsych incluido.
 
 La evidencia corresponde al commit `15daef2`. Es una auditoría estática del código y de las pruebas existentes. No se presenta como observación runtime porque:
 
@@ -24,11 +26,7 @@ botón + del nodo
   -> buildUnifiedFlowLayout
   -> generateAllCodes -> codegen del cliente
 
-agente create/build
-  -> herramientas que escriben LowDB directamente
-  -> codegen independiente en server/agent
-
-ambos codegens
+codegen del cliente
   -> jsPsych con flags globales o del loop padre inmediato
 ```
 
@@ -97,15 +95,15 @@ Esto explica por qué una topología parecida puede dibujarse con fixtures actua
 
 Evidencia: `composeExpandedLoopLayout.ts`, `sanitizeLayoutTimeline.ts`, `collapseLoopEdgesToCircuits.ts`, pruebas `canvasExpandedLayout/` y E2E `unified-canvas-*.spec.ts`.
 
-## Configuración de branching frente a jump
+## Configuración de branching frente a branching
 
 La configuración separa condiciones así:
 
 - target en `selectedTrial.branches`, o target forward del mismo scope: `BranchCondition`;
-- cualquier otro target: `RepeatCondition`/jump;
-- branch permite `customParameters`; jump no.
+- cualquier otro target: `RepeatCondition`/branching;
+- branch permite `customParameters`; branching no.
 
-Para un trial dentro de loop, la lista de jumps incluye items anteriores del loop cargado y todos los items de raíz. No construye un path de loops. Un target de salida nuevo debe conservarse explícitamente como branch o corre el riesgo de ser reclasificado como jump.
+Para un trial dentro de loop, la lista de branchings incluye items anteriores del loop cargado y todos los items de raíz. No construye un path de loops. Un target de salida nuevo debe conservarse explícitamente como branch o corre el riesgo de ser reclasificado como branching.
 
 Evidencia: `BranchedTrial/index.tsx::{getAvailableTrials,isBranchTarget}`, `branchingSaveUtils.ts`.
 
@@ -129,24 +127,6 @@ Un loop puede tener `branches` en su scope padre. Al terminar, propaga `branches
 
 Evidencia: `generateAllCodes`, `generateLoopCode`, `generateOnFinishCode`, `generateLoopBranchConditionsCode`, `BranchingLogicCode`, `BranchesCode`, `generateItemWrappers`.
 
-## Ruta paralela del agente del servidor
-
-La aplicación contiene otra ruta funcional sobre el mismo documento que no pasa por los hooks ni por los endpoints anteriores:
-
-- `server/agent/tools/create/trials.js` crea trials con `parentLoopId` y `branches`, los inserta directamente en `loop.trials` cuando hay parent, acepta PATCH de campos arbitrarios y realiza su propio borrado/reconnect global;
-- `loop-create.js`, `loop-update.js` y `loop-delete.js` reescriben ownership, timeline y branches directamente en LowDB, incluyendo otra implementación de agrupación/desagrupación;
-- estas herramientas no validan una ruta cross-scope ni comparten una operación atómica de dominio con el canvas;
-- `server/agent/codegen.js` llama a implementaciones JavaScript distintas en `server/agent/codegen/trial.js` y `loop.js` para construir HTML local y público;
-- ese codegen también escribe routing sólo en el loop padre inmediato y, al propagar una branch del nodo loop, usa `loop.branches[0]` como fallback.
-- en raíz, `codegen/trial.js` activa `window.nextTrialId/window.skipRemaining`, pero el output del agente añade trials directamente con `timeline.push` y no genera los wrappers que consumen esos flags;
-- los repeat conditions del agente escriben `jsPsych_jumpToTrial` y recargan, pero no se encontró un reader de esa key en su output/template; tampoco se encontró consumo de `BranchCustomParameters` en `on_start`;
-- `codegen/loop.js` consulta `loop_*_ShouldBranchOnFinish`, pero en esa familia sólo se encontró su reset a `false`, no una asignación a `true`, por lo que las branches del nodo loop tampoco están demostradas runtime;
-- las pruebas del agente existentes comprueban fragmentos de strings, no una traza jsPsych, así que no demuestran branching, jump o custom parameters end-to-end.
-
-Por tanto, no basta corregir el codegen TypeScript del cliente. La implementación debe hacer que ambas entradas deleguen en el mismo grafo/compilador o demostrar conformidad completa mediante un contrato común. Si producto no quiere que el agente **cree** la nueva feature, sus herramientas todavía deben leer, preservar, validar y no corromper grafos que ya la contienen.
-
-Evidencia: `server/agent/tools/create/{trials,loop-create,loop-update,loop-delete}.js`, `server/agent/codegen.js`, `server/agent/codegen/{trial,loop}.js`, `server/agent/tools/create/build.js` y pruebas `server/__tests__/agent/`.
-
 ## Resume actual
 
 En cada `on_data_update` con `builder_id`, local y público guardan:
@@ -160,22 +140,22 @@ Al recargar, `_resolveResumeBranch`:
 - devuelve `null` con cero branches;
 - devuelve el único target sin evaluar condiciones;
 - con varias branches evalúa condiciones y, si ninguna coincide, usa la primera;
-- guarda sólo ese ID en `jsPsych_jumpToTrial`.
+- guarda sólo ese ID en `jsPsych_branchingToTrial`.
 
 Limitaciones relevantes:
 
 - un último trial interno sin branches propias se interpreta como sesión terminada, aunque su contenedor pudiera continuar;
 - el target no incluye sus ancestros;
-- un wrapper de loop raíz compara el jump con el ID del loop, no con IDs internos; puede saltarse el contenedor que debía abrir;
+- un wrapper de loop raíz compara el branching con el ID del loop, no con IDs internos; puede saltarse el contenedor que debía abrir;
 - la política “sin match” difiere del branching global normal, que devuelve `null`.
 
 Evidencia: `ResumeCode.ts`, `localRuntime.ts`, `publicInitCode.ts`, pruebas `codegenRuntime/resumeBranching.test.ts`.
 
-## Jump to trial actual
+## branching to trial actual
 
-Las repeat conditions guardan un `jumpToTrialId`, limpian el container y vuelven a ejecutar `jsPsych.run(timeline)`. Cada wrapper sólo sabe comparar su ID con el target escalar.
+Las repeat conditions guardan un `nextTrialId`, limpian el container y vuelven a ejecutar `jsPsych.run(timeline)`. Cada wrapper sólo sabe comparar su ID con el target escalar.
 
-Un jump hacia raíz puede funcionar porque el target está en el timeline superior. Un jump hacia un trial anidado no aporta la cadena de loops que debe permitirse ejecutar. La documentación afirma mayor alcance que el mecanismo observable; por ello la nueva spec exige pruebas runtime y no asume ese soporte.
+Un branching hacia raíz puede funcionar porque el target está en el timeline superior. Un branching hacia un trial anidado no aporta la cadena de loops que debe permitirse ejecutar. La documentación afirma mayor alcance que el mecanismo observable; por ello la nueva spec exige pruebas runtime y no asume ese soporte.
 
 ## Capacidad del bundle jsPsych
 
@@ -186,6 +166,8 @@ El bundle incluido expone `abortCurrentTimeline()` y `abortTimelineByName()`, ad
 - **Posible:** sí, con refactor de dominio, metadata, proyección y runtime.
 - **Posible sólo con el modal actual:** no.
 - **Seguro reutilizando ciegamente `branches[]` + `parentLoopId`:** no demostrado; depende de la decisión de contrato y de corregir loaders/mutaciones.
-- **Resume/jump compatibles sin cambios:** no.
-- **Build generado por el agente compatible sin cambios:** no.
+- **Resume/branching compatibles sin cambios:** no.
 - **Layout reutilizable:** sí como base, añadiendo una fase explícita de proyección cross-scope y preservando el theme existente.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

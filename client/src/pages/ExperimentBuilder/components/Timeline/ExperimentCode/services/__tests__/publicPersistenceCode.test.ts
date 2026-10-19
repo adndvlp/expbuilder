@@ -32,7 +32,8 @@ function options(experimentID: string): PublicExperimentCodeOptions {
     publicParams: {},
     extensions: "",
     progressBar: false,
-    baseCode: "Object.entries(window.branchCustomParameters); jsPsych.run([]);",
+    baseCode:
+      "const branchParameters = window.ExpBuilderNavigation.takeParameters(1); if (branchParameters) Object.entries(branchParameters); jsPsych.run([]);",
   };
 }
 
@@ -41,10 +42,6 @@ const OLD_GLOBAL_KEYS = [
   "jsPsych_participantNumber",
   "jsPsych_captchaPassed",
   "jsPsych_resumeTrial",
-  "jsPsych_jumpRequest",
-  "jsPsych_jumpReload",
-  "jsPsych_jumpToTrial",
-  "jsPsych_jumpContext",
   "jsPsychTrialsDB",
 ];
 
@@ -54,7 +51,7 @@ describe("public session persistence code", () => {
     const secondKeys = getPublicRuntimeStorageKeys("experiment-b");
     const secondValues = new Set(Object.values(secondKeys));
 
-    expect(Object.values(firstKeys)).toHaveLength(9);
+    expect(Object.values(firstKeys)).toHaveLength(5);
     expect(
       Object.values(firstKeys).every((key) =>
         key.startsWith("expbuilder:public:experiment-a:"),
@@ -73,19 +70,7 @@ describe("public session persistence code", () => {
       `const _publicStorageKeys = ${JSON.stringify(storageKeys)}`,
     );
     expect(code).toContain(
-      `const JUMP_REQUEST_KEY = ${JSON.stringify(storageKeys.jumpRequest)}`,
-    );
-    expect(code).toContain(
-      `const JUMP_RELOAD_KEY = ${JSON.stringify(storageKeys.jumpReload)}`,
-    );
-    expect(code).toContain(
       `const RESUME_TRIAL_KEY = ${JSON.stringify(storageKeys.resumeTrial)}`,
-    );
-    expect(code).toContain(
-      `const JUMP_TARGET_KEY = ${JSON.stringify(storageKeys.jumpTarget)}`,
-    );
-    expect(code).toContain(
-      `const JUMP_CONTEXT_KEY = ${JSON.stringify(storageKeys.jumpContext)}`,
     );
     expect(code).toContain(
       `const resumeRaw = localStorage.getItem(${JSON.stringify(storageKeys.resumeTrial)})`,

@@ -71,6 +71,8 @@ describe("coverage utilities: experiment state and designer helpers", () => {
       x: vi.fn((value?: number) => (value === undefined ? 10 : undefined)),
       y: vi.fn((value?: number) => (value === undefined ? 20 : undefined)),
       rotation: vi.fn(() => 3),
+      getParent: vi.fn(() => null),
+      getClientRect: vi.fn(() => ({ x: -40, y: -5, width: 100, height: 50 })),
       getLayer: vi.fn(() => ({ batchDraw })),
     };
     const onGuidesChange = vi.fn();
@@ -94,14 +96,17 @@ describe("coverage utilities: experiment state and designer helpers", () => {
       y: 24,
       guides: [{ orientation: "vertical", position: 12, from: 0, to: 40 }],
     });
-    expect(onSnap).toHaveBeenCalledWith({
-      id: "shape-1",
-      x: 10,
-      y: 20,
-      width: 100,
-      height: 50,
-      rotation: 3,
-    });
+    expect(onSnap).toHaveBeenCalledWith(
+      {
+        id: "shape-1",
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 50,
+        bounds: { x: -40, y: -5, width: 100, height: 50 },
+      },
+      { node, interaction: "drag" },
+    );
     expect(node.x).toHaveBeenCalledWith(12);
     expect(node.y).toHaveBeenCalledWith(24);
     expect(batchDraw).toHaveBeenCalled();

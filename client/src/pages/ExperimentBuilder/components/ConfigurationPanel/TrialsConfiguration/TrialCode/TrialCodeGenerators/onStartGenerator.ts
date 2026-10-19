@@ -8,10 +8,10 @@ export function generateOnStartCode(options: {
   getVarName: (baseName: string) => string;
   customOnStart?: string;
 }): string {
-  const { paramsOverride, isInLoop = false, getVarName, customOnStart } = options;
+  const { paramsOverride, customOnStart } = options;
 
   const paramsOverrideCode = generateParamsOverrideCode(paramsOverride);
-  const branchCustomParamsCode = generateBranchCustomParametersCode(isInLoop, getVarName);
+  const branchCustomParamsCode = generateBranchCustomParametersCode();
   const trimmedCustom = customOnStart?.trim() || "";
 
   /* v8 ignore start -- branch custom parameter generation always returns a loop or window-scoped block. */

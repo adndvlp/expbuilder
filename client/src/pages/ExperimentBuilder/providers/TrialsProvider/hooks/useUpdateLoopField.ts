@@ -5,7 +5,7 @@ import type { LoopMethodsWithGetLoop } from "../types";
 
 const idsMatch = (left: string | number, right: string | number) =>
   String(left) === String(right);
-const graphFields = new Set(["name", "branches", "trials", "parentLoopId"]);
+const graphFields = new Set(["name", "trials", "parentLoopId"]);
 
 export default function useUpdateLoopField({
   experimentID,
@@ -46,12 +46,6 @@ export default function useUpdateLoopField({
         return false;
       }
     },
-    [
-      applyGraphSnapshot,
-      experimentID,
-      getLoop,
-      getTimeline,
-      setSelectedLoop,
-    ],
+    [applyGraphSnapshot, experimentID, getLoop, getTimeline, setSelectedLoop],
   );
 }

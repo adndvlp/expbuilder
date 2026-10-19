@@ -1,14 +1,6 @@
-import BranchesCode from "./BranchesCode";
-import BranchingLogicCode from "./BranchingLogicCode";
+import LoopProcedureCode from "./LoopProcedureCode";
+import { LoopCondition, TimelineItem } from "./types";
 import {
-  BranchCondition,
-  LoopCondition,
-  RepeatCondition,
-  TimelineItem,
-} from "./types";
-import { generateItemWrappers } from "./services/generateItemWrappers";
-import {
-  generateDescendantIdEntries,
   getLoopId,
   getTimelineItemName,
   isLoopData,
@@ -17,9 +9,10 @@ import { toCodeIdentifier } from "../../../../../utils/codegen/codeIdentifier";
 
 type Props = {
   id: string | undefined;
-  branches: (string | number)[] | undefined;
-  branchConditions: BranchCondition[] | undefined;
-  repeatConditions?: RepeatCondition[];
+  entryItemId?: string | number | null;
+  nextItemId?: string | number | null;
+  customOnTimelineStart?: string;
+  customOnTimelineFinish?: string;
   repetitions: number;
   randomize: boolean;
   orders: boolean;
@@ -32,14 +25,14 @@ type Props = {
   isConditionalLoop?: boolean;
   parentLoopId?: string | null; // Parent loop ID if this is a nested loop
   mergePointIds?: (string | number)[];
-  isMergePoint?: boolean;
 };
 
 export default function useLoopCode({
   id,
-  branches,
-  branchConditions,
-  repeatConditions,
+  entryItemId,
+  nextItemId,
+  customOnTimelineStart,
+  customOnTimelineFinish,
   repetitions,
   randomize,
   orders,
@@ -51,19 +44,12 @@ export default function useLoopCode({
   loopConditions,
   isConditionalLoop,
   parentLoopId,
-  mergePointIds = [],
-  isMergePoint = false,
 }: Props) {
   const sanitizeName = toCodeIdentifier;
 
   const genLoopCode = (): string => {
     // Sanitize the loop ID to use it in variable names
     const loopIdSanitized = id ? sanitizeName(id) : "Loop";
-
-    // Detect if this loop is nested (has a parent)
-    const parentLoopIdSanitized = parentLoopId
-      ? sanitizeName(parentLoopId)
-      : null;
 
     // Generate the code for each trial or loop
     const itemDefinitions = trials
@@ -80,9 +66,8 @@ export default function useLoopCode({
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const nestedLoopCode = useLoopCode({
             id: nestedLoopId === null ? undefined : String(nestedLoopId),
-            branches: item.branches,
-            branchConditions: item.branchConditions,
-            repeatConditions: item.repeatConditions,
+            entryItemId: item.entryItemId,
+            nextItemId: item.nextItemId,
             repetitions: item.repetitions || 1,
             randomize: item.randomize || false,
             orders: item.orders || false,
@@ -105,21 +90,12 @@ export default function useLoopCode({
       })
       .join("\n\n");
 
-    // Generate wrappers with conditional_function for each trial/loop inside the loop
-    const itemWrappers = generateItemWrappers({
-      loopIdSanitized,
-      mergePointIds,
-      sanitizeName,
-      trials,
-    });
-
-    // Generate the list of wrapper names for the loop timeline
     const timelineRefs = trials
-      .map((item) => {
-        const itemName = getTimelineItemName(item);
-        const itemNameSanitized = sanitizeName(itemName);
-        return `${itemNameSanitized}_wrapper`;
-      })
+      .map((item) =>
+        isLoopData(item)
+          ? `${sanitizeName(String(getLoopId(item)))}_procedure`
+          : `${sanitizeName(getTimelineItemName(item))}_timeline`,
+      )
       .join(", ");
 
     let code = "";
@@ -128,10 +104,10 @@ export default function useLoopCode({
       code += `
     let test_stimuli_${loopIdSanitized} = [];
     
-    if (typeof participantNumber === "number" && !isNaN(participantNumber)) {
+    const test_stimuli_previous_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};
+    if (typeof participantNumber === "number" && Number.isInteger(participantNumber) && participantNumber > 0) {
       const stimuliOrders = ${JSON.stringify(stimuliOrders)};
       const categoryData = ${JSON.stringify(categoryData)};
-      const test_stimuli_previous_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};
       
       
       if (categoryData.length > 0) {
@@ -171,9 +147,11 @@ export default function useLoopCode({
             .filter(i => indexMapping.hasOwnProperty(i))
             .map(i => indexMapping[i]);
           
-          test_stimuli_${loopIdSanitized} = orderedIndices
+          const orderedStimuli = orderedIndices
             .filter(i => i >= 0 && i < categoryFilteredStimuli.length)
             .map(i => categoryFilteredStimuli[i]);
+          test_stimuli_${loopIdSanitized} = orderedStimuli.length > 0
+            ? orderedStimuli : categoryFilteredStimuli;
         } else {
           test_stimuli_${loopIdSanitized} = categoryFilteredStimuli;
         }
@@ -182,12 +160,16 @@ export default function useLoopCode({
         const orderIndex = (participantNumber - 1) % stimuliOrders.length;
         const index_order = stimuliOrders[orderIndex];
         
-        test_stimuli_${loopIdSanitized} = index_order
+        const orderedStimuli = index_order
           .filter((i) => i !== -1 && i >= 0 && i < test_stimuli_previous_${loopIdSanitized}.length)
           .map((i) => test_stimuli_previous_${loopIdSanitized}[i]);
+        test_stimuli_${loopIdSanitized} = orderedStimuli.length > 0
+          ? orderedStimuli : test_stimuli_previous_${loopIdSanitized};
       } else {
         test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
       }
+    } else {
+      test_stimuli_${loopIdSanitized} = test_stimuli_previous_${loopIdSanitized};
     }
     window.ExpBuilderRuntime?.emit("stimuli-selected", {
       loopId: ${JSON.stringify(id ?? null)},
@@ -201,29 +183,19 @@ export default function useLoopCode({
     const test_stimuli_${loopIdSanitized} = ${JSON.stringify(unifiedStimuli, null, 2)};`;
     }
 
-    // Legacy loop.branches are intentionally ignored: branches belong to the
-    // trials inside the loop, so a loop always iterates its timeline variables.
-    // This aligns with the upcoming loop-branches rework.
-    const hasBranchesLoop = false;
-
-    const branchingResult = BranchingLogicCode({
+    const procedureResult = LoopProcedureCode({
       code,
-      parentLoopIdSanitized,
       itemDefinitions,
       loopIdSanitized,
-      hasBranchesLoop,
       id,
-      itemWrappers,
       timelineRefs,
       repetitions,
       randomize,
-      branches,
-      descendantIdEntries: generateDescendantIdEntries(trials, sanitizeName),
       isConditionalLoop,
       loopConditions,
     });
 
-    code = branchingResult.code;
+    code = procedureResult.code;
 
     // Always add loop_id to the data (without branches/branchConditions to avoid conflicts)
     code += `
@@ -231,25 +203,16 @@ export default function useLoopCode({
     loop_id: "${id}"
   },`;
 
-    const branchesResult = BranchesCode({
-      code,
-      hasBranchesLoop,
-      branches,
-      branchConditions,
-      repeatConditions,
-      id,
-      loopIdSanitized,
-      parentLoopIdSanitized,
-      isMergePoint,
-    });
-
-    code = branchesResult.code;
-
+    if (customOnTimelineStart?.trim())
+      code += `on_timeline_start: function() { ${customOnTimelineStart} },`;
+    if (customOnTimelineFinish?.trim())
+      code += `on_timeline_finish: function() { ${customOnTimelineFinish} },`;
     const appendRootProcedure = parentLoopId
       ? ""
       : `timeline.push(${loopIdSanitized}_procedure);`;
     code += `
 };
+window.ExpBuilderNavigation?.registerLoop(${JSON.stringify(id)}, ${loopIdSanitized}_procedure, ${JSON.stringify({ entryItemId: entryItemId ?? null, nextItemId: nextItemId ?? null })});
 ${appendRootProcedure}
 `;
 

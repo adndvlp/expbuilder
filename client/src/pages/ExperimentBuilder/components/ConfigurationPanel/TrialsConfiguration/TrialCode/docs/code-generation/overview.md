@@ -115,7 +115,7 @@ Decide si ejecutar un trial/procedure:
 }
 ```
 
-**Uso en Builder**: Implementación de **branching** y **jump/repeat**
+**Uso en Builder**: Implementación de **branching** y **branching/repeat**
 
 #### 4. **Loop Function** (`loop_function`)
 

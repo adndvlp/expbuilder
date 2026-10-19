@@ -15,14 +15,10 @@ const trial = (
   branches: LayoutItemId[] = [],
 ): LayoutTimelineItem => ({ id, type: "trial", name: String(id), branches });
 
-const loop = (
-  id: LayoutItemId,
-  branches: LayoutItemId[] = [],
-): LayoutTimelineItem => ({
+const loop = (id: LayoutItemId): LayoutTimelineItem => ({
   id,
   type: "loop",
   name: String(id),
-  branches,
 });
 
 const scope = (
@@ -65,16 +61,16 @@ const scopeParents = { inner: "middle", middle: "outer", outer: null };
 
 describe("loop branch projection", () => {
   it("replaces every expanded loop marker with its visible entry", () => {
-    const rootTimeline = [trial("parent", ["outer"]), loop("outer")];
+    const rootTimeline = [trial("parent", ["entry"]), loop("outer")];
     const outerScope = scope("outer-scope", "root", "outer", [loop("inner")]);
     const innerScope = scope("inner-scope", "outer-scope", "inner", [
       trial("entry"),
     ]);
     const entryEdge: GraphBranchEdge = {
       sourceId: "parent",
-      targetId: "outer",
+      targetId: "entry",
       sourceOwnerId: null,
-      targetOwnerId: null,
+      targetOwnerId: "inner",
       exitedLoopIds: [],
     };
     const render = (expandedScopes: ExpandedLoopScope[]) =>
@@ -147,21 +143,13 @@ describe("loop branch projection", () => {
       branchEdges: edges,
       scopeParents,
     });
-    const collapsedInner = getScopedNodeId(
-      "middle-scope",
-      "loop",
-      "inner",
-    );
+    const collapsedInner = getScopedNodeId("middle-scope", "loop", "inner");
     const middleTarget = getScopedNodeId(
       "middle-scope",
       "trial",
       "middle-target",
     );
-    const outerTarget = getScopedNodeId(
-      "outer-scope",
-      "trial",
-      "outer-target",
-    );
+    const outerTarget = getScopedNodeId("outer-scope", "trial", "outer-target");
     const rootTarget = getScopedNodeId("root", "trial", "root-target");
 
     expect(flowPairs(result)).toContainEqual([collapsedInner, middleTarget]);
@@ -186,7 +174,7 @@ describe("loop branch projection", () => {
   it("keeps a loop exit separate from an unrelated sibling branch", () => {
     const rootTimeline = [
       trial(1, [2, 3]),
-      trial(2, ["loop_4"]),
+      trial(2, [6]),
       trial(3),
       loop("loop_4"),
       trial(5),
@@ -207,20 +195,35 @@ describe("loop branch projection", () => {
           trial(8),
         ]),
       ],
-      branchEdges: [exitEdge],
+      branchEdges: [
+        {
+          sourceId: 2,
+          targetId: 6,
+          sourceOwnerId: null,
+          targetOwnerId: "loop_4",
+          exitedLoopIds: [],
+        },
+        exitEdge,
+      ],
       scopeParents: { loop_4: null },
     });
     const collapsed = composeExpandedLoopLayout({
       rootTimeline,
       expandedScopes: [],
-      branchEdges: [exitEdge],
+      branchEdges: [
+        {
+          sourceId: 2,
+          targetId: 6,
+          sourceOwnerId: null,
+          targetOwnerId: "loop_4",
+          exitedLoopIds: [],
+        },
+        exitEdge,
+      ],
       scopeParents: { loop_4: null },
     });
     const exit = getScopedNodeId("root", "trial", 5);
-    const siblingConvergence = [
-      getScopedNodeId("root", "trial", 3),
-      exit,
-    ];
+    const siblingConvergence = [getScopedNodeId("root", "trial", 3), exit];
 
     expect(flowPairs(expanded)).not.toContainEqual(siblingConvergence);
     expect(flowPairs(collapsed)).not.toContainEqual(siblingConvergence);

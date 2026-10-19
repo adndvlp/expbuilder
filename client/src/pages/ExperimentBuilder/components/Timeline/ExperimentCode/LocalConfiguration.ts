@@ -1,7 +1,7 @@
 import { UploadedFile } from "./useExperimentCode";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
-import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { ExperimentAppearance } from "../../../appearance";
 import { buildLocalExperimentCode } from "./services/buildLocalExperimentCode";
 import { SessionNameToken } from "./services/localCodeTypes";
 import { getApiBaseUrl } from "../../../../../lib/apiBaseUrl";
@@ -23,7 +23,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
-  canvasStyles?: CanvasStyles;
+  appearance?: ExperimentAppearance;
 };
 
 export default function LocalConfiguration({
@@ -35,7 +35,7 @@ export default function LocalConfiguration({
   getTrial,
   getLoopTimeline,
   getLoop,
-  canvasStyles,
+  appearance,
 }: Props) {
   const {
     isDevMode,
@@ -51,9 +51,9 @@ export default function LocalConfiguration({
     getTrial,
     getLoopTimeline,
     getLoop,
-    canvasStyles,
+    appearance,
   });
-  const progressBar = canvasStyles?.progressBar ?? false;
+  const progressBar = appearance?.progressBar ?? false;
 
   const generateLocalExperiment = async () => {
     // Fetch extensions before generating experiment

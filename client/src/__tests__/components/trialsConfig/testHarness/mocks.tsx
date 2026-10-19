@@ -50,7 +50,7 @@ vi.mock(
       return customOnStart?.trim() ? `on_start generated ${varName}` : "";
     },
     generateOnFinishCode: ({ customOnFinish, getVarName, isInLoop }: any) => {
-      const varName = getVarName("HasBranches");
+      const varName = getVarName("BranchingActive");
       return customOnFinish?.trim() || isInLoop
         ? `on_finish generated ${varName}`
         : "";

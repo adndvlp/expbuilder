@@ -45,7 +45,7 @@ A file or Playwright filter can be forwarded to the runner:
 
 ```sh
 npm run test:runtime -- runtime-e2e/scenarios/navigation-runtime.spec.ts
-npm run test:runtime -- -g "authors a jump"
+npm run test:runtime -- -g "authors a branching"
 ```
 
 The runner allocates a free local port and an isolated temporary database. The
@@ -66,7 +66,7 @@ trace, screenshots, video and HTML report as a CI artifact.
 - parallel and sequential placement when a loop level already has an exit;
 - params override and conditional loops;
 - Canvas move semantics followed by generated execution;
-- jump-to-trial with a durable reload boundary;
+- branching-to-trial with a durable reload boundary;
 - resume into the route selected by the last persisted response;
 - DynamicPlugin asset loading and response persistence;
 - composed nested-loop exit, condition and params-override behavior;

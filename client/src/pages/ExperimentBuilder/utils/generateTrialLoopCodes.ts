@@ -75,7 +75,6 @@ export async function generateAllCodes(
           getTrial,
           getLoopTimeline,
           getLoop,
-          topLevelMergePointIds,
           options,
         );
         if (code) codes.push(code);

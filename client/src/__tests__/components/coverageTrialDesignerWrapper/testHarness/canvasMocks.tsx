@@ -1,21 +1,21 @@
 import { vi } from "vitest";
 
 vi.mock(
-  "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/CanvasStylesBar",
+  "../../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/PreviewViewportBar",
   () => ({
     default: ({
-      canvasStyles,
-      setCanvasStyles,
+      previewViewport,
+      setPreviewViewport,
       isDemoRunning,
       onRunDemo,
       onStopDemo,
     }: any) => (
       <div data-testid="canvas-styles-bar">
-        <span>canvas width:{canvasStyles.width}</span>
+        <span>canvas width:{previewViewport.width}</span>
         <span>demo:{String(isDemoRunning)}</span>
         <button
           onClick={() =>
-            setCanvasStyles((prev: any) => ({
+            setPreviewViewport((prev: any) => ({
               ...prev,
               width: prev.width + 100,
               height: prev.height + 50,
@@ -26,7 +26,7 @@ vi.mock(
         </button>
         <button
           onClick={() =>
-            setCanvasStyles((prev: any) => ({
+            setPreviewViewport((prev: any) => ({
               ...prev,
               height: prev.height + 50,
             }))

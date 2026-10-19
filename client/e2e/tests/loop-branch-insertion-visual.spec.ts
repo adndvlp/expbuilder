@@ -21,14 +21,13 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
   const experimentId = "exp-loop-branch-insertion";
   const rootBefore: TimelineItem[] = [
     { id: 1, type: "trial", name: "New Trial", branches: [2, 3] },
-    { id: 2, type: "trial", name: "New Trial 1", branches: ["loop_4"] },
+    { id: 2, type: "trial", name: "New Trial 1", branches: [6] },
     { id: 3, type: "trial", name: "New Trial 2", branches: [] },
     {
       id: "loop_4",
       type: "loop",
       name: "Loop 1",
       trials: [6, 7, 8],
-      branches: [],
     },
     { id: 5, type: "trial", name: "New Trial 6", branches: [] },
   ];
@@ -73,7 +72,7 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
   const edgesBefore = [
     branchEdge(1, 2, null, null),
     branchEdge(1, 3, null, null),
-    branchEdge(2, "loop_4", null, null),
+    branchEdge(2, 6, null, "loop_4"),
     branchEdge(6, 7, "loop_4", "loop_4"),
     branchEdge(6, 8, "loop_4", "loop_4"),
     branchEdge(6, 5, "loop_4", null, ["loop_4"]),

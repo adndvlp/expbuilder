@@ -98,6 +98,8 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
     return (
       <>
         <KonvaImage
+          id={shapeProps.id}
+          name="designer-component"
           ref={shapeRef}
           image={placeholderImg}
           x={shapeProps.x}
@@ -149,6 +151,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
             const nextWidth = Math.max(5, placeholderImg.width * scaleX);
             const nextHeight = Math.max(5, placeholderImg.height * scaleY);
             const snapped = snapKonvaNode({
+              interaction: "transform",
               node,
               id: shapeProps.id,
               width: nextWidth,
@@ -236,6 +239,7 @@ const ImageComponent: React.FC<ImageComponentProps> = ({
           const nextWidth = Math.max(5, image.width * scaleX);
           const nextHeight = Math.max(5, image.height * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

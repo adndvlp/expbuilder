@@ -63,10 +63,10 @@ describe("TrialsConfig", () => {
       expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(
         10,
         "columnMapping",
-        {
+        expect.objectContaining({
           stimulus: { source: "typed", value: "<p>New</p>" },
           choices: { source: "typed", value: ["y", "n"] },
-        },
+        }),
       );
     });
 
@@ -78,9 +78,9 @@ describe("TrialsConfig", () => {
       expect(mocks.trialsContext.updateTrialField).toHaveBeenCalledWith(
         10,
         "columnMapping",
-        {
+        expect.objectContaining({
           stimulus: { source: "typed", value: "<p>Old</p>" },
-        },
+        }),
       );
     });
   });

@@ -83,19 +83,18 @@ describe("Canvas container", () => {
     await waitFor(() => {
       expect(mocks.trialsContext.updateTimeline).toHaveBeenCalled();
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [],
-    });
+    }));
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
     expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);
   });
 
-  it("moves a selected loop sequentially behind a trial destination", async () => {
+  it("does not offer a move action for a selected loop", () => {
     installTrialsContext({
       selectedLoop: makeLoop("loop-child", {
         name: "Child Loop",
-        branches: [8],
       }),
       timeline: [
         {
@@ -103,7 +102,6 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Child Loop",
           trials: [8],
-          branches: [8],
         },
         { id: 4, type: "trial", name: "Trial 4", branches: [5] },
         { id: 5, type: "trial", name: "Trial 5", branches: [] },
@@ -115,69 +113,10 @@ describe("Canvas container", () => {
 
     render(<Canvas />);
 
-    fireEvent.click(screen.getByTitle("Move Item"));
-    fireEvent.click(screen.getByText("Trial 4"));
-    fireEvent.click(screen.getByText("Sequential"));
-    fireEvent.click(screen.getByText("Move"));
-
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-child",
-        {
-          branches: [5],
-        },
-      );
-    });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(4, {
-      branches: ["loop-child"],
-    });
-  });
-
-  it("moves a selected loop sequentially behind a loop destination", async () => {
-    installTrialsContext({
-      selectedLoop: makeLoop("loop-child", {
-        name: "Child Loop",
-        branches: [8],
-      }),
-      timeline: [
-        {
-          id: "loop-child",
-          type: "loop",
-          name: "Child Loop",
-          trials: [8],
-          branches: [8],
-        },
-        {
-          id: "loop-1",
-          type: "loop",
-          name: "Loop 1",
-          trials: [1],
-          branches: [2],
-        },
-        { id: 2, type: "trial", name: "Trial 2", branches: [] },
-      ],
-      getLoop: vi.fn(async (id: number | string) =>
-        makeLoop(String(id), { branches: id === "loop-1" ? [2] : [8] }),
-      ),
-    });
-
-    render(<Canvas />);
-
-    fireEvent.click(screen.getByTitle("Move Item"));
-    fireEvent.click(screen.getByText("Loop 1"));
-    fireEvent.click(screen.getByText("Sequential"));
-    fireEvent.click(screen.getByText("Move"));
-
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-child",
-        {
-          branches: [2],
-        },
-      );
-    });
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith("loop-1", {
-      branches: ["loop-child"],
-    });
+    expect(screen.queryByTitle("Move Item")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move Item")).not.toBeInTheDocument();
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
   });
 });

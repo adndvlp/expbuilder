@@ -27,8 +27,9 @@ export function generatedCode(experimentID = "browser-exp"): string {
     branchingEvaluation: "",
     baseCode: `
       const targetTrial = {};
-      if (window.branchCustomParameters) {
-        Object.entries(window.branchCustomParameters).forEach(([key, value]) => {
+      const branchParameters = window.ExpBuilderNavigation.takeParameters(targetTrial.builder_id);
+      if (branchParameters) {
+        Object.entries(branchParameters).forEach(([key, value]) => {
           targetTrial[key] = value;
         });
       }
@@ -80,15 +81,21 @@ export async function preparePage(
           "persisted-session",
         );
       }
-      const fetchMock = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const fetchMock = async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
         const method = init?.method || "GET";
         if (method === "POST" && String(input).includes("append-result")) {
           const body = JSON.parse(String(init?.body));
-          return new Response(JSON.stringify({
-            success: true,
-            id: body.sessionId,
-            participantNumber: 1,
-          }), { status: 200, headers: { "Content-Type": "application/json" } });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              id: body.sessionId,
+              participantNumber: 1,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
         }
         if (method === "PUT") {
           putAttempts += 1;
@@ -106,38 +113,52 @@ export async function preparePage(
               headers: { "Content-Type": "text/plain" },
             });
           }
-          return new Response(JSON.stringify({
-            success: true,
-            eventId: body.eventId,
-            sequence: body.sequence,
-            storedCount: Number(body.sequence) + 1,
-          }), { status: 200, headers: { "Content-Type": "application/json" } });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              eventId: body.eventId,
+              sequence: body.sequence,
+              storedCount: Number(body.sequence) + 1,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
         }
         if (String(input).includes("complete-session")) {
           completionAttempts += 1;
           const body = JSON.parse(String(init?.body));
           completionBodies.push(body);
-          return new Response(JSON.stringify({
-            success: true,
-            storedEventCount: body.expectedEventCount,
-            lastSequence: body.lastSequence,
-          }), { status: 200, headers: { "Content-Type": "application/json" } });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              storedEventCount: body.expectedEventCount,
+              lastSequence: body.lastSequence,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
         }
         const sessionId = localStorage.getItem(
           "expbuilder:local:browser-exp:session-id",
         );
-        return new Response(JSON.stringify({
-          sessions: recoverStoredSession && sessionId ? [{
-            experimentID: "browser-exp",
-            sessionId,
-            participantNumber: 1,
-            storedEventCount: 2,
-            lastSequence: 1,
-            sequenceTracked: true,
-            state: "in-progress",
-            createdAt: new Date().toISOString(),
-          }] : [],
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            sessions:
+              recoverStoredSession && sessionId
+                ? [
+                    {
+                      experimentID: "browser-exp",
+                      sessionId,
+                      participantNumber: 1,
+                      storedEventCount: 2,
+                      lastSequence: 1,
+                      sequenceTracked: true,
+                      state: "in-progress",
+                      createdAt: new Date().toISOString(),
+                    },
+                  ]
+                : [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       };
       Object.assign(window, {
         fetch: fetchMock,
@@ -145,13 +166,17 @@ export async function preparePage(
         __completionAttempts: () => completionAttempts,
         __putBodies: putBodies,
         __putAttempts: () => putAttempts,
-        __setPermanentFailure: (value: boolean) => { forceFailure = value; },
+        __setPermanentFailure: (value: boolean) => {
+          forceFailure = value;
+        },
         _hideLoading: () => undefined,
         _setLoadingMsg: (message: string) => {
           (window as unknown as { __message: string }).__message = message;
         },
         initJsPsych: (settings: Record<string, unknown>) => {
-          (window as unknown as { __settings: Record<string, unknown> }).__settings = settings;
+          (
+            window as unknown as { __settings: Record<string, unknown> }
+          ).__settings = settings;
           return { run: () => Promise.resolve() };
         },
       });
@@ -165,7 +190,9 @@ export async function preparePage(
       recoverStoredSession: options.recoverStoredSession || false,
     },
   );
-  await page.waitForFunction(() => Boolean((window as RuntimeWindow).__started));
+  await page.waitForFunction(() =>
+    Boolean((window as RuntimeWindow).__started),
+  );
   return page;
 }
 
@@ -178,15 +205,21 @@ export async function prepareSharedPage(
   await page.goto("http://tabs.test/");
   await page.evaluate(
     ({ code, participant, persisted }) => {
-      const fetchMock = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const fetchMock = async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
         const method = init?.method || "GET";
         if (method === "POST" && String(input).includes("append-result")) {
           const body = JSON.parse(String(init?.body));
-          return new Response(JSON.stringify({
-            success: true,
-            id: body.sessionId,
-            participantNumber: participant,
-          }), { status: 200, headers: { "Content-Type": "application/json" } });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              id: body.sessionId,
+              participantNumber: participant,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
         }
         // Serve persisted sessions by the sessionId requested in the URL,
         // like the real server does. Reading localStorage here made the
@@ -196,28 +229,37 @@ export async function prepareSharedPage(
           String(input),
           "http://tabs.test",
         ).searchParams.get("sessionId");
-        return new Response(JSON.stringify({
-          sessions: persisted && requestedSessionId === persisted ? [{
-            experimentID: "browser-exp",
-            sessionId: persisted,
-            participantNumber: 1,
-            storedEventCount: 0,
-            lastSequence: -1,
-            sequenceTracked: true,
-            state: "in-progress",
-            createdAt: new Date().toISOString(),
-          }] : [],
-        }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            sessions:
+              persisted && requestedSessionId === persisted
+                ? [
+                    {
+                      experimentID: "browser-exp",
+                      sessionId: persisted,
+                      participantNumber: 1,
+                      storedEventCount: 0,
+                      lastSequence: -1,
+                      sequenceTracked: true,
+                      state: "in-progress",
+                      createdAt: new Date().toISOString(),
+                    },
+                  ]
+                : [],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
       };
       Object.assign(window, {
         fetch: fetchMock,
         _hideLoading: () => undefined,
         _setLoadingMsg: () => undefined,
         initJsPsych: (settings: Record<string, unknown>) => {
-          (window as RuntimeWindow).__settings = settings as RuntimeWindow["__settings"];
+          (window as RuntimeWindow).__settings =
+            settings as RuntimeWindow["__settings"];
           return { run: () => Promise.resolve() };
         },
       });
@@ -229,6 +271,8 @@ export async function prepareSharedPage(
       persisted: persistedSessionId,
     },
   );
-  await page.waitForFunction(() => Boolean((window as RuntimeWindow).__started));
+  await page.waitForFunction(() =>
+    Boolean((window as RuntimeWindow).__started),
+  );
   return page;
 }

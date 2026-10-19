@@ -26,7 +26,6 @@ import trialsRouter from "./routes/timeline/index.js";
 import tunnelRouter from "./routes/tunnel.js";
 import configsRouter from "./routes/configs.js";
 import dbRouter from "./routes/db.js";
-import agentRouter from "./agent/routes.js";
 
 dotenv.config({ path: `${__dirname}/.env` });
 
@@ -87,7 +86,6 @@ app.use("/", configsRouter);
 app.use("/", tunnelRouter);
 app.use("/", resultsRouter);
 app.use("/", dbRouter);
-app.use("/", agentRouter);
 
 // Socket.IO para tracking de sesiones en tiempo real
 const presence = createPresenceTracker(io);

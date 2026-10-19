@@ -50,6 +50,7 @@ describe("POST /api/trial/:experimentID", () => {
     const meta = await request(app).get("/api/trials-metadata/E1").expect(200);
     expect(meta.body.timeline).toHaveLength(1);
     expect(meta.body.timeline[0]).toEqual({
+      defaultNextTrialId: null,
       id: create.body.trial.id,
       type: "trial",
       name: "T1",

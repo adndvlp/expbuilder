@@ -226,7 +226,7 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoop).toHaveBeenCalledWith("missing-loop");
   });
 
-  it("marks top-level shared branch targets as merge points in generated code", async () => {
+  it("uses the same navigation contract for shared branch targets", async () => {
     globalThis.fetch = vi.fn(async (url: string) => {
       if (String(url).includes("/api/trials-metadata/experiment-merge")) {
         return {
@@ -274,9 +274,9 @@ describe("generateTrialLoopCodes integration", () => {
       ) || "",
     );
 
-    expect(sharedTargetCode).toContain("window.nextTrialId = null;");
-    expect(sharedTargetCode).toContain("window.skipRemaining = false;");
-    expect(sharedTargetCode).toContain("window.branchingActive = false;");
+    expect(sharedTargetCode).toContain("window.ExpBuilderNavigation?.requestBranch(data, branchDecision)");
+    expect(sharedTargetCode).not.toContain("skipRemaining");
+    expect(sharedTargetCode).not.toContain("branchingActive");
     expect(sharedTargetCode).not.toContain("jsPsych.abortExperiment");
   });
 });

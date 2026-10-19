@@ -1,4 +1,5 @@
 import { DataDefinition, Trial } from "../../../types";
+import { collectSurveyQuestions } from "../../utils/surveyElements";
 
 type Props = {
   selectedTrial: Trial | null;
@@ -56,12 +57,14 @@ export default function useAvailableColumns({
         }
 
         // For SurveyComponent, add question columns
-        const surveyJson = getPropValue(comp.survey_json);
-        if (comp.type === "SurveyComponent" && surveyJson?.elements) {
-          surveyJson.elements.forEach((q: any) => {
+        const surveyQuestions = collectSurveyQuestions(
+          getPropValue(comp.survey_json) as Record<string, unknown> | undefined,
+        );
+        if (comp.type === "SurveyComponent") {
+          surveyQuestions.forEach((question) => {
             columns.push({
-              value: `${prefix}_${q.name}`,
-              label: `${prefix} › ${q.name || q.title || "Question"}`,
+              value: `${prefix}_${question.name}`,
+              label: `${prefix} › ${question.name || question.title || "Question"}`,
               group: "Stimulus Components",
             });
           });
@@ -98,17 +101,17 @@ export default function useAvailableColumns({
         });
 
         // For SurveyComponent, add question columns
-        const surveyJson = getPropValue(comp.survey_json);
+        const surveyQuestions = collectSurveyQuestions(
+          getPropValue(comp.survey_json) as Record<string, unknown> | undefined,
+        );
         const hasSurveyQuestions =
-          comp.type === "SurveyComponent" &&
-          surveyJson?.elements &&
-          surveyJson.elements.length > 0;
+          comp.type === "SurveyComponent" && surveyQuestions.length > 0;
 
         if (hasSurveyQuestions) {
-          surveyJson.elements.forEach((q: any) => {
+          surveyQuestions.forEach((question) => {
             columns.push({
-              value: `${prefix}_${q.name}`,
-              label: `${prefix} › ${q.name || q.title || "Question"}`,
+              value: `${prefix}_${question.name}`,
+              label: `${prefix} › ${question.name || question.title || "Question"}`,
               group: "Response Components",
             });
           });

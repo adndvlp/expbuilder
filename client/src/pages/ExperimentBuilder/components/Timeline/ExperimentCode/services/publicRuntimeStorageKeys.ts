@@ -16,11 +16,7 @@ export function getPublicRuntimeStorageKeys(
     sessionId: `${namespace}session-id`,
     participant: `${namespace}participant-number`,
     captchaPassed: `${namespace}captcha-passed`,
-    jumpRequest: `${namespace}jump-request`,
-    jumpReload: `${namespace}jump-reload`,
     resumeTrial: `${namespace}resume-trial`,
-    jumpTarget: `${namespace}jump-to-trial`,
-    jumpContext: `${namespace}jump-context`,
     trialDatabase: `${namespace}trials-v1`,
   };
 }

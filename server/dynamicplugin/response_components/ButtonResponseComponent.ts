@@ -1,3 +1,6 @@
+import { positionElement } from "../layout/domLayout";
+import { getViewport } from "../layout/RuntimeViewport";
+import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
@@ -67,7 +70,7 @@ const info = {
       type: ParameterType.INT,
       default: 0,
     },
-    /** Position coordinates for the button group. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the button group. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -214,6 +217,22 @@ let buttonComponentCounter = 0;
  * hitboxes. Image buttons use the interactive DOM layer.
  */
 class ButtonResponseComponent {
+  private layoutConfig: any;
+
+  updateLayout() {
+    if (!this.layoutConfig || this.useDomLayer || !this.stage || !this.buttonSpriteIds) return;
+    this.layout = this.createLayout(this.layoutConfig);
+    for (const state of Object.keys(this.buttonSpriteIds) as ButtonVisualState[]) {
+      const texture = this.renderLayoutTexture(this.layout, state);
+      if (!texture) continue;
+      const id = this.buttonSpriteIds[state];
+      this.stage.preloadTexture(`${this.drawableId}-${state}-texture`, texture.canvas);
+      this.stage.updateDrawable(id, {
+        x: texture.bounds.left, y: texture.bounds.top,
+        width: texture.bounds.width, height: texture.bounds.height,
+      });
+    }
+  }
   private jsPsych: any;
   private response: string | null;
   private rt: number | null;
@@ -271,11 +290,7 @@ class ButtonResponseComponent {
   }
 
   private getCanvasSize(trial: any) {
-    const canvasStyles = this.resolveParam(trial.__canvasStyles, {});
-    return {
-      width: this.resolveParam(canvasStyles?.width, 1024),
-      height: this.resolveParam(canvasStyles?.height, 768),
-    };
+    return getViewport(trial);
   }
 
   private parseCssPx(raw: string | number | null | undefined): number {
@@ -401,11 +416,7 @@ class ButtonResponseComponent {
     const fontSizeVw = this.resolveParam(trial._button_font_size_runtime_vw, null);
     const configuredFontSize = this.resolveParam(trial.button_font_size, null);
     const fontSize =
-      configuredFontSize != null
-        ? Number(configuredFontSize)
-        : fontSizeVw != null
-          ? (Number(fontSizeVw) / 100) * canvasWidth
-          : 14;
+      fontSizeVw != null ? (Number(fontSizeVw) / 100) * canvasWidth : Number(configuredFontSize ?? 14);
     const font = `${fontSize}px sans-serif`;
     const imageButtonWidth = Number(
       this.resolveParam(trial.image_button_width, 150),
@@ -450,10 +461,7 @@ class ButtonResponseComponent {
     const cellWidth = groupWidth / columns;
     const cellHeight = groupHeight / rows;
     const coordinates = this.resolveParam(trial.coordinates, { x: 0, y: 0 });
-    const centerX =
-      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
-    const centerY =
-      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const { x: centerX, y: centerY } = relativeCenter(coordinates, { width: canvasWidth, height: canvasHeight });
     const cells = choices.map((choice, index) => {
       const row = Math.floor(index / columns);
       const col = index % columns;
@@ -737,12 +745,14 @@ class ButtonResponseComponent {
 
   private registerButtonCanvasTarget(cell: ButtonCell) {
     if (!this.responseTiming?.enabled || !this.layout) return;
-    const layout = this.layout;
     const unregister = this.responseTiming.registerPointerTarget({
       componentId: this.componentId,
       componentName: this.componentName,
       label: cell.choice,
       hitTest: ({ canvasX, canvasY }: { canvasX: number | null; canvasY: number | null }) => {
+        const layout = this.layout;
+        const currentCell = layout?.cells[cell.index];
+        if (!layout || !currentCell) return false;
         if (typeof canvasX !== "number" || typeof canvasY !== "number") {
           return false;
         }
@@ -752,10 +762,10 @@ class ButtonResponseComponent {
         const localX = dx * Math.cos(radians) - dy * Math.sin(radians);
         const localY = dx * Math.sin(radians) + dy * Math.cos(radians);
         return (
-          localX >= cell.x &&
-          localX <= cell.x + cell.width &&
-          localY >= cell.y &&
-          localY <= cell.y + cell.height
+          localX >= currentCell.x &&
+          localX <= currentCell.x + currentCell.width &&
+          localY >= currentCell.y &&
+          localY <= currentCell.y + currentCell.height
         );
       },
       onResponse: (response: any) => {
@@ -846,14 +856,14 @@ class ButtonResponseComponent {
     const baseStyleParts = [
       `background-color: ${bgColor}`,
       `color: ${textColor}`,
-      `font-size: ${fontSizeVw != null ? `${fontSizeVw}vw` : `${fontSize}px`}`,
+      `font-size: ${fontSizeVw != null ? `${fontSizeVw}cqw` : `${fontSize}px`}`,
       `border-radius: ${borderRadius}px`,
       `border: ${borderWidth}px solid ${borderColor}`,
       `padding: ${padding}`,
       `cursor: pointer`,
     ];
-    if (btnWidth != null) baseStyleParts.push(`width: ${btnWidth}vw`);
-    if (btnHeight != null) baseStyleParts.push(`min-height: ${btnHeight}vw`);
+    if (btnWidth != null) baseStyleParts.push(`width: ${btnWidth}cqw`);
+    if (btnHeight != null) baseStyleParts.push(`min-height: ${btnHeight}cqw`);
     baseStyleParts.push(`box-sizing: border-box`, `overflow: hidden`);
     const baseStyle = baseStyleParts.join("; ");
 
@@ -873,13 +883,6 @@ class ButtonResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): void {
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
-
     // Create button group container with coordinates
     this.buttonGroupElement = document.createElement("div");
     this.buttonGroupElement.id = "jspsych-button-response-component-btngroup";
@@ -887,10 +890,7 @@ class ButtonResponseComponent {
     this.buttonGroupElement.style.width = "max-content";
 
     const coordinates = this.resolveParam(trial.coordinates, { x: 0, y: 0 });
-    const xVw = mapValue(coordinates.x);
-    const yVh = mapValue(coordinates.y);
-    this.buttonGroupElement.style.left = `calc(50% + ${xVw}vw)`;
-    this.buttonGroupElement.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(this.buttonGroupElement, trial.coordinates);
 
     const rotation = this.resolveParam(trial.rotation, 0);
     this.buttonGroupElement.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
@@ -946,6 +946,7 @@ class ButtonResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): HTMLElement | void {
+    this.layoutConfig = trial;
     this.timing = trial.__timing || null;
     this.responseTiming = trial.__responseTiming || null;
     this.componentId = trial.__componentId ?? null;

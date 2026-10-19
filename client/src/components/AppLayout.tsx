@@ -1,22 +1,5 @@
-import { Outlet, useLocation } from "react-router";
-import { ChatProvider } from "../contexts/ChatContext";
-import ChatPanel from "./Chat/ChatPanel";
-import ChatFAB from "./Chat/ChatFAB";
-import "./Chat/chat.css";
+import { Outlet } from "react-router";
 
 export default function AppLayout() {
-  const location = useLocation();
-  const isLanding = location.pathname === "/";
-
-  return (
-    <ChatProvider>
-      <Outlet />
-      {!isLanding && (
-        <>
-          <ChatFAB />
-          <ChatPanel />
-        </>
-      )}
-    </ChatProvider>
-  );
+  return <Outlet />;
 }

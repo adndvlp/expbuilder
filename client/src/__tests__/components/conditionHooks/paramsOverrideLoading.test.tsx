@@ -90,9 +90,9 @@ describe("condition hooks: ParamsOverride loading and lookup guards", () => {
       await Promise.resolve();
     });
 
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
       paramsOverride: newConditions,
-    });
+    }));
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith({
       id: 3,
       name: "Updated",

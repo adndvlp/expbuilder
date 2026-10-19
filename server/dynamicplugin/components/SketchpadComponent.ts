@@ -1,3 +1,4 @@
+import { positionElement } from "../layout/domLayout";
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
@@ -170,7 +171,7 @@ const info = {
       type: ParameterType.STRING,
       default: "Redo",
     },
-    /** Position coordinates for the sketchpad. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the sketchpad. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -228,6 +229,7 @@ const info = {
  * The plugin principal extracts the data when needed
  */
 class SketchpadComponent {
+  private eventController = new AbortController();
   private jsPsych: any;
   private display: HTMLElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
@@ -256,23 +258,13 @@ class SketchpadComponent {
    * @returns Promise that resolves when ready
    */
   async render(container: HTMLElement, config: any): Promise<void> {
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
-
     // Create sketchpad container with coordinates
     const sketchpadContainer = document.createElement("div");
     sketchpadContainer.id = "jspsych-sketchpad-container";
     sketchpadContainer.style.position = "absolute";
     sketchpadContainer.style.zIndex = String(config.zIndex ?? 0);
 
-    const xVw = mapValue(config.coordinates.x);
-    const yVh = mapValue(config.coordinates.y);
-    sketchpadContainer.style.left = `calc(50% + ${xVw}vw)`;
-    sketchpadContainer.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(sketchpadContainer, config.coordinates);
     sketchpadContainer.style.transform = "translate(-50%, -50%)";
 
     container.appendChild(sketchpadContainer);
@@ -352,7 +344,7 @@ class SketchpadComponent {
   setup_event_listeners(config: any) {
     document.addEventListener("pointermove", (e) => {
       this.mouse_position = { x: e.clientX, y: e.clientY };
-    });
+    }, { signal: this.eventController.signal });
 
     if (!this.canvas) return;
 
@@ -390,7 +382,7 @@ class SketchpadComponent {
             );
           }
         }
-      });
+      }, { signal: this.eventController.signal });
       document.addEventListener("keyup", (e) => {
         if (e.key == config.key_to_draw) {
           this.draw_key_held = false;
@@ -409,7 +401,7 @@ class SketchpadComponent {
             );
           }
         }
-      });
+      }, { signal: this.eventController.signal });
     }
     if (config.show_undo_button && this.display) {
       this.display
@@ -654,6 +646,8 @@ class SketchpadComponent {
    * Destroy and clean up the component
    */
   destroy() {
+    this.eventController.abort();
+    this.display?.remove();
     document.querySelector("#sketchpad-styles")?.remove();
   }
 }

@@ -1,92 +1,21 @@
-import {
-  describe,
-  expect,
-  generateBranchConditionsCode,
-  getVarName,
-  it,
-  normalize,
-} from "./testHarness";
-import type { BranchCondition } from "./testHarness";
+import { describe, expect, it, vi } from "vitest";
+import { generateBranchConditionsCode } from "./testHarness";
 
-describe("generateBranchConditionsCode", () => {
-  it("generates automatic global branching when no conditions exist", () => {
-    const code = normalize(
-      generateBranchConditionsCode({
-        branches: [2],
-        getVarName,
-      }),
-    );
+const getVarName = (name: string) => `loop_1_${name}`;
 
-    expect(code).toContain("window.ExpBuilderBranching.decide( data, [2], []");
-    expect(code).toContain("window.nextTrialId = nextTrialId;");
-    expect(code).toContain("window.skipRemaining = true;");
-    expect(code).toContain("window.branchingActive = true;");
-
-    const stringCode = normalize(
-      generateBranchConditionsCode({
-        branches: ["trial_2"],
-        getVarName,
-      }),
-    );
-    expect(stringCode).toContain('["trial_2"]');
+describe("branch condition delegation", () => {
+  it.each([false, true])("passes one source decision to the coordinator (inside loop=%s)", isInLoop => {
+    const data = { builder_id: 1, response: "yes" };
+    const conditions = [{ id: 7, nextTrialId: 3, rules: [{ column: "response", op: "==", value: "yes" }], customParameters: { stimulus: { source: "typed", value: "selected" } } }];
+    const decision = { targetId: 3, conditionId: 7, usedDefault: false, customParameters: conditions[0].customParameters };
+    const runtime = { ExpBuilderBranching: { decide: vi.fn(() => decision) }, ExpBuilderNavigation: { requestBranch: vi.fn() } };
+    new Function("window", "data", generateBranchConditionsCode({ branches: [3, "fallback"], branchConditions: conditions, isInLoop, getVarName }))(runtime, data);
+    expect(runtime.ExpBuilderBranching.decide).toHaveBeenCalledExactlyOnceWith(data, [3, "fallback"], conditions, null);
+    expect(runtime.ExpBuilderNavigation.requestBranch).toHaveBeenCalledExactlyOnceWith(data, decision);
   });
 
-  it("generates automatic loop-scoped branching variables", () => {
-    const code = normalize(
-      generateBranchConditionsCode({
-        branches: ["loop_2", 3],
-        isInLoop: true,
-        getVarName,
-      }),
-    );
-
-    expect(code).toContain('["loop_2",3]');
-    expect(code).toContain("loop_1_NextTrialId = nextTrialId;");
-    expect(code).toContain("loop_1_SkipRemaining = true;");
-    expect(code).toContain("loop_1_BranchingActive = true;");
-  });
-
-  it("generates condition evaluation with dynamic/survey column fallback and custom params", () => {
-    const branchConditions: BranchCondition[] = [
-      {
-        id: 1,
-        nextTrialId: 3,
-        rules: [
-          {
-            column: "SurveyComponent_1_choice",
-            op: "==",
-            value: "yes",
-          },
-        ],
-        customParameters: {
-          stimulus: { source: "typed", value: "Branch stimulus" },
-        },
-      },
-    ];
-    const code = normalize(
-      generateBranchConditionsCode({
-        branches: [3, "fallback"],
-        branchConditions,
-        getVarName,
-      }),
-    );
-
-    expect(code).toContain("window.ExpBuilderBranching.decide(");
-    expect(code).toContain('"SurveyComponent_1_choice"');
-    expect(code).toContain(
-      "window.branchCustomParameters = branchDecision.customParameters;",
-    );
-
-    const loopCode = normalize(
-      generateBranchConditionsCode({
-        branches: [3, "fallback"],
-        branchConditions,
-        isInLoop: true,
-        getVarName,
-      }),
-    );
-    expect(loopCode).toContain(
-      "loop_1_BranchCustomParameters = branchDecision.customParameters;",
-    );
+  it("uses the same navigation code for root and loop trials", () => {
+    const options = { branches: ["target"], getVarName };
+    expect(generateBranchConditionsCode({ ...options, isInLoop: true })).toBe(generateBranchConditionsCode(options));
   });
 });

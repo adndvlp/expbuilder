@@ -23,12 +23,7 @@ describe("ExperimentPreview full previews", () => {
         uploadedFiles={[
           { name: "image.png", url: "uploads/img/image.png", type: "img" },
         ]}
-        canvasStyles={{
-          backgroundColor: "#111111",
-          width: 800,
-          height: 600,
-          fullScreen: false,
-        }}
+        previewViewport={{ width: 800, height: 600 }}
       />,
     );
 
@@ -42,16 +37,11 @@ describe("ExperimentPreview full previews", () => {
 
     expect(requestBodyFromLastPreviewPost()).toEqual({
       generatedCode: "local-preview-code",
-      canvasStyles: {
-        backgroundColor: "#111111",
-        width: 800,
-        height: 600,
-        fullScreen: false,
-      },
     });
     expect(previewMocks.generateLocalExperiment).toHaveBeenCalledTimes(1);
 
     const iframe = screen.getByTitle("Experiment Preview");
+    expect(iframe.style.background).toBe("");
     expect(iframe).toHaveAttribute(
       "src",
       "http://localhost:3000/test-exp-123/preview",
@@ -59,14 +49,13 @@ describe("ExperimentPreview full previews", () => {
     expect(iframe).toHaveStyle({
       width: "800px",
       height: "600px",
-      background: "#111111",
     });
   });
 
   it("waits for a rendered iframe wrapper before measuring canvas scale", async () => {
     render(
       <ExperimentPreview
-        canvasStyles={{ width: 640, height: 480, backgroundColor: "#ffffff" }}
+        previewViewport={{ width: 640, height: 480 }}
       />,
     );
 
@@ -139,7 +128,7 @@ describe("ExperimentPreview full previews", () => {
     render(
       <ExperimentPreview
         autoStart
-        canvasStyles={{ width: 800, height: 600 }}
+        previewViewport={{ width: 800, height: 600 }}
       />,
     );
 

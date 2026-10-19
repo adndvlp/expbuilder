@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals'
 import {
   getUserDoc,
+  hasProviderToken,
   PROJECT_ID,
   providerEnv,
   signUpEmulator,
@@ -65,7 +66,7 @@ describeCloud('provider cloud e2e (emulators + mocks)', () => {
     expect([200, 302]).toContain(res.status)
 
     const doc = await getUserDoc(user.idToken, user.localId)
-    expect(doc.fields?.[tokenField]).toBeTruthy()
+    expect(hasProviderToken(doc, tokenField)).toBe(true)
   }
 
   test('connects GitHub through the emulated functions and mock GitHub API', async () => {

@@ -3,8 +3,7 @@ const evidence = (file, title) => ({ file, title });
 const serverLoopBranches = "server/__tests__/routes/loop-branches.test.js";
 const graphIdentity = "server/__tests__/routes/graph-identity.test.js";
 const experimentGraph = "server/__tests__/routes/experiment-graph.test.js";
-const loopBranchCommand =
-  "server/__tests__/routes/loop-branch-command.test.js";
+const loopBranchCommand = "server/__tests__/routes/loop-branch-command.test.js";
 const loopProjection =
   "client/src/__tests__/components/loopBranching/loopBranchProjection.test.ts";
 const branchHook =
@@ -14,8 +13,7 @@ const levelModal =
 const canvasModals =
   "client/src/__tests__/components/loopBranching/CanvasModals.test.tsx";
 const visual = "client/e2e/tests/loop-branching-visual.spec.ts";
-const case2Visual =
-  "client/e2e/tests/loop-branching-case2-visual.spec.ts";
+const case2Visual = "client/e2e/tests/loop-branching-case2-visual.spec.ts";
 const graphDiagnosticsVisual =
   "client/e2e/tests/graph-diagnostics-visual.spec.ts";
 const loopLayout =
@@ -24,8 +22,6 @@ const edgeColors =
   "client/src/__tests__/components/canvasExpandedLayout/assignsBranchEdgeColors.test.ts";
 const runtimeStateContract =
   "client/src/pages/ExperimentBuilder/modules/experiment-runtime/runtimeStateContract.test.ts";
-const jumpRequest =
-  "client/src/pages/ExperimentBuilder/modules/experiment-runtime/jumpRequest.test.ts";
 const branchingRuntime =
   "client/runtime-e2e/scenarios/branching-runtime.spec.ts";
 const nestedRuntime =
@@ -44,6 +40,24 @@ const publicConfiguration =
   "client/src/__tests__/components/codegenRuntime/publicConfiguration.test.ts";
 
 export const coveredRequirements = {
+  "TA-15": {
+    status: "covered",
+    evidence: [
+      evidence(
+        "server/__tests__/routes/loop-containment.test.js",
+        "[TA-15] group/ungroup round trip preserves trial targets",
+      ),
+    ],
+  },
+  "TA-13": {
+    status: "covered",
+    evidence: [
+      evidence(
+        "server/__tests__/routes/branch-contract.test.js",
+        "[TA-13] API rejects",
+      ),
+    ],
+  },
   "TD-01": {
     status: "covered",
     evidence: [evidence(graphIdentity, "[TD-01] [TG-01] returns one unique")],
@@ -262,13 +276,19 @@ export const coveredRequirements = {
   "TL-12": {
     status: "covered",
     evidence: [
-      evidence(loopLayout, "[TL-12] anchors one exit outside its loop boundary"),
+      evidence(
+        loopLayout,
+        "[TL-12] anchors one exit outside its loop boundary",
+      ),
     ],
   },
   "TL-13": {
     status: "covered",
     evidence: [
-      evidence(graphDiagnosticsVisual, "[TL-13] reports a dangling canonical edge"),
+      evidence(
+        graphDiagnosticsVisual,
+        "[TL-13] reports a dangling canonical edge",
+      ),
     ],
   },
   "TR-01": {
@@ -300,10 +320,7 @@ export const coveredRequirements = {
   "TR-13": {
     status: "covered",
     evidence: [
-      evidence(
-        branchingRuntime,
-        "[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13]",
-      ),
+      evidence(branchingRuntime, "[RUNTIME-CORRUPT-ROUTE-GUARD] [TR-13]"),
     ],
   },
   "TR-16": {
@@ -330,9 +347,7 @@ export const coveredRequirements = {
   },
   "TG-04": {
     status: "covered",
-    evidence: [
-      evidence(branchingRuntime, "[TR-16] [TG-04] [TG-10]"),
-    ],
+    evidence: [evidence(branchingRuntime, "[TR-16] [TG-04] [TG-10]")],
   },
   "TG-07": {
     status: "covered",
@@ -357,38 +372,31 @@ export const coveredRequirements = {
     evidence: [
       evidence(
         "client/runtime-e2e/scenarios/navigation-runtime.spec.ts",
-        "[RUNTIME-JUMP-ROOT] [TJ-01]",
+        "[RUNTIME-BRANCH-RETURN] [TJ-01]",
       ),
     ],
   },
   "TJ-04": {
     status: "covered",
-    evidence: [evidence(jumpRequest, "[TJ-04] consumes each path segment")],
+    evidence: [evidence(loopRoutingCodegen, "[TJ-04] restores the selected route through every native ancestor")],
   },
   "TJ-05": {
     status: "covered",
     evidence: [
-      evidence(
-        navigationNegativeRuntime,
-        "[RUNTIME-JUMP-INVALID] [TJ-05]",
-      ),
+      evidence(navigationNegativeRuntime, "[TJ-05] [TJ-08] [RUNTIME-BRANCH-INVALID] rejects an invalid saved"),
     ],
   },
   "TJ-06": {
     status: "covered",
-    evidence: [evidence(loopRoutingCodegen, "[TJ-06] keeps a nested jump")],
+    evidence: [evidence(loopRoutingCodegen, "[TJ-06] continues a selected nested destination through its explicit connections")],
   },
   "TJ-08": {
     status: "covered",
     evidence: [
-      evidence(jumpRequest, "[TJ-08] accepts a marked reload"),
-      evidence(
-        navigationCoordinator,
-        "[TJ-08] rejects a reload attempt",
-      ),
+      evidence(navigationCoordinator, "[TJ-08] accepts only the current manifest and revision"),
       evidence(
         navigationNegativeRuntime,
-        "[RUNTIME-JUMP-INVALID] [TJ-05] [TJ-08]",
+        "[TJ-05] [TJ-08] [RUNTIME-BRANCH-INVALID] rejects an invalid saved",
       ),
     ],
   },
@@ -412,10 +420,7 @@ export const coveredRequirements = {
   "TRES-01": {
     status: "covered",
     evidence: [
-      evidence(
-        navigationRuntime,
-        "[RUNTIME-RESUME-SEQUENTIAL] [TRES-01]",
-      ),
+      evidence(navigationRuntime, "[RUNTIME-RESUME-SEQUENTIAL] [TRES-01]"),
     ],
   },
   "TRES-09": {

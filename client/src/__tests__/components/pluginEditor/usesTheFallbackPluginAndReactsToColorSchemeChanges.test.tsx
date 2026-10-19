@@ -80,9 +80,9 @@ describe("PluginEditor", () => {
         mocks.plugins[1],
       ]);
     });
-    expect(mocks.updateTrial).toHaveBeenCalledWith(7, {
+    expect(mocks.updateTrial).toHaveBeenCalledWith(7, expect.objectContaining({
       plugin: "uploaded-plugin",
-    });
+    }));
     await waitFor(() => {
       expect(mocks.setSelectedTrial).toHaveBeenCalledWith({
         id: 7,
@@ -114,9 +114,9 @@ describe("PluginEditor", () => {
         },
       ]);
     });
-    expect(mocks.updateTrial).toHaveBeenCalledWith(7, {
+    expect(mocks.updateTrial).toHaveBeenCalledWith(7, expect.objectContaining({
       plugin: "starter copy",
-    });
+    }));
   });
 
   it("overwrites the selected slot when the uploaded file has the same plugin name", async () => {

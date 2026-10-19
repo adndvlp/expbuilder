@@ -1,3 +1,6 @@
+import { positionElement } from "../layout/domLayout";
+import { getViewport } from "../layout/RuntimeViewport";
+import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getCanvasStage, CanvasStage } from "../renderer/CanvasStage";
 import {
@@ -242,6 +245,33 @@ let textComponentCounter = 0;
  * Cloze/input text stays DOM-based because it is interactive.
  */
 class TextComponent {
+  private layoutConfig: any;
+
+  updateLayout() {
+    if (!this.layoutConfig || this.destroyed) return;
+    const config = this.layoutConfig;
+    if (this.isClozeMode) {
+      if (this.element && this.resolveParam(config.width, null) == null) {
+        this.element.style.maxWidth = `${Math.max(200, getViewport(config).width * 0.86)}px`;
+      }
+      return;
+    }
+    if (!this.prepared || !this.stage) return;
+    const layout = this.createTextLayout(config);
+    if (!layout) return;
+    this.layout = layout;
+    this.updateTrackingElement(layout, resolveTimingMs(config.zIndex, 0) ?? 0);
+    const canvas = document.createElement("canvas");
+    const dpr = getViewport(config).dpr;
+    canvas.width = Math.round(layout.canvasWidth * dpr);
+    canvas.height = Math.round(layout.canvasHeight * dpr);
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.drawLayout(ctx, layout);
+    this.stage.preloadTexture(this.drawableId, canvas);
+    this.stage.updateDrawable(this.drawableId, { x: 0, y: 0, width: layout.canvasWidth, height: layout.canvasHeight });
+  }
   private jsPsych: any;
   private element: HTMLElement | null = null;
   private stage: CanvasStage | null = null;
@@ -375,18 +405,12 @@ class TextComponent {
     const measurementCtx = measurementCanvas.getContext("2d");
     if (!measurementCtx) return null;
 
-    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
-    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const { width: canvasWidth, height: canvasHeight } = getViewport(config);
     const text = String(this.resolveParam(config.text, "Text"));
     const fontSizeVw = this.resolveParam(config._font_size_runtime_vw, null);
     const configuredFontSize = this.resolveParam(config.font_size, 16);
     const fontSize =
-      configuredFontSize != null
-        ? Number(configuredFontSize)
-        : fontSizeVw != null
-          ? (Number(fontSizeVw) / 100) * canvasWidth
-          : 16;
+      fontSizeVw != null ? (Number(fontSizeVw) / 100) * canvasWidth : Number(configuredFontSize ?? 16);
     const fontFamily = this.resolveParam(config.font_family, "sans-serif");
     const fontWeight = this.resolveParam(config.font_weight, "normal");
     const fontStyle = this.resolveParam(config.font_style, "normal");
@@ -419,10 +443,7 @@ class TextComponent {
     const blockHeight =
       lines.length * lineHeightPx + padding.top + padding.bottom;
     const coordinates = this.resolveParam(config.coordinates, { x: 0, y: 0 });
-    const centerX =
-      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
-    const centerY =
-      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const { x: centerX, y: centerY } = relativeCenter(coordinates, { width: canvasWidth, height: canvasHeight });
 
     return {
       canvasWidth,
@@ -547,9 +568,7 @@ class TextComponent {
   }
 
   private renderCanvasText(container: HTMLElement, config: any): HTMLElement {
-    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, 1024);
-    const canvasHeight = this.resolveParam(canvasStyles?.height, 768);
+    const { width: canvasWidth, height: canvasHeight } = getViewport(config);
     const zIndex = resolveTimingMs(config.zIndex, 0) ?? 0;
 
     this.destroyed = false;
@@ -651,6 +670,7 @@ class TextComponent {
   }
 
   render(container: HTMLElement, config: any): HTMLElement {
+    this.layoutConfig = config;
     const text = this.resolveParam(config.text, "Text");
     const parts = String(text).split("%");
     this.isClozeMode = parts.length >= 3 && parts.length % 2 === 1;
@@ -659,11 +679,6 @@ class TextComponent {
       return this.renderCanvasText(container, config);
     }
 
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
 
     // Resolve all params
     const fontColor = this.resolveParam(config.font_color, "#000000");
@@ -681,8 +696,7 @@ class TextComponent {
     const borderWidth = this.resolveParam(config.border_width, 0);
     const width = this.resolveParam(config.width, null);
     const rotation = this.resolveParam(config.rotation, 0);
-    const canvasStyles = this.resolveParam(config.__canvasStyles, {});
-    const canvasWidth = this.resolveParam(canvasStyles?.width, window.innerWidth);
+    const { width: canvasWidth } = getViewport(config);
 
     // Create element
     this.element = document.createElement("div");
@@ -693,10 +707,7 @@ class TextComponent {
     // Position
     this.element.style.position = "absolute";
     const coordinates = config.coordinates || { x: 0, y: 0 };
-    const xVw = mapValue(coordinates.x);
-    const yVh = mapValue(coordinates.y);
-    this.element.style.left = `calc(50% + ${xVw}vw)`;
-    this.element.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(this.element, config.coordinates);
     this.element.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
     if (config.zIndex !== undefined) {
       this.element.style.zIndex = String(this.resolveParam(config.zIndex, 0));
@@ -705,7 +716,7 @@ class TextComponent {
     // Style
     this.element.style.color = fontColor;
     this.element.style.fontSize =
-      fontSizeVw != null ? `${fontSizeVw}vw` : `${fontSize}px`;
+      fontSizeVw != null ? `${fontSizeVw}cqw` : `${fontSize}px`;
     this.element.style.fontFamily = fontFamily;
     this.element.style.fontWeight = String(fontWeight);
     this.element.style.fontStyle = fontStyle;
@@ -716,7 +727,7 @@ class TextComponent {
     this.element.style.borderRadius = `${borderRadius}px`;
     this.element.style.border =
       borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "none";
-    this.element.style.width = width != null ? `${width}vw` : "max-content";
+    this.element.style.width = width != null ? `${width}cqw` : "max-content";
     this.element.style.maxWidth =
       width != null ? "none" : `${Math.max(200, canvasWidth * 0.86)}px`;
     this.element.style.boxSizing = "border-box";

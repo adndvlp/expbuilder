@@ -8,7 +8,6 @@ type LoopNodeData = {
   expanded?: boolean;
   loading?: boolean;
   onClick: () => void;
-  onAddBranch?: () => void;
   onOpenLoop?: () => void;
 };
 
@@ -49,19 +48,6 @@ function LoopNode({ data }: { data: LoopNodeData }) {
           }
         >
           {data.expanded ? "⤡" : "⤢"}
-        </button>
-      )}
-      {/* Add branch button - only visible when loop is selected */}
-      {data.selected && data.onAddBranch && (
-        <button
-          className="loop-node__add-branch-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onAddBranch?.();
-          }}
-          title="Add branch"
-        >
-          +
         </button>
       )}
     </div>

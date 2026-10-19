@@ -1,7 +1,7 @@
 import {
   MockImage,
   canvasContext,
-  canvasStyles,
+  previewViewport,
   config,
   describe,
   expect,
@@ -266,7 +266,7 @@ describe("runtime preview DOM renderers", () => {
           stimulus: { source: "none", value: "ignored.png" },
         },
       }),
-      canvasStyles,
+      previewViewport,
     ).destroy();
 
     const runtimeInput = renderRuntimeCopy(
@@ -278,7 +278,7 @@ describe("runtime preview DOM renderers", () => {
           text: { source: "typed", value: "%%" },
         },
       }),
-      canvasStyles,
+      previewViewport,
     );
     expect(runtimeInput.element.querySelector("input")).toBeTruthy();
     runtimeInput.destroy();
@@ -290,7 +290,7 @@ describe("runtime preview DOM renderers", () => {
           text: { source: "typed", value: "Default asset resolver" },
         },
       }),
-      canvasStyles,
+      previewViewport,
     ).destroy();
   });
 });

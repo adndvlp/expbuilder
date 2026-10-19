@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -176,8 +175,6 @@ describe("Canvas container", () => {
 
     await runScenario("trial", undefined);
     await runScenario("trial", makeTrial(1, { branches: undefined }));
-    await runScenario("loop", undefined);
-    await runScenario("loop", makeLoop("loop-1", { branches: undefined }));
   });
 
   it("appends a colliding parent result and normalizes its missing branches", async () => {
@@ -220,16 +217,16 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
         branches: [],
-      });
+      }));
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({
       branches: [],
-    });
-    expect(mocks.trialsContext.updateTrial).not.toHaveBeenCalledWith(3, {
+    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
       branches: [2],
-    });
+    }));
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];

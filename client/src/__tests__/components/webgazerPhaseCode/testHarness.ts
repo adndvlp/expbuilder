@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { vi } from "vitest";
+import { trial } from "../../helpers/trialFactories";
 import { generatePhaseCode } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/Webgazer/generatePhaseCode";
 import type {
   ColumnMapping,
@@ -71,6 +72,30 @@ vi.mock(
 
 export function normalize(code: string) {
   return code.replace(/\s+/g, " ").trim();
+}
+
+export function webgazerTrial(
+  overrides: Partial<Trial> & { isInLoop?: boolean },
+) {
+  return trial({ type: "webgazer", plugin: "webgazer", ...overrides });
+}
+
+export function evaluateWebgazerPhase(
+  code: string,
+  variable: string,
+  runtimeWindow: Record<string, unknown>,
+) {
+  return new Function(
+    "window",
+    "jsPsych",
+    `
+    const timeline = []; const jsPsychWebgazerInitCamera = {};
+    const plugin_webgazer_calibrate_procedure = {};
+    const plugin_webgazer_validate_procedure = {}; const jsPsychHtmlButtonResponse = {};
+    ${code}
+    return ${variable};
+  `,
+  )(runtimeWindow, { timelineVariable: vi.fn() });
 }
 
 export function useWebgazerPhaseHarness({

@@ -3,7 +3,7 @@ import Modal from "../../ParameterMapper/Modal";
 import ExperimentPreview from "../../../../ExperimentPreview";
 import ActionButtons from "../ActionButtons";
 import CanvasContextMenu from "../CanvasContextMenu";
-import CanvasStylesBar from "../CanvasStylesBar";
+import PreviewViewportBar from "../PreviewViewportBar";
 import ComponentSidebar from "../ComponentSidebar";
 import KonvaCanvas from "../KonvaCanvas";
 import KonvaParameterMapper from "../KonvaParameterMapper";
@@ -19,7 +19,7 @@ interface TrialDesignerLayoutProps {
   setShowRightPanel: (show: boolean) => void;
   showRightPanel: boolean;
   sidebarProps: ComponentProps<typeof ComponentSidebar>;
-  toolbarProps: ComponentProps<typeof CanvasStylesBar>;
+  toolbarProps: ComponentProps<typeof PreviewViewportBar>;
 }
 
 export default function TrialDesignerLayout({
@@ -38,7 +38,7 @@ export default function TrialDesignerLayout({
   return (
     <Modal {...modalProps}>
       <div style={rootStyle}>
-        <CanvasStylesBar {...toolbarProps} />
+        <PreviewViewportBar {...toolbarProps} />
         {isDemoRunning && (
           <div style={previewOverlayStyle}>
             <ExperimentPreview {...previewProps} />

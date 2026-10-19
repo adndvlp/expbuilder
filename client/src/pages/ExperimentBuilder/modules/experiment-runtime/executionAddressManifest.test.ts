@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import vm from "node:vm";
+import { resumeCode } from "../../components/Timeline/ExperimentCode/ResumeCode";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import {
   buildExecutionAddressManifest,
@@ -8,13 +10,25 @@ import {
 const graph = (): ExperimentGraphSnapshot => ({
   revision: "r1",
   root: {
+    entryItemId: 1,
     scopeId: null,
     parentScopeId: null,
     items: [
-      { id: 1, type: "trial", name: "First" },
-      { id: 2, type: "trial", name: "Root branch target" },
-      { id: "loop-1", type: "loop", name: "Loop" },
-      { id: 3, type: "trial", name: "Last" },
+      {
+        id: 1,
+        type: "trial",
+        name: "First",
+        branches: [2],
+        defaultNextTrialId: 2,
+      },
+      {
+        id: 2,
+        type: "trial",
+        name: "Root branch target",
+        defaultNextTrialId: null,
+      },
+      { id: "loop-1", type: "loop", name: "Loop", nextItemId: 3 },
+      { id: 3, type: "trial", name: "Last", defaultNextTrialId: null },
     ],
   },
   scopes: {},
@@ -33,9 +47,13 @@ const graph = (): ExperimentGraphSnapshot => ({
 describe("execution address manifest", () => {
   it("[TRES-01] derives root continuation from canonical ownership and edges", () => {
     expect(buildExecutionAddressManifest(graph())).toEqual({
-      version: 2,
+      version: 3,
       revision: "r1",
-      nextBySource: { "1": "loop-1" },
+      nextBySource: { "1": "2" },
+      entries: { root: "1" },
+      loopContinuations: { "loop-1": "3" },
+      scopes: { root: ["1", "2", "loop-1", "3"] },
+      allScopes: { root: ["1", "2", "loop-1", "3"] },
       addressesByTarget: {
         "1": {
           targetId: 1,
@@ -69,8 +87,40 @@ describe("execution address manifest", () => {
     const code = generateExecutionAddressManifestCode(graph());
 
     expect(code).toContain("window.ExpBuilderExecutionAddresses");
-    expect(code).toContain('\"1\":\"loop-1\"');
-    expect(code).not.toContain('\"2\":\"loop-1\"');
+    expect(code).toContain('"1":"2"');
+    expect(code).not.toContain('"2":"loop-1"');
+  });
+
+  it("requires an explicit selection for a root alternative after a nested route completes", () => {
+    const storage = {
+      getItem: () => null,
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+    const routes = vm.runInNewContext(
+      `${resumeCode()}
+       const nav = window.ExpBuilderNavigation;
+       for (const id of ['1', '2', '3']) nav.registerTrial(id, { data: { builder_id: id } });
+       nav.registerLoop('loop-1', { data: { loop_id: 'loop-1' }, timeline: [] });
+       const timeline = [];
+       nav.attach({ pauseExperiment() {} }, timeline);
+       const root = timeline[0];
+       root.on_timeline_start();
+       root.timeline[0].on_timeline_start();
+       const initial = root.timeline.map(entry => entry.timeline[0].data.builder_id || entry.timeline[0].data.loop_id);
+       nav.requestBranch({ builder_id: '1' }, { targetId: '2' });
+       const selected = root.timeline.map(entry => entry.timeline[0].data.builder_id);
+       ({ initial, selected });`,
+      {
+        window: {
+          ExpBuilderExecutionAddresses: buildExecutionAddressManifest(graph()),
+        },
+        localStorage: storage,
+        sessionStorage: storage,
+      },
+    );
+    expect(routes.initial).toEqual(["1"]);
+    expect(routes.selected).toEqual(["1", "2"]);
   });
 
   it("compiles the full loop ancestry for nested trial and loop targets", () => {

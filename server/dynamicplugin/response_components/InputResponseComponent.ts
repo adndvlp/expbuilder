@@ -1,3 +1,4 @@
+import { positionElement } from "../layout/domLayout";
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
@@ -60,7 +61,7 @@ const info = {
       type: ParameterType.BOOL,
       default: true,
     },
-    /** Position coordinates for the input. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the input. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -218,13 +219,6 @@ class InputResponseComponent {
   ): void {
     this.timing = trial.__timing || null;
 
-    // Helper to map coordinate values
-    const mapValue = (value: number): number => {
-      if (value < -100) return -50;
-      if (value > 100) return 50;
-      return value * 0.5;
-    };
-
     // Parse solutions from text (used for answer validation only – not rendered)
     this.solutions = this.getSolutions(trial.text, trial.case_sensitivity);
 
@@ -251,10 +245,7 @@ class InputResponseComponent {
     this.clozeContainer.style.zIndex = String(trial.zIndex ?? 0);
 
     const coordinates = trial.coordinates || { x: 0, y: 0 };
-    const xVw = mapValue(coordinates.x);
-    const yVh = mapValue(coordinates.y);
-    this.clozeContainer.style.left = `calc(50% + ${xVw}vw)`;
-    this.clozeContainer.style.top = `calc(50% - ${yVh}vh)`;
+    positionElement(this.clozeContainer, trial.coordinates);
     this.clozeContainer.style.transform = "translate(-50%, -50%)";
 
     display_element.appendChild(this.clozeContainer);
@@ -283,7 +274,7 @@ class InputResponseComponent {
 
       // Apply style params
       input.style.fontSize =
-        fontSizeVw != null ? `${fontSizeVw}vw` : `${fontSize}px`;
+        fontSizeVw != null ? `${fontSizeVw}cqw` : `${fontSize}px`;
       input.style.color = fontColor;
       input.style.fontFamily = fontFamily;
       input.style.backgroundColor = bgColor;
@@ -292,10 +283,10 @@ class InputResponseComponent {
       input.style.padding = padding;
       // Width/height driven by the canvas-exported vw values when available
       if (trial.width != null && trial.width > 0) {
-        input.style.width = `${trial.width}vw`;
+        input.style.width = `${trial.width}cqw`;
       }
       if (trial.height != null && trial.height > 0) {
-        input.style.height = `${trial.height}vw`;
+        input.style.height = `${trial.height}cqw`;
       }
       input.style.boxSizing = "border-box";
       input.style.display = "block";

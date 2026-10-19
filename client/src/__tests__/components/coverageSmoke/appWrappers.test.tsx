@@ -18,39 +18,22 @@ vi.mock("react-router", async () => {
   };
 });
 
-vi.mock("../../../contexts/ChatContext", () => ({
-  ChatProvider: ({ children }: { children: React.ReactNode }) => (
-    <section data-testid="chat-provider">{children}</section>
-  ),
-}));
-
-vi.mock("../../../components/Chat/ChatFAB", () => ({
-  default: () => <button type="button">Chat FAB</button>,
-}));
-
-vi.mock("../../../components/Chat/ChatPanel", () => ({
-  default: () => <aside>Chat Panel</aside>,
-}));
-
 describe("coverage smoke: app wrappers and small utilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routerMocks.pathname = "/builder";
   });
 
-  it("renders chat chrome away from the landing route and hides it on landing", () => {
-    const { rerender } = render(<AppLayout />);
+  it("renders the active route on builder and landing", () => {
+    const { container, rerender } = render(<AppLayout />);
 
-    expect(screen.getByTestId("chat-provider")).toBeInTheDocument();
     expect(screen.getByTestId("outlet")).toBeInTheDocument();
-    expect(screen.getByText("Chat FAB")).toBeInTheDocument();
-    expect(screen.getByText("Chat Panel")).toBeInTheDocument();
+    expect(Array.from(container.children)).toEqual([screen.getByTestId("outlet")]);
 
     routerMocks.pathname = "/";
     rerender(<AppLayout />);
 
-    expect(screen.queryByText("Chat FAB")).not.toBeInTheDocument();
-    expect(screen.queryByText("Chat Panel")).not.toBeInTheDocument();
+    expect(Array.from(container.children)).toEqual([screen.getByTestId("outlet")]);
   });
 
   it("maps known auth errors and falls back for unknown codes", () => {
@@ -69,9 +52,9 @@ describe("coverage smoke: app wrappers and small utilities", () => {
 
   it("renders branch descriptions and designer action buttons", () => {
     render(<Descriptions />);
-    expect(screen.getByText("Branch & Jump Conditions")).toBeInTheDocument();
-    expect(screen.getByText("Branch")).toBeInTheDocument();
-    expect(screen.getByText("Jump")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
+    expect(screen.getByText("Branching conditions")).toBeInTheDocument();
 
     const onClose = vi.fn();
     const onSave = vi.fn();

@@ -1,6 +1,11 @@
 import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
-import { graph, graphScope, routeGraph } from "../helpers/loopBranchGraph";
+import {
+  branchEdge,
+  graph,
+  graphScope,
+  routeGraph,
+} from "../helpers/loopBranchGraph";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
@@ -12,10 +17,25 @@ const rootTimeline: TimelineItem[] = [
     id: "instructions",
     type: "trial",
     name: "Instructions",
-    branches: ["final-left", "loop-1", "final-right"],
+    branches: ["final-left", "question", "final-right"],
   },
   { id: "final-left", type: "trial", name: "Final1" },
-  { id: "loop-1", type: "loop", name: "Loop1", trials: ["question"] },
+  {
+    id: "loop-1",
+    type: "loop",
+    name: "Loop1",
+    trials: [
+      "question",
+      "nested-loop",
+      "task-2",
+      "right-task",
+      "end",
+      "end-left",
+      "end-middle",
+      "end-right",
+      "final",
+    ],
+  },
   { id: "final-right", type: "trial", name: "Final1" },
 ];
 
@@ -24,13 +44,12 @@ const outerTimeline: TimelineItem[] = [
     id: "question",
     type: "trial",
     name: "Question",
-    branches: ["nested-loop", "task-2"],
+    branches: ["nested-task", "task-2"],
   },
   {
     id: "nested-loop",
     type: "loop",
     name: "Nested Loop",
-    branches: ["final"],
     trials: ["nested-task", "loca"],
   },
   {
@@ -74,7 +93,7 @@ const outerTimeline: TimelineItem[] = [
 
 const nestedTimeline: TimelineItem[] = [
   { id: "nested-task", type: "trial", name: "Task" },
-  { id: "loca", type: "trial", name: "Loca" },
+  { id: "loca", type: "trial", name: "Loca", branches: ["final"] },
 ];
 
 async function pathCrossesNode(path: Locator, node: Locator) {
@@ -117,7 +136,20 @@ test("renders the complete branching loop topology in one canvas", async ({
         "loop-1": graphScope("loop-1", null, outerTimeline),
         "nested-loop": graphScope("nested-loop", "loop-1", nestedTimeline),
       },
-      [],
+      [
+        branchEdge("instructions", "final-left", null, null),
+        branchEdge("instructions", "question", null, "loop-1"),
+        branchEdge("instructions", "final-right", null, null),
+        branchEdge("question", "nested-task", "loop-1", "nested-loop"),
+        branchEdge("question", "task-2", "loop-1", "loop-1"),
+        branchEdge("loca", "final", "nested-loop", "loop-1", ["nested-loop"]),
+        branchEdge("task-2", "right-task", "loop-1", "loop-1"),
+        branchEdge("right-task", "end", "loop-1", "loop-1"),
+        ...["end-left", "end-middle", "end-right"].flatMap((id) => [
+          branchEdge("end", id, "loop-1", "loop-1"),
+          branchEdge(id, "final", "loop-1", "loop-1"),
+        ]),
+      ],
     ),
   );
   await page.route("**/api/trials-metadata/exp-complex", (route) =>

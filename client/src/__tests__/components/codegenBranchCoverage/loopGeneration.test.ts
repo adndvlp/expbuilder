@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loop, registerCodegenCoverageLifecycle } from "./testHarness";
 import { generateSingleLoopCode } from "../../../pages/ExperimentBuilder/utils/generateTrialLoopCodes";
-import BranchesCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/BranchesCode";
+import { generateConditionalLoopFunction } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode/services/generateConditionalLoopFunction";
 
 describe("loop and branch code generation coverage", () => {
   registerCodegenCoverageLifecycle();
   it("returns empty loop code when loop timeline loading throws", async () => {
     const code = await generateSingleLoopCode(
-      { id: "loop-a" } as any,
+      loop({ id: "loop-a" }),
       "experiment-a",
       [],
       vi.fn(),
@@ -24,59 +24,16 @@ describe("loop and branch code generation coverage", () => {
     );
   });
 
-  it("generates empty branch arrays when branch metadata is absent", () => {
-    const automatic = BranchesCode({
-      code: "",
-      hasBranchesLoop: true,
-      branches: undefined,
-      branchConditions: [],
-      repeatConditions: [],
-      loopIdSanitized: "loop_a",
-      parentLoopIdSanitized: "",
-      id: "loop-a",
-    } as any).code;
-    const repeated = BranchesCode({
-      code: "",
-      hasBranchesLoop: true,
-      branches: undefined,
-      branchConditions: [],
-      repeatConditions: [{ rules: [] }],
-      loopIdSanitized: "loop_a",
-      parentLoopIdSanitized: "",
-      id: "loop-a",
-    } as any).code;
-
-    expect(automatic).toContain("window.ExpBuilderBranching.decide(");
-    expect(automatic).toContain("loopLastData,\n      [],\n      []");
-    expect(repeated).toContain("window.ExpBuilderBranching.decide(");
-    expect(repeated).toContain("loopLastData,\n      [],\n      []");
-  });
-
-  it("resets branch state for terminal merge-point loops", () => {
-    const terminal = BranchesCode({
-      code: "",
-      hasBranchesLoop: false,
-      branches: [],
-      branchConditions: [],
-      repeatConditions: [],
-      loopIdSanitized: "loop_a",
-      parentLoopIdSanitized: "",
-      isMergePoint: true,
-      id: "loop-a",
-    } as any).code;
-    const repeatedTerminal = BranchesCode({
-      code: "",
-      hasBranchesLoop: false,
-      branches: [],
-      branchConditions: [],
-      repeatConditions: [{ rules: [] }],
-      loopIdSanitized: "loop_a",
-      parentLoopIdSanitized: "",
-      isMergePoint: true,
-      id: "loop-a",
-    } as any).code;
-
-    expect(terminal).toContain("window.nextTrialId = null;");
-    expect(repeatedTerminal).toContain("window.nextTrialId = null;");
+  it.each([true, false])("preserves a genuine conditional loop (matches=%s)", matches => {
+    const condition = { id: 1, rules: [{ trialId: 2, column: "response", op: "==", value: "retry" }] };
+    const code = generateConditionalLoopFunction(true, [condition], "loop-a");
+    const rows = [{ builder_id: 2, response: "retry" }];
+    const finishLoopCycle = vi.fn();
+    const evaluateReferencedCondition = vi.fn(() => matches);
+    const window = { ExpBuilderBranching: { evaluateReferencedCondition }, ExpBuilderNavigation: { loopResults: () => rows, finishLoopCycle } };
+    const lifecycle = new Function("window", `return ({${code}});`)(window);
+    expect(lifecycle.loop_function({ values: () => [] })).toBe(matches);
+    expect(evaluateReferencedCondition).toHaveBeenCalledWith(rows, condition);
+    expect(finishLoopCycle).toHaveBeenCalledWith("loop-a", matches);
   });
 });

@@ -38,11 +38,7 @@ function insertBeforeLevelBranches(items, newItem, levelBranchIds) {
     return targetIds.has(String(itemId));
   });
   if (targetIndex < 0) return [...items, newItem];
-  return [
-    ...items.slice(0, targetIndex),
-    newItem,
-    ...items.slice(targetIndex),
-  ];
+  return [...items.slice(0, targetIndex), newItem, ...items.slice(targetIndex)];
 }
 
 export function createLoopBranch(
@@ -74,9 +70,7 @@ export function createLoopBranch(
   const targetLoop =
     normalizedTarget === null
       ? null
-      : experimentDoc.loops.find((loop) =>
-          idsMatch(loop.id, normalizedTarget),
-        );
+      : experimentDoc.loops.find((loop) => idsMatch(loop.id, normalizedTarget));
   const now = mutationTimestamp;
   const trial = {
     id: allocateTrialId(experimentDoc),
@@ -85,13 +79,18 @@ export function createLoopBranch(
     plugin: "plugin-dynamic",
     parameters: {},
     trialCode: "",
+    branchConditions: [],
+    defaultNextTrialId:
+      mode === "sequential"
+        ? (levelBranches.find((id) =>
+            idsMatch(id, sourceTrial.defaultNextTrialId),
+          ) ??
+          levelBranches[0] ??
+          null)
+        : null,
     branches: mode === "sequential" ? [...levelBranches] : [],
-    ...(normalizedTarget === null
-      ? {}
-      : { parentLoopId: normalizedTarget }),
-    ...((targetLoop?.csvJson?.length ?? 0) > 0
-      ? { csvFromLoop: true }
-      : {}),
+    ...(normalizedTarget === null ? {} : { parentLoopId: normalizedTarget }),
+    ...((targetLoop?.csvJson?.length ?? 0) > 0 ? { csvFromLoop: true } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -100,6 +99,16 @@ export function createLoopBranch(
     mode === "sequential"
       ? replaceLevelBranches(sourceTrial.branches, levelBranches, trial.id)
       : addUnique(sourceTrial.branches, trial.id);
+  if (mode === "sequential") {
+    sourceTrial.branchConditions = sourceTrial.branchConditions.map(
+      (condition) =>
+        levelBranches.some((id) => idsMatch(id, condition.nextTrialId))
+          ? { ...condition, nextTrialId: trial.id }
+          : condition,
+    );
+  }
+  if (mode === "sequential" || sourceTrial.defaultNextTrialId === null)
+    sourceTrial.defaultNextTrialId = trial.id;
   sourceTrial.updatedAt = now;
   experimentDoc.trials.push(trial);
 
@@ -109,17 +118,19 @@ export function createLoopBranch(
       type: "trial",
       name: trial.name,
     };
-    experimentDoc.timeline = mode === "sequential"
-      ? insertBeforeLevelBranches(
-          experimentDoc.timeline,
-          timelineItem,
-          levelBranches,
-        )
-      : [...experimentDoc.timeline, timelineItem];
+    experimentDoc.timeline =
+      mode === "sequential"
+        ? insertBeforeLevelBranches(
+            experimentDoc.timeline,
+            timelineItem,
+            levelBranches,
+          )
+        : [...experimentDoc.timeline, timelineItem];
   } else {
-    targetLoop.trials = mode === "sequential"
-      ? insertBeforeLevelBranches(targetLoop.trials, trial.id, levelBranches)
-      : addUnique(targetLoop.trials, trial.id);
+    targetLoop.trials =
+      mode === "sequential"
+        ? insertBeforeLevelBranches(targetLoop.trials, trial.id, levelBranches)
+        : addUnique(targetLoop.trials, trial.id);
     targetLoop.updatedAt = now;
   }
   for (const loop of experimentDoc.loops) delete loop.exitBranchRoutes;

@@ -41,6 +41,8 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
   return (
     <>
       <KonvaImage
+        id={shapeProps.id}
+        name="designer-component"
         ref={imgRef}
         image={speakerImg}
         x={shapeProps.x}
@@ -94,6 +96,7 @@ const AudioComponent: React.FC<AudioComponentProps> = ({
           const nextWidth = Math.max(5, speakerImg.width * scaleX);
           const nextHeight = Math.max(5, speakerImg.height * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

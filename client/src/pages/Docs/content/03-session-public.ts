@@ -115,7 +115,7 @@ const token = await _showCaptchaGate(siteKey, 'hcaptcha');
 // → full-screen overlay "Please verify you are human"
 // → dynamic script loading (js.hcaptcha.com or google.com/recaptcha)
 // → experiment does not start until CAPTCHA is resolved
-// → skipped on jump reloads (resume)
+// → skipped on branching reloads (resume)
 \`\`\`
 
 ## Recruitment (published only)

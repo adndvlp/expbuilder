@@ -6,11 +6,7 @@ import {
   getScopeNames,
   updateItemBranches,
 } from "./itemMutations";
-import type {
-  CanvasItemId,
-  ScopedActionInput,
-  TrialSelection,
-} from "./types";
+import type { CanvasItemId, ScopedActionInput, TrialSelection } from "./types";
 
 type ScopedBranchInput = ScopedActionInput &
   TrialSelection & {
@@ -28,7 +24,14 @@ function createTrialInput(
   input: ScopedBranchInput,
   branches?: CanvasItemId[],
 ): Omit<Trial, "id"> {
+  const parent = getParentItem(input);
   return {
+    defaultNextTrialId: branches
+      ? parent?.type === "trial"
+        ? (parent.defaultNextTrialId ?? null)
+        : null
+      : null,
+    detached: true,
     type: "Trial",
     name,
     plugin: "plugin-dynamic",
@@ -45,7 +48,7 @@ export async function addScopedBranchTrial(
   input: ScopedBranchInput,
 ): Promise<Trial | null> {
   const parentItem = getParentItem(input);
-  if (!parentItem) return null;
+  if (!parentItem || parentItem.type !== "trial") return null;
 
   const name = generateUniqueName(getScopeNames(input.scope));
   const trial = await input.dependencies.createTrial(
@@ -71,8 +74,8 @@ function reorderRootItems(
   const parentKey = String(parentId);
   const nextItems = items
     .map((item) =>
-      String(item.id) === parentKey
-        ? { ...item, branches: [trial.id] }
+      item.type === "trial" && String(item.id) === parentKey
+        ? { ...item, branches: [trial.id], defaultNextTrialId: trial.id }
         : item,
     )
     .filter((item) => String(item.id) !== String(trial.id));
@@ -84,6 +87,7 @@ function reorderRootItems(
     id: trial.id,
     type: "trial",
     name: trial.name,
+    defaultNextTrialId: trial.defaultNextTrialId,
     branches: trial.branches ?? [],
   });
   return nextItems;
@@ -93,7 +97,7 @@ export async function addScopedParentTrial(
   input: ScopedBranchInput,
 ): Promise<Trial | null> {
   const parentItem = getParentItem(input);
-  if (!parentItem) return null;
+  if (!parentItem || parentItem.type !== "trial") return null;
 
   const parentBranches =
     (await getItemBranches(parentItem, input.dependencies)) ?? [];
@@ -101,11 +105,7 @@ export async function addScopedParentTrial(
   const trial = await input.dependencies.createTrial(
     createTrialInput(name, input, parentBranches),
   );
-  await updateItemBranches(
-    parentItem,
-    [trial.id],
-    input.dependencies,
-  );
+  await updateItemBranches(parentItem, [trial.id], input.dependencies);
 
   if (input.scope.kind === "root") {
     await input.dependencies.updateTimeline(

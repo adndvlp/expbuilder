@@ -1,7 +1,6 @@
 import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 import { getBranchEvaluatorRuntimeCode } from "./branchEvaluator";
-import { getJumpRequestRuntimeCode } from "./jumpRequest";
 import { serializeRuntimeFunctions } from "./serializeRuntimeFunctions";
 
 function runInSandbox(code: string): Record<string, any> {
@@ -39,7 +38,9 @@ describe("serializeRuntimeFunctions", () => {
     ]);
     expect(code).toContain("const a = readBranchRuleValue;");
     expect(code).toContain("const m = decideBranch;");
-    const sandbox = runInSandbox(`${code}; window.out = decideBranch({ x: 21 });`);
+    const sandbox = runInSandbox(
+      `${code}; window.out = decideBranch({ x: 21 });`,
+    );
     expect(sandbox.window.out).toBe(42);
   });
 });
@@ -50,25 +51,13 @@ describe("runtime code emitters evaluate without unresolved references", () => {
       ${getBranchEvaluatorRuntimeCode()}
       window.out = window.ExpBuilderBranching.decide(
         { consent: "yes" },
-        ["fallback"],
-        [{ id: "c1", rules: [{ column: "consent", op: "==", value: "yes" }], nextTrialId: "target" }],
+        ["fallback", "target"],
+        [{ id: "c1", rules: [{ column: "consent", op: "==", value: "yes" }], nextTrialId: "target" }], null,
       );
     `);
-    expect(sandbox.window.out).toMatchObject({ targetId: "target", conditionId: "c1" });
-  });
-
-  it("jump protocol round-trips inside a bare sandbox", () => {
-    const sandbox = runInSandbox(`
-      ${getJumpRequestRuntimeCode()}
-      const request = window.ExpBuilderJumpProtocol.create(
-        { targetId: "t1", targetKind: "trial", targetOwnerId: null, enterLoopIds: [] },
-        "rev",
-        null,
-        null,
-        {},
-      );
-      window.out = window.ExpBuilderJumpProtocol.allows(request, "t1", "trial");
-    `);
-    expect(sandbox.window.out).toBe(true);
+    expect(sandbox.window.out).toMatchObject({
+      targetId: "target",
+      conditionId: "c1",
+    });
   });
 });

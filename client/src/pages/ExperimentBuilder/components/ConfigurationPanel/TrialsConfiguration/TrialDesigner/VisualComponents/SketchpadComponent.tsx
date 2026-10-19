@@ -102,6 +102,8 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -142,6 +144,7 @@ const SketchpadComponent: React.FC<SketchpadComponentProps> = ({
           const nextWidth = Math.max(50, effectiveWidth * sx);
           const nextHeight = Math.max(50, effectiveHeight * sy);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

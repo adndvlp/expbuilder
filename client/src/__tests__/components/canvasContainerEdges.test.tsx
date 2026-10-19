@@ -139,7 +139,6 @@ function installTrialsContext(overrides: Partial<any> = {}) {
       type: "loop",
       name: `Loop ${id}`,
       trials: [],
-      branches: [],
     })),
     updateTrial: vi.fn(async () => true),
     updateLoop: vi.fn(async () => true),
@@ -162,9 +161,7 @@ describe("Canvas container edge harness", () => {
 
   it("handles empty loop confirmation and toolbar trial names with existing items", async () => {
     installTrialsContext({
-      timeline: [
-        { id: 1, type: "trial", name: "New Trial", branches: [] },
-      ],
+      timeline: [{ id: 1, type: "trial", name: "New Trial", branches: [] }],
     });
 
     render(<Canvas />);

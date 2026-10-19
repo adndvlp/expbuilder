@@ -161,9 +161,8 @@ User adds rule: "response == yes" → target: "Trial A"
   User adds condition (OR): "rt > 500" → target: "Trial B"
   ↓
 handleSaveConditions()
-  - Separates into branchConditions[] + repeatConditions[]
-  - updateTrialField("branchConditions", [...])
-  - updateTrialField("repeatConditions", [...])
+  - Saves flat branchConditions, visible branches and explicit defaultNextTrialId atomically
+  - updateTrial(id, { branches, branchConditions, defaultNextTrialId })
   ↓
 on_finish code generation includes:
   if (data.response === 'yes') { /* navigate */ }
@@ -207,7 +206,7 @@ Frontend generates code:
   - TrialCode: individual trials
   ↓
 POST /api/run-experiment/:experimentID
-body: { generatedCode: "...", canvasStyles: { ... } }
+body: { generatedCode: "..." }
   ↓
 Server:
   - Resolves canvas styles (body → DB → appearance settings)
@@ -330,7 +329,7 @@ SubCanvas (loopTimeline[])
 The `loopTimeline` is loaded via `getLoopTimeline(loopId)` which calls:
 `GET /api/loop-trials-metadata/:experimentID/:loopId`
 
-Returns metadata for all trials inside the loop (including branches recursively).
+Returns the ordered direct members of the loop scope, including nested loop containers. Loading another scope does not follow branch reachability or pull external targets into the container.
 
 ---
 

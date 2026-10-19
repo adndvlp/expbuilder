@@ -26,6 +26,7 @@ export type CreatedLoopBranch = {
     parameters: Record<string, unknown>;
     trialCode: string;
     branches: Array<string | number>;
+    defaultNextTrialId: string | number | null;
     parentLoopId?: string;
   };
   crossedLoopIds: Array<string | number>;

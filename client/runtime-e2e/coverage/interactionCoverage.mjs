@@ -19,17 +19,17 @@ export const interactionCoverage = {
     scope: "Active exit with an inactive loop condition; simultaneous decisions remain open.",
   },
   "INT-03": {
-    title: "branching + jump",
+    title: "branching + branch",
     status: "representative",
-    capabilities: ["RUNTIME-BRANCH-JUMP"],
-    scope: "A selected root branch triggers a root jump and does not replay its source.",
+    capabilities: ["RUNTIME-BRANCH-CHAIN"],
+    scope: "A selected root branch triggers a root branch and does not replay its source.",
   },
   "INT-04": {
-    title: "loop branching + jump",
+    title: "loop branching + branch",
     status: "partial",
-    capabilities: ["RUNTIME-LOOP-EXIT-JUMP"],
+    capabilities: ["RUNTIME-LOOP-EXIT-CHAIN"],
     blockedBy: ["DEC-21"],
-    scope: "A loop exit triggers a root jump; nested jump destinations remain open.",
+    scope: "A loop exit triggers a root branch; nested branch destinations remain open.",
   },
   "INT-05": {
     title: "loop branching + resume from nested loops",

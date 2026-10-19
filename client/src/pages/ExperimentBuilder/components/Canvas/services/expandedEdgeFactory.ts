@@ -25,7 +25,7 @@ export function addExpandedEdge(
   flowRole?: ExpandedCanvasFlowRole,
   semanticEdgeId?: string,
 ) {
-  if (source === target && kind !== "loop-return") return;
+  if (source === target && kind !== "loop-return" && !semanticEdgeId) return;
   const key = [
     kind,
     source,
@@ -44,10 +44,7 @@ export function addExpandedEdge(
     );
     if (existing && semanticEdgeId) {
       existing.data.semanticEdgeIds = [
-        ...new Set([
-          ...(existing.data.semanticEdgeIds ?? []),
-          semanticEdgeId,
-        ]),
+        ...new Set([...(existing.data.semanticEdgeIds ?? []), semanticEdgeId]),
       ].sort();
     }
     if (existing && flowRole) existing.data.flowRole = flowRole;

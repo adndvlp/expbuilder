@@ -1,9 +1,12 @@
+import { generateTrialCode } from "../../pages/ExperimentBuilder/utils/codegen/generateTrialCode";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Trial } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import {
+  evaluateWebgazerPhase,
   normalize,
   useWebgazerPhaseHarness,
+  webgazerTrial,
 } from "./webgazerPhaseCode/testHarness";
 
 describe("generatePhaseCode for WebGazer phases", () => {
@@ -174,17 +177,13 @@ describe("generatePhaseCode for WebGazer phases", () => {
     );
   });
 
-  it("uses base branch variable names for loop trials without a parent loop id", () => {
+  it("takes branch parameters from the coordinator for loop trials without a parent loop id", () => {
     vi.useFakeTimers();
-    const selectedTrial = {
+    const selectedTrial = webgazerTrial({
       id: 12,
-      type: "webgazer",
       name: "Loop trial",
-      plugin: "webgazer",
-      parameters: {},
-      trialCode: "",
       isInLoop: true,
-    } as unknown as Trial;
+    });
 
     const { result } = renderHook(() =>
       useWebgazerPhaseHarness({
@@ -193,27 +192,32 @@ describe("generatePhaseCode for WebGazer phases", () => {
       }),
     );
 
-    expect(normalize(result.current.phase.trialCode)).toContain(
-      "typeof BranchCustomParameters !== 'undefined'",
+    const takeParameters = vi.fn(() => ({
+      message: { source: "typed", value: "Override" },
+    }));
+    const phase = evaluateWebgazerPhase(
+      result.current.phase.trialCode,
+      "plugin_webgazer_init_camera_timeline",
+      { ExpBuilderNavigation: { takeParameters } },
     );
-    expect(result.current.phase.trialCode).not.toContain("loop_");
+    const trial = { data: { builder_id: 12 }, message: "Original" };
+    phase.on_start(trial);
+    expect(takeParameters).toHaveBeenCalledExactlyOnceWith(12);
+    expect(trial.message).toBe("Override");
 
     act(() => {
       vi.advanceTimersByTime(100);
     });
   });
 
-  it("scopes final recalibration branching to parent loop variables when parentLoopId exists", () => {
-    const selectedTrial: Trial = {
+  it("makes one navigation decision for the complete WebGazer trial", async () => {
+    const selectedTrial = webgazerTrial({
       id: 10,
-      type: "webgazer",
-      name: "Eye tracking",
-      plugin: "webgazer",
-      parameters: {},
-      trialCode: "",
+      name: "EyeTracking",
       parentLoopId: "loop-A",
       branches: [99],
-    };
+      defaultNextTrialId: 99,
+    });
 
     const { result } = renderHook(() =>
       useWebgazerPhaseHarness({
@@ -229,9 +233,24 @@ describe("generatePhaseCode for WebGazer phases", () => {
     expect(code).toContain("var minimum_percent_acceptable = 75;");
     expect(code).toContain("timeline.push(recalibrate_timeline);");
     expect(code).toContain("timeline.push(calibration_done);");
-    expect(code).toContain("loop_loop$2d$A_NextTrialId = nextTrialId;");
-    expect(code).toContain("loop_loop$2d$A_SkipRemaining = true;");
-    expect(code).not.toContain("window.nextTrialId = nextTrialId;");
+    const decision = {
+      targetId: 99,
+      conditionId: null,
+      customParameters: null,
+      usedDefault: true,
+    };
+    const decide = vi.fn(() => decision);
+    const requestBranch = vi.fn();
+    expect(code).not.toContain("ExpBuilderBranching.decide");
+    const fullTrial = { ...selectedTrial, trialCode: result.current.phase.trialCode };
+    const compiled = await generateTrialCode(fullTrial, [], "fixture", async () => fullTrial, true);
+    const done = evaluateWebgazerPhase(compiled.code, "EyeTracking_webgazer_completion", {
+      ExpBuilderBranching: { decide }, ExpBuilderNavigation: { requestBranch, registerTrial: vi.fn() },
+    });
+    const data = { builder_id: 10, response: "go" };
+    await done.on_finish(data);
+    expect(decide).toHaveBeenCalledExactlyOnceWith(data, [99], [], 99);
+    expect(requestBranch).toHaveBeenCalledExactlyOnceWith(data, decision);
   });
 
   it("generates recalibration instructions from mapped values and fallbacks", () => {

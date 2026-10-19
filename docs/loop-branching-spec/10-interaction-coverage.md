@@ -1,5 +1,7 @@
 # 10 — Cobertura vertical de interacciones
 
+> Contrato vigente: “loop branching” en esta matriz significa decisiones de trials contenidos en loops. Los loops no tienen ramas propias. Ver [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md) para el refactor y su verificación final. Los estados asociados a decisiones anteriores conservan el alcance de aquella propuesta.
+
 ## Propósito y límite
 
 Esta matriz amplía la cobertura a combinaciones de funcionalidades que históricamente se validaban a mano. Es incremental y **no exhaustiva**: no afirma cubrir el producto cartesiano de configuraciones, nesting, datos y rutas. Cada incremento debe permitir descubrir y agregar nuevos casos sin reemplazar el harness.
@@ -34,8 +36,8 @@ Playwright participa únicamente como ejecutor del artefacto del participante. L
 |---|---|---|---|---|
 | INT-01 | branching + conditional loop | representative | `RUNTIME-BRANCH-CONDITIONAL-LOOP` | branch same-scope elegida en dos iteraciones |
 | INT-02 | loop branching + conditional loop | partial | `RUNTIME-LOOP-EXIT-CONDITIONAL-LOOP` | DEC-19 y DEC-41 |
-| INT-03 | branching + jump | representative | `RUNTIME-BRANCH-JUMP` | jump raíz posterior a branch raíz |
-| INT-04 | loop branching + jump | partial | `RUNTIME-LOOP-EXIT-JUMP` | DEC-21 para destinos nested/permitidos |
+| INT-03 | branching + branching | representative | `RUNTIME-BRANCH-branching` | branching raíz posterior a branch raíz |
+| INT-04 | loop branching + branching | partial | `RUNTIME-LOOP-EXIT-branching` | DEC-21 para destinos nested/permitidos |
 | INT-05 | loop branching + resume nested | partial | `RUNTIME-NESTED-EXIT-RESUME` | DEC-20 y DEC-34 |
 | INT-06 | params override + conditional loop | representative | `RUNTIME-PARAMS-CONDITIONAL-LOOP` | override reaplicado en cada iteración |
 | INT-07 | move de source/target con branches | blocked | — | DEC-22 |
@@ -51,10 +53,13 @@ Las capabilities se registran en `coverageRegistry.mjs`; sus recorridos están e
 ## Hallazgos de este incremento
 
 1. Una branch same-scope resuelta dentro de un loop debe limpiar su estado al cerrar la iteración, mientras una ruta heredada por un nested loop debe sobrevivir hasta propagar su finalización al scope exterior. El lifecycle ahora conserva explícitamente esa procedencia; mezclar ambos estados impedía repetir un conditional loop o dejaba sin consumir una ruta nested. Ambas direcciones tienen regresión unitaria.
-2. El authoring productivo clasifica un destino anterior como jump/repeat y un destino posterior como branch. Los escenarios crean la topología en ese orden y validan el cambio de sesión provocado por el jump.
+2. El authoring productivo clasifica un destino anterior como branching/repeat y un destino posterior como branch. Los escenarios crean la topología en ese orden y validan el cambio de sesión provocado por el branching.
 3. Mover un item que participa en una branch no es todavía un caso afirmable: la mutación actual reconecta el grafo y DEC-22 no define si debe preservar, confirmar o rechazar. Registrar lo que hace hoy como expectativa convertiría una ambigüedad en contrato accidental.
-4. El escenario múltiple combina conditional loop, params override, nested exit, resume, jump, move de un trial no participante y branching raíz. Se llama “resolved” porque excluye deliberadamente las variantes sin decisión.
+4. El escenario múltiple combina conditional loop, params override, nested exit, resume, branching, move de un trial no participante y branching raíz. Se llama “resolved” porque excluye deliberadamente las variantes sin decisión.
 
 ## Cómo crecer la matriz
 
 Un siguiente incremento agrega un ID `INT-*`, lo enlaza a uno o más `RUNTIME-*` cuando exista una expectativa definida y registra cualquier bloqueo por `DEC-*`. Una vez resuelta una decisión, el checker obliga a retirar ese bloqueo y convertirlo en evidencia ejecutable. Así la lista puede crecer por datos, profundidad, dirección de salto, tipo de loop y composición de features sin presentarse como terminada.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

@@ -110,10 +110,10 @@ describe("generateTrialLoopCodes integration", () => {
     expect(code).toContain(`"stimulus_${trialAIdentifier}": "A"`);
     expect(code).toContain(`"stimulus_${trialBIdentifier}": "B"`);
     expect(code).toContain(
-      `timeline: [${trialAIdentifier}_wrapper, ${trialBIdentifier}_wrapper]`,
+      `timeline: [${trialAIdentifier}_timeline, ${trialBIdentifier}_timeline]`,
     );
-    expect(code).toContain("repetitions: 2");
-    expect(code).toContain("randomize_order: true");
+    expect(code).toContain('remainingLoopRepetitions("loop_1", 2)');
+    expect(code).toContain('sampleLoop("loop_1", indices, true, false)');
   });
 
   it("returns empty loop code when loop metadata is missing or loop timeline is empty", async () => {
@@ -161,7 +161,6 @@ describe("generateTrialLoopCodes integration", () => {
       id: "loop_child",
       name: "Child Loop",
       trials: [20],
-      branches: [99],
       parentLoopId: "loop_parent",
       repetitions: 1,
       randomize: false,
@@ -202,9 +201,9 @@ describe("generateTrialLoopCodes integration", () => {
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_child", {
       mode: "query",
     });
-    expect(code).toContain("loop_loop_parent_NextTrialId = branches[0];");
-    expect(code).toContain("loop_loop_parent_SkipRemaining = true;");
-    expect(code).toContain("loop_loop_parent_BranchingActive = true;");
+    expect(code).toContain('registerLoop("loop_child", loop_child_procedure,');
+    expect(code).toContain('registerLoop("loop_parent", loop_parent_procedure,');
+    expect(code).toContain("timeline: [loop_child_procedure]");
     expect(code).not.toContain(
       "const branches = [99]; if (branches.length > 0) { window.nextTrialId = branches[0];",
     );

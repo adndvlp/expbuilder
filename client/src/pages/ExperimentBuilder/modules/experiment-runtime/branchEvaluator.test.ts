@@ -26,27 +26,55 @@ describe("canonical runtime branch evaluator", () => {
       ButtonResponseComponent_1_response: ["accept"],
       SurveyComponent_1_response: { consent: "yes" },
     };
-    expect(readBranchRuleValue(data, { column: "response", op: "==", value: "yes" })).toBe("yes");
-    expect(evaluateBranchCondition(data, {
-      rules: [{ column: "ButtonResponseComponent_1_response", op: "==", value: "accept" }],
-    })).toBe(true);
-    expect(evaluateBranchCondition(data, {
-      rules: [{ column: "SurveyComponent_1_consent", op: "==", value: "yes" }],
-    })).toBe(true);
+    expect(
+      readBranchRuleValue(data, { column: "response", op: "==", value: "yes" }),
+    ).toBe("yes");
+    expect(
+      evaluateBranchCondition(data, {
+        rules: [
+          {
+            column: "ButtonResponseComponent_1_response",
+            op: "==",
+            value: "accept",
+          },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      evaluateBranchCondition(data, {
+        rules: [
+          { column: "SurveyComponent_1_consent", op: "==", value: "yes" },
+        ],
+      }),
+    ).toBe(true);
   });
 
-  it("returns the matched route and parameters, or the explicit first-branch fallback", () => {
-    const matched = decideBranch({ score: 8 }, [10, 20], [{
-      id: 7,
-      rules: [{ column: "score", op: ">=", value: 5 }],
-      nextTrialId: 20,
-      customParameters: { stimulus: "matched" },
-    }]);
-    const fallback = decideBranch({ score: 1 }, [10, 20], [{
-      id: 7,
-      rules: [{ column: "score", op: ">=", value: 5 }],
-      nextTrialId: 20,
-    }]);
+  it("returns the matched route and parameters, or the explicit default", () => {
+    const matched = decideBranch(
+      { score: 8 },
+      [10, 20],
+      [
+        {
+          id: 7,
+          rules: [{ column: "score", op: ">=", value: 5 }],
+          nextTrialId: 20,
+          customParameters: { stimulus: "matched" },
+        },
+      ],
+      10,
+    );
+    const fallback = decideBranch(
+      { score: 1 },
+      [10, 20],
+      [
+        {
+          id: 7,
+          rules: [{ column: "score", op: ">=", value: 5 }],
+          nextTrialId: 20,
+        },
+      ],
+      10,
+    );
 
     expect(matched).toEqual({
       targetId: 20,
@@ -70,20 +98,57 @@ describe("canonical runtime branch evaluator", () => {
     ];
 
     expect(findLatestTrialData(rows, 1)).toEqual(rows[2]);
-    expect(evaluateReferencedCondition(rows, {
-      rules: [
-        { trialId: 1, column: "response", op: "==", value: "latest" },
-        { trialId: 2, column: "score", op: ">=", value: "8" },
-      ],
-    })).toBe(true);
+    expect(
+      evaluateReferencedCondition(rows, {
+        rules: [
+          { trialId: 1, column: "response", op: "==", value: "latest" },
+          { trialId: 2, column: "score", op: ">=", value: "8" },
+        ],
+      }),
+    ).toBe(true);
   });
 
   it("does not match a referenced rule without a trial identity or row", () => {
-    expect(evaluateReferencedCondition([], {
-      rules: [{ column: "response", op: "==", value: "yes" }],
-    })).toBe(false);
-    expect(evaluateReferencedCondition([{ builder_id: 1, response: "yes" }], {
-      rules: [{ trialId: 2, column: "response", op: "==", value: "yes" }],
-    })).toBe(false);
+    expect(
+      evaluateReferencedCondition([], {
+        rules: [{ column: "response", op: "==", value: "yes" }],
+      }),
+    ).toBe(false);
+    expect(
+      evaluateReferencedCondition([{ builder_id: 1, response: "yes" }], {
+        rules: [{ trialId: 2, column: "response", op: "==", value: "yes" }],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("explicit destination selection", () => {
+  it("does not choose an edge by its array position", () => {
+    expect(decideBranch({}, [2, 3], [], null).targetId).toBeNull();
+    expect(decideBranch({}, [3, 2], [], 2).targetId).toBe(2);
+  });
+
+  it("keeps priority and destination parameters for an earlier target", () => {
+    const parameters = { stimulus: { source: "typed", value: "again" } };
+    expect(
+      decideBranch(
+        { response: "yes" },
+        [4, 1],
+        [
+          {
+            id: 7,
+            rules: [{ column: "response", op: "==", value: "yes" }],
+            nextTrialId: 1,
+            customParameters: parameters,
+          },
+        ],
+        4,
+      ),
+    ).toEqual({
+      targetId: 1,
+      conditionId: 7,
+      usedDefault: false,
+      customParameters: parameters,
+    });
   });
 });

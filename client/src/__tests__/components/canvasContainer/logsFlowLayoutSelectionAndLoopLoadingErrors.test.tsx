@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -210,7 +209,7 @@ describe("Canvas container", () => {
     installTrialsContext({
       selectedTrial: makeTrial(1, { parentLoopId: "loop-1" }),
       timeline: [
-        { id: "loop-1", type: "loop", name: "Loop 1", branches: [] },
+        { id: "loop-1", type: "loop", name: "Loop 1" },
         { id: "outside", type: "trial", name: "Outside", branches: [] },
       ],
       getLoopTimeline: vi.fn(async (id: string | number) =>
@@ -221,7 +220,6 @@ describe("Canvas container", () => {
                 id: "loop-child",
                 type: "loop",
                 name: "Child Loop",
-                branches: [],
               },
             ]
           : [],
@@ -245,14 +243,11 @@ describe("Canvas container", () => {
     });
 
     expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
-    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith(
-      "loop-1",
-      {
-        mode: "cache",
-        forceRefresh: false,
-        throwOnError: true,
-      },
-    );
+    expect(mocks.trialsContext.getLoopTimeline).toHaveBeenCalledWith("loop-1", {
+      mode: "cache",
+      forceRefresh: false,
+      throwOnError: true,
+    });
 
     await act(async () => {
       await mocks.flowLayoutProps.onToggleLoop(

@@ -1,5 +1,7 @@
 # 03 — Dominio, datos y API
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Problema de representación
 
 Hoy una branch es sólo un target en `source.branches[]`. El owner se encuentra, cuando no se perdió en metadata, leyendo `target.parentLoopId`. Para una branch de salida podrían derivarse los límites cruzados comparando los ancestros de source y target. Esto es viable únicamente si:
@@ -8,7 +10,7 @@ Hoy una branch es sólo un target en `source.branches[]`. El owner se encuentra,
 - mover un target cambia intencionalmente la ruta o está prohibido;
 - loaders no duplican targets entre scopes;
 - el código generado recibe el grafo completo, no timelines locales contaminadas;
-- resume/jump pueden reconstruir la misma ruta.
+- resume/branching pueden reconstruir la misma ruta.
 
 No se autoriza en esta spec a escoger entre derivación y persistencia explícita. La decisión está en DEC-11. Sí se fija un **modelo conceptual común** que ambas alternativas deben satisfacer.
 
@@ -201,7 +203,7 @@ La API que guarda condiciones debe validar:
 
 - cada `nextTrialId` pertenece a `branchesFrom(source)`;
 - no quedan conditions de un target borrado;
-- el target de salida no se transforma en `repeatConditions`;
+- el target de salida no se transforma en `branchConditions`;
 - custom parameters son compatibles con el plugin target;
 - no hay más de una política contradictoria para la misma condición/target;
 - el orden/fallback coincide con DEC-15.
@@ -229,7 +231,7 @@ El selector puede auto-incluir branches únicamente si el target seguirá siendo
 
 ### Mover
 
-Antes de mover source, target o loop ancestro, el servidor calcula impacto sobre routes. Debe seguir la política elegida en DEC-22: rechazar, pedir confirmación/recalcular o preservar ruta explícita.
+Decisión vigente: `Move Item` sólo admite trials. Un loop se rechaza como origen o destino. La agrupación/desagrupación actual cambia contención y orden conservando las referencias entre trials. Las políticas propuestas en DEC-22 corresponden a una ampliación distinta.
 
 ### Borrar trial
 
@@ -239,19 +241,9 @@ No se reutiliza automáticamente `reconnectParentsToChildren` para cross-scope. 
 
 No se elige “último último item”. Se re-ownan hijos directos y se recompila cada route afectada, o se rechaza la operación si no existe transformación equivalente.
 
-## Migración y versionado
+## Legacy: decisión vigente
 
-La persistencia debe incorporar un `graphSchemaVersion` o mecanismo equivalente.
-
-Fases requeridas, independientemente de la alternativa:
-
-1. lector compatible con datos legacy;
-2. validador que clasifica branches same-scope y branches de nodo loop sin reinterpretarlas;
-3. escritura del formato nuevo sólo para la feature aprobada;
-4. migración determinista, auditable y repetible;
-5. eliminación de dual-write únicamente cuando no haya consumidores legacy.
-
-No se puede asumir que una branch encontrada fuera del owner actual es intencional: el loader vigente ya produce contaminación de scopes. Los datos ambiguos deben reportarse, no migrarse por heurística silenciosa.
+El usuario confirmó que no hay experimentos que conservar. No se implementa lector compatible, dual-write ni migración. Las mutaciones actuales rechazan `branches` y `branchConditions` en loops, incluso vacíos, y referencias a loops como destinos estructurales.
 
 ## Seguridad e integridad operacional
 
@@ -261,5 +253,6 @@ No se puede asumir que una branch encontrada fuera del owner actual es intencion
 - API-04: no se persisten respuestas de participantes en logs de validación.
 - API-05: publicación toma un snapshot/revision consistente del grafo.
 - API-06: una compilación nunca mezcla revisiones de root y cachés de loops.
-- API-07: las tools de `server/agent/tools/create` no hacen PATCH/direct writes que eludan el nuevo graph service.
-- API-08: si el agente no puede crear exits en la primera entrega, sus schemas rechazan esa intención de forma explícita y preservan sin pérdida los exits existentes.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

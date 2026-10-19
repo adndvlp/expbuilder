@@ -25,25 +25,25 @@ const freshApp = async () => {
 };
 
 const seedNestedExperiment = async (db) => {
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: "outer",
     experimentID: "E1",
     trials: [
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 1,
         type: "Trial",
         name: "Source",
         parentLoopId: "inner",
         branches: [2, 3],
       },
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 2,
         type: "Trial",
         name: "Middle exit",
         parentLoopId: "middle",
         branches: [],
       },
-      { id: 3, type: "Trial", name: "Root exit", branches: [] },
-      {
+      { defaultNextTrialId: null, branchConditions: [], id: 3, type: "Trial", name: "Root exit", branches: [] },
+      { defaultNextTrialId: null, branchConditions: [],
         id: 4,
         type: "Trial",
         name: "Later inner trial",
@@ -52,25 +52,24 @@ const seedNestedExperiment = async (db) => {
       },
     ],
     loops: [
-      {
+      { nextItemId: null, entryItemId: "middle",
         id: "outer",
         name: "Outer loop",
         trials: ["middle"],
-        branches: [],
+
       },
-      {
+      { nextItemId: null, entryItemId: "inner",
         id: "middle",
         name: "Middle loop",
         parentLoopId: "outer",
         trials: ["inner", 2],
-        branches: [],
       },
-      {
+      { nextItemId: null, entryItemId: 1,
         id: "inner",
         name: "Inner loop",
         parentLoopId: "middle",
         trials: [1, 4],
-        branches: [],
+
       },
     ],
     timeline: [
@@ -78,7 +77,6 @@ const seedNestedExperiment = async (db) => {
         id: "outer",
         type: "loop",
         name: "Outer loop",
-        branches: [3],
         trials: ["middle"],
       },
       { id: 3, type: "trial", name: "Root exit", branches: [] },
@@ -200,7 +198,7 @@ describe("loop exit branches", () => {
     expect(response.body.timeline[0]).toMatchObject({
       id: "outer",
       type: "loop",
-      branches: [],
+
     });
     const graphResponse = await request(app)
       .get("/api/experiment-graph/E1")
@@ -263,29 +261,18 @@ describe("loop exit branches", () => {
     );
   });
 
-  test("heals unrelated legacy dangling branches instead of failing validation", async () => {
+  test("rejects an invalid graph without changing its connections", async () => {
     const { app, db } = await freshApp();
     await seedNestedExperiment(db);
-
-    // Trial 3 lives on the root timeline, unrelated to the inner-loop branch
-    // below. A stale reference on it must not 409 a valid branch creation.
     const ghost = 1788987326502;
-    await db.read();
-    db.data.trials[0].trials.find((trial) => trial.id === 3).branches.push(ghost);
+    db.data.trials[0].trials.find(trial => trial.id === 3).branches.push(ghost);
     await db.write();
-
-    const response = await request(app)
-      .post("/api/loop-branch/E1")
-      .set("Idempotency-Key", "parallel-heals-ghost")
-      .send({ sourceTrialId: 1, targetScopeId: "outer", mode: "parallel" })
-      .expect(200);
-
-    expect(response.body.success).toBe(true);
+    const before = JSON.stringify(db.data);
+    const response = await request(app).post("/api/loop-branch/E1").set("Idempotency-Key", "invalid-graph")
+      .send({ sourceTrialId: 1, targetScopeId: "outer", mode: "parallel" }).expect(409);
+    expect(response.body.code).toBe("GRAPH_INVALID");
     await db.read();
-    const doc = db.data.trials[0];
-    expect(doc.trials.find((trial) => trial.id === 3).branches).toEqual([]);
-    expect(
-      response.body.graph.diagnostics.map((diagnostic) => diagnostic.code),
-    ).not.toContain("BRANCH_TARGET_NOT_FOUND");
+    expect(JSON.stringify(db.data)).toBe(before);
+
   });
 });

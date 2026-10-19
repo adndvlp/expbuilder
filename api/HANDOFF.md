@@ -1,6 +1,6 @@
 # Builder API — Pre-Refactor Handoff
 
-> **Purpose:** drop-in context for a new Claude session. Read this + `ISSUES.md` and you have full picture without re-discovering it.
+> **Purpose:** handoff context for the next development session. Read this + `ISSUES.md` for the project background.
 >
 > **Status:** post Phase 1 + 2 fixes + Tier 1 + Tier 2 tests, **300/300 tests green**, **83.05% stmts** coverage, ready for refactor prep (or Tier 3 polish).
 
@@ -238,7 +238,6 @@ Goal del user: **subir cobertura para que refactor estructural (split de archivo
 
 ## 6. Decisiones explícitas del user (NO re-litigar)
 
-- **Caveman mode active** for chat responses. Code/commits/security: write normal.
 - **Stage alpha** — no rotar secrets hasta prod push.
 - **builder-f43c3** — desconocido. OSF works en prod, así que asumo que existe en algún lado. No tocar.
 - **T-2 endpoint auth** — deferred hasta que la app maneje token. Participant endpoints terminan en GH Pages (sin auth posible). Publish-related endpoints irán por app con Firebase Auth token. **NO implementar auth aún**.

@@ -1,12 +1,17 @@
+import { relativeCenter } from "../../../../../../../../../shared/dynamic-layout/geometry";
 import { useEffect, useRef, useState } from "react";
 import useHandleResize from "../useHandleResize";
+import type { PreviewViewport } from "../types";
 
-export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
+export function useDesignerPanels(
+  previewViewport: PreviewViewport,
+  isOpen: boolean,
+) {
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [stageScale, setStageScale] = useState(1);
+  const [viewportFit, setViewportFit] = useState(1);
   const isResizingLeft = useRef(false);
   const isResizingRight = useRef(false);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -21,33 +26,29 @@ export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
   });
 
   useEffect(() => {
+    if (!isOpen) return;
+    const container = canvasContainerRef.current;
+    if (!container) return;
     const updateScale = () => {
-      const container = canvasContainerRef.current;
-      if (!container) return;
-      const scaleX = container.clientWidth / canvasWidth;
-      const scaleY = container.clientHeight / canvasHeight;
-      setStageScale(Math.min(scaleX, scaleY, 1));
+      if (!container.clientWidth || !container.clientHeight) return;
+      setViewportFit(
+        Math.min(
+          container.clientWidth / previewViewport.width,
+          container.clientHeight / previewViewport.height,
+          1,
+        ),
+      );
     };
     updateScale();
-    window.addEventListener("resize", updateScale);
-    const intervalId = setInterval(updateScale, 100);
-    return () => {
-      window.removeEventListener("resize", updateScale);
-      clearInterval(intervalId);
-    };
-  }, [
-    canvasHeight,
-    canvasWidth,
-    leftPanelWidth,
-    rightPanelWidth,
-    showLeftPanel,
-    showRightPanel,
-  ]);
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isOpen, previewViewport.width, previewViewport.height]);
 
-  const fromJsPsychCoords = (coords: { x: number; y: number }) => ({
-    x: canvasWidth / 2 + (coords.x / 100) * (canvasWidth / 2),
-    y: canvasHeight / 2 - (coords.y / 100) * (canvasHeight / 2),
-  });
+  const stageScale = viewportFit;
+
+  const fromJsPsychCoords = (coords: { x: number; y: number }) =>
+    relativeCenter(coords, previewViewport);
 
   return {
     canvasContainerRef,
@@ -63,5 +64,7 @@ export function useDesignerPanels(canvasWidth: number, canvasHeight: number) {
     showLeftPanel,
     showRightPanel,
     stageScale,
+    viewportWidth: previewViewport.width * viewportFit,
+    viewportHeight: previewViewport.height * viewportFit,
   };
 }

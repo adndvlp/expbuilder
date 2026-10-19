@@ -1,9 +1,6 @@
 const blocked = (...blockedBy) => ({ status: "blocked", blockedBy });
 
 export const blockedRequirements = {
-  "TA-13": blocked("DEC-24"),
-  "TA-15": blocked("DEC-33", "DEC-37"),
-  "TA-16": blocked("DEC-33"),
   "TL-11": blocked("DEC-27"),
   "TG-05": blocked("DEC-37"),
   "TG-06": blocked("DEC-14"),

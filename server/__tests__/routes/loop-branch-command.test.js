@@ -15,19 +15,19 @@ const freshApp = async () => {
   const { db, ensureDbData } = await import("../../utils/db.js");
   db.data = {};
   ensureDbData();
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: "outer",
     experimentID: "E1",
     updatedAt: "2026-08-20T00:00:00.000Z",
     timeline: [{ id: "outer", type: "loop", name: "Outer" }],
     trials: [
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 1,
         type: "Trial",
         name: "Source",
         parentLoopId: "outer",
         branches: [],
       },
-      {
+      { defaultNextTrialId: null, branchConditions: [],
         id: 2,
         type: "Trial",
         name: "Later",
@@ -36,7 +36,7 @@ const freshApp = async () => {
       },
     ],
     loops: [
-      { id: "outer", name: "Outer", trials: [1, 2], branches: [] },
+      { nextItemId: null, entryItemId: 1, id: "outer", name: "Outer", trials: [1, 2], },
     ],
   });
   await db.write();
@@ -63,14 +63,14 @@ describe("atomic loop branch command", () => {
     const { app, db } = await freshApp();
     // A self-reference survives dangling-branch healing (its target exists),
     // so it still drives post-mutation validation to GRAPH_INVALID.
-    db.data.trials[0].trials[0].branches = [1];
+    db.data.trials[0].trials[0].branches = ["missing"];
     await db.write();
 
     const response = await command(app, "rollback-after-allocation").expect(409);
     expect(response.body.code).toBe("GRAPH_INVALID");
     await db.read();
     expect(db.data.trials[0].trials.map(({ id }) => id)).toEqual([1, 2]);
-    expect(db.data.trials[0].trials[0].branches).toEqual([1]);
+    expect(db.data.trials[0].trials[0].branches).toEqual(["missing"]);
     expect(db.data.mutationReceipts).toEqual([]);
   });
 
@@ -179,7 +179,7 @@ describe("atomic loop branch command", () => {
     const loaded = await request(app).get("/api/trial/E1/1").expect(200);
 
     expect(loaded.body.trial.branchConditions).toEqual(branchConditions);
-    expect(loaded.body.trial.repeatConditions ?? []).toEqual([]);
+
     expect(updated.body.graph.edges).toContainEqual(
       expect.objectContaining({
         sourceId: 1,

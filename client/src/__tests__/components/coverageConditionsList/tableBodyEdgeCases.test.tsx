@@ -35,17 +35,14 @@ describe("coverage ConditionsList TableBody edge cases", () => {
           condition={condition}
           conditions={[condition]}
           findTrialById={findTrialById}
-          isJumpCondition={() => false}
           updateRule={vi.fn()}
           addCustomParameter={vi.fn()}
           updateNextTrial={vi.fn()}
           setConditionsWrapper={vi.fn()}
-          isInBranches={vi.fn()}
           triggerSave={vi.fn()}
           removeRuleFromCondition={vi.fn()}
           getAvailableColumns={vi.fn(() => [])}
-          branchTrials={[]}
-          allJumpTrials={[]}
+          branchTrials={[{ id: "other", name: "Other Trial", isLoop: false }]}
           targetTrialParameters={{ "plain-dynamic": [] }}
           targetTrialCsvColumns={{}}
           selectedTrial={{ id: "selected", plugin: "plugin-dynamic" } as any}
@@ -73,17 +70,14 @@ describe("coverage ConditionsList TableBody edge cases", () => {
           condition={condition}
           conditions={[condition]}
           findTrialById={vi.fn(() => null)}
-          isJumpCondition={() => false}
           updateRule={vi.fn()}
           addCustomParameter={vi.fn()}
           updateNextTrial={vi.fn()}
           setConditionsWrapper={vi.fn()}
-          isInBranches={vi.fn()}
           triggerSave={vi.fn()}
           removeRuleFromCondition={vi.fn()}
           getAvailableColumns={vi.fn(() => [])}
-          branchTrials={[]}
-          allJumpTrials={[]}
+          branchTrials={[{ id: "other", name: "Other Trial", isLoop: false }]}
           targetTrialParameters={{}}
           targetTrialCsvColumns={{}}
           selectedTrial={{ id: "selected", plugin: "plugin-dynamic" } as any}
@@ -117,25 +111,15 @@ describe("coverage ConditionsList TableBody edge cases", () => {
             id: "missing-dynamic",
             plugin: "plugin-dynamic",
           }))}
-          isJumpCondition={() => false}
           updateRule={vi.fn()}
           addCustomParameter={vi.fn()}
           updateNextTrial={vi.fn()}
           setConditionsWrapper={vi.fn()}
-          isInBranches={vi.fn()}
           triggerSave={vi.fn()}
           removeRuleFromCondition={vi.fn()}
           getAvailableColumns={vi.fn(() => [])}
           branchTrials={[
-            { id: "loop-target", name: "Loop Target", isLoop: true },
-          ]}
-          allJumpTrials={[
-            {
-              id: "jump-trial",
-              name: "Jump Trial",
-              displayName: "Jump Trial",
-              isLoop: false,
-            },
+            { id: "other", name: "Other Trial", isLoop: false }, { id: "return-trial", name: "Return Trial", isLoop: false },
           ]}
           targetTrialParameters={{}}
           targetTrialCsvColumns={{}}
@@ -145,10 +129,10 @@ describe("coverage ConditionsList TableBody edge cases", () => {
     );
 
     expect(
-      screen.getByRole("option", { name: "Loop Target (Loop)" }),
+      screen.getByRole("option", { name: "Other Trial" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Jump Trial" }),
+      screen.getByRole("option", { name: "Return Trial" }),
     ).toBeInTheDocument();
     expect(
       screen.getByTestId("override-5-components::missing::survey_json"),
@@ -172,17 +156,14 @@ describe("coverage ConditionsList TableBody edge cases", () => {
             id: "normal-target",
             plugin: "plugin-html-keyboard-response",
           }))}
-          isJumpCondition={() => false}
           updateRule={vi.fn()}
           addCustomParameter={vi.fn()}
           updateNextTrial={vi.fn()}
           setConditionsWrapper={vi.fn()}
-          isInBranches={vi.fn()}
           triggerSave={vi.fn()}
           removeRuleFromCondition={vi.fn()}
           getAvailableColumns={vi.fn(() => [])}
-          branchTrials={[]}
-          allJumpTrials={[]}
+          branchTrials={[{ id: "other", name: "Other Trial", isLoop: false }]}
           targetTrialParameters={{
             "normal-target": [
               { key: "stimulus", label: "Stimulus", type: "string" },

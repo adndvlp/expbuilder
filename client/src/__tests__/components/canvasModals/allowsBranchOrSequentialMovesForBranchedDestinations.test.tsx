@@ -31,9 +31,9 @@ describe("Canvas modals", () => {
         itemName="Probe trial"
         availableDestinations={[
           {
-            id: "loop-1",
-            name: "Loop target",
-            type: "loop",
+            id: "trial-1",
+            name: "Trial target",
+            type: "trial",
             hasBranches: true,
           },
         ]}
@@ -42,11 +42,11 @@ describe("Canvas modals", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Loop target"));
+    fireEvent.click(screen.getByText("Trial target"));
     fireEvent.click(screen.getByText("Branch (Parallel)"));
     fireEvent.click(screen.getByText("Move"));
 
-    expect(onConfirm).toHaveBeenCalledWith("loop-1", true);
+    expect(onConfirm).toHaveBeenCalledWith("trial-1", true);
   });
 
   it("greys out items outside the selected LoopRangeModal sequence", () => {
@@ -58,7 +58,7 @@ describe("Canvas modals", () => {
         timeline={[
           { id: 1, type: "trial", name: "Trial 1", branches: [2, "missing"] },
           { id: 2, type: "trial", name: "Trial 2", branches: [1] },
-          { id: "loop-a", type: "loop", name: "Loop A", branches: [] },
+          { id: "loop-a", type: "loop", name: "Loop A" },
         ]}
         onConfirm={onConfirm}
         onClose={onClose}
@@ -70,7 +70,9 @@ describe("Canvas modals", () => {
     // so a single-trial loop just confirms the manual choice.
     fireEvent.click(screen.getByLabelText("Trial 1", { exact: false }));
     expect(screen.getByLabelText("Loop A", { exact: false })).toBeDisabled();
-    expect(screen.getByLabelText("Trial 2", { exact: false })).not.toBeDisabled();
+    expect(
+      screen.getByLabelText("Trial 2", { exact: false }),
+    ).not.toBeDisabled();
     fireEvent.click(screen.getByText("Confirm (1 items)"));
     expect(onConfirm).toHaveBeenCalledWith([1]);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -113,7 +115,9 @@ describe("Canvas modals", () => {
     // Trial 1 belongs to Trial 2's sequence despite the string/number mix,
     // so it stays enabled while the unrelated Trial 3 is greyed out.
     fireEvent.click(screen.getByLabelText("Trial 2", { exact: false }));
-    expect(screen.getByLabelText("Trial 1", { exact: false })).not.toBeDisabled();
+    expect(
+      screen.getByLabelText("Trial 1", { exact: false }),
+    ).not.toBeDisabled();
     expect(screen.getByLabelText("Trial 3", { exact: false })).toBeDisabled();
     fireEvent.click(screen.getByText("Confirm (1 items)"));
 

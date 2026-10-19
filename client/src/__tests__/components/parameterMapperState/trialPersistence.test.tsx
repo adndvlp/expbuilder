@@ -27,7 +27,7 @@ describe("useTrialPersistence", () => {
           {
             id: "loop_1",
             name: "Loop",
-            branches: [2, "4"],
+
             trials: [
               { id: 2, name: "Nested delete me" },
               { id: 4, name: "Nested keep", branches: [2, "2", 5] },
@@ -45,7 +45,7 @@ describe("useTrialPersistence", () => {
       {
         id: "loop_1",
         name: "Loop",
-        branches: ["4"],
+
         trials: [{ id: 4, name: "Nested keep", branches: [5] }],
       },
       { id: 5, name: "No branches" },

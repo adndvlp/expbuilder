@@ -1,12 +1,9 @@
 import { describe, expect, it, normalize, useLoopCode } from "./testHarness";
-import { toCodeIdentifier } from "../../../pages/ExperimentBuilder/utils/codegen/codeIdentifier";
 
 describe("useLoopCode composition", () => {
   it("recursively generates nested loop items without precomputed timeline props", () => {
     const genLoopCode = useLoopCode({
       id: "parent_loop",
-      branches: undefined,
-      branchConditions: undefined,
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -47,10 +44,8 @@ describe("useLoopCode composition", () => {
       "const precomputed_loop_procedure = { timeline: [] };",
     );
     expect(code).toContain("const parent_loop_procedure =");
-    const precomputed = toCodeIdentifier("Precomputed Loop");
-    const nested = toCodeIdentifier("Nested Loop");
     expect(code).toContain(
-      `timeline: [${precomputed}_wrapper, ${nested}_wrapper]`,
+      "timeline: [precomputed_loop_procedure, nested_loop_procedure]",
     );
     expect(code).not.toContain("timeline.push(nested_loop_procedure)");
     expect(code).toContain("timeline.push(parent_loop_procedure)");
@@ -59,8 +54,6 @@ describe("useLoopCode composition", () => {
   it("uses main and Loop fallbacks when the loop id is absent", () => {
     const genLoopCode = useLoopCode({
       id: undefined,
-      branches: [],
-      branchConditions: [],
       repetitions: 1,
       randomize: false,
       orders: false,
@@ -73,7 +66,7 @@ describe("useLoopCode composition", () => {
 
     const code = normalize(genLoopCode());
 
-    expect(code).toContain("Branching logic variables for loop main");
-    expect(code).toContain("let loop_Loop_NextTrialId = null;");
+    expect(code).toContain("const Loop_procedure =");
+    expect(code).toContain("timeline_variables: test_stimuli_Loop.length ? test_stimuli_Loop : [{}]");
   });
 });

@@ -175,7 +175,7 @@ abstract class BaseStage {
     this.dpr = visible.dpr;
     this.width = options.width;
     this.height = options.height;
-    this.backgroundColor = options.backgroundColor || "#ffffff";
+    this.backgroundColor = options.backgroundColor || "transparent";
     this.backgroundRgba = parseCssColor(this.backgroundColor);
     this.metrics = createBaseMetrics(
       "webgl-strict",
@@ -186,6 +186,25 @@ abstract class BaseStage {
 
   setZIndex(zIndex: number) {
     this.canvas.style.zIndex = String(zIndex);
+  }
+
+  resize(width: number, height: number, dpr = window.devicePixelRatio || 1) {
+    if (this.width === width && this.height === height && this.dpr === dpr) return;
+    this.width = width;
+    this.height = height;
+    this.dpr = dpr;
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+    this.canvas.width = Math.round(width * dpr);
+    this.canvas.height = Math.round(height * dpr);
+    this.markDirty();
+  }
+
+  updateDrawable(id: string, geometry: { x: number; y: number; width: number; height: number }) {
+    const drawable = this.drawables.get(id);
+    if (!drawable) return;
+    Object.assign(drawable, geometry);
+    this.markDirty();
   }
 
   setTrialActive(active: boolean) {
@@ -261,9 +280,13 @@ abstract class BaseStage {
   }
 
   removeDrawable(id: string) {
-    if (!this.drawables.delete(id)) return;
+    const drawable = this.drawables.get(id);
+    if (!drawable || !this.drawables.delete(id)) return;
+    if (drawable.kind === "sprite") this.releaseTexture(drawable.textureKey);
     this.markDirty();
   }
+
+  protected releaseTexture(_key: string) {}
 
   render() {
     this.markDirty();
@@ -443,11 +466,33 @@ class WebGLStage extends BaseStage {
   }
 
   preloadTexture(key: string, source: CanvasImageSource) {
+    const previous = this.textureSources.get(key);
     this.textureSources.set(key, source);
-    if (this.textures.has(key)) return key;
+    if (this.textures.has(key) && previous === source) return key;
+    const oldTexture = this.textures.get(key);
+    if (oldTexture) this.gl.deleteTexture(oldTexture);
     const texture = this.uploadTexture(source);
     this.textures.set(key, texture);
     return key;
+  }
+
+  protected releaseTexture(key: string) {
+    const texture = this.textures.get(key);
+    if (texture) this.gl.deleteTexture(texture);
+    this.textures.delete(key);
+    this.textureSources.delete(key);
+  }
+
+  destroy() {
+    for (const key of this.textures.keys()) this.releaseTexture(key);
+    for (const query of this.pendingGpuQueries) (this.gl as WebGL2RenderingContext).deleteQuery(query);
+    this.pendingGpuQueries = [];
+    this.gl.deleteTexture(this.whiteTexture);
+    this.gl.deleteBuffer(this.positionBuffer);
+    this.gl.deleteBuffer(this.texCoordBuffer);
+    this.gl.deleteProgram(this.program);
+    this.gl.getExtension("WEBGL_lose_context")?.loseContext();
+    super.destroy();
   }
 
   protected getTextureSource(key: string) {
@@ -733,6 +778,7 @@ export function getCanvasStage(
   const key = "webgl-strict";
   const existing = registry.get(key);
   if (existing) {
+    existing.resize(options.width, options.height);
     if (options.zIndex !== undefined) {
       existing.setZIndex(
         Math.max(Number(existing.canvas.style.zIndex) || 0, options.zIndex),

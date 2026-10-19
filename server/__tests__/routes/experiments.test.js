@@ -109,7 +109,7 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
   test('deletes experiment and related data', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'Exp1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 's1', createdAt: new Date().toISOString(), data: [], state: 'completed', lastUpdate: new Date().toISOString(), metadata: {} })
     db.data.participantFiles.push({ id: 'pf1', experimentID: 'E1', filename: 'f.txt' })
@@ -300,7 +300,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
     expect(res.body.error).toBe('No generated code provided')
   })
 
-  test('builds runnable HTML with body styles from request, DB fallback, and appearance override', async () => {
+  test('builds runnable HTML with the saved experiment appearance', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({
       experimentID: 'E1',
@@ -309,10 +309,10 @@ describe('POST /api/run-experiment/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, columnMapping: { __canvasStyles: { value: { backgroundColor: '#000000', fullScreen: true } } } },
+        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { __canvasStyles: { value: { backgroundColor: '#000000', fullScreen: true } } } },
       ],
       loops: [],
       timeline: [],
@@ -331,7 +331,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
     expect(html).toContain('<base id="experiment-base" href="/E1/">')
   })
 
-  test('uses request canvas styles when experiment appearance is absent', async () => {
+  test('rejects request canvas styles when experiment appearance is absent', async () => {
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'StyledRun', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     await db.write()
@@ -339,10 +339,9 @@ describe('POST /api/run-experiment/:experimentID', () => {
     await request(app)
       .post('/api/run-experiment/E1')
       .send({ generatedCode: 'const generated = true;', canvasStyles: { backgroundColor: '#112233' } })
-      .expect(200)
+      .expect(400)
 
-    const html = fs.readFileSync(path.join(tmpDir, 'experiments_html', 'E1.html'), 'utf8')
-    expect(html).toContain('background-color: #112233')
+    expect(fs.existsSync(path.join(tmpDir, 'experiments_html', 'E1.html'))).toBe(false)
   })
 })
 
@@ -379,12 +378,12 @@ describe('POST /api/trials-preview/:experimentID', () => {
     await request(app).post('/api/trials-preview/E1').send({}).expect(400)
   })
 
-  test('builds preview HTML with DB canvas style fallback', async () => {
+  test('builds preview HTML with experiment appearance settings', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'PreviewExp', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    db.data.trials.push({
+    db.data.experiments.push({ experimentID: 'E1', name: 'PreviewExp', appearanceSettings: { backgroundColor: '#445566', fullScreen: false, progressBar: false }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, columnMapping: { __canvasStyles: { value: { backgroundColor: '#445566' } } } }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: {} }],
       loops: [],
       timeline: [],
     })
@@ -411,9 +410,9 @@ describe('POST /api/trials-preview/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, columnMapping: { __canvasStyles: { value: { width: 800, height: 600 } } } }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { __canvasStyles: { value: { width: 800, height: 600 } } } }],
       loops: [],
       timeline: [],
     })
@@ -450,11 +449,11 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       updatedAt: new Date().toISOString(),
     })
     // Self-branch survives dangling-branch healing: unpublishable as-is.
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [1] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: ["missing"] }],
       loops: [],
-      timeline: [{ id: 1, type: 'trial', name: 'T1', branches: [1] }],
+      timeline: [{ id: 1, type: 'trial', name: 'T1', branches: ["missing"] }],
     })
     await db.write()
 
@@ -464,12 +463,12 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       .expect(400)
 
     expect(res.body.code).toBe('GRAPH_INVALID')
-    expect(res.body.diagnostics.map((d) => d.code)).toContain('BRANCH_SELF_REFERENCE')
+    expect(res.body.diagnostics.map((d) => d.code)).toContain('BRANCH_TARGET_NOT_FOUND')
     expect(githubFetch).not.toHaveBeenCalled()
     global.fetch = originalFetch
   })
 
-  test('heals dangling branches and publishes', async () => {
+  test('rejects dangling destinations before producing an artifact', async () => {
     const originalFetch = global.fetch
     global.fetch = jest.fn().mockResolvedValueOnce({
       json: async () => ({
@@ -486,11 +485,11 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [1788987326502] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [1788987326502] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
       loops: [],
       timeline: [
@@ -503,10 +502,10 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     await request(app)
       .post('/api/publish-experiment/E1')
       .send({ uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
-      .expect(200)
+      .expect(400)
 
     await db.read()
-    expect(db.data.trials[0].trials.find((t) => t.id === 1).branches).toEqual([])
+    expect(db.data.trials[0].trials.find((t) => t.id === 1).branches).toEqual([1788987326502])
     global.fetch = originalFetch
   })
 
@@ -529,9 +528,9 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, plugin: 'plugin-html-keyboard-response' }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, plugin: 'plugin-html-keyboard-response' }],
       loops: [],
       timeline: [],
     })
@@ -559,6 +558,9 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     expect(body.htmlContent).toContain('plugin-preload')
     expect(body.htmlContent).toContain('plugin-fullscreen')
     expect(body.htmlContent).toContain('@jspsych/plugin-html-keyboard-response')
+    const favicon = body.htmlContent.match(/<link[^>]*rel="icon"[^>]*href="data:image\/png;base64,([^"]+)"/)
+    expect(favicon).not.toBeNull()
+    expect(Buffer.from(favicon[1], 'base64').subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
     expect(body.mediaFiles).toEqual([{ type: 'img', filename: 'image.png', content: Buffer.from('image-data').toString('base64') }])
     await db.read()
     expect(db.data.experiments[0].storage).toBe('dropbox')
@@ -580,7 +582,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     await db.write()
 
     await request(app)
@@ -600,7 +602,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     process.env.GITHUB_FILE_LIMIT_BYTES = '5'
     const { app, db, tmpDir } = await freshApp()
     db.data.experiments.push({ experimentID: 'E1', name: 'Big Media', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     fs.mkdirSync(path.join(tmpDir, 'Big Media', 'vid'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Big Media', 'vid', 'movie.mp4'), 'too-large')
     await db.write()
@@ -623,13 +625,13 @@ describe('POST /api/publish-experiment/:experimentID', () => {
 
     const first = await freshApp()
     first.db.data.experiments.push({ experimentID: 'E1', name: 'Fail One', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    first.db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    first.db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     await first.db.write()
     await request(first.app).post('/api/publish-experiment/E1').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(400)
 
     const second = await freshApp()
     second.db.data.experiments.push({ experimentID: 'E2', name: 'Fail Two', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    second.db.data.trials.push({ experimentID: 'E2', trials: [], loops: [], timeline: [] })
+    second.db.data.trials.push({ entryItemId: null, experimentID: 'E2', trials: [], loops: [], timeline: [] })
     await second.db.write()
     const res = await request(second.app).post('/api/publish-experiment/E2').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(500)
     expect(res.body.error).toContain('network down')

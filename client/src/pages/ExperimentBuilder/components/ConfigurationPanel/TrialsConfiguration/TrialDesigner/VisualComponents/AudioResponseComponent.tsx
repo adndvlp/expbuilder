@@ -77,6 +77,8 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -120,6 +122,7 @@ const AudioResponseComponent: React.FC<AudioResponseComponentProps> = ({
           const nextWidth = Math.max(80, effectiveWidth * scaleX);
           const nextHeight = Math.max(80, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

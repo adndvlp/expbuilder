@@ -24,7 +24,6 @@ describe("BranchedTrial useLoadData idempotency guard", () => {
       "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/useLoadData"
     );
     const setConditions = vi.fn();
-    const setRepeatConditions = vi.fn();
 
     renderHook(() =>
       useLoadData({
@@ -46,11 +45,9 @@ describe("BranchedTrial useLoadData idempotency guard", () => {
         })),
         getLoopTimeline: vi.fn(async () => []),
         setConditions,
-        setRepeatConditions,
       }),
     );
 
     expect(setConditions).toHaveBeenCalledTimes(1);
-    expect(setRepeatConditions).toHaveBeenCalledTimes(1);
   });
 });

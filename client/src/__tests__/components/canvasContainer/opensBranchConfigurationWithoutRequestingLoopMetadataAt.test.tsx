@@ -73,7 +73,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -153,25 +152,24 @@ describe("Canvas container", () => {
     });
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
         type: "Trial",
         name: "New Trial",
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
-      });
+      }));
     });
     expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(3);
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
-      3,
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
+      branches: [99],
+    }));
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99 }),
     );
   });
 
-  it("adds direct branches when trial and loop data omit branch arrays", async () => {
+  it("adds direct trial branches with missing arrays and rejects loop sources", async () => {
     installTrialsContext({
       timeline: [{ id: 3, type: "trial", name: "Trial 3" }],
       getTrial: vi.fn(async () => makeTrial(3, { branches: undefined })),
@@ -182,15 +180,15 @@ describe("Canvas container", () => {
       await mocks.flowLayoutProps.onAddBranch(3);
     });
 
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
-      3,
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
+      branches: [99],
+    }));
     trialRender.unmount();
+    vi.clearAllMocks();
 
     installTrialsContext({
       timeline: [{ id: "loop-1", type: "loop", name: "Loop 1", trials: [1] }],
-      getLoop: vi.fn(async () => makeLoop("loop-1", { branches: undefined })),
+      getLoop: vi.fn(async () => makeLoop("loop-1", {})),
     });
     render(<Canvas />);
 
@@ -198,9 +196,7 @@ describe("Canvas container", () => {
       await mocks.flowLayoutProps.onAddBranch("loop-1");
     });
 
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-      "loop-1",
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
   });
 });

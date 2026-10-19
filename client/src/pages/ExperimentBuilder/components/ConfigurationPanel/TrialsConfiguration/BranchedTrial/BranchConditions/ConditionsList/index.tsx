@@ -10,7 +10,6 @@ type Props = {
   removeCondition: (conditionId: number) => void;
   findTrialById: (trialId: string | number) => any;
   targetTrialParameters: Record<string, Parameter[]>;
-  isJumpCondition: (condition: Condition) => boolean;
   triggerSave: () => void;
   addCustomParameter: (conditionId: number, isTargetDynamic: boolean) => void;
   addRuleToCondition: (conditionId: number) => void;
@@ -34,18 +33,12 @@ type Props = {
     shouldSave?: boolean,
   ) => void;
   updateNextTrial: (conditionId: number, nextTrialId: string) => void;
-  isInBranches: (trialId: string | number | null) => boolean;
   branchTrials: {
     id: string | number;
     name: string;
     isLoop: boolean;
   }[];
-  allJumpTrials: {
-    id: string | number;
-    name: string;
-    displayName: string;
-    isLoop: boolean;
-  }[];
+
   targetTrialCsvColumns: Record<string, string[]>;
 };
 
@@ -54,7 +47,6 @@ function ConditionsList({
   removeCondition,
   findTrialById,
   targetTrialParameters,
-  isJumpCondition,
   triggerSave,
   addCustomParameter,
   addRuleToCondition,
@@ -64,9 +56,7 @@ function ConditionsList({
   selectedTrial,
   setConditionsWrapper,
   updateNextTrial,
-  isInBranches,
   branchTrials,
-  allJumpTrials,
   targetTrialCsvColumns,
 }: Props) {
   return (
@@ -113,8 +103,6 @@ function ConditionsList({
                   selectedTrial={selectedTrial}
                 />
                 <TableBody
-                  isInBranches={isInBranches}
-                  isJumpCondition={isJumpCondition}
                   findTrialById={findTrialById}
                   updateRule={updateRule}
                   updateNextTrial={updateNextTrial}
@@ -124,7 +112,6 @@ function ConditionsList({
                   removeRuleFromCondition={removeRuleFromCondition}
                   getAvailableColumns={getAvailableColumns}
                   branchTrials={branchTrials}
-                  allJumpTrials={allJumpTrials}
                   condition={condition}
                   targetTrialParameters={targetTrialParameters}
                   targetTrialCsvColumns={targetTrialCsvColumns}

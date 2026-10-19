@@ -67,7 +67,6 @@ function makeLoop(id: string, overrides: Record<string, unknown> = {}) {
     type: "loop",
     name: id === "loop-child" ? "Child Loop" : "Loop 1",
     trials: [1, 2],
-    branches: [],
     ...overrides,
   };
 }
@@ -139,14 +138,14 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
         branches: [],
-      });
+      }));
     });
     expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(1);
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       branches: [2, 3],
-    });
+    }));
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
@@ -154,34 +153,24 @@ describe("Canvas container", () => {
   });
 
   it.each([
-    ["branch", "trial", "missing"],
-    ["branch", "trial", "without branches"],
-    ["branch", "loop", "missing"],
-    ["branch", "loop", "without branches"],
-    ["sequential", "trial", "missing"],
-    ["sequential", "trial", "without branches"],
-    ["sequential", "loop", "missing"],
-    ["sequential", "loop", "without branches"],
+    ["branch", "missing"],
+    ["branch", "without branches"],
+    ["sequential", "missing"],
+    ["sequential", "without branches"],
   ] as const)(
-    "moves with a %s %s destination whose lookup is %s",
-    async (mode, destinationType, lookupState) => {
-      const destinationId = destinationType === "trial" ? 3 : "loop-1";
-      const destination =
-        destinationType === "trial"
-          ? { id: 3, type: "trial", name: "Trial 3", branches: [9] }
-          : {
-              id: "loop-1",
-              type: "loop",
-              name: "Loop 1",
-              trials: [1],
-              branches: [9],
-            };
+    "moves with a %s trial destination whose lookup is %s",
+    async (mode, lookupState) => {
+      const destinationId = 3;
+      const destination = {
+        id: 3,
+        type: "trial",
+        name: "Trial 3",
+        branches: [9],
+      };
       const lookupResult =
         lookupState === "missing"
           ? undefined
-          : destinationType === "trial"
-            ? makeTrial(3, { branches: undefined })
-            : makeLoop("loop-1", { branches: undefined });
+          : makeTrial(3, { branches: undefined });
 
       installTrialsContext({
         selectedTrial: makeTrial(2),
@@ -189,9 +178,7 @@ describe("Canvas container", () => {
           { id: 2, type: "trial", name: "Trial 2", branches: [] },
           destination,
         ],
-        ...(destinationType === "trial"
-          ? { getTrial: vi.fn(async () => lookupResult) }
-          : { getLoop: vi.fn(async () => lookupResult) }),
+        getTrial: vi.fn(async () => lookupResult),
       });
       render(<Canvas />);
 
@@ -208,10 +195,7 @@ describe("Canvas container", () => {
         expect(mocks.trialsContext.updateTimeline).toHaveBeenCalled();
       });
 
-      const destinationUpdater =
-        destinationType === "trial"
-          ? mocks.trialsContext.updateTrial
-          : mocks.trialsContext.updateLoop;
+      const destinationUpdater = mocks.trialsContext.updateTrial;
       if (lookupState === "missing") {
         expect(
           destinationUpdater.mock.calls.some(
@@ -219,18 +203,16 @@ describe("Canvas container", () => {
           ),
         ).toBe(false);
       } else if (mode === "branch") {
-        expect(destinationUpdater).toHaveBeenCalledWith(destinationId, {
-          branches: [2],
-        });
+        expect(destinationUpdater).toHaveBeenCalledWith(destinationId, expect.objectContaining({ branches: [2] }));
       } else {
         expect(
           destinationUpdater.mock.calls.some(
             ([id]: [number | string]) => id === destinationId,
           ),
-        ).toBe(false);
-        expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, {
+        ).toBe(true);
+        expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({
           branches: [],
-        });
+        }));
       }
     },
   );

@@ -1,7 +1,6 @@
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { createLoopBranch } from "./createLoopBranch.js";
 import { findTrial } from "./scopeGraph.js";
-import { pruneDanglingBranches } from "../trials/state.js";
 
 const OPERATION = "create-loop-branch";
 const MAX_RECEIPTS_PER_EXPERIMENT = 10;
@@ -88,7 +87,6 @@ export function executeLoopBranchCommand(data, command) {
   // Legacy docs can hold branch targets deleted before dangling-branch
   // pruning existed. Heal them here so an unrelated stale reference cannot
   // fail validation (GRAPH_INVALID) of an otherwise valid branch creation.
-  pruneDanglingBranches(experimentDoc);
   const currentGraph = buildExperimentGraph(experimentDoc);
   if (
     command.expectedRevision !== undefined &&
@@ -118,10 +116,7 @@ export function executeLoopBranchCommand(data, command) {
     nextRevision(currentGraph.revision),
   );
   if (result.error) {
-    throw new LoopBranchCommandError(
-      "DESTINATION_SCOPE_INVALID",
-      result.error,
-    );
+    throw new LoopBranchCommandError("DESTINATION_SCOPE_INVALID", result.error);
   }
   const graph = buildExperimentGraph(experimentDoc);
   if (graph.diagnostics.length > 0) {

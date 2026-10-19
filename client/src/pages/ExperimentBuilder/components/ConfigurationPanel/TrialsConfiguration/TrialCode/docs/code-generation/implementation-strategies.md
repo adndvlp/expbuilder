@@ -106,39 +106,9 @@ const evaluateCondition = (data, condition) => {
 
 **Consistencia**: Este patrón se replica en todos los archivos que evalúan condiciones, garantizando comportamiento consistente.
 
-### 4. Manejo de Estado para Branching
+### 4. Estado de Branching
 
-El sistema usa variables de estado para coordinar el branching:
-
-```
-Trial 1 (on_finish):
-  → Evalúa condiciones
-  → Si coincide: Activa flags de branching
-  → window.nextTrialId = 5
-  → window.skipRemaining = true
-
-Trial 2 (conditional_function):
-  → Verifica: ¿Soy el trial 5?
-  → No → return false (saltar)
-
-Trial 3 (conditional_function):
-  → Verifica: ¿Soy el trial 5?
-  → No → return false (saltar)
-
-Trial 4 (conditional_function):
-  → Verifica: ¿Soy el trial 5?
-  → No → return false (saltar)
-
-Trial 5 (conditional_function):
-  → Verifica: ¿Soy el trial 5?
-  → Sí → Desactiva flags
-  → window.skipRemaining = false
-  → return true (ejecutar)
-
-Trial 5 (on_start):
-  → Aplica custom parameters
-  → window.branchCustomParameters → trial.*
-```
+El evaluador selecciona una condición o la salida explícita por defecto. `requestBranch(data, decision)` modifica las entradas futuras de los timelines nativos. Los parámetros viajan en la entrada del destino y `takeParameters` los consume una sola vez. La barrera de persistencia y resume pertenecen al mismo coordinador.
 
 ### 5. Recursión para Nested Loops
 
@@ -194,37 +164,6 @@ const sanitizeName = (name: string) => {
 
 Esto garantiza que los IDs sean válidos en JavaScript.
 
-### 7. Manejo de Repeat/Jump por dirección
+### 7. Retornos y cambios de ámbito
 
-El feature de repeat/jump permite reiniciar el experimento desde un trial específico:
-
-```javascript
-on_finish: function(data) {
-  if (condition) {
-    window.ExpBuilderNavigation.requestJump(
-      '123',
-      { sourceId: data.builder_id, conditionId: condition.id },
-      data,
-      () => jsPsych.pauseExperiment(),
-    );
-  }
-}
-
-// El wrapper del scope sólo consulta; el trial/loop real consume.
-const canInclude = window.ExpBuilderNavigation.allowsItem(currentId, itemKind);
-conditional_function: function() {
-  const decision = window.ExpBuilderNavigation.enterItem(
-    currentId,
-    itemKind,
-  );
-  return decision === null ? true : decision;
-}
-```
-
-El request persistido incluye revisión, tipo de target, owner, ancestry de loops,
-cursor y progreso. El reinicio espera a que el source sea durable y el guard
-rechaza una segunda recarga marcada si el cursor no avanzó.
-
-**Archivo**: [`repeatConditionsGenerator.ts`](./TrialCodeGenerators/repeatConditionsGenerator.ts)
-
----
+Todos los destinos usan el mismo contrato, incluidos los retornos y entradas a otros loops. La dirección compilada conserva los ancestros activos comunes y determina qué timelines cerrar. Volver a un trial crea otra ejecución futura; no retrocede el cursor de jsPsych ni recarga la página.

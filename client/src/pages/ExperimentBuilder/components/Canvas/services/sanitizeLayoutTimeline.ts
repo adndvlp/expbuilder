@@ -1,7 +1,4 @@
-import type {
-  LayoutItemId,
-  LayoutTimelineItem,
-} from "./expandedLayoutTypes";
+import type { LayoutItemId, LayoutTimelineItem } from "./expandedLayoutTypes";
 
 const itemKey = (id: LayoutItemId) => String(id);
 
@@ -14,7 +11,16 @@ export function sanitizeLayoutTimeline(
   timeline.forEach((item) => {
     const key = itemKey(item.id);
     if (byId.has(key)) return;
-    const copy = { ...item };
+    const copy: LayoutTimelineItem =
+      item.type === "loop"
+        ? {
+            id: item.id,
+            type: "loop",
+            name: item.name,
+            trials: item.trials,
+            parentLoopId: item.parentLoopId,
+          }
+        : { ...item };
     items.push(copy);
     byId.set(key, copy);
   });
@@ -30,7 +36,12 @@ export function sanitizeLayoutTimeline(
     (item.branches ?? []).forEach((branchId) => {
       const branchKey = itemKey(branchId);
       const target = byId.get(branchKey);
-      if (!target || state.get(branchKey) === "visiting") return;
+      if (
+        !target ||
+        target.type !== "trial" ||
+        state.get(branchKey) === "visiting"
+      )
+        return;
       if (!state.has(branchKey)) visit(target);
       branches.push(target.id);
     });
@@ -43,12 +54,22 @@ export function sanitizeLayoutTimeline(
     if (!state.has(itemKey(item.id))) visit(item);
   });
 
-  return items.map((item) => ({
-    ...item,
-    branches:
-      item.branches === undefined ? undefined : safeBranches.get(itemKey(item.id)),
-    trials: item.trials === undefined ? undefined : [...item.trials],
-  }));
+  return items.map(
+    (item): LayoutTimelineItem =>
+      item.type === "loop"
+        ? {
+            ...item,
+            trials: item.trials === undefined ? undefined : [...item.trials],
+          }
+        : {
+            ...item,
+            branches:
+              item.branches === undefined
+                ? undefined
+                : safeBranches.get(itemKey(item.id)),
+            trials: item.trials === undefined ? undefined : [...item.trials],
+          },
+  );
 }
 
 export function getMainLayoutItems(

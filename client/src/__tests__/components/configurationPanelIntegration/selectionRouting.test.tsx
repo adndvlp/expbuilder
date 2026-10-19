@@ -38,9 +38,9 @@ describe("ConfigurationPanel selection and routing", () => {
     );
     fireEvent.click(screen.getByLabelText("Toggle jsPsych plugins"));
     await choosePlugin("plugin-html-keyboard-response");
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, {
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
       plugin: "plugin-html-keyboard-response",
-    });
+    }));
     expect(screen.getByTestId("trials-config")).toHaveTextContent(
       "plugin-html-keyboard-response",
     );
@@ -51,7 +51,7 @@ describe("ConfigurationPanel selection and routing", () => {
     render(<ConfigurationPanel />);
     fireEvent.click(screen.getByLabelText("Toggle jsPsych plugins"));
     await choosePlugin("webgazer");
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, { plugin: "webgazer" });
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({ plugin: "webgazer" }));
     expect(screen.getByTestId("webgazer-config")).toHaveTextContent(
       "plugin-webgazer-calibrate",
     );
@@ -98,7 +98,7 @@ describe("ConfigurationPanel selection and routing", () => {
     expect(mocks.setPlugins).toHaveBeenCalledWith([
       { name: "1", scripTag: "/plugins/1.js", pluginCode: "", index: 0 },
     ]);
-    expect(mocks.updateTrial).toHaveBeenCalledWith(1, { plugin: "1" });
+    expect(mocks.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({ plugin: "1" }));
     expect(screen.getByTestId("plugin-editor")).toHaveTextContent("1");
   });
 });

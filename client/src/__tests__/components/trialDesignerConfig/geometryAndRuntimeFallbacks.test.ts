@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   describe,
   expect,
   it,
@@ -37,7 +37,7 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        canvasStyles: undefined,
+        previewViewport: undefined,
       }),
     );
 
@@ -47,7 +47,7 @@ describe("useConfigFromComponents", () => {
     expect(image).toEqual(expect.objectContaining({ width: 240, height: 120 }));
     // HtmlComponent now exports its manual box size so the runtime can honor
     // a resized HTML box instead of letting content overflow the canvas.
-    // (canvasStyles is undefined here, so sizes stay in raw pixels)
+    // (previewViewport is undefined here, so sizes stay in raw pixels)
     expect(html.width).toBe(400);
     expect(html.height).toBe(200);
     expect(html.stimulus.value).toContain("&#9733;");
@@ -100,7 +100,7 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        canvasStyles,
+        previewViewport,
       }),
     );
 

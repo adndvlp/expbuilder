@@ -1,6 +1,7 @@
 import { ColumnMappingEntry } from "../../../../../types";
 import { Condition, Parameter } from "../../../types";
 import { changeCustomParameter } from "./services/changeCustomParameter";
+import { collectSurveyQuestions } from "../../../../utils/surveyElements";
 
 type Props = {
   isTargetDynamic: boolean;
@@ -208,13 +209,18 @@ function ColumnParams({
               disabled={!propName}
             >
               <option value="">Select question</option>
-              {(getPropValue(comp.survey_json)?.elements || []).map(
-                (q: any) => (
-                  <option key={q.name} value={q.name}>
-                    {q.title || q.name}
-                  </option>
-                ),
-              )}
+              {collectSurveyQuestions(
+                getPropValue(comp.survey_json) as
+                  | Record<string, unknown>
+                  | undefined,
+              ).map((question) => (
+                <option
+                  key={String(question.name)}
+                  value={String(question.name)}
+                >
+                  {String(question.title || question.name || "Question")}
+                </option>
+              ))}
             </select>
           ) : (
             <span className="text-xs text-gray-400 px-2">-</span>

@@ -6,7 +6,7 @@ import request from 'supertest'
 import { jest } from '@jest/globals'
 
 /**
- * Adversarial ID-robustness matrix (app surface only, no agent tools).
+ * Adversarial ID-robustness matrix (editor API surface).
  *
  * Every timeline mutation endpoint is exercised against:
  *  - ghost ids (references to already-deleted items, common in legacy DBs),
@@ -41,24 +41,24 @@ const freshApp = async () => {
 // Trial "3" is intentionally stored as a string while the rest are numeric;
 // loop_2 carries a legacy ghost branch.
 const seedMatrix = async (db) => {
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: 1,
     experimentID: 'E1',
     trials: [
-      { id: 1, name: 'T1', branches: [2] },
-      { id: 2, name: 'T2', branches: [] },
-      { id: '3', name: 'T3-string-id', branches: [] },
-      { id: 4, name: 'T4-in-loop', parentLoopId: 'loop_1', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [2] },
+      { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: '3', name: 'T3-string-id', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 4, name: 'T4-in-loop', parentLoopId: 'loop_1', branches: [] },
     ],
     loops: [
-      { id: 'loop_1', name: 'L1', trials: [4], branches: [2] },
-      { id: 'loop_2', name: 'L2', trials: [], branches: [GHOST] },
+      { nextItemId: null, entryItemId: 4, id: 'loop_1', name: 'L1', trials: [4] },
+      { nextItemId: null, entryItemId: null, id: 'loop_2', name: 'L2', trials: [] },
     ],
     timeline: [
       { id: 1, type: 'trial', name: 'T1', branches: [2] },
       { id: 2, type: 'trial', name: 'T2', branches: [] },
       { id: '3', type: 'trial', name: 'T3-string-id', branches: [] },
-      { id: 'loop_1', type: 'loop', name: 'L1', branches: [2], trials: [4] },
-      { id: 'loop_2', type: 'loop', name: 'L2', branches: [GHOST], trials: [] },
+      { id: 'loop_1', type: 'loop', name: 'L1', trials: [4] },
+      { id: 'loop_2', type: 'loop', name: 'L2', trials: [] },
     ],
   })
   await db.write()
@@ -133,24 +133,12 @@ describe('PATCH /api/trial/:experimentID/:id', () => {
       .expect(200)
   })
 
-  test('filters ghost branches and condition targets', async () => {
-    const { app, db } = await freshApp()
-    await seedMatrix(db)
-    const res = await request(app)
-      .patch('/api/trial/E1/1')
-      .send({
-        branches: [2, GHOST],
-        branchConditions: [
-          { id: 'c1', rules: [], nextTrialId: 2 },
-          { id: 'c2', rules: [], nextTrialId: GHOST },
-        ],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: GHOST }],
-      })
-      .expect(200)
-    expect(res.body.trial.branches).toEqual([2])
-    expect(res.body.trial.branchConditions.map((c) => c.id)).toEqual(['c1'])
-    expect(res.body.trial.repeatConditions).toEqual([])
-  })
+  test('rejects a missing destination before changing the experiment', async () => {
+ const { app, db } = await freshApp(); await seedMatrix(db);
+ const before = JSON.stringify(db.data);
+ await request(app).patch('/api/trial/E1/1').send({ branches: [2, GHOST] }).expect(400);
+ await db.read(); expect(JSON.stringify(db.data)).toBe(before);
+})
 
   test('finds trials stored with string ids', async () => {
     const { app, db } = await freshApp()
@@ -191,20 +179,18 @@ describe('PATCH /api/loop/:experimentID/:id', () => {
     expect(db.data.trials[0].loops.find((l) => l.id === 'loop_2').parentLoopId).toBe('loop_1')
   })
 
-  test('ignores ghost member ids and filters ghost branches/conditions', async () => {
+  test('ignores ghost member ids without adding loop branching', async () => {
     const { app, db } = await freshApp()
     await seedMatrix(db)
     const res = await request(app)
       .patch('/api/loop/E1/loop_1')
       .send({
         trials: [4, GHOST],
-        branches: [2, GHOST],
-        branchConditions: [{ id: 'c1', rules: [], nextTrialId: GHOST }],
       })
       .expect(200)
     expect(res.body.loop.trials).toEqual([4])
-    expect(res.body.loop.branches).toEqual([2])
-    expect(res.body.loop.branchConditions).toEqual([])
+    expect(res.body.loop).not.toHaveProperty('branches')
+    expect(res.body.loop).not.toHaveProperty('branchConditions')
   })
 })
 
@@ -228,7 +214,6 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
       .patch('/api/trial/E1/1')
       .send({
         branchConditions: [{ id: 'c1', rules: [], nextTrialId: 2 }],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: 2 }],
       })
       .expect(200)
     const res = await request(app).delete('/api/trial/E1/2').expect(200)
@@ -236,7 +221,6 @@ describe('DELETE /api/trial/:experimentID/:id', () => {
     await db.read()
     const doc = db.data.trials[0]
     expect(doc.trials.find((t) => t.id === 1).branchConditions).toEqual([])
-    expect(doc.trials.find((t) => t.id === 1).repeatConditions).toEqual([])
     expect(
       res.body.graph.diagnostics.map((d) => d.code),
     ).not.toContain('BRANCH_TARGET_NOT_FOUND')

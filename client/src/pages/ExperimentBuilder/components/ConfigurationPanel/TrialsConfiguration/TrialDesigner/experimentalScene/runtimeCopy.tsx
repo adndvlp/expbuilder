@@ -4,7 +4,7 @@ import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
 import imagePlaceholder from "../../../../../../../assets/image.png";
-import type { CanvasStyles, TrialComponent } from "../types";
+import type { PreviewViewport, TrialComponent } from "../types";
 import {
   isImageUrl,
   normalizePreviewChoices,
@@ -37,7 +37,7 @@ type AssetResolver = (value: string) => string;
 
 function resolveComponentConfig(
   component: TrialComponent,
-  canvasStyles: CanvasStyles,
+  previewViewport: PreviewViewport,
   resolveAsset: AssetResolver,
 ) {
   const config: Record<string, any> = {};
@@ -52,8 +52,18 @@ function resolveComponentConfig(
   config.coordinates = { x: 0, y: 0 };
   config.zIndex = 0;
   config.rotation = 0;
-  config.__canvasStyles = canvasStyles;
-  config.__canvas_width = canvasStyles.width;
+  config.__canvas_width = previewViewport.width;
+  for (const [field, pixelParam, relativeParam] of [
+    ["textFontSize", "font_size", "_font_size_runtime_vw"],
+    ["buttonFontSize", "button_font_size", "_button_font_size_runtime_vw"],
+    ["inputFontSize", "input_font_size", "_input_font_size_runtime_vw"],
+  ] as const) {
+    const size = component[field];
+    if (size != null) {
+      config[pixelParam] = size;
+      config[relativeParam] = (size / previewViewport.width) * 100;
+    }
+  }
 
   const exportsBoxSize =
     component.type !== "SurveyComponent" &&
@@ -61,10 +71,10 @@ function resolveComponentConfig(
     component.type !== "FileUploadResponseComponent";
 
   if (exportsBoxSize && component.width > 0 && config.width == null) {
-    config.width = (component.width / canvasStyles.width) * 100;
+    config.width = (component.width / previewViewport.width) * 100;
   }
   if (exportsBoxSize && component.height > 0 && config.height == null) {
-    config.height = (component.height / canvasStyles.width) * 100;
+    config.height = (component.height / previewViewport.width) * 100;
   }
 
   if (component.type === "InputResponseComponent") {
@@ -73,17 +83,17 @@ function resolveComponentConfig(
     );
     const width = component.inputWidth ?? 10 * fontSize * 0.55;
     const height = component.inputHeight ?? fontSize * 1.5;
-    config.width = (width / canvasStyles.width) * 100;
-    config.height = (height / canvasStyles.width) * 100;
+    config.width = (width / previewViewport.width) * 100;
+    config.height = (height / previewViewport.width) * 100;
   }
 
   config.__preview_width =
     config.width != null
-      ? (Number(config.width) / 100) * canvasStyles.width
+      ? (Number(config.width) / 100) * previewViewport.width
       : undefined;
   config.__preview_height =
     config.height != null
-      ? (Number(config.height) / 100) * canvasStyles.width
+      ? (Number(config.height) / 100) * previewViewport.width
       : undefined;
 
   if (component.type === "ImageComponent") {
@@ -133,7 +143,7 @@ function resolveEditorViewportLength(value: any, canvasWidth: number) {
 function renderPreviewSurveyComponent(
   container: HTMLElement,
   config: any,
-  canvasStyles: CanvasStyles,
+  previewViewport: PreviewViewport,
 ): RuntimeCopy {
   const surveyJson =
     config.survey_json && typeof config.survey_json === "object"
@@ -184,7 +194,7 @@ function renderPreviewSurveyComponent(
       ...config,
       min_width: resolveEditorViewportLength(
         config.min_width,
-        canvasStyles.width,
+        previewViewport.width,
       ),
     },
     { coordinateMode: "none" },
@@ -208,14 +218,14 @@ function renderPreviewSurveyComponent(
 export function renderRuntimeCopy(
   container: HTMLElement,
   component: TrialComponent,
-  canvasStyles: CanvasStyles,
+  previewViewport: PreviewViewport,
   resolveAsset: AssetResolver = (value) => value,
 ): RuntimeCopy {
-  const config = resolveComponentConfig(component, canvasStyles, resolveAsset);
-  const context: RenderContext = { coordinateMode: "none", canvasStyles };
+  const config = resolveComponentConfig(component, previewViewport, resolveAsset);
+  const context: RenderContext = { coordinateMode: "none", previewViewport };
 
   if (component.type === "SurveyComponent") {
-    return renderPreviewSurveyComponent(container, config, canvasStyles);
+    return renderPreviewSurveyComponent(container, config, previewViewport);
   }
 
   if (component.type === "SketchpadComponent") {

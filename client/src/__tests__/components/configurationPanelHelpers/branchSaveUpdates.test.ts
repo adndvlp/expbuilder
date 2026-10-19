@@ -16,8 +16,8 @@ describe("buildBranchingSaveUpdates", () => {
     });
 
     expect(updates).toEqual({
+      branches: [2, 3],
       branchConditions: [],
-      repeatConditions: [],
     });
   });
 
@@ -36,6 +36,7 @@ describe("buildBranchingSaveUpdates", () => {
     });
 
     expect(updates).toEqual({
+      branches: [2, 3],
       branchConditions: [
         {
           id: 1,
@@ -44,35 +45,33 @@ describe("buildBranchingSaveUpdates", () => {
           customParameters: {},
         },
       ],
-      repeatConditions: [],
     });
   });
 
-  it("adds a new downstream branch target without removing existing branches", () => {
+  it("adds a new trial destination without removing existing branches", () => {
     const updates = buildBranchingSaveUpdates({
       conditions: [
         {
           id: 1,
-          nextTrialId: "loop_1",
+          nextTrialId: "earlier-trial",
           rules: [{ column: "response", op: "==", value: "go" }],
           customParameters: {},
         },
       ],
       existingBranches: [2, 3],
-      isBranchTarget: (trialId) => trialId === "loop_1",
+      isBranchTarget: (trialId) => trialId === "earlier-trial",
     });
 
     expect(updates).toEqual({
-      branches: [2, 3, "loop_1"],
+      branches: [2, 3, "earlier-trial"],
       branchConditions: [
         {
           id: 1,
-          nextTrialId: "loop_1",
+          nextTrialId: "earlier-trial",
           rules: [{ column: "response", op: "==", value: "go" }],
           customParameters: {},
         },
       ],
-      repeatConditions: [],
     });
   });
 });

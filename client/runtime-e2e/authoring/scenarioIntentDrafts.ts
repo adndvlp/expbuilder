@@ -31,12 +31,6 @@ export type BranchConditionIntent = Omit<
   nextTrialAlias: string;
 };
 
-export type RepeatConditionIntent = {
-  id: number;
-  rules: BranchRuleIntent[];
-  jumpToTrialAlias: string;
-};
-
 type ParamsOverrideRuleIntent = Omit<ParamsOverrideRule, "trialId"> & {
   trialAlias: string;
 };
@@ -68,7 +62,7 @@ const conditionRuleFields = [
 ] as const;
 
 export function buildBranchingDraft(
-  intents: Array<BranchConditionIntent | RepeatConditionIntent>,
+  intents: BranchConditionIntent[],
   resolveAlias: AliasResolver,
 ): Condition[] {
   let conditions: Condition[] = [];
@@ -89,9 +83,7 @@ export function buildBranchingDraft(
         }
       });
     });
-    const targetAlias = "nextTrialAlias" in intent
-      ? intent.nextTrialAlias
-      : intent.jumpToTrialAlias;
+    const targetAlias = intent.nextTrialAlias;
     conditions = selectBranchingTarget(
       conditions,
       intent.id,

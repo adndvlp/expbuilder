@@ -25,9 +25,9 @@ const freshApp = async () => {
 describe('validate-connection findItemById string id', () => {
   test('resolves string trial id to number and finds in trials', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [2] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [2] }],
       loops: [],
       timeline: [],
     })
@@ -39,14 +39,14 @@ describe('validate-connection findItemById string id', () => {
     expect(res.body.isValid).toBeDefined()
   })
 
-  test('resolves loop string id to loop without parseInt', async () => {
+  test('rejects loop string ids as connection endpoints', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
-        { id: 'loop_2', name: 'L2', branches: ['loop_1'] },
+        { nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', },
+        { nextItemId: null, entryItemId: null, id: 'loop_2', name: 'L2' },
       ],
       timeline: [],
     })
@@ -54,7 +54,7 @@ describe('validate-connection findItemById string id', () => {
     const res = await request(app)
       .get('/api/validate-connection/E1?source=loop_1&target=loop_2')
       .expect(200)
-    expect(res.body.isValid).toBeDefined()
+    expect(res.body.isValid).toBe(false)
   })
 })
 
@@ -62,10 +62,10 @@ describe('validate-connection findItemById string id', () => {
 describe('validate-connection isAncestor visited guard', () => {
   test('detects self-connection via isAncestor', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [1] }, // self-referencing
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [1] }, // self-referencing
       ],
       loops: [],
       timeline: [],
@@ -84,11 +84,11 @@ describe('validate-connection isAncestor visited guard', () => {
 describe('validate-connection item without branches field', () => {
   test('returns true when target exists but has no branches', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1' }, // no branches field
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, name: 'T1' }, // no branches field
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
       loops: [],
       timeline: [],
@@ -103,38 +103,33 @@ describe('validate-connection item without branches field', () => {
 
 /* ── index.js lines 289-290: recursive branch traversal ────────────────── */
 describe('validate-connection recursive isAncestor traversal', () => {
-  test('detects transitive ancestor via recursion through loops', async () => {
+  test('rejects a connection between loops', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [99] },
-        { id: 'loop_99', name: 'L99', branches: [1] },
+        { nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', branches: [99] },
+        { nextItemId: null, entryItemId: null, id: 'loop_99', name: 'L99', branches: [1] },
       ],
       timeline: [],
     })
     await db.write()
-    // isAncestor(target, source): isAncestor(loop_1, loop_99)
-    // source=loop_99, target=loop_1
-    // L99.branches=[1], check L99 for loop_1? No. L99.branches has 1 (a number).
-    // We need target.branches to contain source. 
-    // Let me use trial+loop: T1.branches=['loop_1'], loop_1.branches=['loop_2'], loop_2.branches=[]
     const res = await request(app)
       .get('/api/validate-connection/E1?source=loop_99&target=loop_1')
       .expect(200)
-    expect(res.body.isValid).toBe(true)
+    expect(res.body.isValid).toBe(false)
   })
 
-  test('allows redundant recursive connection when source already reaches target', async () => {
+  test('rejects a trial connection whose target is a loop', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: ['loop_1'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: ['loop_1'] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
+        { nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', },
       ],
       timeline: [],
     })
@@ -142,18 +137,18 @@ describe('validate-connection recursive isAncestor traversal', () => {
     const res = await request(app)
       .get('/api/validate-connection/E1?source=1&target=loop_1')
       .expect(200)
-    expect(res.body.isValid).toBe(true)
+    expect(res.body.isValid).toBe(false)
   })
 
   test('detects recursive cycle in validate-connection', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: ['loop_1'] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: ['loop_1'] },
       ],
       loops: [
-        { id: 'loop_1', name: 'L1', branches: [] },
+        { nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', },
       ],
       timeline: [],
     })
@@ -169,7 +164,7 @@ describe('validate-connection recursive isAncestor traversal', () => {
 describe('loop-trials-metadata error handler', () => {
   test('returns 500 on error', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     await db.write()
     const origRead = db.read
     db.read = async () => { throw new Error('mock') }
@@ -182,7 +177,7 @@ describe('loop-trials-metadata error handler', () => {
 describe('GET loop error handler', () => {
   test('returns 500 on error', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [{ id: 'loop_1', name: 'L1', trials: [] }], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [{ nextItemId: null, entryItemId: null, id: 'loop_1', name: 'L1', trials: [] }], timeline: [] })
     await db.write()
     const origRead = db.read
     db.read = async () => { throw new Error('mock') }
@@ -194,9 +189,9 @@ describe('GET loop error handler', () => {
 describe('DELETE trial timeline map default', () => {
   test('handles unknown item type in timeline map', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1', branches: [] }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [] }],
       loops: [],
       timeline: [
         { id: 1, type: 'trial', name: 'T1' },

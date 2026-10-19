@@ -29,7 +29,9 @@ describe("Canvas nodes", () => {
 
     expect(onAddBranch).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalledTimes(1);
-    expect(container.querySelector(".trial-node__add-branch-btn")).toBeInTheDocument();
+    expect(
+      container.querySelector(".trial-node__add-branch-btn"),
+    ).toBeInTheDocument();
   });
 
   it("hides the trial branch action when the node is not selected", () => {
@@ -44,11 +46,13 @@ describe("Canvas nodes", () => {
       />,
     );
 
-    expect(screen.getByText("Filler trial")).not.toHaveClass("trial-node--selected");
+    expect(screen.getByText("Filler trial")).not.toHaveClass(
+      "trial-node--selected",
+    );
     expect(screen.queryByTitle("Add branch")).not.toBeInTheDocument();
   });
 
-  it("renders loop actions and stops open/branch buttons from selecting the loop", () => {
+  it("renders loop open actions without exposing branching", () => {
     const onClick = vi.fn();
     const onAddBranch = vi.fn();
     const onOpenLoop = vi.fn();
@@ -74,10 +78,10 @@ describe("Canvas nodes", () => {
     const expandButton = screen.getByTitle("Expand loop");
     expect(expandButton).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(expandButton);
-    fireEvent.click(screen.getByTitle("Add branch"));
+    expect(screen.queryByTitle("Add branch")).not.toBeInTheDocument();
 
     expect(onOpenLoop).toHaveBeenCalledTimes(1);
-    expect(onAddBranch).toHaveBeenCalledTimes(1);
+    expect(onAddBranch).not.toHaveBeenCalled();
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 

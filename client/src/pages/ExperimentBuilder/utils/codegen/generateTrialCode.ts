@@ -1,5 +1,5 @@
 import { useTrialCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/useTrialCode";
-import { generateConditionalFunctionCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/conditionalFunctionGenerator";
+import { generateOnFinishCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
 import { Trial } from "../../components/ConfigurationPanel/types";
 import { generateExtensionCode } from "../generateExtensionCode";
 import { resolveColumnValue } from "./columnValues";
@@ -74,11 +74,27 @@ export async function generateTrialCode(
           trial_name: ${JSON.stringify(fullTrial.name)},
           ${isInLoop ? "isInLoop: true," : ""}
           branches: ${JSON.stringify(branches)},
+          defaultNextTrialId: ${JSON.stringify(fullTrial.defaultNextTrialId)},
           branchConditions: ${JSON.stringify(branchConditions)}
         }
       );
     }
 
+    if (${trialName}_webgazer_completion) {
+      const previousFinish = ${trialName}_webgazer_completion.on_finish;
+      const navigate = ({${generateOnFinishCode({
+        branches,
+        branchConditions,
+        defaultNextTrialId: fullTrial.defaultNextTrialId,
+        customOnFinish: fullTrial.customOnFinish,
+        isMergePoint: isMergePointInScope,
+        getVarName: (name) => name,
+      })}}).on_finish;
+      ${trialName}_webgazer_completion.on_finish = async function(data) {
+        await previousFinish?.(data);
+        navigate(data);
+      };
+    }
     const ${trialName}_timeline = {
       timeline: ${itemsName}
     };
@@ -88,12 +104,13 @@ export async function generateTrialCode(
         code += `
     const ${trialName}_procedure = {
       timeline: [${trialName}_timeline],
-      ${generateConditionalFunctionCode(fullTrial.id)}
+
     };
     timeline.push(${trialName}_procedure);
   `;
       }
 
+      code += `\nwindow.ExpBuilderNavigation?.registerTrial(${JSON.stringify(fullTrial.id)}, ${trialName}_${isInLoop ? "timeline" : "procedure"});`;
       return {
         code,
         mappedJson: fullTrial.csvJson || [],
@@ -141,7 +158,7 @@ export async function generateTrialCode(
       id: fullTrial.id,
       branches: fullTrial.branches,
       branchConditions: fullTrial.branchConditions,
-      repeatConditions: fullTrial.repeatConditions,
+      defaultNextTrialId: fullTrial.defaultNextTrialId,
       paramsOverride: fullTrial.paramsOverride,
       pluginName: fullTrial.plugin,
       parameters,

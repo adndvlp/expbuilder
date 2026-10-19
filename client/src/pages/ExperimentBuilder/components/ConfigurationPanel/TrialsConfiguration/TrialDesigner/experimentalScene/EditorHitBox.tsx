@@ -12,7 +12,7 @@ function numberOr(value: any, fallback: number): number {
 
 export default function EditorHitBox({
   shapeProps,
-  canvasStyles,
+  previewViewport,
   isSelected,
   onSelect,
   onChange,
@@ -28,7 +28,7 @@ export default function EditorHitBox({
   const dragFrameRef = useRef<number | null>(null);
   const node = getHtmlSceneNode(
     shapeProps,
-    canvasStyles,
+    previewViewport,
     metric ? { [shapeProps.id]: metric } : undefined,
   );
 
@@ -221,6 +221,7 @@ export default function EditorHitBox({
         ? update.height
         : Math.max(20, node.height * scaleY);
     const snapped = snapKonvaNode({
+      interaction: "transform",
       node: group,
       id: shapeProps.id,
       width: snapWidth,
@@ -238,6 +239,8 @@ export default function EditorHitBox({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}

@@ -1,5 +1,5 @@
 import { UploadedFile } from "./useExperimentCode";
-import { CanvasStyles } from "../../ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { ExperimentAppearance } from "../../../appearance";
 import type {
   GetLoopFn,
   GetLoopTimelineFn,
@@ -19,7 +19,7 @@ type Props = {
   getTrial: GetTrialFn;
   getLoopTimeline: GetLoopTimelineFn;
   getLoop: GetLoopFn;
-  canvasStyles?: CanvasStyles;
+  appearance?: ExperimentAppearance;
 };
 
 export default function ExperimentBase({
@@ -28,7 +28,7 @@ export default function ExperimentBase({
   getTrial,
   getLoopTimeline,
   getLoop,
-  canvasStyles,
+  appearance,
 }: Props) {
   const generatedBaseCode = async () => {
     try {
@@ -38,12 +38,12 @@ export default function ExperimentBase({
         getTrial,
         getLoopTimeline,
         getLoop,
-        canvasStyles,
+        appearance,
         apiBaseUrl: API_URL,
       });
     } catch (error) {
       console.error("Error generating codes:", error);
-      return renderExperimentBaseCode([], uploadedFiles, canvasStyles);
+      return renderExperimentBaseCode([], uploadedFiles, appearance);
     }
   };
   return { generatedBaseCode };

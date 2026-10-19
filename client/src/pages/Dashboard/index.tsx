@@ -27,12 +27,9 @@ function Dashboard() {
       .then((data) => setExperiments(data.experiments || []));
   };
 
-  // Load experiments on mount + listen for chat changes
+  // Load experiments on mount.
   useEffect(() => {
     loadExperiments();
-    const handler = () => loadExperiments();
-    window.addEventListener("experiment-data-changed", handler);
-    return () => window.removeEventListener("experiment-data-changed", handler);
   }, []);
 
   // Create experiment

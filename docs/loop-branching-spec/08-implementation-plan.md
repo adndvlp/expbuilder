@@ -1,5 +1,7 @@
 # 08 — Plan de implementación e impacto
 
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
 ## Estado del plan
 
 Es un plan de trabajo condicionado a las respuestas de [06A](./06-pending-decisions.md) y [06B](./06b-pending-decisions.md). Los nombres de módulos son candidatos de separación por dominio, no autorización para escribirlos todavía.
@@ -36,7 +38,7 @@ Primero congelar comportamiento legacy relevante:
 - metadata legacy;
 - layout expand/collapse y colores;
 - condition classification;
-- generated flags, resume fallback y jump actual;
+- generated flags, resume fallback y branching actual;
 - group/move/delete y CSV.
 
 Estas pruebas separan regresión accidental de cambios intencionales aprobados.
@@ -77,7 +79,6 @@ Impacto confirmado:
 - `server/routes/timeline/loops/state.js`
 - `server/routes/timeline/trials/crud.js`
 - `server/routes/timeline/loops/create|update|delete.js`
-- `server/agent/tools/create/{trials,loop-create,loop-update,loop-delete}.js`
 - validation routes o un nuevo módulo de dominio
 - LowDB experiment schema/import/export
 - pruebas `server/__tests__/routes/`
@@ -91,7 +92,6 @@ Trabajo:
 5. validar conditions y mutations;
 6. añadir schema version/compat reader;
 7. mantener endpoints legacy hasta completar migración.
-8. hacer que las tools del agente deleguen en los mismos commands o rechacen operaciones no soportadas sin mutar.
 
 Gate: todos los contratos `TA-*` y la regresión server pasan.
 
@@ -177,7 +177,7 @@ Gate: TL-01 a TL-13 y regresiones de color/circuit pasan.
 Antes de integrar con codegen:
 
 - crear harness del bundle incluido;
-- comparar estrategias A/B/C de [05](./05-runtime-codegen-resume-jump.md);
+- comparar estrategias A/B/C de [05](./05-native-runtime-and-resume.md);
 - registrar orden de callbacks y repetitions;
 - elegir con ADR y aprobación.
 
@@ -200,15 +200,12 @@ Refactors afectados:
 - `useLoopCode/BranchingLogicCode.ts`
 - `BranchesCode.ts`
 - `generateItemWrappers.ts`
-- `server/agent/codegen.js`
-- `server/agent/codegen/{trial,loop,helpers}.js`
-- `server/agent/tools/create/build.js`
 
 Debe retirarse el `branches[0]` hardcoded para conditions y la propagación limitada al parent inmediato en todos los entrypoints productivos. No se acepta mantener dos routers con semántica copiada.
 
 Gate: todos los casos `TG-*` y `TR-*` pasan.
 
-## Fase 8 — Resume y jump addressable
+## Fase 8 — Resume y branching addressable
 
 Impacto confirmado:
 
@@ -223,12 +220,12 @@ Impacto confirmado:
 Trabajo:
 
 - checkpoint versionado con next address/route;
-- jump request versionada con enter path;
+- branching request versionada con enter path;
 - resolver único para local/public;
 - progress-aware anti-loop guard;
 - compatibility reader/cleanup para keys legacy;
 - exact state según DEC-20;
-- UI de jump según DEC-21.
+- UI de branching según DEC-21.
 
 Gate: TRES-01 a TRES-10 y TJ-01 a TJ-08 pasan.
 
@@ -267,12 +264,11 @@ Gate: TM-01 a TM-08 y COMP-01 a COMP-05 pasan sobre fixtures legacy y nuevos.
 | Resume salta contenedor nested | crítica | execution address con enter path |
 | Partial writes crean huérfanos | alta | comando idempotente atómico |
 | Grouping absorbe exit targets | alta | containment-aware traversal |
-| Conditions cambian a jump | alta | clasificación por semantic edge |
+| Conditions cambian a branching | alta | clasificación por semantic edge |
 | Root target aparece secuencial | alta | projected incoming edge/read model |
 | Legacy se reinterpreta | alta | versioning + no heuristic migration |
 | Expand/collapse cambia edge identity | media | stable semantic/projection IDs |
 | Refactor rompe branch colors/circuits | media | characterization + E2E existentes |
-| Codegens cliente/agente divergen | crítica | IR compartido + pruebas de traza |
 
 ## Rollout y rollback
 
@@ -284,7 +280,7 @@ Sujeto a aprobación de producto:
 - no borrar campos legacy en el primer rollout;
 - publicación rechaza grafos nuevos si el compiler version no los soporta;
 - rollback desactiva writes pero conserva lectura/diagnóstico de datos ya creados;
-- métricas de `GRAPH_INVALID`, `ROUTE_UNRESOLVED`, resume/jump no consumido y conflictos.
+- métricas de `GRAPH_INVALID`, `ROUTE_UNRESOLVED`, resume/branching no consumido y conflictos.
 
 ## Artefactos de cierre
 
@@ -297,3 +293,6 @@ Sujeto a aprobación de producto:
 - guía de migración/rollback;
 - documentación técnica e in-app aprobada;
 - resumen de archivos/cambios y comandos ejecutados.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

@@ -1,26 +1,31 @@
 import { expect, test } from "../fixtures/test.fixture";
 import { expectPathAvoidsNodes } from "../helpers/layoutAssertions";
+import { fulfillGraph } from "../helpers/loopBranchGraph";
+import type {
+  ExperimentGraphSnapshot,
+  TimelineItem,
+} from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 
-const rootTimeline = [
+const rootTimeline: TimelineItem[] = [
   { id: "before", type: "trial", name: "Before" },
   {
     id: "loop-1",
     type: "loop",
     name: "Loop 1",
-    trials: ["split"],
+    trials: ["split", "left", "nested-loop"],
   },
   { id: "after", type: "trial", name: "After" },
 ];
 
-const loopTimeline = [
+const loopTimeline: TimelineItem[] = [
   {
     id: "split",
     type: "trial",
     name: "New Trial 3",
-    branches: ["left", "nested-loop"],
+    branches: ["left", "nested-item"],
   },
   { id: "left", type: "trial", name: "New Trial 4" },
   {
@@ -31,7 +36,7 @@ const loopTimeline = [
   },
 ];
 
-const graphSnapshot = {
+const graphSnapshot: ExperimentGraphSnapshot = {
   revision: "multi-exit-layout-regression",
   root: { scopeId: null, parentScopeId: null, items: rootTimeline },
   scopes: {
@@ -39,6 +44,11 @@ const graphSnapshot = {
       scopeId: "loop-1",
       parentScopeId: null,
       items: loopTimeline,
+    },
+    "nested-loop": {
+      scopeId: "nested-loop",
+      parentScopeId: "loop-1",
+      items: [{ id: "nested-item", type: "trial", name: "Nested item" }],
     },
   },
   edges: [
@@ -51,9 +61,9 @@ const graphSnapshot = {
     },
     {
       sourceId: "split",
-      targetId: "nested-loop",
+      targetId: "nested-item",
       sourceOwnerId: "loop-1",
-      targetOwnerId: "loop-1",
+      targetOwnerId: "nested-loop",
       exitedLoopIds: [],
     },
   ],
@@ -67,11 +77,7 @@ test("routes the parent circuit through a terminal trial and nested loop branch"
   page,
 }) => {
   await page.route("**/api/experiment-graph/exp-multi-exit", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ graph: graphSnapshot }),
-    }),
+    route.fulfill(fulfillGraph(graphSnapshot)),
   );
   await page.route("**/api/trials-metadata/exp-multi-exit", (route) =>
     route.fulfill({
@@ -114,6 +120,8 @@ test("routes the parent circuit through a terminal trial and nested loop branch"
     );
 
   const circuit = path("loop-return", markerId, markerId);
+  await expect(path("flow", splitId, leftId)).toHaveCount(1);
+  await expect(path("flow", splitId, rightId)).toHaveCount(1);
   await expect(circuit).toHaveCount(1);
   await expect(path("loop-control", markerId, leftId)).toHaveCount(0);
   await expect(path("loop-return", leftId, splitId)).toHaveCount(0);

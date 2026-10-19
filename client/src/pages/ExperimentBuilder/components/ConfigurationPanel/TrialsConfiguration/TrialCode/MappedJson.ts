@@ -122,17 +122,15 @@ export default function MappedJson({
           "response_ends_trial",
           "require_response_components",
           "dynamic_csv_diagnostics",
-          "__canvasStyles",
         ];
 
         additionalDynamicParams.forEach((paramKey) => {
           const paramMapping = columnMapping[paramKey];
+          const prefixedKey = isInLoop
+            ? `${paramKey}_${trialNameSanitized}`
+            : paramKey;
           // Solo agregar si existe mapping Y no es source='none'
           if (paramMapping && paramMapping.source !== "none") {
-            const prefixedKey = isInLoop
-              ? `${paramKey}_${trialNameSanitized}`
-              : paramKey;
-
             // Si hay CSV pero el mapping es typed, usar directamente el valor typed
             if (row && paramMapping.source === "typed") {
               result[prefixedKey] = paramMapping.value;

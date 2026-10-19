@@ -135,6 +135,8 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -183,6 +185,7 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
           const nextWidth = Math.max(50, effectiveWidth * scaleX);
           const nextHeight = Math.max(20, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

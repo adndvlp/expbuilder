@@ -1,5 +1,5 @@
 import {
-  canvasStyles,
+  previewViewport,
   describe,
   expect,
   getConfigValue,
@@ -143,7 +143,7 @@ describe("getTextNaturalSize", () => {
       },
     };
 
-    const model = getTextComponentModel(component, canvasStyles.width);
+    const model = getTextComponentModel(component, previewViewport.width);
 
     expect(model.effectiveHeight).toBeGreaterThan(component.height);
     expect(model.drawHeight).toBe(model.effectiveHeight);
@@ -164,7 +164,7 @@ describe("getTextNaturalSize", () => {
       },
     };
 
-    const model = getTextComponentModel(component, canvasStyles.width);
+    const model = getTextComponentModel(component, previewViewport.width);
 
     expect(model.effectiveWidth).toBeGreaterThanOrEqual(200);
     expect(model.effectiveHeight).toBeGreaterThanOrEqual(40);

@@ -28,10 +28,7 @@ export class ArtifactBuildError extends Error {
   }
 }
 
-function mapRequestError(
-  error: unknown,
-  stage: ArtifactBuildStage,
-): never {
+function mapRequestError(error: unknown, stage: ArtifactBuildStage): never {
   if (!(error instanceof AuthoringRequestError)) throw error;
   const suffix = stage === "building" ? " when running experiment" : "";
   throw new ArtifactBuildError(
@@ -48,7 +45,6 @@ export async function buildExperimentArtifact(options: {
   fetchImpl?: FetchLike;
   saveConfiguration?: boolean;
   isDevMode?: boolean;
-  canvasStyles?: unknown;
   onStage?: (stage: ArtifactBuildStage) => void;
 }): Promise<ExperimentArtifactResult> {
   if (!options.experimentId) throw new Error("Experiment ID is required");
@@ -95,7 +91,6 @@ export async function buildExperimentArtifact(options: {
       `/api/run-experiment/${options.experimentId}`,
       requestOptions({
         generatedCode: options.generatedCode,
-        canvasStyles: options.canvasStyles,
       }),
     );
   } catch (error) {

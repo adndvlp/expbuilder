@@ -2,7 +2,7 @@ import { render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ExperimentalHtmlSceneLayer from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/experimentalScene/ExperimentalHtmlSceneLayer";
 import type {
-  CanvasStyles,
+  PreviewViewport,
   TrialComponent,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
 
@@ -94,11 +94,9 @@ vi.mock("../../../pages/ExperimentBuilder/hooks/usePlugins", () => ({
   default: () => ({ plugins: mocks.plugins }),
 }));
 
-vi.mock("../../../pages/ExperimentBuilder/hooks/useCanvasStyles", () => ({
+vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentAppearance", () => ({
   default: () => ({
-    canvasStyles: {
-      width: 1024,
-      height: 768,
+    appearance: {
       backgroundColor: "#ffffff",
       fullScreen: true,
       progressBar: true,
@@ -110,12 +108,9 @@ vi.mock("../../../pages/ExperimentBuilder/hooks/useExperimentID", () => ({
   useExperimentID: () => "exp-1",
 }));
 
-const canvasStyles: CanvasStyles = {
+const previewViewport: PreviewViewport = {
   width: 640,
   height: 480,
-  backgroundColor: "#ffffff",
-  fullScreen: true,
-  progressBar: false,
 };
 
 function trialComponent(
@@ -174,7 +169,7 @@ describe("ExperimentalHtmlSceneLayer", () => {
             },
           }),
         ]}
-        canvasStyles={canvasStyles}
+        previewViewport={previewViewport}
         stageScale={1}
         metrics={{}}
         onMetricsChange={vi.fn()}
@@ -235,7 +230,7 @@ describe("ExperimentalHtmlSceneLayer", () => {
     const { container, unmount } = render(
       <ExperimentalHtmlSceneLayer
         components={components}
-        canvasStyles={canvasStyles}
+        previewViewport={previewViewport}
         stageScale={1}
         metrics={{ "video-relative": { width: 111, height: 22 } }}
         uploadedFiles={[

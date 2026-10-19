@@ -12,7 +12,6 @@ interface Window {
   JSPSYCH_SESSION_ID?: string;
   JSPSYCH_FILE_UPLOAD_ENDPOINT?: string;
   JSPSYCH_EXPERIMENT_ID?: string;
-  JSPSYCH_LOCAL_KEYS?: { jumpTrial: string; [key: string]: string };
 }
 
 declare function _showLoading(message?: string): void;
@@ -43,8 +42,6 @@ declare function _emitPresence(eventName: string, payload: Record<string, unknow
 declare function _resolveResumeBranch(resumeRaw: string | null): string | null;
 
 declare const resumeRaw: string | null;
-declare const existingJump: string | null;
-declare const comingFromJumpReload: boolean;
 declare function evaluateCondition(trialData: unknown, condition: unknown): boolean;
 declare function getNextTrialId(lastTrialData: unknown): string | null;
 `;

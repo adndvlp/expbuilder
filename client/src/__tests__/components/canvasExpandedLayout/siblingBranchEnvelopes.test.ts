@@ -16,14 +16,10 @@ const trial = (
   branches: LayoutItemId[] = [],
 ): LayoutTimelineItem => ({ id, type: "trial", name: String(id), branches });
 
-const loop = (
-  id: LayoutItemId,
-  branches: LayoutItemId[] = [],
-): LayoutTimelineItem => ({
+const loop = (id: LayoutItemId): LayoutTimelineItem => ({
   id,
   type: "loop",
   name: String(id),
-  branches,
 });
 
 const edge = (
@@ -42,7 +38,7 @@ const edge = (
 
 const rootTimeline = [
   trial("start", ["left", "right"]),
-  trial("left", ["outer"]),
+  trial("left", ["outer-source"]),
   trial("right", ["right-a", "right-b"]),
   trial("right-a", ["right-tail"]),
   trial("right-tail"),
@@ -60,7 +56,7 @@ const outerScope: ExpandedLoopScope = {
     trial("outer-source", [
       "outer-left",
       "outer-exit",
-      "nested",
+      "nested-source",
       "outer-right",
     ]),
     trial("outer-left"),
@@ -82,13 +78,13 @@ const nestedScope: ExpandedLoopScope = {
 const branchEdges = [
   edge("start", "left", null, null),
   edge("start", "right", null, null),
-  edge("left", "outer", null, null),
+  edge("left", "outer-source", null, "outer"),
   edge("right", "right-a", null, null),
   edge("right", "right-b", null, null),
   edge("right-a", "right-tail", null, null),
   edge("outer-source", "outer-left", "outer", "outer"),
   edge("outer-source", "outer-exit", "outer", null, ["outer"]),
-  edge("outer-source", "nested", "outer", "outer"),
+  edge("outer-source", "nested-source", "outer", "nested"),
   edge("outer-source", "outer-right", "outer", "outer"),
   edge("nested-source", "nested-left", "nested", "nested"),
   edge("nested-source", "nested-exit", "nested", null, ["nested", "outer"]),

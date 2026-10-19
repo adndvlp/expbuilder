@@ -13,7 +13,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
     trialsState.timeline = [
       selectedTrial(),
       { id: "target-a", name: "Target A", type: "trial" },
-      { id: "jump-a", name: "Jump A", type: "trial" },
+      { id: "branch-a", name: "branch A", type: "trial" },
     ];
     trialsState.loopTimeline = [];
     const setConditions = vi.fn();
@@ -37,7 +37,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
         onAutoSave={onAutoSave}
         getAvailableTrials={() => [
           { id: "target-a", name: "Target A" },
-          { id: "jump-a", name: "Jump A" },
+          { id: "branch-a", name: "branch A" },
         ]}
       />,
     );
@@ -59,7 +59,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
     expect(onAutoSave).toHaveBeenCalledWith(expect.any(Array));
   });
 
-  it("passes branch and jump targets to ConditionsList and wires save helpers", async () => {
+  it("passes branch and branch targets to ConditionsList and wires save helpers", async () => {
     vi.useFakeTimers();
     vi.doMock(
       "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/BranchedTrial/BranchConditions/ConditionsList",
@@ -70,23 +70,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
               branches:
               {props.branchTrials.map((trial: any) => trial.id).join(",")}
             </div>
-            <div>
-              jumps:
-              {props.allJumpTrials.map((trial: any) => trial.id).join(",")}
-            </div>
-            <div>
-              columns:
-              {props
-                .getAvailableColumns()
-                .map((column: any) => column.value)
-                .join(",")}
-            </div>
-            <div>target-a-branch:{String(props.isInBranches("target-a"))}</div>
-            <div>null-branch:{String(props.isInBranches(null))}</div>
-            <div>
-              jump-a-jump:
-              {String(props.isJumpCondition({ nextTrialId: "jump-a" }))}
-            </div>
+            <div>columns:{props.getAvailableColumns().map((column: any) => column.value).join(",")}</div>
             <button
               type="button"
               onClick={() =>
@@ -112,7 +96,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
             <button
               type="button"
               onClick={() =>
-                props.updateNextTrial(props.conditions[0].id, "jump-a")
+                props.updateNextTrial(props.conditions[0].id, "branch-a")
               }
             >
               update next
@@ -176,21 +160,18 @@ describe("coverage branched wrappers: BranchConditions", () => {
         getAvailableTrials={() => [
           { id: "target-a", name: "Target A" },
           { id: "target-b", name: "Target B" },
-          { id: "jump-a", name: "Jump A" },
+          { id: "branch-a", name: "branch A" },
           { id: "inside-loop", name: "Inside Loop" },
         ]}
       />,
     );
 
     const list = screen.getByTestId("conditions-list");
-    expect(list).toHaveTextContent("branches:target-a,target-b,loop-1");
-    expect(list).toHaveTextContent("jumps:jump-a,inside-loop");
+    expect(list).toHaveTextContent("branches:target-a,target-b,inside-loop");
+    expect(list).not.toHaveTextContent("branches:target-a,target-b,inside-loop,loop-1");
     expect(list).toHaveTextContent(
       "columns:stim_type,stim_stimulus,stim_q1,stim_response,stim_rt,rt",
     );
-    expect(list).toHaveTextContent("target-a-branch:true");
-    expect(list).toHaveTextContent("null-branch:false");
-    expect(list).toHaveTextContent("jump-a-jump:true");
 
     fireEvent.click(screen.getByText("set no save"));
     expect(setConditions).toHaveBeenCalledWith([{ id: 9, rules: [] }]);
@@ -212,7 +193,7 @@ describe("coverage branched wrappers: BranchConditions", () => {
     );
 
     fireEvent.click(screen.getByText("update next"));
-    expect(loadTargetTrialParameters).toHaveBeenCalledWith("jump-a");
+    expect(loadTargetTrialParameters).toHaveBeenCalledWith("branch-a");
 
     fireEvent.mouseEnter(
       screen.getByRole("button", { name: /Add condition \(OR\)/ }),

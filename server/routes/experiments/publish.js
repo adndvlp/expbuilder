@@ -14,14 +14,14 @@ import {
   isPublishableMediaFile,
 } from "./media.js";
 import { applyGeneratedArtifact } from "./artifact.js";
+import { assertNoAppearanceOverride, resolveExperimentAppearance } from "./appearanceSettings.js";
 import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
-import { pruneDanglingBranches } from "../timeline/trials/state.js";
 
 const router = Router();
 
 function getDynamicPluginCdn() {
   let dynamicName = "jspsych-expbuilder-plugin-dynamic";
-  let dynamicVersion = "1.0.2";
+  let dynamicVersion = "1.0.8";
   try {
     const dynamicPkgPath = path.resolve(
       __dirname,
@@ -39,6 +39,11 @@ function getDynamicPluginCdn() {
 }
 
 function injectPublicAssets($, experiment, experimentID) {
+  const favicon = fs.readFileSync(path.join(__dirname, "icon", "fp black.png"));
+  $('link[rel="icon"]').remove();
+  $("head").append(
+    `<link rel="icon" type="image/png" href="data:image/png;base64,${favicon.toString("base64")}" />`,
+  );
   $('link[href*="jspsych-bundle"]').remove();
   $('script[src*="jspsych-bundle"]').remove();
   $('script[src*="webgazer"]').remove();
@@ -48,9 +53,7 @@ function injectPublicAssets($, experiment, experimentID) {
     `<link href="https://unpkg.com/jspsych@8.2.2/css/jspsych.css" rel="stylesheet" type="text/css" />`,
   );
   $("head").append(`<script src="https://unpkg.com/jspsych@8.2.2"></script>`);
-  const trialDoc = db.data.trials.find(
-    (t) => t.experimentID === experimentID,
-  );
+  const trialDoc = db.data.trials.find((t) => t.experimentID === experimentID);
   if (trialDoc?.trials?.some((trial) => trial.plugin === "plugin-dynamic")) {
     $("head").append(`<script src="${getDynamicPluginCdn()}"></script>`);
   }
@@ -67,7 +70,6 @@ function injectPublicAssets($, experiment, experimentID) {
       `<script src="${url}" data-dynamic-plugins="true"></script>`,
     );
   }
-
 }
 
 function readPublishHtml(experiment) {
@@ -142,6 +144,7 @@ async function publishToGithub(payload, authorization) {
 /* istanbul ignore next -- publish filesystem/Firebase permutations are covered by route integration tests. */
 router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
+    assertNoAppearanceOverride(req.body);
     const { experimentID } = req.params;
     const { uid, storage, generatedPublicCode } = req.body;
 
@@ -174,22 +177,16 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
-    // A published artifact freezes the timeline: heal legacy dangling
-    // references first, then refuse to freeze a graph whose routing is
-    // broken (unresolvable targets, cycles, self-references, invalid
-    // scopes). Duplicates are deduplicated at runtime and orphan items
-    // simply never execute, so neither blocks publishing.
+    // Validate before producing an artifact or modifying any persisted record.
     const trialDoc = db.data.trials.find(
       (t) => t.experimentID === experimentID,
     );
     if (trialDoc) {
-      pruneDanglingBranches(trialDoc);
       const blocking = buildExperimentGraph(trialDoc).diagnostics.filter(
         (diagnostic) =>
           diagnostic.code !== "BRANCH_DUPLICATE" &&
           diagnostic.code !== "OWNER_NOT_FOUND",
       );
-      await db.write();
       if (blocking.length > 0) {
         const message =
           `Experiment graph is invalid (${blocking.map((diagnostic) => diagnostic.code).join(", ")}). ` +
@@ -226,7 +223,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     console.log(
       "Replacing script with PUBLIC experiment code for publishing...",
     );
-    applyGeneratedArtifact($, generatedPublicCode);
+    applyGeneratedArtifact($, generatedPublicCode, experiment);
 
     injectPublicAssets($, experiment, experimentID);
 
@@ -249,7 +246,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
     }
 
-    if (experiment.appearanceSettings?.fullScreen ?? true) {
+    if (resolveExperimentAppearance(experiment).fullScreen) {
       $("head").append(
         `<script src="https://unpkg.com/@jspsych/plugin-fullscreen@2.1.0" data-dynamic-plugins="true"></script>`,
       );
@@ -304,7 +301,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     }
   } catch (error) {
     console.error(`Error publishing experiment: ${error.message}`);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.status || 500).json({ success: false, error: error.message });
   }
 });
 

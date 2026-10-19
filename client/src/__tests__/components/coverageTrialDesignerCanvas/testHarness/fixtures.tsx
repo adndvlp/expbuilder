@@ -46,12 +46,9 @@ function RenderComponentHarness({
     toJsPsychCoords: (x, y) => ({ x: x - 50, y: 50 - y }),
     onAutoSave,
     generateConfigFromComponents: (next) => ({ components: next }),
-    canvasStyles: {
+    previewViewport: {
       width: 500,
       height: 400,
-      fullScreen: false,
-      progressBar: false,
-      backgroundColor: "#fff",
     },
     htmlSceneMetrics: {
       [initial.id]: { width: initial.width, height: initial.height },

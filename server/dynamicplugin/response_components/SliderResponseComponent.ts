@@ -1,3 +1,5 @@
+import { getViewport } from "../layout/RuntimeViewport";
+import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
@@ -49,7 +51,7 @@ const info = {
       type: ParameterType.BOOL,
       default: false,
     },
-    /** Position coordinates for the slider. x and y should be between -1 and 1, mapped to -50vw/vh to 50vw/vh. */
+    /** Position coordinates for the slider. x and y range from -100 to 100 around the presentation area center. */
     coordinates: {
       type: ParameterType.OBJECT,
       default: { x: 0, y: 0 },
@@ -108,6 +110,19 @@ let sliderComponentCounter = 0;
  * Native range input positioned inside Dynamic's interactive DOM layer.
  */
 class SliderResponseComponent {
+  private layoutConfig: any;
+
+  updateLayout() {
+    if (!this.layoutConfig || !this.sliderContainer) return;
+    this.layout = this.createLayout(this.layoutConfig);
+    this.updateOverlay(this.layout);
+    const labels = this.sliderContainer.querySelector<HTMLElement>("[data-slider-labels]");
+    if (labels) Object.assign(labels.style, {
+      left: `${this.layout.trackX}px`,
+      top: `${this.layout.trackY + this.layout.thumbRadius * 2 + 6}px`,
+      width: `${this.layout.trackWidth}px`,
+    });
+  }
   private jsPsych: any;
   private response: number | null;
   private rt: number | null;
@@ -148,11 +163,7 @@ class SliderResponseComponent {
   }
 
   private getCanvasSize(trial: any) {
-    const canvasStyles = this.resolveParam(trial.__canvasStyles, {});
-    return {
-      width: this.resolveParam(canvasStyles?.width, 1024),
-      height: this.resolveParam(canvasStyles?.height, 768),
-    };
+    return getViewport(trial);
   }
 
   private getLabels(raw: any): string[] {
@@ -180,10 +191,7 @@ class SliderResponseComponent {
         ? (Number(configuredHeight) / 100) * canvasWidth
         : 120;
     const coordinates = this.resolveParam(trial.coordinates, { x: 0, y: 0 });
-    const centerX =
-      canvasWidth / 2 + ((coordinates?.x ?? 0) / 100) * (canvasWidth / 2);
-    const centerY =
-      canvasHeight / 2 - ((coordinates?.y ?? 0) / 100) * (canvasHeight / 2);
+    const { x: centerX, y: centerY } = relativeCenter(coordinates, { width: canvasWidth, height: canvasHeight });
     const padding = Math.max(10, Math.min(40, width * 0.14));
 
     return {
@@ -227,6 +235,7 @@ class SliderResponseComponent {
     trial: any,
     onResponse?: () => void,
   ): HTMLElement {
+    this.layoutConfig = trial;
     this.timing = trial.__timing || null;
     this.validationError = false;
     this.response = null;
@@ -271,6 +280,7 @@ class SliderResponseComponent {
     this.sliderContainer.appendChild(this.sliderElement);
     if (this.layout.labels.length >= 2) {
       const labels = document.createElement("div");
+      labels.dataset.sliderLabels = "true";
       labels.style.position = "absolute";
       labels.style.left = `${this.layout.trackX}px`;
       labels.style.top = `${this.layout.trackY + this.layout.thumbRadius * 2 + 6}px`;

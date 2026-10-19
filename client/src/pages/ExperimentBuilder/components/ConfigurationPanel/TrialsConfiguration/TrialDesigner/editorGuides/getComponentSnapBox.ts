@@ -1,4 +1,4 @@
-import type { CanvasStyles, TrialComponent } from "../types";
+import type { PreviewViewport, TrialComponent } from "../types";
 import { getConfigValue, getTextComponentModel } from "../textComponentModel";
 import type { SnapBox } from "../editorGuides";
 
@@ -14,10 +14,10 @@ function getChoicesCount(component: TrialComponent): number {
 
 export function getComponentSnapBox(
   component: TrialComponent,
-  canvasStyles?: CanvasStyles,
+  previewViewport?: PreviewViewport,
 ): SnapBox {
   if (component.type === "TextComponent") {
-    const model = getTextComponentModel(component, canvasStyles?.width);
+    const model = getTextComponentModel(component, previewViewport?.width);
     return {
       id: component.id,
       x: component.x,

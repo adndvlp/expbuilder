@@ -66,7 +66,7 @@ bindCanvasMocks(mocks);
 describe("Canvas container", () => {
   beforeEach(setupCanvasTest);
 
-  it("adds direct and parent trials to loop nodes", async () => {
+  it("rejects branch creation from loop nodes before opening the modal", async () => {
     installTrialsContext({
       timeline: [
         {
@@ -74,32 +74,6 @@ describe("Canvas container", () => {
           type: "loop",
           name: "Loop 1",
           trials: [1],
-          branches: [],
-        },
-        { id: 2, type: "trial", name: "Trial 2", branches: [] },
-      ],
-    });
-    const firstRender = render(<Canvas />);
-
-    await act(async () => {
-      await mocks.flowLayoutProps.onAddBranch("loop-1");
-    });
-
-    expect(mocks.trialsContext.getLoop).toHaveBeenCalledWith("loop-1");
-    expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-      "loop-1",
-      { branches: [99] },
-    );
-    firstRender.unmount();
-
-    installTrialsContext({
-      timeline: [
-        {
-          id: "loop-1",
-          type: "loop",
-          name: "Loop 1",
-          trials: [1],
-          branches: [2],
         },
         { id: 2, type: "trial", name: "Trial 2", branches: [] },
       ],
@@ -109,14 +83,13 @@ describe("Canvas container", () => {
     await act(async () => {
       await mocks.flowLayoutProps.onAddBranch("loop-1");
     });
-    fireEvent.click(screen.getByText("As Parent (Sequential)"));
 
-    await waitFor(() => {
-      expect(mocks.trialsContext.updateLoop).toHaveBeenCalledWith(
-        "loop-1",
-        { branches: [99] },
-      );
-    });
+    expect(mocks.trialsContext.createTrial).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(screen.queryByText("Add New Trial")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("As Parent (Sequential)"),
+    ).not.toBeInTheDocument();
   });
 
   it("closes add-trial and move-item modals without confirming", async () => {
@@ -147,19 +120,18 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("As Parent (Sequential)"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith({
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
         type: "Trial",
         name: "New Trial",
         plugin: "plugin-dynamic",
         parameters: {},
         trialCode: "",
         branches: [2],
-      });
+      }));
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
-      1,
-      { branches: [99] },
-    );
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
+      branches: [99],
+    }));
 
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];

@@ -6,11 +6,10 @@ import request from 'supertest'
 import { jest } from '@jest/globals'
 
 /**
- * Feature-combination matrix (app surface only, no agent tools).
+ * Feature-combination matrix (editor API surface).
  *
  * Each scenario combines several features at once — branches, branch
  * conditions with customParameters (params override on branches),
- * repeatConditions (jump-to-trial), loopConditions, loops, nested loops,
  * moves and deletes — and asserts the whole flow stays consistent:
  * every mutation succeeds and the resulting experiment graph is valid
  * (no BRANCH_TARGET_NOT_FOUND or sibling diagnostics).
@@ -44,28 +43,28 @@ const expectValidGraph = (res) => {
 
 // Root trials 1→2 plus a two-level loop nest holding trial 4.
 const seedNested = async (db) => {
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: 1,
     experimentID: 'E1',
     trials: [
-      { id: 1, name: 'Root', branches: [] },
-      { id: 2, name: 'Landing', branches: [] },
-      { id: 3, name: 'Inner', parentLoopId: 'inner', branches: [] },
-      { id: 4, name: 'Deep', parentLoopId: 'inner', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'Root', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'Landing', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 3, name: 'Inner', parentLoopId: 'inner', branches: [] },
+      { defaultNextTrialId: null, branchConditions: [], id: 4, name: 'Deep', parentLoopId: 'inner', branches: [] },
     ],
     loops: [
-      { id: 'outer', name: 'Outer', trials: ['inner'], branches: [] },
-      {
+      { nextItemId: null, entryItemId: 'inner', id: 'outer', name: 'Outer', trials: ['inner'], },
+      { nextItemId: null, entryItemId: 3,
         id: 'inner',
         name: 'Inner',
         parentLoopId: 'outer',
         trials: [3, 4],
-        branches: [],
+
       },
     ],
     timeline: [
       { id: 1, type: 'trial', name: 'Root', branches: [] },
       { id: 2, type: 'trial', name: 'Landing', branches: [] },
-      { id: 'outer', type: 'loop', name: 'Outer', branches: [], trials: ['inner'] },
+      { id: 'outer', type: 'loop', name: 'Outer',  trials: ['inner'] },
     ],
   })
   await db.write()
@@ -106,28 +105,19 @@ describe('branch condition with params override into a nested loop', () => {
   })
 })
 
-describe('repeat jump from inside a loop to the root timeline', () => {
-  test('in-loop trial jumps out via repeatConditions', async () => {
-    const { app, db } = await freshApp()
-    await seedNested(db)
+describe('branch from inside a loop to the root timeline', () => {
+  test('uses the same trial condition and parameters across scopes', async () => {
+    const { app, db } = await freshApp();
+    await seedNested(db);
+    const condition = { id: 'r1', rules: [], nextTrialId: 2, customParameters: { stimulus: { source: 'typed', value: 'root' } } };
+    const response = await request(app).patch('/api/trial/E1/3').send({ branches: [2], branchConditions: [condition], defaultNextTrialId: null }).expect(200);
+    expectValidGraph(response);
+    expect(response.body.trial.branchConditions).toEqual([condition]);
+  });
+});
 
-    const res = await request(app)
-      .patch('/api/trial/E1/3')
-      .send({
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: 2 }],
-      })
-      .expect(200)
-    expectValidGraph(res)
-
-    await db.read()
-    expect(
-      db.data.trials[0].trials.find((t) => t.id === 3).repeatConditions,
-    ).toEqual([{ id: 'r1', rules: [], jumpToTrialId: 2 }])
-  })
-})
-
-describe('loop carrying loopConditions, branches and branchConditions', () => {
-  test('conditional loop with exit branch and condition combined', async () => {
+describe('conditional loop with trial branching', () => {
+  test('loop conditions coexist with branch conditions on the child trial', async () => {
     const { app, db } = await freshApp()
     await seedNested(db)
 
@@ -136,25 +126,28 @@ describe('loop carrying loopConditions, branches and branchConditions', () => {
       .send({
         isConditionalLoop: true,
         loopConditions: [{ id: 'lc1', rules: [] }],
-        branches: [2],
-        branchConditions: [
-          { id: 'c1', rules: [], nextTrialId: 2 },
-        ],
       })
       .expect(200)
     expectValidGraph(res)
+
+    const trialResponse = await request(app)
+      .patch('/api/trial/E1/4')
+      .send({ branches: [2], branchConditions: [{ id: 'c1', rules: [], nextTrialId: 2 }] })
+      .expect(200)
+    expectValidGraph(trialResponse)
 
     await db.read()
     const loop = db.data.trials[0].loops.find((l) => l.id === 'inner')
     expect(loop.isConditionalLoop).toBe(true)
     expect(loop.loopConditions).toEqual([{ id: 'lc1', rules: [] }])
-    expect(loop.branches).toEqual([2])
-    expect(loop.branchConditions.map((c) => c.id)).toEqual(['c1'])
+    expect(loop).not.toHaveProperty('branches')
+    expect(loop).not.toHaveProperty('branchConditions')
+    expect(db.data.trials[0].trials.find(t => t.id === 4).branchConditions.map(c => c.id)).toEqual(['c1'])
   })
 })
 
 describe('move a fully conditioned trial into a nested loop', () => {
-  test('conditions, params and jumps survive the move with a valid graph', async () => {
+  test('conditions and params survive the move with a valid graph', async () => {
     const { app, db } = await freshApp()
     await seedNested(db)
     await request(app)
@@ -169,7 +162,6 @@ describe('move a fully conditioned trial into a nested loop', () => {
             customParameters: { stimulus: { source: 'typed', value: 'x.png' } },
           },
         ],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: 2 }],
       })
       .expect(200)
 
@@ -188,7 +180,6 @@ describe('move a fully conditioned trial into a nested loop', () => {
     expect(t1.branchConditions[0].customParameters).toEqual({
       stimulus: { source: 'typed', value: 'x.png' },
     })
-    expect(t1.repeatConditions).toHaveLength(1)
     expect(res.body.graph.edges).toContainEqual(
       expect.objectContaining({ sourceId: 1, targetId: 2 }),
     )
@@ -253,7 +244,7 @@ describe('group a conditioned trial into a new loop', () => {
 })
 
 describe('delete a loop holding condition targets', () => {
-  test('nested loop is restored and legacy ghost conditions are healed', async () => {
+  test('ungrouping retains valid conditional destinations', async () => {
     const { app, db } = await freshApp()
     await seedNested(db)
     await request(app)
@@ -262,9 +253,7 @@ describe('delete a loop holding condition targets', () => {
         branches: [4],
         branchConditions: [
           { id: 'c1', rules: [], nextTrialId: 4 },
-          { id: 'c2', rules: [], nextTrialId: GHOST },
         ],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: GHOST }],
       })
       .expect(200)
 
@@ -280,7 +269,6 @@ describe('delete a loop holding condition targets', () => {
     expect(doc.loops[0].parentLoopId).toBeNull()
     const t1 = doc.trials.find((t) => t.id === 1)
     expect(t1.branchConditions.map((c) => c.id)).toEqual(['c1'])
-    expect(t1.repeatConditions).toEqual([])
 
     const graph = await request(app).get('/api/experiment-graph/E1').expect(200)
     expect(
@@ -328,27 +316,10 @@ describe('nested loop exit with params via loop-branch command', () => {
 })
 
 describe('ghost combination: every feature ignores the same legacy ghost', () => {
-  test('mixed ghost payload across branches, conditions and membership', async () => {
-    const { app, db } = await freshApp()
-    await seedNested(db)
-
-    const res = await request(app)
-      .patch('/api/trial/E1/3')
-      .send({
-        branches: [4, GHOST],
-        branchConditions: [
-          { id: 'c1', rules: [], nextTrialId: 4 },
-          { id: 'c2', rules: [], nextTrialId: GHOST },
-        ],
-        repeatConditions: [{ id: 'r1', rules: [], jumpToTrialId: GHOST }],
-      })
-      .expect(200)
-    expectValidGraph(res)
-
-    await db.read()
-    const t3 = db.data.trials[0].trials.find((t) => t.id === 3)
-    expect(t3.branches).toEqual([4])
-    expect(t3.branchConditions.map((c) => c.id)).toEqual(['c1'])
-    expect(t3.repeatConditions).toEqual([])
-  })
+  test('rejects a missing destination before changing the experiment', async () => {
+ const { app, db } = await freshApp(); await seedNested(db);
+ const before = JSON.stringify(db.data);
+ await request(app).patch('/api/trial/E1/3').send({ branches: [4, GHOST], branchConditions: [{ id: 'c1', rules: [], nextTrialId: GHOST }] }).expect(400);
+ await db.read(); expect(JSON.stringify(db.data)).toBe(before);
+})
 })

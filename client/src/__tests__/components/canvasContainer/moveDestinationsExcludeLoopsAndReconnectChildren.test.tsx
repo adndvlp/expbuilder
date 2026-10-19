@@ -1,0 +1,165 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import {
+  bindCanvasMocks,
+  installTrialsContext,
+  makeTrial,
+  setupCanvasTest,
+} from "./testHarness";
+
+const mocks = vi.hoisted(() => ({
+  trialsContext: {} as any,
+  flowLayoutProps: undefined as any,
+}));
+
+vi.mock("../../../pages/ExperimentBuilder/hooks/useTrials", () => ({
+  default: () => mocks.trialsContext,
+}));
+
+vi.mock(
+  "../../../pages/ExperimentBuilder/components/Canvas/hooks/useFlowLayout",
+  () => ({
+    useFlowLayout: (props: any) => {
+      mocks.flowLayoutProps = props;
+      return {
+        nodes: [{ id: "node-1", type: "trial", position: { x: 0, y: 0 } }],
+        edges: [],
+      };
+    },
+  }),
+);
+
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: ({ onPaneClick }: { onPaneClick: () => void }) => (
+    <div data-testid="react-flow">
+      <button type="button" onClick={onPaneClick}>
+        Pane
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock(
+  "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/BranchedTrial",
+  () => ({
+    default: ({ selectedTrial, onClose }: any) => (
+      <div data-testid="branched-modal">
+        Branched {selectedTrial?.name}
+        <button type="button" onClick={onClose}>
+          Close Branch Modal
+        </button>
+      </div>
+    ),
+  }),
+);
+
+bindCanvasMocks(mocks);
+
+describe("Canvas container", () => {
+  beforeEach(setupCanvasTest);
+
+  it("does not offer loops as move destinations", () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(3),
+      timeline: [
+        { id: 3, type: "trial", name: "Trial 3", branches: [] },
+        {
+          id: "loop-1",
+          type: "loop",
+          name: "Loop 1",
+          trials: [1],
+        },
+        { id: 2, type: "trial", name: "Trial 2", branches: [] },
+      ],
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+
+    expect(screen.getByText("Trial 2")).toBeInTheDocument();
+    expect(screen.queryByText("Loop 1")).not.toBeInTheDocument();
+  });
+
+  it("does not open the move modal when the selected item is absent from the timeline", () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(404, { name: "Missing Trial" }),
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+
+    expect(
+      screen.queryByText("No available destinations"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reconnects trial parents without writing branches to nearby loops", async () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(2, { branches: [3] }),
+      timeline: [
+        {
+          id: "loop-1",
+          type: "loop",
+          name: "Loop 1",
+          trials: [2],
+        },
+        { id: 1, type: "trial", name: "Trial 1", branches: [2] },
+        { id: 2, type: "trial", name: "Trial 2", branches: [3] },
+        { id: 3, type: "trial", name: "Trial 3", branches: [] },
+        { id: 4, type: "trial", name: "Trial 4", branches: [] },
+      ],
+      getTrial: vi.fn(async (id: number | string) =>
+        makeTrial(Number(id), { branches: id === 2 ? [3] : [] }),
+      ),
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+    fireEvent.click(screen.getByText("Trial 4"));
+    fireEvent.click(screen.getByText("Move"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
+        branches: [3],
+      }));
+    });
+    expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({
+      branches: [],
+    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(4, expect.objectContaining({
+      branches: [2],
+    }));
+  });
+
+  it("does not duplicate a reconnected child already owned by the parent", async () => {
+    installTrialsContext({
+      selectedTrial: makeTrial(2, { branches: [3] }),
+      timeline: [
+        { id: 1, type: "trial", name: "Trial 1", branches: [2, 3] },
+        { id: 2, type: "trial", name: "Trial 2", branches: [3] },
+        { id: 3, type: "trial", name: "Trial 3", branches: [] },
+        { id: 4, type: "trial", name: "Trial 4", branches: [] },
+      ],
+      getTrial: vi.fn(async (id: number | string) =>
+        makeTrial(Number(id), { branches: [] }),
+      ),
+    });
+
+    render(<Canvas />);
+
+    fireEvent.click(screen.getByTitle("Move Item"));
+    fireEvent.click(screen.getByText("Trial 4"));
+    fireEvent.click(screen.getByText("Move"));
+
+    await waitFor(() => {
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
+        branches: [3],
+      }));
+    });
+  });
+});

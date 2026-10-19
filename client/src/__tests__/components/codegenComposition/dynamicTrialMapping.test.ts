@@ -77,7 +77,7 @@ describe("useTrialCode composition", () => {
   it("generates explicit DynamicPlugin props for loop trials with passthrough params", () => {
     const { genTrialCode } = useTrialCode({
       id: 6,
-      branches: ["trial-next", 9],
+      branches: ["trial-next",9],
       branchConditions: [],
       pluginName: "DynamicPlugin",
       parameters: [
@@ -119,8 +119,8 @@ describe("useTrialCode composition", () => {
       `response_ends_trial: jsPsych.timelineVariable("response_ends_trial_${identifier}")`,
     );
     expect(code).toContain(`response: "response_${identifier}"`);
-    expect(code).toContain('branches: ["trial-next", 9]');
-    expect(code).toContain("NextTrialId = nextTrialId;");
+    expect(code).toContain('branches: ["trial-next",9]');
+    expect(code).toContain("window.ExpBuilderNavigation?.requestBranch(data, branchDecision);");
     expect(code).not.toContain(`timeline.push(${identifier}_procedure)`);
   });
 });

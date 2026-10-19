@@ -22,7 +22,7 @@ describe("coverage ConditionsList", () => {
     expect(screen.getAllByText("Field Type").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Question")).toBeInTheDocument();
     expect(
-      screen.getByText("Jump mode: Parameter override disabled"),
+      screen.getByText("add param 2"),
     ).toBeInTheDocument();
 
     const firstCard = container.querySelector<HTMLElement>(".space-y-6 > div")!;

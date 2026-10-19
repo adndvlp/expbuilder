@@ -54,8 +54,6 @@ export function serializeDbRequest(req, res, next) {
   const method = req.method || "GET";
   if (
     (method === "POST" &&
-      (req.path === "/api/chat/stream" || req.path === "/api/chat")) ||
-    (method === "POST" &&
       (req.path === "/api/create-tunnel" ||
         req.path === "/api/close-tunnel")) ||
     (method === "POST" && req.path.startsWith("/api/upload-files/")) ||

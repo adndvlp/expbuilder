@@ -1,6 +1,8 @@
 # 06B — Decisiones pendientes: runtime, edición y entrega
 
-## Resume y jump
+> Alcance histórico: este documento pertenece a la auditoría y propuesta anterior al refactor `loop-branches`. Para la limpieza vigente rige [LOOP_BRANCHES_SDD.md](../../LOOP_BRANCHES_SDD.md): ramas trial → trial, sin campos de branching ni `Move Item` para loops y sin migración legacy. Las decisiones abiertas de aquella propuesta no bloquean ni amplían esta limpieza.
+
+## Resume y branching
 
 ### DEC-20 — Fidelidad de resume — BLOQUEANTE
 
@@ -10,13 +12,13 @@
 - Opciones reales: restaurar iteración/fila CSV/orden aleatorio exactos; continuar sólo en el próximo execution address; deshabilitar resume en estados de loop no reproducibles.
 - Pregunta: ¿qué estado exacto debe restaurarse y qué pérdida de fidelidad, si alguna, es aceptable?
 
-### DEC-21 — Destinos permitidos de jump — BLOQUEANTE
+### DEC-21 — Destinos permitidos de branching — BLOQUEANTE
 
 - Entendido: el mecanismo actual usa un ID escalar y no entra correctamente a nested targets.
 - Falta: alcance de targets deseado.
 - Impacto: compiler, selector UI, ciclos y enter paths.
 - Opciones reales: cualquier item; sólo scopes ancestros/raíz; same-scope + raíz; lista actual corregida; trials únicamente o trials y loops.
-- Pregunta: ¿a qué scopes y tipos de item puede apuntar jump?
+- Pregunta: ¿a qué scopes y tipos de item puede apuntar branching?
 
 ## Edición, compatibilidad y límites
 
@@ -37,13 +39,10 @@
 - Opciones reales: sin límite de producto con guard técnico; máximo fijo; máximo configurable por experimento.
 - Pregunta: ¿qué profundidad máxima de nesting debe soportarse y probarse?
 
-### DEC-24 — Experimentos legacy ambiguos — BLOQUEANTE
+### DEC-24 — Experimentos legacy ambiguos — RESUELTA
 
-- Entendido: el loader actual puede mezclar targets externos con metadata interna.
-- Falta: política para datos ya guardados que parezcan cross-scope.
-- Impacto: compatibilidad y riesgo de reinterpretar experimentos.
-- Opciones reales: validar/reportar; reparación asistida; heurística aprobada y auditable; bloquear publicación hasta reparar.
-- Pregunta: ¿cómo deben tratarse los grafos legacy ambiguos y se requiere una herramienta de reparación?
+- Decisión del usuario: no hay experimentos que conservar; no desarrollar migración ni reparación legacy.
+- El contrato actual rechaza loops como origen/destino estructural y sus campos de branching.
 
 ### DEC-25 — Alcance de documentación
 
@@ -110,15 +109,7 @@
 - Opciones reales: trial normal; trial branch-only que no entra a secuencia; trial normal con restricciones de move/group mientras tenga incoming exits.
 - Pregunta: ¿qué operaciones quedan habilitadas sobre un target creado como salida?
 
-## Agente, revisión y datos científicos
-
-### DEC-33 — Creación mediante el agente — BLOQUEANTE PARA ESA RUTA
-
-- Entendido: el agente crea/actualiza/borrar items y construye HTML por rutas propias.
-- Falta: si debe autorizar esta feature conversacionalmente desde la primera entrega.
-- Impacto: schemas/prompts de tools, commands y pruebas del agente.
-- Opciones reales: autoría completa; sólo lectura/preservación y rechazo explícito; deshabilitar temporalmente tools incompatibles.
-- Pregunta: ¿qué capacidades de creación/edición de exits debe exponer el agente?
+## Revisión y datos científicos
 
 ### DEC-34 — Revisión distinta al reanudar — BLOQUEANTE
 
@@ -138,20 +129,18 @@
 
 ## Significado canónico y superficies
 
-### DEC-36 — Source trial o transferencia al nodo loop — BLOQUEANTE
+### DEC-36 — Source trial o transferencia al nodo loop — RESUELTA
 
-- Entendido: el mismo trial tiene ramas por nivel, pero el pedido también dice “rama de Nested loop”.
-- Falta: si eso describe proyección/owner o cambia el source persistido.
-- Impacto: identity, conditions, `branches[]`, canvas y codegen.
-- Opciones reales: source siempre trial y loop edges proyectadas; cadena trial→loops→target; transferir branch al loop elegido con metadata adicional.
-- Pregunta: ¿las branches pertenecen canónicamente al trial origen o a los nodos loop que cruzan?
+- Decisión 2026-10-01: source y target canónicos siempre son trials.
+- Agrupar/desagrupar, expandir/colapsar y transportar rutas entre scopes no cambian esa identidad ni transfieren ramas al contenedor.
+- Se conserva la proyección visual de conexiones sobre loops colapsados.
 
 ### DEC-37 — Superficies de ejecución obligatorias — BLOQUEANTE
 
-- Entendido: la app tiene preview, HTML local, publicación browser y build iniciado por agente.
+- Entendido: la app tiene preview, HTML local y publicación browser.
 - Falta: cuáles forman parte del primer release.
 - Impacto: alcance, compiler compartido y release gate.
-- Opciones reales: todas; preview+local+published y agente sólo preserva/rechaza; una lista concreta con feature flag por superficie.
+- Opciones reales: preview, local y publicación; una lista concreta con feature flag por superficie.
 - Pregunta: ¿en qué superficies debe funcionar la feature desde la primera entrega?
 
 ### DEC-38 — Máximo de branches por source
@@ -190,4 +179,7 @@
 
 ## Orden sugerido para revisión humana
 
-Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, agente, layout y release. Este orden no selecciona respuestas.
+Para las decisiones restantes, el orden que reduce retrabajo es: DEC-36; DEC-07/30/31; DEC-11/12/28; DEC-15/17–19/39–41; DEC-20/21/34; después edición, layout y release. Este orden no selecciona respuestas.
+
+
+Contrato de ejecución vigente: [Branching](../06-BRANCHING.md) y [SDD](../unified-branching-contract-sdd.md). Las conexiones hacia trials anteriores usan el mismo contrato, las salidas son explícitas y los checkpoints tienen versión 3. Los IDs de aceptación se conservan para dar seguimiento a la cobertura.

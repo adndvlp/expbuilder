@@ -21,14 +21,13 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
       name: "New Trial",
       branches: ["left", "right"],
     },
-    { id: "left", type: "trial", name: "New Trial 1", branches: ["outer"] },
+    { id: "left", type: "trial", name: "New Trial 1", branches: ["source"] },
     { id: "right", type: "trial", name: "New Trial 2", branches: [] },
     {
       id: "outer",
       type: "loop",
       name: "Loop 1",
       trials: ["inner", "outer-target"],
-      branches: [],
     },
     { id: "root-a", type: "trial", name: "Root Branch A", branches: [] },
     { id: "root-b", type: "trial", name: "Root Branch B", branches: [] },
@@ -40,7 +39,6 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
       name: "Nested Loop 1",
       parentLoopId: "outer",
       trials: ["source", "local"],
-      branches: [],
     },
     {
       id: "outer-target",
@@ -75,7 +73,7 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
     [
       branchEdge("split", "left", null, null),
       branchEdge("split", "right", null, null),
-      branchEdge("left", "outer", null, null),
+      branchEdge("left", "source", null, "inner"),
       branchEdge("source", "local", "inner", "inner"),
       branchEdge("source", "outer-target", "inner", "outer", ["inner"]),
       branchEdge("source", "root-a", "inner", null, ["inner", "outer"]),
@@ -94,11 +92,7 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
   const source = getScopedNodeId(innerScope, "trial", "source");
   const innerMarker = getScopedNodeId(outerScope, "loop", "inner");
   const outerMarker = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "outer");
-  const outerTarget = getScopedNodeId(
-    outerScope,
-    "trial",
-    "outer-target",
-  );
+  const outerTarget = getScopedNodeId(outerScope, "trial", "outer-target");
   const rootA = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "root-a");
   const rootB = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "root-b");
   const edge = (from: string, to: string) =>

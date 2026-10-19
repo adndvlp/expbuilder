@@ -2,11 +2,25 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
   BranchCondition,
-  RepeatCondition,
 } from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/types";
 import { useLoadDataHarness } from "./testHarness";
 
 describe("BranchedTrial useLoadData initial loading", () => {
+  it("does not load navigation conditions from loop containers", async () => {
+    const loadTargetTrialParameters = vi.fn(async () => {});
+    const { result } = renderHook(() =>
+      useLoadDataHarness({
+        selectedTrial: {
+          id: "loop",
+          trials: [],
+          branchConditions: [{ id: 1, rules: [], nextTrialId: "invalid" }],
+        },
+        loadTargetTrialParameters,
+      }),
+    );
+    await waitFor(() => expect(result.current.conditions).toEqual([]));
+    expect(loadTargetTrialParameters).not.toHaveBeenCalled();
+  });
   it("loads selected trial data fields from plugin metadata", async () => {
     const loadPluginParameters = vi.fn(async () => ({
       parameters: [],
@@ -93,7 +107,7 @@ describe("BranchedTrial useLoadData initial loading", () => {
     expect(getLoopTimeline).not.toHaveBeenCalled();
   });
 
-  it("merges branch and repeat conditions when the modal opens", async () => {
+  it("loads flat conditions and their destination parameters when the modal opens", async () => {
     const branchConditions: BranchCondition[] = [
       {
         id: 1,
@@ -101,11 +115,11 @@ describe("BranchedTrial useLoadData initial loading", () => {
         nextTrialId: 2,
       },
     ];
-    const repeatConditions: RepeatCondition[] = [
+    const additionalConditions: BranchCondition[] = [
       {
         id: 2,
         rules: [{ column: "rt", op: ">", value: "1000" }],
-        jumpToTrialId: 99,
+        nextTrialId: 99,
       },
     ];
     const loadTargetTrialParameters = vi.fn(async () => {});
@@ -117,8 +131,7 @@ describe("BranchedTrial useLoadData initial loading", () => {
           id: 10,
           plugin: "plugin-html-keyboard-response",
           parentLoopId: "loop_1",
-          branchConditions,
-          repeatConditions,
+          branchConditions: [...branchConditions, ...additionalConditions],
         },
         loadTargetTrialParameters,
         getLoopTimeline,
@@ -144,7 +157,6 @@ describe("BranchedTrial useLoadData initial loading", () => {
 
     expect(getLoopTimeline).toHaveBeenCalledWith("loop_1");
     expect(loadTargetTrialParameters).toHaveBeenCalledWith(2);
-    expect(result.current.repeatConditions).toEqual(repeatConditions);
   });
 
   it("keeps existing custom parameters and ignores branch conditions without a next trial", async () => {
@@ -180,6 +192,5 @@ describe("BranchedTrial useLoadData initial loading", () => {
     });
     expect(loadTargetTrialParameters).not.toHaveBeenCalled();
     expect(getLoopTimeline).not.toHaveBeenCalled();
-    expect(result.current.repeatConditions).toEqual([]);
   });
 });

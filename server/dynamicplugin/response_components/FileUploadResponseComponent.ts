@@ -1,3 +1,4 @@
+import { relativeCenter } from "../../../shared/dynamic-layout/geometry";
 import { ParameterType } from "jspsych";
 import { getResponseRT, setResponseStartTime } from "../utils/PrecisionTiming";
 
@@ -142,11 +143,10 @@ class FileUploadResponseComponent {
     this.timing = trial.__timing || null;
     setResponseStartTime(this, this.timing);
 
-    // Map coordinate values: -1..1 → -50vw/vh..50vw/vh
-    const mapValue = (v: number) => v / 2;
     const coords = trial.coordinates ?? { x: 0, y: 0 };
-    const left = `calc(50% + ${mapValue(coords.x)}vw)`;
-    const top = `calc(50% - ${mapValue(coords.y)}vh)`;
+    const center = relativeCenter(coords, { width: 100, height: 100 });
+    const left = `${center.x}%`;
+    const top = `${center.y}%`;
 
     this.container = document.createElement("div");
     this.container.style.cssText = [

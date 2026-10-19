@@ -14,6 +14,7 @@ export function buildLocalRuntime(options: LocalExperimentCodeOptions): string {
       ${extensions}
       on_trial_start: function(trial) {
         const trialData = trial && trial.data ? trial.data : {};
+        window.ExpBuilderNavigation.checkpointTrialStart(trialData);
         _runtimeTrace('trial-start', {
           builderId: trialData.builder_id ?? trialData.trial_id ?? null,
           trialType: trial && trial.type

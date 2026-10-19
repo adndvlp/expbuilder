@@ -1,10 +1,7 @@
 import { useState } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { moveScopedItem } from "../actions";
-import type {
-  CanvasActionScope,
-  CanvasItemToMove,
-} from "../actions";
+import type { CanvasActionScope, CanvasItemToMove } from "../actions";
 
 export type { CanvasItemToMove } from "../actions";
 
@@ -23,7 +20,7 @@ export function useCanvasMoveActions(
     const item = scope.items.find(
       (candidate) => String(candidate.id) === String(itemId),
     );
-    if (!item) return;
+    if (item?.type !== "trial") return;
     setItemToMove({ id: item.id, name: item.name, type: item.type });
     setShowMoveItemModal(true);
   };

@@ -109,6 +109,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
     return (
       <>
         <KonvaImage
+          id={shapeProps.id}
+          name="designer-component"
           ref={shapeRef}
           image={placeholderImg}
           x={shapeProps.x}
@@ -160,6 +162,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
             const nextWidth = Math.max(5, placeholderImg.width * scaleX);
             const nextHeight = Math.max(5, placeholderImg.height * scaleY);
             const snapped = snapKonvaNode({
+              interaction: "transform",
               node,
               id: shapeProps.id,
               width: nextWidth,
@@ -201,6 +204,8 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
   return (
     <>
       <KonvaImage
+        id={shapeProps.id}
+        name="designer-component"
         ref={shapeRef}
         image={videoImage || undefined}
         x={shapeProps.x}
@@ -253,6 +258,7 @@ const VideoComponent: React.FC<VideoComponentProps> = ({
           const nextWidth = Math.max(5, videoImage.width * scaleX);
           const nextHeight = Math.max(5, videoImage.height * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

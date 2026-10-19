@@ -131,9 +131,9 @@ When a trial has CSV attached (via loop), the generated code includes:
 }
 ```
 
-### LLM-Friendly CSV Creation
+### Programmatic CSV Creation
 
-For a chat agent creating experiments, CSVs can be generated programmatically:
+CSV data can be generated programmatically for the experiment API:
 
 ```typescript
 // CSV format the builder expects:
@@ -265,9 +265,9 @@ Files uploaded by participants during experiments (via FileUploadResponseCompone
 - Stored in `{experimentName}/participant-files/`
 - DB records use the durable session UUID for ownership; changing `displayName` does not rename files
 
-### LLM-Friendly File Handling
+### Programmatic File Handling
 
-For a chat agent:
+Files can be uploaded through the experiment API:
 
 ```typescript
 // Upload a file for an experiment
@@ -309,7 +309,7 @@ const { files } = await res.json();
    - Gets timeline from context
    - Fetches all trial/loop data
    - Generates jsPsych timeline code with local file references
-4. `POST /api/run-experiment/:experimentID` with `{ generatedCode, canvasStyles }`
+4. `POST /api/run-experiment/:experimentID` with `{ generatedCode }`
 5. Server builds HTML file at `experiments_html/{name}.html`
 6. Experiment URL: `http://localhost:3000/{experimentName}`
 
@@ -347,7 +347,7 @@ const { files } = await res.json();
      - CAPTCHA gate (hCaptcha/reCAPTCHA)
      - Recruitment platform redirects (Prolific/MTurk)
      - Batch data sending logic
-     - Resume/jump support
+     - Resume/branching support
      - `customPreInitCode.public` + `customInitJsPsychParams.public`
      - All trial/loop code with CDN plugin references
 
@@ -422,9 +422,9 @@ Client receives: `{ success: true, repoUrl, pagesUrl }`
 
 ---
 
-## Part 5: Complete Tool Flow (Chat Agent Perspective)
+## Part 5: Complete Experiment Flow
 
-For a chat agent creating and publishing an experiment end-to-end:
+The editor creates and publishes experiments through these endpoints:
 
 ```
 1. CREATE EXPERIMENT

@@ -31,7 +31,7 @@ describe('GET /api/loop-trials-metadata/:experimentID/:loopId', () => {
 
   test('404 when loop not found', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [],
       loops: [],
@@ -43,13 +43,13 @@ describe('GET /api/loop-trials-metadata/:experimentID/:loopId', () => {
 
   test('returns only items owned directly by the loop scope', async () => {
     const { app, db } = await freshApp()
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { id: 1, name: 'T1', branches: [2] },
-        { id: 2, name: 'T2', branches: [] },
+        { defaultNextTrialId: null, branchConditions: [], id: 1, name: 'T1', branches: [2] },
+        { defaultNextTrialId: null, branchConditions: [], id: 2, name: 'T2', branches: [] },
       ],
-      loops: [{ id: 'loop_1', name: 'L1', trials: [1], branches: [] }],
+      loops: [{ nextItemId: null, entryItemId: 1, id: 'loop_1', name: 'L1', trials: [1], }],
       timeline: [],
     })
     await db.write()

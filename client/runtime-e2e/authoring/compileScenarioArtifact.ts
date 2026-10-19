@@ -1,13 +1,23 @@
 import { compileLocalExperiment } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/compileLocalExperiment";
 import { buildExperimentArtifact } from "../../src/pages/ExperimentBuilder/modules/experiment-runtime/experimentArtifact";
 import type { ExperimentAuthoringClient } from "../../src/pages/ExperimentBuilder/modules/experiment-authoring/types";
-import { scenarioCanvasStyles } from "./scenarioTrialConfiguration";
+import { scenarioAppearance } from "./scenarioTrialConfiguration";
 
 export async function compileScenarioArtifact(options: {
   apiBaseUrl: string;
   client: ExperimentAuthoringClient;
   experimentId: string;
+  customPreInitCode?: string;
+  localParams?: Record<string, string>;
+  baseCodeOverride?: string;
+  appearance?: typeof scenarioAppearance;
 }) {
+  const response = await fetch(`${options.apiBaseUrl}/api/appearance-settings/${options.experimentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options.appearance ?? scenarioAppearance),
+  });
+  if (!response.ok) throw new Error(`Saving scenario appearance failed: ${response.status}`);
   const getLoopTimeline = async (loopId: string | number) => {
     const graph = await options.client.getGraph(options.experimentId);
     return graph.scopes[String(loopId)]?.items ?? [];
@@ -18,13 +28,15 @@ export async function compileScenarioArtifact(options: {
     getTrial: (id) => options.client.getTrial(options.experimentId, id),
     getLoop: (id) => options.client.getLoop(options.experimentId, id),
     getLoopTimeline,
-    canvasStyles: scenarioCanvasStyles,
+    appearance: options.appearance ?? scenarioAppearance,
+    customPreInitCode: options.customPreInitCode,
+    localParams: options.localParams,
+    baseCodeOverride: options.baseCodeOverride,
   });
   return buildExperimentArtifact({
     experimentId: options.experimentId,
     generatedCode,
     apiBaseUrl: options.apiBaseUrl,
     saveConfiguration: true,
-    canvasStyles: scenarioCanvasStyles,
   });
 }

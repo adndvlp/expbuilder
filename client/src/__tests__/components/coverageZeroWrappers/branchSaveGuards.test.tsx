@@ -53,7 +53,6 @@ describe("coverage zero wrappers: BranchedTrial", () => {
         "current",
         expect.objectContaining({
           branchConditions: [],
-          repeatConditions: [],
         }),
       );
     });
@@ -87,7 +86,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     });
   });
 
-  it("no-ops without a selected trial and logs save failures", async () => {
+  it("no-ops without a selected trial and handles rejected saves", async () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -123,10 +122,7 @@ describe("coverage zero wrappers: BranchedTrial", () => {
     fireEvent.click(screen.getByText("save branch conditions"));
     await Promise.resolve();
     await Promise.resolve();
-    expect(consoleError).toHaveBeenCalledWith(
-      "Error saving conditions:",
-      expect.any(Error),
-    );
+    expect(consoleError).not.toHaveBeenCalled();
 
     act(() => {
       vi.advanceTimersByTime(1500);

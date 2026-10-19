@@ -19,7 +19,7 @@ export function renderPreviewHtmlComponent(
   // Same sizing rules as the runtime component: honor an explicit design box
   // (vw percentages) and otherwise hug the content capped to the canvas, so
   // long unbroken text cannot spill outside it.
-  const canvasWidth = Number(context.canvasStyles?.width) || 1024;
+  const canvasWidth = Number(context.previewViewport?.width) || 1024;
   const explicitWidth = Number(resolvePreviewParam(config.width, null));
   const explicitHeight = Number(resolvePreviewParam(config.height, null));
   const hasExplicitWidth = Number.isFinite(explicitWidth) && explicitWidth > 0;

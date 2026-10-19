@@ -1,18 +1,3 @@
-/**
- * BranchConditions Component
- *
- * This component handles both Branch and Jump conditions in a unified interface:
- *
- * - BRANCH: Navigate to downstream trials/loops within the same scope.
- *   Allows parameter overriding for the target trial.
- *
- * - JUMP: Navigate to ANY trial in the entire experiment, regardless of hierarchy.
- *   Does NOT allow parameter overriding (parameters are disabled for jumps).
- *
- * The component automatically detects if a selected target is a branch or jump
- * based on whether it is downstream in the same scope or already saved as a branch.
- */
-
 import { Dispatch, SetStateAction, useMemo } from "react";
 import { Condition, Parameter } from "../types";
 import useTrials from "../../../../../hooks/useTrials";
@@ -21,12 +6,7 @@ import ConditionsList from "./ConditionsList";
 import useAvailableColumns from "./useAvailableColumns";
 import useBranchConditions from "./useBranchConditions";
 import Descriptions from "./Descriptions";
-import {
-  idsEqual,
-  includesId,
-  isForwardSameScopeTarget,
-  itemIdKey,
-} from "../../../../../utils/branchGraphUtils";
+import DefaultDestination from "./DefaultDestination";
 import AddConditionButton from "./components/AddConditionButton";
 import ConditionsEmptyState from "./components/ConditionsEmptyState";
 
@@ -34,7 +14,7 @@ type Props = {
   conditions: Condition[];
   setConditions: Dispatch<SetStateAction<Condition[]>>;
   loadTargetTrialParameters: (trialId: string | number) => Promise<void>;
-  findTrialById: (trialId: string | number) => any;
+  findTrialById: (trialId: string | number) => Trial | Loop | null;
   targetTrialParameters: Record<string, Parameter[]>;
   targetTrialCsvColumns: Record<string, string[]>;
   selectedTrial: Trial | Loop | null;
@@ -53,9 +33,8 @@ function BranchConditions({
   selectedTrial,
   data,
   onAutoSave,
-  getAvailableTrials,
 }: Props) {
-  const { timeline, loopTimeline } = useTrials();
+  const { graph, timeline, loopTimeline } = useTrials();
 
   // Helper to update conditions and trigger autosave
   const setConditionsWrapper = (
@@ -86,7 +65,7 @@ function BranchConditions({
     }
   };
 
-  const getPropValue = (prop: any): any => {
+  const getPropValue = (prop: unknown): unknown => {
     if (
       prop &&
       typeof prop === "object" &&
@@ -123,80 +102,35 @@ function BranchConditions({
     data,
   });
 
-  const relevantTimeline = useMemo(
-    () => (selectedTrial?.parentLoopId ? loopTimeline : timeline),
-    [loopTimeline, selectedTrial?.parentLoopId, timeline],
-  );
-
-  const topLevelLoopTrialIds = useMemo(
-    () =>
-      new Set(
-        timeline
-          .filter((item) => item.type === "loop")
-          .flatMap((loop) => loop.trials || [])
-          .map((id) => itemIdKey(id)),
-      ),
-    [timeline],
-  );
-
-  // Get available trials/loops for branches in the same scope.
   const branchTrials = useMemo(() => {
-    if (!selectedTrial) return [];
-
-    return relevantTimeline
-      .filter((item) => {
-        if (idsEqual(item.id, selectedTrial.id)) return false;
-
-        if (
-          !selectedTrial.parentLoopId &&
-          item.type === "trial" &&
-          (item.parentLoopId || topLevelLoopTrialIds.has(itemIdKey(item.id)))
-        ) {
-          return false;
-        }
-
-        return (
-          includesId(selectedTrial.branches, item.id) ||
-          isForwardSameScopeTarget(relevantTimeline, selectedTrial.id, item.id)
-        );
-      })
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        isLoop: item.type === "loop",
-      }));
-  }, [relevantTimeline, selectedTrial, topLevelLoopTrialIds]);
-
-  // Helper function to check if a trialId should be handled as a branch target
-  const isInBranches = (trialId: string | number | null): boolean => {
-    if (!trialId) return false;
-    return branchTrials.some((branch) => idsEqual(branch.id, trialId));
-  };
-
-  // Helper function to determine if condition is a jump (not a branch target)
-  const isJumpCondition = (condition: Condition): boolean => {
-    return !isInBranches(condition.nextTrialId);
-  };
-
-  // Get ALL available trials/loops for Jump functionality
-  // Use getAvailableTrials from parent which correctly handles both timelines and loop timelines
-  const getAllTrialsForJump = () => {
-    const availableTrials = getAvailableTrials();
-    return availableTrials
-      .filter((item) => !isInBranches(item.id))
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        displayName: item.name,
-        isLoop: false, // We'll determine this from loaded trial if needed
-      }));
-  };
-
-  const allJumpTrials = getAllTrialsForJump();
+    if (!selectedRuleTrial) return [];
+    const items = graph
+      ? [graph.root, ...Object.values(graph.scopes)].flatMap(
+          (scope) => scope.items,
+        )
+      : [...timeline, ...loopTimeline];
+    return [
+      ...new Map(
+        items
+          .filter((item) => item.type === "trial")
+          .map((item) => [
+            String(item.id),
+            { id: item.id, name: item.name, isLoop: false },
+          ]),
+      ).values(),
+    ];
+  }, [graph, timeline, loopTimeline, selectedRuleTrial]);
 
   return (
     <>
       <Descriptions />
+      {selectedRuleTrial && (
+        <DefaultDestination
+          trial={selectedRuleTrial}
+          candidates={branchTrials}
+          conditions={conditions}
+        />
+      )}
       {/* Conditions list */}
       {conditions.length === 0 ? (
         <ConditionsEmptyState onAdd={addCondition} />
@@ -206,7 +140,6 @@ function BranchConditions({
           removeCondition={removeCondition}
           findTrialById={findTrialById}
           targetTrialParameters={targetTrialParameters}
-          isJumpCondition={isJumpCondition}
           triggerSave={triggerSave}
           addCustomParameter={addCustomParameter}
           addRuleToCondition={addRuleToCondition}
@@ -216,9 +149,7 @@ function BranchConditions({
           getAvailableColumns={getAvailableColumns}
           setConditionsWrapper={setConditionsWrapper}
           updateNextTrial={updateNextTrial}
-          isInBranches={isInBranches}
           branchTrials={branchTrials}
-          allJumpTrials={allJumpTrials}
           targetTrialCsvColumns={targetTrialCsvColumns}
         />
       )}

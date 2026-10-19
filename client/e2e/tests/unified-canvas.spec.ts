@@ -1,5 +1,10 @@
 import { expect, test } from "../fixtures/test.fixture";
-import { graph, graphScope, routeGraph } from "../helpers/loopBranchGraph";
+import {
+  branchEdge,
+  graph,
+  graphScope,
+  routeGraph,
+} from "../helpers/loopBranchGraph";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
@@ -118,14 +123,13 @@ test("routes a one-item loop as one exterior circuit", async ({ page }) => {
       id: "instructions",
       type: "trial",
       name: "Instructions",
-      branches: ["loop-1"],
+      branches: ["task"],
     },
     { id: "final-1", type: "trial", name: "Final1", branches: [] },
     {
       id: "loop-1",
       type: "loop",
       name: "Loop 1",
-      branches: ["final-2"],
       trials: ["task"],
     },
     { id: "final-2", type: "trial", name: "Final2", branches: [] },
@@ -138,10 +142,16 @@ test("routes a one-item loop as one exterior circuit", async ({ page }) => {
       branchingTimeline,
       {
         "loop-1": graphScope("loop-1", null, [
-          { id: "task", type: "trial", name: "Task" },
+          { id: "task", type: "trial", name: "Task", branches: ["final-2"] },
         ]),
       },
-      [],
+      [
+        branchEdge("welcome", "consent", null, null),
+        branchEdge("consent", "instructions", null, null),
+        branchEdge("consent", "final-1", null, null),
+        branchEdge("instructions", "task", null, "loop-1"),
+        branchEdge("task", "final-2", "loop-1", null, ["loop-1"]),
+      ],
     ),
   );
   await page.route("**/api/trials-metadata/exp-branching", (route) =>
@@ -158,7 +168,9 @@ test("routes a one-item loop as one exterior circuit", async ({ page }) => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          trialsMetadata: [{ id: "task", type: "trial", name: "Task" }],
+          trialsMetadata: [
+            { id: "task", type: "trial", name: "Task", branches: ["final-2"] },
+          ],
         }),
       }),
   );

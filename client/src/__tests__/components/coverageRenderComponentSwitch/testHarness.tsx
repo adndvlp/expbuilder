@@ -26,7 +26,7 @@ export type RenderComponentHarnessProps = {
   initial: TrialComponent;
   selectedId?: string | null;
   selectedIds?: string[];
-  withCanvasStyles?: boolean;
+  withPreviewViewport?: boolean;
   withAutoSave?: boolean;
 };
 
@@ -34,7 +34,7 @@ export function RenderComponentHarness({
   initial,
   selectedId = null,
   selectedIds = [],
-  withCanvasStyles = false,
+  withPreviewViewport = false,
   withAutoSave = true,
   renderComponentFn,
 }: RenderComponentHarnessProps & { renderComponentFn: RenderComponentFn }) {
@@ -63,7 +63,7 @@ export function RenderComponentHarness({
       ids: next.map((item) => item.id),
     }),
     uploadedFiles: [{ name: "asset.png", url: "/asset.png" }],
-    canvasStyles: withCanvasStyles
+    previewViewport: withPreviewViewport
       ? {
           width: 500,
           height: 400,

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import TrialsContext, { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
+import TrialsContext, {
+  TimelineItem,
+} from "../../pages/ExperimentBuilder/contexts/TrialsContext";
 import { createContext } from "react";
 
 describe("TrialsContext default values", () => {
@@ -53,7 +55,7 @@ describe("TimelineItem type", () => {
       id: "loop_1",
       type: "loop",
       name: "Test Loop",
-      branches: [],
+
       trials: [1, 2, 3],
     };
     expect(item.trials).toEqual([1, 2, 3]);

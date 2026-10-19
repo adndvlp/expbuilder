@@ -9,23 +9,14 @@ export const ApiReferenceSection: DocSection = {
 
 | Variable | Type | Mode | Description |
 |---|---|---|---|
-| \`window.skipRemaining\` | boolean | Both | Activates trial skip until nextTrialId is found |
-| \`window.nextTrialId\` | string | null | Both | Target trial of the active branch |
-| \`window.branchingActive\` | boolean | Both | Indicates branch in progress |
-| \`window.branchCustomParameters\` | object | null | Both | Params to inject into target trial |
 | \`window.JSPSYCH_FILE_UPLOAD_ENDPOINT\` | string | Both | Endpoint for FileUploadResponseComponent |
 | \`window.JSPSYCH_SESSION_ID\` | string | Both | Current Session ID |
 | \`window.JSPSYCH_LOCAL_KEYS\` | object | Local | Experiment-scoped storage keys |
 | \`window._firebaseReady\` | boolean | Published | true when Firebase SDK loaded |
 
-## Loop Scope Variables
+## Navigation coordinator
 
-| Variable | Scope |
-|---|---|
-| \`window.loop_ID_NextTrialId\` | Loop with uuid \`ID\` |
-| \`window.loop_ID_SkipRemaining\` | Loop with uuid \`ID\` |
-| \`window.loop_ID_BranchingActive\` | Loop with uuid \`ID\` |
-| \`window.loop_ID_BranchCustomParameters\` | Loop with uuid \`ID\` |
+The generated runtime uses \`window.ExpBuilderNavigation\` for native timeline transitions, destination parameters and version 3 resume cursors. Configure navigation through trial conditions and explicit defaults. Each loop retains its own sampled row and repetition state inside this coordinator.
 
 ## localStorage Keys
 
@@ -34,7 +25,6 @@ export const ApiReferenceSection: DocSection = {
 | \`expbuilder:local:<id>:session-id\` | Durable session UUID | Cleared only after confirmed completion |
 | \`expbuilder:local:<id>:participant-number\` | Positive server-assigned number | Cleared only after confirmed completion |
 | \`expbuilder:local:<id>:resume-trial\` | Versioned checkpoint with resolved branch/sequential route | Updated each trial; scoped by experiment |
-| \`expbuilder:local:<id>:jump-request\` | Versioned compiled address, cursor, progress and source identity | Cleared when the target is consumed or navigation is invalidated |
 
 ## sessionStorage Keys
 
@@ -42,7 +32,6 @@ export const ApiReferenceSection: DocSection = {
 |---|---|---|
 | \`expbuilder:local:<id>:tab-id\` | Tab UUID | Created once per tab |
 | \`expbuilder:local:<id>:tab-session-id\` | Session UUID owned by the tab | Cleared after confirmed completion |
-| \`expbuilder:local:<id>:jump-reload\` | \`"1"\` | Written before reload, cleared at start |
 
 ## Template Markers
 

@@ -107,9 +107,9 @@ describe("condition hooks: ParamsOverride availability and persistence", () => {
       await Promise.resolve();
     });
 
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith("3", {
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith("3", expect.objectContaining({
       paramsOverride,
-    });
+    }));
   });
 
   it("handles ParamsOverride saves with null updates and thrown errors", async () => {

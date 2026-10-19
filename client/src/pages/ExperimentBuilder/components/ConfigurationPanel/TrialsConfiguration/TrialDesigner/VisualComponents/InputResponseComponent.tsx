@@ -80,6 +80,8 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -122,6 +124,7 @@ const InputResponseComponent: React.FC<InputResponseComponentProps> = ({
           const nextWidth = Math.max(40, effectiveWidth * scaleX);
           const nextHeight = Math.max(20, drawHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

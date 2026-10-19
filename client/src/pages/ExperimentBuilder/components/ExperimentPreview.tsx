@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+import type { PreviewViewport } from "./ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import useExperimentAppearance from "../hooks/useExperimentAppearance";
 import useUrl from "../hooks/useUrl";
 import useTrials from "../hooks/useTrials";
 import { useExperimentID } from "../hooks/useExperimentID";
@@ -8,23 +10,15 @@ import {
 } from "../utils/generateTrialLoopCodes";
 import useDevMode from "../hooks/useDevMode";
 import { useExperimentCode } from "./Timeline/ExperimentCode/useExperimentCode";
-import { resumeCode } from "./Timeline/ExperimentCode/ResumeCode";
-import { buildSelectedPreviewPersistence } from "./experiment-preview/selectedPreviewPersistence";
+import { buildSelectedPreviewCode } from "./experiment-preview/selectedPreviewPersistence";
 import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
 const API_URL = getApiBaseUrl();
 
 type UploadedFile = { name: string; url: string; type: string };
 
-type CanvasStylesProp = {
-  backgroundColor?: string;
-  width?: number;
-  height?: number;
-  fullScreen?: boolean;
-};
-
 type Props = {
   uploadedFiles?: UploadedFile[];
-  canvasStyles?: CanvasStylesProp;
+  previewViewport?: PreviewViewport;
   autoStart?: boolean;
 };
 
@@ -32,9 +26,10 @@ const EMPTY_UPLOADED_FILES: UploadedFile[] = [];
 
 function ExperimentPreview({
   uploadedFiles = EMPTY_UPLOADED_FILES,
-  canvasStyles,
+  previewViewport,
   autoStart = false,
 }: Props) {
+  const { appearance } = useExperimentAppearance();
   const { generateLocalExperiment } = useExperimentCode(uploadedFiles);
   const { trialUrl } = useUrl();
   const [started, setStarted] = useState(autoStart);
@@ -67,19 +62,22 @@ function ExperimentPreview({
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    if (!canvasStyles?.width || !canvasStyles?.height) return;
+    if (!previewViewport) {
+      setScale(1);
+      return;
+    }
     const el = wrapperRef.current;
     if (!el) return;
     const update = () => {
-      const scaleX = el.clientWidth / canvasStyles.width!;
-      const scaleY = el.clientHeight / canvasStyles.height!;
+      const scaleX = el.clientWidth / previewViewport.width;
+      const scaleY = el.clientHeight / previewViewport.height;
       setScale(Math.min(scaleX, scaleY, 1));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [canvasStyles?.width, canvasStyles?.height, started]);
+  }, [previewViewport?.width, previewViewport?.height, started]);
 
   const handleStart = () => {
     setStarted(true);
@@ -128,52 +126,14 @@ function ExperimentPreview({
 
         if (!generatedCode) return;
 
-        const persistenceCode = buildSelectedPreviewPersistence({
+        const selectionName =
+          selectedTrial?.name || selectedLoop?.name || "preview";
+        generatedPreviewCode = buildSelectedPreviewCode({
           experimentID: experimentID || "",
           isSaveMode,
-          selectionName: selectedTrial?.name || selectedLoop?.name || "preview",
+          selectionName,
+          generatedCode,
         });
-        const trialCode = `
-${persistenceCode}
-${resumeCode()}
-(async () => {
-localStorage.removeItem('jsPsych_jumpToTrial');
-  participantNumber = await initParticipant();
-
-  if (!Number.isInteger(participantNumber) || participantNumber < 1) {
-    alert("The participant number is not assigned. Please, wait.");
-    throw new Error("participantNumber not assigned");
-  }
-    const jsPsych = initJsPsych({
-          on_data_update: function (data) {
-            persistPreviewResult(data);
-          },
-
-          on_finish: async function() {
-              let completionRetryDelay = 2000;
-              const attemptPreviewCompletion = async function() {
-                const finishCompleted = await completePreviewSession();
-                if (finishCompleted) {
-                  jsPsych.data.displayData();
-                  return;
-                }
-                const retryAfter = completionRetryDelay;
-                completionRetryDelay = Math.min(completionRetryDelay * 2, 30000);
-                setTimeout(attemptPreviewCompletion, retryAfter);
-              };
-              await attemptPreviewCompletion();
-          },
-    });
-
-      const timeline = [];
-      
-      ${generatedCode}
-
-      jsPsych.run(timeline);
-      
-      })()
-      `;
-        generatedPreviewCode = trialCode;
       }
 
       if (!active) return;
@@ -183,7 +143,6 @@ localStorage.removeItem('jsPsych_jumpToTrial');
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           generatedCode: generatedPreviewCode,
-          canvasStyles,
         }),
         credentials: "include",
         mode: "cors",
@@ -212,7 +171,7 @@ localStorage.removeItem('jsPsych_jumpToTrial');
     selectedTrial,
     selectedLoop,
     experimentID,
-    canvasStyles,
+    appearance,
     uploadedFiles,
   ]);
 
@@ -266,15 +225,14 @@ localStorage.removeItem('jsPsych_jumpToTrial');
               title="Experiment Preview"
               style={{
                 border: "none",
-                width: canvasStyles?.width ? `${canvasStyles.width}px` : "100%",
-                height: canvasStyles?.height
-                  ? `${canvasStyles.height}px`
+                width: previewViewport ? `${previewViewport.width}px` : "100%",
+                height: previewViewport
+                  ? `${previewViewport.height}px`
                   : "60vh",
                 flexShrink: 0,
                 transform: `scale(${scale})`,
                 transformOrigin: "center center",
                 boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
-                background: canvasStyles?.backgroundColor || "transparent",
               }}
             />
           </div>

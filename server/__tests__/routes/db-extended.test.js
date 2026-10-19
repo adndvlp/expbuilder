@@ -40,9 +40,9 @@ describe('GET /api/export-all-experiments edge cases', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    db.data.trials.push({
+    db.data.trials.push({ entryItemId: 1,
       experimentID: 'E1',
-      trials: [{ id: 1, name: 'T1' }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, name: 'T1' }],
       loops: [],
       timeline: [{ id: 1, type: 'trial', name: 'T1' }],
     })
@@ -161,9 +161,9 @@ describe('POST /api/import-experiments structured ZIP', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
       },
-      trials: {
+      trials: { entryItemId: 1,
         experimentID: 'E1',
-        trials: [{ id: 1, name: 'T1' }],
+        trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, name: 'T1' }],
         loops: [],
         timeline: [{ id: 1, type: 'trial', name: 'T1' }],
       },
@@ -217,7 +217,7 @@ describe('POST /api/import-experiments structured ZIP', () => {
       createdAt: '2023-01-01T00:00:00.000Z',
       updatedAt: '2023-01-01T00:00:00.000Z',
     })
-    db.data.trials.push({ experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     db.data.configs.push({ experimentID: 'E1', data: {}, isDevMode: false })
     db.data.sessionResults.push({
       experimentID: 'E1',
@@ -241,7 +241,7 @@ describe('POST /api/import-experiments structured ZIP', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
       },
-      trials: { experimentID: 'E1', trials: [{ id: 2, name: 'New Trial' }], loops: [], timeline: [] },
+      trials: { entryItemId: 2, experimentID: 'E1', trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 2, name: 'New Trial' }], loops: [], timeline: [{ id: 2, type: 'trial' }] },
       config: { experimentID: 'E1', data: { ok: true }, isDevMode: false },
       sessionResults: [
         {

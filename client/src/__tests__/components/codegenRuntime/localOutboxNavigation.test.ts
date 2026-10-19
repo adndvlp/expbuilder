@@ -18,20 +18,11 @@ const options: LocalExperimentCodeOptions = {
 };
 
 describe("local outbox navigation barrier", () => {
-  it("continues an intentional jump with the persisted session identity", () => {
+  it("keeps the persisted session identity when continuing a route", () => {
     const code = buildLocalRuntimeStart(options);
-    const continuityGuard = code.indexOf(
-      "The jump cannot continue without its original session",
-    );
-    const newSessionFallback = code.indexOf("trialSessionId = _newId()");
-
-    expect(continuityGuard).toBeGreaterThan(-1);
-    expect(newSessionFallback).toBeGreaterThan(continuityGuard);
-    expect(code).toContain(
-      'localStorage.removeItem("expbuilder:local:experiment-a:resume-trial")',
-    );
-    expect(code).toContain("sessionId: String(trialSessionId)");
-    expect(code).not.toContain("newSessionId");
+    expect(code).toContain("trialSessionId = candidate");
+    expect(code).toContain('localStorage.getItem("expbuilder:local:experiment-a:resume-trial")');
+    expect(code).toContain("window.ExpBuilderNavigation.activateResume");
   });
 
   it("notifies navigation only after the strict acknowledgement is durable", () => {

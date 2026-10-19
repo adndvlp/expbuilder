@@ -97,7 +97,7 @@ describe("createLoopNode", () => {
   it("includes onOpenLoop when provided", () => {
     const onClick = () => {};
     const onOpenLoop = () => {};
-    const node = createLoopNode("l2", "Loop", 0, 0, false, onClick, undefined, onOpenLoop);
+    const node = createLoopNode("l2", "Loop", 0, 0, false, onClick, onOpenLoop);
 
     expect(node.data.onOpenLoop).toBe(onOpenLoop);
     expect(node.data.onAddBranch).toBeUndefined();

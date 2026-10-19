@@ -3,6 +3,8 @@ import { db } from "../../utils/db.js";
 import { buildExperimentGraph } from "./graph/buildExperimentGraph.js";
 import { idsMatch } from "./graph/identity.js";
 
+import { assertTimelineBranching } from "./branchContract.js";
+
 const router = Router();
 
 router.get("/api/timeline-code/:experimentID", async (req, res) => {
@@ -46,6 +48,7 @@ router.patch("/api/timeline/:experimentID", async (req, res) => {
         .json({ success: false, error: "Experiment not found" });
     }
 
+    assertTimelineBranching(experimentDoc, timeline);
     experimentDoc.timeline = timeline;
     experimentDoc.updatedAt = new Date().toISOString();
 
@@ -57,7 +60,13 @@ router.patch("/api/timeline/:experimentID", async (req, res) => {
       graph: buildExperimentGraph(experimentDoc),
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status ?? 500)
+      .json({
+        success: false,
+        error: error.message,
+        ...(error.code ? { code: error.code } : {}),
+      });
   }
 });
 

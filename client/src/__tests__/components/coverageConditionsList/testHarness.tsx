@@ -53,7 +53,6 @@ vi.mock(
       condition,
       paramKey,
       isTargetDynamic,
-      isJumpCondition,
       hasSurveyJsonParam,
       setConditions,
       conditions,
@@ -62,7 +61,6 @@ vi.mock(
       <td
         data-testid={`override-${condition.id}-${paramKey || "empty"}`}
         data-dynamic={String(isTargetDynamic)}
-        data-jump={String(isJumpCondition)}
         data-survey={String(hasSurveyJsonParam)}
       >
         <button
@@ -114,7 +112,7 @@ export const dynamicTarget = {
 };
 
 export const normalTarget = {
-  id: "jump-target",
+  id: "branch-target",
   plugin: "plugin-html-keyboard-response",
 };
 
@@ -133,7 +131,7 @@ export function renderConditionsList() {
     },
     {
       id: 2,
-      nextTrialId: "jump-target",
+      nextTrialId: "branch-target",
       rules: [{ trialId: "source", prop: "rt", op: ">", value: "500" }],
       customParameters: {},
     },
@@ -144,7 +142,7 @@ export function renderConditionsList() {
     removeCondition: vi.fn(),
     findTrialById: vi.fn((trialId: string | number) => {
       if (trialId === "dynamic-target") return dynamicTarget;
-      if (trialId === "jump-target") return normalTarget;
+      if (trialId === "branch-target") return normalTarget;
       return null;
     }),
     targetTrialParameters: {
@@ -152,9 +150,8 @@ export function renderConditionsList() {
         { key: "survey_json", label: "Survey JSON", type: "object" },
         { key: "text", label: "Text", type: "string" },
       ],
-      "jump-target": [{ key: "stimulus", label: "Stimulus", type: "string" }],
+      "branch-target": [{ key: "stimulus", label: "Stimulus", type: "string" }],
     },
-    isJumpCondition: vi.fn((condition: any) => condition.id === 2),
     triggerSave: vi.fn(),
     addCustomParameter: vi.fn(),
     addRuleToCondition: vi.fn(),
@@ -167,19 +164,17 @@ export function renderConditionsList() {
     ]),
     setConditionsWrapper: vi.fn(),
     updateNextTrial: vi.fn(),
-    isInBranches: vi.fn(() => false),
-    branchTrials: [{ id: "branch-a", name: "Branch A", isLoop: false }],
-    allJumpTrials: [
+    branchTrials: [...[{ id: "branch-a", name: "Branch A", isLoop: false }], ...[
       {
-        id: "jump-target",
-        name: "Jump Target",
-        displayName: "Jump Target",
+        id: "branch-target",
+        name: "branch Target",
+        displayName: "branch Target",
         isLoop: true,
       },
-    ],
+    ]],
     targetTrialCsvColumns: {
       "dynamic-target": ["score", "answer"],
-      "jump-target": ["stimulus"],
+      "branch-target": ["stimulus"],
     },
   };
 

@@ -80,7 +80,7 @@ export default function MoveDestinationList({
                 marginTop: "2px",
               }}
             >
-              {destination.type === "trial" ? "Trial" : "Loop"}
+              Trial
             </div>
           </div>
         ))

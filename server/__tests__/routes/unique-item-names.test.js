@@ -14,10 +14,10 @@ async function freshApp() {
   const { db, ensureDbData } = await import("../../utils/db.js");
   db.data = {};
   ensureDbData();
-  db.data.trials.push({
+  db.data.trials.push({ entryItemId: null,
     experimentID: "E1",
-    trials: [{ id: 1, name: "New Trial 4", branches: [] }],
-    loops: [{ id: "loop_1", name: "Nested Loop 1", trials: [] }],
+    trials: [{ defaultNextTrialId: null, branchConditions: [], id: 1, name: "New Trial 4", branches: [] }],
+    loops: [{ nextItemId: null, entryItemId: null, id: "loop_1", name: "Nested Loop 1", trials: [] }],
     timeline: [],
   });
   await db.write();

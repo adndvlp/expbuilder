@@ -1,11 +1,15 @@
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
-import type { ExecutionAddress } from "./jumpRequest";
+import type { ExecutionAddress } from "./executionAddress";
 
 export type ExecutionAddressManifest = {
-  version: 2;
+  version: 3;
   revision: string;
   nextBySource: Record<string, string>;
+  entries: Record<string, string | null>;
+  loopContinuations: Record<string, string | null>;
   addressesByTarget: Record<string, ExecutionAddress>;
+  scopes: Record<string, string[]>;
+  allScopes: Record<string, string[]>;
 };
 
 const idKey = (value: string | number) => String(value);
@@ -19,7 +23,9 @@ function buildOwnerPath(
   let current = ownerId;
   while (current !== null) {
     if (visited.has(current)) {
-      throw new Error(`Execution scope ancestry contains a cycle at ${current}`);
+      throw new Error(
+        `Execution scope ancestry contains a cycle at ${current}`,
+      );
     }
     visited.add(current);
     const scope = graph.scopes[current];
@@ -59,27 +65,52 @@ function buildAddressesByTarget(
 export function buildExecutionAddressManifest(
   graph: ExperimentGraphSnapshot,
 ): ExecutionAddressManifest {
-  const rootBranchTargets = new Set(
-    graph.edges
-      .filter((edge) => edge.targetOwnerId === null)
-      .map((edge) => idKey(edge.targetId)),
-  );
-  const sequentialItems = graph.root.items.filter(
-    (item) => !rootBranchTargets.has(idKey(item.id)),
-  );
-  const nextBySource: Record<string, string> = {};
-
-  sequentialItems.forEach((item, index) => {
-    if (item.type !== "trial") return;
-    const next = sequentialItems[index + 1];
-    if (next) nextBySource[idKey(item.id)] = idKey(next.id);
-  });
-
+  const scopes = [graph.root, ...Object.values(graph.scopes)];
   return {
-    version: 2,
+    version: 3,
     revision: graph.revision,
-    nextBySource,
+    nextBySource: Object.fromEntries(
+      scopes.flatMap((scope) =>
+        scope.items
+          .filter(
+            (item) => item.type === "trial" && item.defaultNextTrialId != null,
+          )
+          .flatMap((item) =>
+            item.type === "trial"
+              ? [[idKey(item.id), String(item.defaultNextTrialId)]]
+              : [],
+          ),
+      ),
+    ),
     addressesByTarget: buildAddressesByTarget(graph),
+    entries: Object.fromEntries(
+      scopes.map((scope) => [
+        scope.scopeId ?? "root",
+        scope.entryItemId == null ? null : String(scope.entryItemId),
+      ]),
+    ),
+    loopContinuations: Object.fromEntries(
+      scopes.flatMap((scope) =>
+        scope.items
+          .filter((item) => item.type === "loop")
+          .map((item) => [
+            idKey(item.id),
+            item.nextItemId == null ? null : String(item.nextItemId),
+          ]),
+      ),
+    ),
+    scopes: Object.fromEntries(
+      scopes.map((scope) => [
+        scope.scopeId ?? "root",
+        scope.items.map((item) => idKey(item.id)),
+      ]),
+    ),
+    allScopes: Object.fromEntries(
+      scopes.map((scope) => [
+        scope.scopeId ?? "root",
+        scope.items.map((item) => idKey(item.id)),
+      ]),
+    ),
   };
 }
 

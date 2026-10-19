@@ -12,7 +12,6 @@ import {
   selectLoopBranchLevel,
   startLoopBranchIntent,
 } from "../../src/pages/ExperimentBuilder/modules/experiment-authoring/intents";
-import { itemIdKey } from "../../src/pages/ExperimentBuilder/utils/branchGraphUtils";
 import { addScenarioScopedBranch } from "./addScenarioScopedBranch";
 import { compileScenarioArtifact } from "./compileScenarioArtifact";
 import { moveScenarioItem } from "./moveScenarioItem";
@@ -25,11 +24,10 @@ import type {
   BranchConditionIntent,
   LoopConditionIntent,
   ParamsOverrideConditionIntent,
-  RepeatConditionIntent,
 } from "./scenarioIntentDrafts";
 import {
   configureScenarioButtonTrial,
-  configureScenarioDynamicButtonTrial,
+  configureScenarioDynamicButtonTrial as configureDynamicButton,
 } from "./scenarioTrialConfiguration";
 import { ScenarioAuthoringSession } from "./ScenarioAuthoringSession";
 
@@ -44,16 +42,13 @@ export class ScenarioAuthor {
   get client() {
     return this.session.client;
   }
-
   get experimentId() {
     return this.session.experimentId;
   }
-
   async createExperiment(name: string) {
     this.aliases.clear();
     return this.session.createExperiment(name);
   }
-
   id(alias: string) {
     const id = this.aliases.get(alias);
     if (id === undefined) throw new Error(`Unknown scenario alias: ${alias}`);
@@ -103,7 +98,11 @@ export class ScenarioAuthor {
     return saved;
   }
 
-  async addScopedBranch(sourceAlias: string, targetAlias: string, loopAlias: string) {
+  async addScopedBranch(
+    sourceAlias: string,
+    targetAlias: string,
+    loopAlias: string,
+  ) {
     const loopId = this.id(loopAlias);
     const saved = await addScenarioScopedBranch({
       sourceId: this.id(sourceAlias),
@@ -132,9 +131,8 @@ export class ScenarioAuthor {
       sourceTrialId: this.id(sourceAlias),
       dependencies,
     });
-    const targetScopeId = targetScopeAlias === null
-      ? null
-      : String(this.id(targetScopeAlias));
+    const targetScopeId =
+      targetScopeAlias === null ? null : String(this.id(targetScopeAlias));
     const selection = selectLoopBranchLevel(intent, targetScopeId);
     if (!selection) {
       throw new Error(
@@ -191,12 +189,18 @@ export class ScenarioAuthor {
   }
 
   async configureDynamicButtonTrial(alias: string) {
-    return configureScenarioDynamicButtonTrial(
-      this.dependencies(),
-      this.id(alias),
-    );
+    return configureDynamicButton(this.dependencies(), this.id(alias));
   }
-
+  async configureDynamicTrial(
+    alias: string,
+    columnMapping: Record<string, unknown>,
+  ) {
+    return this.dependencies().updateTrial(this.id(alias), {
+      plugin: "plugin-dynamic",
+      parameters: {},
+      columnMapping,
+    });
+  }
   async configureBranchConditions(
     sourceAlias: string,
     intents: BranchConditionIntent[],
@@ -208,9 +212,8 @@ export class ScenarioAuthor {
     targetAlias: string,
     intents: ParamsOverrideConditionIntent[],
   ) {
-    const conditions = buildParamsOverrideDraft(
-      intents,
-      (alias) => this.id(alias),
+    const conditions = buildParamsOverrideDraft(intents, (alias) =>
+      this.id(alias),
     );
     return saveParamsOverrideIntent({
       trialId: this.id(targetAlias),
@@ -219,20 +222,12 @@ export class ScenarioAuthor {
     });
   }
 
-  async configureRepeatConditions(
-    sourceAlias: string,
-    intents: RepeatConditionIntent[],
-  ) {
-    return this.saveRoutingConditions(sourceAlias, intents);
-  }
-
   async configureConditionalLoop(
     loopAlias: string,
     intents: LoopConditionIntent[],
   ) {
-    const conditions = buildConditionalLoopDraft(
-      intents,
-      (alias) => this.id(alias),
+    const conditions = buildConditionalLoopDraft(intents, (alias) =>
+      this.id(alias),
     );
     return saveConditionalLoopIntent({
       loopId: this.id(loopAlias),
@@ -243,26 +238,15 @@ export class ScenarioAuthor {
 
   private async saveRoutingConditions(
     sourceAlias: string,
-    intents: Array<BranchConditionIntent | RepeatConditionIntent>,
+    intents: BranchConditionIntent[],
   ) {
     const source = await this.client.getTrial(
       this.experimentId,
       this.id(sourceAlias),
     );
     const graph = this.session.graph;
-    const scopeTimeline = source.parentLoopId
-      ? graph.scopes[String(source.parentLoopId)]?.items ?? []
-      : graph.root.items;
-    const topLevelLoopTrialIds = new Set(
-      graph.root.items
-        .filter((item) => item.type === "loop")
-        .flatMap((item) => item.trials ?? [])
-        .map((id) => itemIdKey(id)),
-    );
-    const conditions = buildBranchingDraft(
-      intents,
-      (alias) => this.id(alias),
-    );
+    const scopeTimeline = [graph.root, ...Object.values(graph.scopes)].flatMap(scope => scope.items);
+    const conditions = buildBranchingDraft(intents, (alias) => this.id(alias));
 
     return saveBranchingIntent({
       item: source,
@@ -272,7 +256,6 @@ export class ScenarioAuthor {
           selectedItem: source,
           targetId,
           scopeTimeline,
-          topLevelLoopTrialIds,
         }),
       dependencies: this.dependencies(),
     });
@@ -281,7 +264,9 @@ export class ScenarioAuthor {
   async assertHealthyGraph() {
     const graph = await this.session.refreshGraph();
     if (graph.diagnostics.length > 0) {
-      throw new Error(`Invalid authored graph: ${JSON.stringify(graph.diagnostics)}`);
+      throw new Error(
+        `Invalid authored graph: ${JSON.stringify(graph.diagnostics)}`,
+      );
     }
     return graph;
   }

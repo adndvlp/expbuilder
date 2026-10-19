@@ -7,6 +7,10 @@ export const acceptanceCoverage = {
 };
 
 export const verticalCapabilities = {
+  "RUNTIME-RESPONSIVE-VIEWPORT": "responsive-viewport-runtime.spec.ts",
+  "RUNTIME-LOOP-SIBLING-ENTRY": "loop-trial-routing-runtime.spec.ts",
+  "RUNTIME-LOOP-CSV-REPETITIONS": "loop-iteration-runtime.spec.ts",
+  "RUNTIME-LOOP-CSV-BRANCH": "loop-iteration-runtime.spec.ts",
   "RUNTIME-BRANCH-MATCH": "branching-runtime.spec.ts",
   "RUNTIME-LOOP-ROOT-EXIT": "branching-runtime.spec.ts",
   "RUNTIME-LOOP-PARALLEL-LEVEL": "loop-placement-runtime.spec.ts",
@@ -15,24 +19,23 @@ export const verticalCapabilities = {
   "RUNTIME-DYNAMIC-ASSET": "branching-runtime.spec.ts",
   "RUNTIME-CORRUPT-ROUTE-GUARD": "branching-runtime.spec.ts",
   "RUNTIME-MOVE-ORDER": "composed-runtime.spec.ts",
+  "RUNTIME-LOOP-TRIAL-MOVE": "composed-runtime.spec.ts",
   "RUNTIME-EXIT-PARAMS": "composed-runtime.spec.ts",
   "RUNTIME-PARAMS-OVERRIDE": "conditions-runtime.spec.ts",
   "RUNTIME-CONDITIONAL-LOOP": "conditions-runtime.spec.ts",
-  "RUNTIME-JUMP-ROOT": "navigation-runtime.spec.ts",
-  "RUNTIME-JUMP-INVALID": "navigation-negative-runtime.spec.ts",
+  "RUNTIME-BRANCH-RETURN": "navigation-runtime.spec.ts",
+  "RUNTIME-BRANCH-INVALID": "navigation-negative-runtime.spec.ts",
   "RUNTIME-RESUME-BRANCH": "navigation-runtime.spec.ts",
   "RUNTIME-RESUME-SEQUENTIAL": "navigation-runtime.spec.ts",
   "RUNTIME-NESTED-ROOT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-PARENT-EXIT": "nested-loop-runtime.spec.ts",
   "RUNTIME-NESTED-ANCESTOR-EXIT": "nested-loop-runtime.spec.ts",
-  "RUNTIME-BRANCH-CONDITIONAL-LOOP":
-    "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-BRANCH-CONDITIONAL-LOOP": "interaction-conditions-runtime.spec.ts",
   "RUNTIME-LOOP-EXIT-CONDITIONAL-LOOP":
     "interaction-conditions-runtime.spec.ts",
-  "RUNTIME-PARAMS-CONDITIONAL-LOOP":
-    "interaction-conditions-runtime.spec.ts",
-  "RUNTIME-BRANCH-JUMP": "interaction-navigation-runtime.spec.ts",
-  "RUNTIME-LOOP-EXIT-JUMP": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-PARAMS-CONDITIONAL-LOOP": "interaction-conditions-runtime.spec.ts",
+  "RUNTIME-BRANCH-CHAIN": "interaction-navigation-runtime.spec.ts",
+  "RUNTIME-LOOP-EXIT-CHAIN": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-NESTED-EXIT-RESUME": "interaction-navigation-runtime.spec.ts",
   "RUNTIME-RESOLVED-MEGA": "mega-runtime.spec.ts",
 };

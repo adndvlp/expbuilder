@@ -61,7 +61,7 @@ describe("Canvas modals", () => {
 
     render(
       <MoveItemModal
-        itemName="Practice loop"
+        itemName="Practice trial"
         availableDestinations={[]}
         onConfirm={onConfirm}
         onClose={vi.fn()}
@@ -69,7 +69,7 @@ describe("Canvas modals", () => {
     );
 
     expect(screen.getByText("Move Item")).toBeInTheDocument();
-    expect(screen.getByText("Practice loop")).toBeInTheDocument();
+    expect(screen.getByText("Practice trial")).toBeInTheDocument();
     expect(screen.getByText("No available destinations")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Move"));
@@ -123,9 +123,9 @@ describe("Canvas modals", () => {
             hasBranches: false,
           },
           {
-            id: "loop-2",
-            name: "Loop destination",
-            type: "loop",
+            id: "trial-2",
+            name: "Branch destination",
+            type: "trial",
             hasBranches: true,
           },
         ]}
@@ -135,8 +135,8 @@ describe("Canvas modals", () => {
     );
 
     expect(screen.getByText("the selected item")).toBeInTheDocument();
-    expect(screen.getByText("Trial")).toBeInTheDocument();
-    expect(screen.getByText("Loop")).toBeInTheDocument();
+    expect(screen.getAllByText("Trial")).toHaveLength(2);
+    expect(screen.queryByText("Loop")).not.toBeInTheDocument();
 
     const trialDestination =
       screen.getByText("Trial destination").parentElement!;

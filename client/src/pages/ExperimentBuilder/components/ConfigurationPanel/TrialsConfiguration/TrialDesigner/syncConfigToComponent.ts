@@ -83,7 +83,6 @@ export function syncConfigToComponent(
   }
 
   const syncBoxSize =
-    comp.type !== "HtmlComponent" &&
     comp.type !== "SurveyComponent" &&
     comp.type !== "SketchpadComponent" &&
     comp.type !== "FileUploadResponseComponent";
@@ -134,7 +133,10 @@ export function syncConfigToComponent(
  * Called by useLoadComponents after config reconstruction, so that the
  * Konva canvas has the correct colours/sizes on first render.
  */
-export function restoreStyleFields(comp: TrialComponent): TrialComponent {
+export function restoreStyleFields(
+  comp: TrialComponent,
+  canvasWidth = 0,
+): TrialComponent {
   const styleMap = COMPONENT_STYLE_MAPS[comp.type];
   if (!styleMap) return comp;
 
@@ -145,6 +147,30 @@ export function restoreStyleFields(comp: TrialComponent): TrialComponent {
       (updates as any)[compField] = entry.value;
     }
   }
+
+  if (comp.type === "InputResponseComponent" && canvasWidth > 0) {
+    if (comp.config.width?.value != null)
+      updates.inputWidth =
+        (Number(comp.config.width.value) / 100) * canvasWidth;
+    if (comp.config.height?.value != null)
+      updates.inputHeight =
+        (Number(comp.config.height.value) / 100) * canvasWidth;
+  }
+  const fontFields = [
+    ["_font_size_runtime_vw", "textFontSize"],
+    ["_button_font_size_runtime_vw", "buttonFontSize"],
+    ["_input_font_size_runtime_vw", "inputFontSize"],
+  ];
+  if (canvasWidth > 0)
+    for (const [parameter, field] of fontFields) {
+      const relative = comp.config[parameter]?.value;
+      if (
+        relative != null &&
+        comp.config[parameter]?.source === "typed" &&
+        Number.isFinite(Number(relative))
+      )
+        (updates as any)[field] = (Number(relative) / 100) * canvasWidth;
+    }
 
   return Object.keys(updates).length > 0 ? { ...comp, ...updates } : comp;
 }

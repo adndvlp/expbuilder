@@ -83,6 +83,8 @@ const FileUploadResponseComponent: React.FC<
   return (
     <>
       <Group
+        id={shapeProps.id}
+        name="designer-component"
         ref={groupRef}
         x={shapeProps.x}
         y={shapeProps.y}
@@ -125,6 +127,7 @@ const FileUploadResponseComponent: React.FC<
           const nextWidth = Math.max(80, effectiveWidth * scaleX);
           const nextHeight = Math.max(60, effectiveHeight * scaleY);
           const snapped = snapKonvaNode({
+            interaction: "transform",
             node,
             id: shapeProps.id,
             width: nextWidth,

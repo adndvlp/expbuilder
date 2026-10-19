@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import useCanvasStyles from "../../../pages/ExperimentBuilder/hooks/useCanvasStyles";
+import useExperimentAppearance from "../../../pages/ExperimentBuilder/hooks/useExperimentAppearance";
 import usePlugins from "../../../pages/ExperimentBuilder/hooks/usePlugins";
 import useUrl from "../../../pages/ExperimentBuilder/hooks/useUrl";
 import { cleanupProviderTest, prepareProviderTest } from "./testHarness";
@@ -19,14 +19,12 @@ describe("ExperimentBuilder peripheral provider contracts", () => {
       "useUrl must be used within a UrlProvider",
     );
 
-    const { result } = renderHook(() => useCanvasStyles());
+    const { result } = renderHook(() => useExperimentAppearance());
     act(() => {
-      result.current.setCanvasStyles((prev) => prev);
+      result.current.setAppearance((prev) => prev);
     });
-    expect(result.current.canvasStyles).toEqual({
+    expect(result.current.appearance).toEqual({
       backgroundColor: "#ffffff",
-      width: 1024,
-      height: 768,
       fullScreen: true,
       progressBar: false,
     });
