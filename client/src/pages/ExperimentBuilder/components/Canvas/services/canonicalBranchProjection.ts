@@ -145,4 +145,5 @@ export function addCanonicalBranchEdges(
       );
     });
   });
+  return collector.edgeKeys;
 }

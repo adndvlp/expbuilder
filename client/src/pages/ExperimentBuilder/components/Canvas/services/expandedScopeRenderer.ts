@@ -18,20 +18,15 @@ import {
   projectLayoutBranches,
 } from "./layoutBranchProjection";
 import { renderExpandedItem } from "./expandedItemRenderer";
-const VERTICAL_GAP = 120,
-  BRANCH_GAP = 260;
 export type RenderedBlock = {
   entryId: string;
   exitIds: string[];
-  maxY: number;
 };
-type RenderedScope = ExpandedCanvasLayout & { maxY: number };
+type RenderedScope = ExpandedCanvasLayout;
 export type ScopeRenderContext = {
   renderScope: (
     scopeId: string,
     timeline: readonly LayoutTimelineItem[],
-    x: number,
-    y: number,
   ) => RenderedScope;
   nodes: ExpandedCanvasNode[];
   edges: ExpandedCanvasEdge[];
@@ -39,12 +34,12 @@ export type ScopeRenderContext = {
   renderedBlocks: Map<string, RenderedBlock>;
   expandedScopes: Map<string, ExpandedLoopScope>;
   visitedScopeIds: Set<string>;
-  markerOffset: number;
   branchTargets: Map<string, Set<string>>;
   branchEdges: readonly GraphBranchEdge[];
   scopeParents: Readonly<Record<string, string | null>>;
   scopeOwners: Map<string, string | null>;
   explicitSourceNodes: Set<string>;
+  branchBlocks: Map<string, RenderedBlock>;
 };
 
 const idKey = (id: LayoutItemId) => String(id);
@@ -55,11 +50,12 @@ function renderBranches(
   timeline: LayoutTimelineItem[],
   source: LayoutTimelineItem,
   sourceBlock: RenderedBlock,
-  x: number,
-  y: number,
   path: Set<string>,
   projection: ReturnType<typeof projectLayoutBranches>,
 ): RenderedBlock {
+  const key = getScopedNodeId(scopeId, source.type, source.id);
+  const cached = context.branchBlocks.get(key);
+  if (cached) return cached;
   const byId = new Map(timeline.map((item) => [idKey(item.id), item]));
   const targets = (projection.targetsBySource.get(idKey(source.id)) ?? [])
     .map((id) => byId.get(idKey(id)))
@@ -67,12 +63,10 @@ function renderBranches(
   if (targets.length === 0) return sourceBlock;
 
   const exits: string[] = [];
-  let maxY = sourceBlock.maxY;
-  targets.forEach((target, index) => {
+  targets.forEach((target) => {
     const targetKey = idKey(target.id);
     if (path.has(targetKey)) return;
-    const branchX = x + (index - (targets.length - 1) / 2) * BRANCH_GAP;
-    const block = renderExpandedItem(context, scopeId, target, branchX, y);
+    const block = renderExpandedItem(context, scopeId, target);
     if (
       !projection.canonicalPairs.has(layoutConnectionKey(source.id, target.id))
     )
@@ -88,27 +82,23 @@ function renderBranches(
       timeline,
       target,
       block,
-      branchX,
-      Math.max(y, block.maxY) + VERTICAL_GAP,
       new Set([...path, targetKey]),
       projection,
     );
     exits.push(...nested.exitIds);
-    maxY = Math.max(maxY, nested.maxY);
   });
-  return {
+  const result = {
     entryId: sourceBlock.entryId,
     exitIds: [...new Set(exits.length > 0 ? exits : sourceBlock.exitIds)],
-    maxY,
   };
+  context.branchBlocks.set(key, result);
+  return result;
 }
 
 export function renderExpandedScope(
   context: ScopeRenderContext,
   scopeId: string,
   rawTimeline: readonly LayoutTimelineItem[],
-  x: number,
-  startY: number,
 ): RenderedScope {
   const timeline = sanitizeLayoutTimeline(rawTimeline);
   const projection = projectLayoutBranches(
@@ -136,18 +126,17 @@ export function renderExpandedScope(
         getScopedNodeId(scopeId, item.type, item.id),
       );
   });
+  timeline.forEach((item) => {
+    if (item.type === "trial" && item.defaultNextTrialId !== undefined)
+      context.explicitSourceNodes.add(
+        getScopedNodeId(scopeId, item.type, item.id),
+      );
+  });
   let previousExits: string[] = [];
   let entryId: string | undefined;
-  let y = startY;
-  let maxY = startY;
 
   mainItems.forEach((item) => {
-    const sequentialX =
-      previousExits.length === 1
-        ? (context.nodes.find((node) => node.id === previousExits[0])?.position
-            .x ?? x)
-        : x;
-    const block = renderExpandedItem(context, scopeId, item, sequentialX, y);
+    const block = renderExpandedItem(context, scopeId, item);
     if (!entryId) entryId = block.entryId;
     addExpandedFlowEdges(
       context,
@@ -161,14 +150,10 @@ export function renderExpandedScope(
       timeline,
       item,
       block,
-      sequentialX,
-      Math.max(y, block.maxY) + VERTICAL_GAP,
       new Set([idKey(item.id)]),
       projection,
     );
     previousExits = withBranches.exitIds;
-    maxY = Math.max(maxY, withBranches.maxY);
-    y = withBranches.maxY + VERTICAL_GAP;
   });
 
   const detachedTargets = timeline.filter(
@@ -176,28 +161,19 @@ export function renderExpandedScope(
       canonicalTargets.has(idKey(item.id)) &&
       !context.renderedBlocks.has(getScopedNodeId(scopeId, item.type, item.id)),
   );
-  detachedTargets.forEach((item, index) => {
-    const block = renderExpandedItem(
-      context,
-      scopeId,
-      item,
-      x + (index + 1) * BRANCH_GAP,
-      Math.max(startY, maxY),
-    );
+  detachedTargets.forEach((item) => {
+    const block = renderExpandedItem(context, scopeId, item);
     const nested = renderBranches(
       context,
       scopeId,
       timeline,
       item,
       block,
-      x + (index + 1) * BRANCH_GAP,
-      block.maxY + VERTICAL_GAP,
       new Set([idKey(item.id)]),
       projection,
     );
     if (!entryId) entryId = nested.entryId;
     previousExits = [...new Set([...previousExits, ...nested.exitIds])];
-    maxY = Math.max(maxY, nested.maxY);
   });
 
   return {
@@ -205,6 +181,5 @@ export function renderExpandedScope(
     edges: context.edges,
     entryId,
     exitIds: previousExits,
-    maxY,
   };
 }

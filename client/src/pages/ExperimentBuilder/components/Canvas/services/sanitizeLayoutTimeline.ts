@@ -19,6 +19,7 @@ export function sanitizeLayoutTimeline(
             name: item.name,
             trials: item.trials,
             parentLoopId: item.parentLoopId,
+            nextItemId: item.nextItemId,
           }
         : { ...item };
     items.push(copy);

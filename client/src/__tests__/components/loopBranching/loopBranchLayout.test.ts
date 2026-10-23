@@ -75,10 +75,11 @@ describe("loop branch layout", () => {
     });
 
     expect(canonicalLayout.nodes).toEqual(previousLayout.nodes);
-    const visualEdge = ({
-      data: { semanticEdgeIds: _semanticEdgeIds, ...data },
-      ...candidate
-    }: ExpandedCanvasLayout["edges"][number]) => ({ ...candidate, data });
+    const visualEdge = (candidate: ExpandedCanvasLayout["edges"][number]) => {
+      const data = { ...candidate.data };
+      delete data.semanticEdgeIds;
+      return { ...candidate, data };
+    };
     expect(canonicalLayout.edges.map(visualEdge)).toEqual(
       previousLayout.edges.map(visualEdge),
     );
@@ -181,7 +182,7 @@ describe("loop branch layout", () => {
     expect(exitB.y).toBe(exitA.y);
   });
 
-  it("uses an odd scope exit as the center lane between local branches", () => {
+  it("preserves the declared order of local branches and an exterior destination", () => {
     const result = composeExpandedLoopLayout({
       rootTimeline: [loop("outer"), trial("root-exit")],
       expandedScopes: [
@@ -210,9 +211,12 @@ describe("loop branch layout", () => {
       getScopedNodeId("root", "trial", "root-exit"),
     );
 
-    expect(rootExit.x).toBe(source.x);
-    expect(Math.min(...localXs)).toBeLessThan(source.x);
-    expect(Math.max(...localXs)).toBeGreaterThan(source.x);
+    expect(localXs[0]).toBeLessThan(localXs[1]);
+    expect(localXs[1]).toBe(source.x);
+    expect(rootExit.x).toBeGreaterThan(localXs[1]);
     expect(rootExit.y).toBeGreaterThan(source.y);
+    expect(
+      result.edges.flatMap((edge) => edge.data.semanticEdgeIds ?? []),
+    ).toHaveLength(3);
   });
 });

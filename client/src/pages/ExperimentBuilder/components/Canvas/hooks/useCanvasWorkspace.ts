@@ -8,6 +8,7 @@ import { useCanvasMoveActions } from "./useCanvasMoveActions";
 import { useExpandedLoopPath } from "./useExpandedLoopPath";
 import type { LoopScopeId } from "./useExpandedLoopPath";
 import { useFlowLayout } from "./useFlowLayout";
+import { getLoopLayoutScopeId } from "../services/buildUnifiedFlowLayout";
 
 const scopesMatch = (
   left: LoopScopeId | null | undefined,
@@ -37,8 +38,9 @@ export function useCanvasWorkspace() {
     getLoopTimeline,
     activateLoopTimeline,
   } = trials;
-  const [selectedScopeId, setSelectedScopeId] =
-    useState<LoopScopeId | null>(null);
+  const [selectedScopeId, setSelectedScopeId] = useState<LoopScopeId | null>(
+    null,
+  );
   const [showBranchedModal, setShowBranchedModal] = useState(false);
   const selectionRequestRef = useRef(0);
   const loadLoopItems = useCallback(
@@ -76,19 +78,14 @@ export function useCanvasWorkspace() {
     expandedPath.forEach((entry) => {
       const cached = loopTimelineCache[String(entry.loop.id)];
       if (cached?.status === "ready" && cached.items !== entry.items) {
-        synchronized = syncLoopItems(entry.loop.id, cached.items) || synchronized;
+        synchronized =
+          syncLoopItems(entry.loop.id, cached.items) || synchronized;
       }
     });
     if (!synchronized) {
       reconcilePath(timeline);
     }
-  }, [
-    expandedPath,
-    loopTimelineCache,
-    reconcilePath,
-    syncLoopItems,
-    timeline,
-  ]);
+  }, [expandedPath, loopTimelineCache, reconcilePath, syncLoopItems, timeline]);
 
   useEffect(() => {
     if (error) console.error("Error loading loop:", error.cause);
@@ -194,10 +191,7 @@ export function useCanvasWorkspace() {
       );
       if (isExpanded) await collapseLoop(loop.id);
       else {
-        await expandLoop(
-          { id: loop.id, name: loop.name },
-          parentScopeId,
-        );
+        await expandLoop({ id: loop.id, name: loop.name }, parentScopeId);
       }
     },
     [activeScopeId, clearSelection, collapseLoop, expandLoop, expandedPath],
@@ -213,41 +207,45 @@ export function useCanvasWorkspace() {
   );
   const selectedItemId = hasSelection ? (selectedItem?.id ?? null) : null;
   const pendingLoopId = pending?.scopeId;
-  const flowInput = useMemo(
-    () => {
-      const scopeParents = Object.fromEntries(
-        Object.values(graph?.scopes ?? {}).map((scope) => [
-          String(scope.scopeId),
-          scope.parentScopeId === null ? null : String(scope.parentScopeId),
-        ]),
-      );
-      return {
-        timeline,
-        expandedPath,
-        selectedItemId,
-        selectedScopeId,
-        pendingLoopId,
-        branchEdges: graph?.edges ?? [],
-        scopeParents,
-        onSelectTrial: selectTrial,
-        onSelectLoop: selectLoop,
-        onToggleLoop: toggleLoop,
-        onAddBranch: addBranch,
-      };
-    },
-    [
-      addBranch,
+  const flowInput = useMemo(() => {
+    const scopeParents = Object.fromEntries(
+      Object.values(graph?.scopes ?? {}).map((scope) => [
+        String(scope.scopeId),
+        scope.parentScopeId === null ? null : String(scope.parentScopeId),
+      ]),
+    );
+    return {
+      timeline,
       expandedPath,
-      graph,
-      pendingLoopId,
-      selectLoop,
-      selectTrial,
       selectedItemId,
       selectedScopeId,
-      timeline,
-      toggleLoop,
-    ],
-  );
+      pendingLoopId,
+      branchEdges: graph?.edges ?? [],
+      scopeParents,
+      entryItemIds: Object.fromEntries([
+        ["root", graph?.root.entryItemId ?? null],
+        ...Object.values(graph?.scopes ?? {}).map((scope) => [
+          getLoopLayoutScopeId(scope.scopeId!),
+          scope.entryItemId,
+        ]),
+      ]),
+      onSelectTrial: selectTrial,
+      onSelectLoop: selectLoop,
+      onToggleLoop: toggleLoop,
+      onAddBranch: addBranch,
+    };
+  }, [
+    addBranch,
+    expandedPath,
+    graph,
+    pendingLoopId,
+    selectLoop,
+    selectTrial,
+    selectedItemId,
+    selectedScopeId,
+    timeline,
+    toggleLoop,
+  ]);
   const flow = useFlowLayout(flowInput);
 
   const { handleAddLoop } = loopActions;

@@ -9,8 +9,6 @@ export function createExpandedItemNode(
   nodes: ExpandedCanvasNode[],
   scopeId: string,
   item: LayoutTimelineItem,
-  x: number,
-  y: number,
   expanded: boolean,
 ) {
   const id = getScopedNodeId(scopeId, item.type, item.id);
@@ -24,7 +22,7 @@ export function createExpandedItemNode(
       role: expanded ? "loop-marker" : "item",
       expanded,
     },
-    position: { x, y },
+    position: { x: 0, y: 0 },
     measured: getCanvasNodeDimensions(item.type, expanded),
     draggable: false,
   });

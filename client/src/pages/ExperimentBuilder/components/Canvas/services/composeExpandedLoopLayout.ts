@@ -3,9 +3,12 @@ import type {
   ExpandedCanvasLayout,
   ExpandedLoopScope,
 } from "./expandedLayoutTypes";
-import { finalizeExpandedLoopLayout } from "./finalizeExpandedLoopLayout";
+import { layoutScopeGraph } from "./layoutScopeGraph";
+import { addExpandedFlowEdges } from "./expandedEdgeFactory";
+import { getScopedNodeId } from "./scopedNodeId";
 import {
   addCanonicalBranchEdges,
+  getCanonicalBranchEdgeId,
   getCanonicalBranchTargets,
 } from "./canonicalBranchProjection";
 import {
@@ -13,10 +16,7 @@ import {
   type ScopeRenderContext,
 } from "./expandedScopeRenderer";
 export { getScopedNodeId } from "./scopedNodeId";
-const ROOT_X = 500,
-  ROOT_Y = 80,
-  VERTICAL_GAP = 120,
-  DEFAULT_MARKER_OFFSET = 260;
+const DEFAULT_MARKER_OFFSET = 260;
 const idKey = (id: string | number) => String(id);
 const scopeKey = (parentScopeId: string, loopId: string | number) =>
   `${parentScopeId}\u0000${idKey(loopId)}`;
@@ -26,6 +26,7 @@ export function composeExpandedLoopLayout({
   branchEdges = [],
   scopeParents = {},
   markerHorizontalOffset = DEFAULT_MARKER_OFFSET,
+  entryItemIds,
 }: ComposeExpandedLoopLayoutInput): ExpandedCanvasLayout {
   const loopIds = new Set([
     ...Object.keys(scopeParents),
@@ -53,15 +54,14 @@ export function composeExpandedLoopLayout({
     if (!scopeMap.has(key)) scopeMap.set(key, scope);
   });
   const context: ScopeRenderContext = {
-    renderScope: (scopeId, timeline, x, y) =>
-      renderExpandedScope(context, scopeId, timeline, x, y),
+    renderScope: (scopeId, timeline) =>
+      renderExpandedScope(context, scopeId, timeline),
     nodes: [],
     edges: [],
     edgeKeys: new Set(),
     renderedBlocks: new Map(),
     expandedScopes: scopeMap,
     visitedScopeIds: new Set(),
-    markerOffset: markerHorizontalOffset,
     branchTargets: getCanonicalBranchTargets(
       canonicalEdges,
       expandedScopes,
@@ -71,13 +71,59 @@ export function composeExpandedLoopLayout({
     scopeParents: parents,
     scopeOwners,
     explicitSourceNodes: new Set(),
+    branchBlocks: new Map(),
   };
-  const result = context.renderScope("root", rootTimeline, ROOT_X, ROOT_Y);
-  addCanonicalBranchEdges(result, canonicalEdges, parents);
-  return finalizeExpandedLoopLayout({
-    layout: result,
-    scopes: expandedScopes,
-    markerOffset: markerHorizontalOffset,
-    verticalGap: VERTICAL_GAP,
-  });
+  const result = context.renderScope("root", rootTimeline);
+  context.edgeKeys = addCanonicalBranchEdges(result, canonicalEdges, parents);
+  for (const scope of [
+    { id: "root", timeline: rootTimeline },
+    ...expandedScopes,
+  ]) {
+    for (const item of scope.timeline) {
+      if (item.type !== "loop" || item.nextItemId == null) continue;
+      const target = scope.timeline.find(
+        (candidate) => idKey(candidate.id) === idKey(item.nextItemId!),
+      );
+      if (!target) continue;
+      const sourceBlock = context.renderedBlocks.get(
+        getScopedNodeId(scope.id, "loop", item.id),
+      );
+      const targetBlock = context.renderedBlocks.get(
+        getScopedNodeId(scope.id, target.type, target.id),
+      );
+      if (sourceBlock && targetBlock)
+        addExpandedFlowEdges(
+          context,
+          sourceBlock.exitIds,
+          targetBlock.entryId,
+          scope.id,
+        );
+    }
+  }
+  const authoredOrders = new Map(
+    [rootTimeline, ...expandedScopes.map((scope) => scope.timeline)]
+      .flat()
+      .map((item) => [
+        idKey(item.id),
+        new Map((item.branches ?? []).map((id, index) => [idKey(id), index])),
+      ]),
+  );
+  const semanticOrders = new Map(
+    canonicalEdges.flatMap((edge) => {
+      const order = authoredOrders
+        .get(idKey(edge.sourceId))
+        ?.get(idKey(edge.targetId));
+      return order === undefined
+        ? []
+        : [[getCanonicalBranchEdgeId(edge), order] as const];
+    }),
+  );
+  return layoutScopeGraph(
+    result,
+    expandedScopes,
+    markerHorizontalOffset,
+    entryItemIds,
+    rootTimeline,
+    semanticOrders,
+  );
 }

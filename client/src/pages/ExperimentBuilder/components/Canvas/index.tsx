@@ -8,8 +8,10 @@ import CanvasToolbar from "./components/CanvasToolbar";
 import CanvasViewportFitter from "./components/CanvasViewportFitter";
 import CanvasGraphStatus from "./components/CanvasGraphStatus";
 import LoopRoutingEdge from "./components/LoopRoutingEdge";
+import NavigationRoutingEdge from "./components/NavigationRoutingEdge";
 import { useCanvasWorkspace } from "./hooks/useCanvasWorkspace";
 import { getCanvasLayoutSignature } from "./services/getCanvasLayoutSignature";
+import { getCanvasLayoutBounds } from "./services/canvasLayoutBounds";
 import {
   getCanvasBackground,
   getFabStyle,
@@ -18,9 +20,8 @@ import {
 } from "./utils/styleUtils";
 
 const nodeTypes = { trial: TrialNode, loop: LoopNode };
-const edgeTypes = { loop: LoopRoutingEdge };
+const edgeTypes = { loop: LoopRoutingEdge, navigation: NavigationRoutingEdge };
 const proOptions = { hideAttribution: true };
-const fitViewOptions = { padding: 0.2, maxZoom: 1.15 };
 const reactFlowStyle = { background: "transparent" };
 
 function Canvas() {
@@ -40,6 +41,7 @@ function Canvas() {
   const selectedTrial = workspace.trials.selectedTrial;
   const selectedItemId = selectedItem?.id ?? null;
   const layoutSignature = getCanvasLayoutSignature(nodes, edges);
+  const bounds = getCanvasLayoutBounds(nodes, edges);
 
   return (
     <div style={getCanvasBackground(isDark)}>
@@ -74,8 +76,6 @@ function Canvas() {
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView
-          fitViewOptions={fitViewOptions}
           minZoom={0.1}
           nodesConnectable={false}
           panOnDrag
@@ -86,7 +86,10 @@ function Canvas() {
           style={reactFlowStyle}
           onPaneClick={workspace.clearSelection}
         >
-          <CanvasViewportFitter layoutSignature={layoutSignature} />
+          <CanvasViewportFitter
+            layoutSignature={layoutSignature}
+            bounds={bounds}
+          />
         </ReactFlow>
 
         <CanvasGraphStatus

@@ -11,6 +11,8 @@ import { assignBranchColorSlots } from "./assignBranchEdgeColors";
 import { getBranchEdgeStroke } from "./branchEdgeTheme";
 import { getLoopRouteData, getLoopScopeLanes } from "./loopScopeGeometry";
 import { collapseLoopEdgesToCircuits } from "./collapseLoopEdgesToCircuits";
+import { routeNavigationEdges } from "./navigationRouting";
+import { MarkerType } from "@xyflow/react";
 
 export type UnifiedCanvasNodeData = ExpandedCanvasNodeData & {
   selected: boolean;
@@ -28,6 +30,7 @@ type BuildUnifiedFlowLayoutInput = {
   pendingLoopId?: LoopScopeId | null;
   branchEdges?: readonly GraphBranchEdge[];
   scopeParents?: Readonly<Record<string, string | null>>;
+  entryItemIds?: Readonly<Record<string, string | number | null>>;
   onSelectTrial: (trial: TimelineItem, scopeId: LoopScopeId | null) => void;
   onSelectLoop: (loop: TimelineItem, scopeId: LoopScopeId | null) => void;
   onToggleLoop: (loop: TimelineItem, scopeId: LoopScopeId | null) => void;
@@ -73,6 +76,7 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
     expandedScopes,
     branchEdges: input.branchEdges,
     scopeParents: input.scopeParents,
+    entryItemIds: input.entryItemIds,
   });
 
   const nodes = layout.nodes.map((node) => {
@@ -104,6 +108,7 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
     return { ...node, data };
   });
   const loopRoutes = getLoopScopeLanes(layout.nodes, expandedScopes);
+  routeNavigationEdges(layout);
   const branchColorSlots = assignBranchColorSlots(
     layout.edges,
     input.branchEdges,
@@ -112,18 +117,29 @@ export function buildUnifiedFlowLayout(input: BuildUnifiedFlowLayoutInput) {
   const edges = visualEdges.map((edge) => {
     const isLoopEdge = edge.data.kind === "loop-return";
     const routeData = getLoopRouteData(edge, loopRoutes);
+    const stroke = isLoopEdge
+      ? "#2f80ed"
+      : getBranchEdgeStroke(branchColorSlots.get(edge.id));
     return {
       ...edge,
-      type: isLoopEdge ? "loop" : edge.type,
+      type: isLoopEdge
+        ? "loop"
+        : edge.data.curve
+          ? "navigation"
+          : edge.type,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: stroke,
+        width: isLoopEdge ? 16 : 20,
+        height: isLoopEdge ? 16 : 20,
+      },
       data: {
         ...edge.data,
         ...routeData,
       },
       animated: isLoopEdge,
       style: {
-        stroke: isLoopEdge
-          ? "#2f80ed"
-          : getBranchEdgeStroke(branchColorSlots.get(edge.id)),
+        stroke,
         strokeWidth: isLoopEdge ? 2 : 1.5,
         strokeDasharray: isLoopEdge ? "6 6" : undefined,
       },

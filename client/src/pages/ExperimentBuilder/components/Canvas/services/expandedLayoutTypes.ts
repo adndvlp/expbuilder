@@ -3,12 +3,21 @@ import type { GraphBranchEdge } from "../../../modules/experiment-graph/types";
 export const ROOT_CANVAS_SCOPE_ID = "root";
 
 export type LayoutItemId = string | number;
+export type CanvasPoint = { x: number; y: number };
+export type CanvasCubic = {
+  start: CanvasPoint;
+  control1: CanvasPoint;
+  control2: CanvasPoint;
+  end: CanvasPoint;
+};
 
 type LayoutItem = {
   id: LayoutItemId;
   name: string;
   trials?: readonly LayoutItemId[];
   parentLoopId?: string | null;
+  defaultNextTrialId?: string | number | null;
+  nextItemId?: string | number | null;
 };
 
 export type LayoutTimelineItem = LayoutItem &
@@ -59,6 +68,9 @@ export type ExpandedCanvasEdge = {
     scopeId: string;
     flowRole?: ExpandedCanvasFlowRole;
     semanticEdgeIds?: string[];
+    isReturn?: boolean;
+    isShortcut?: boolean;
+    curve?: CanvasCubic[];
   };
 };
 
@@ -75,4 +87,5 @@ export type ComposeExpandedLoopLayoutInput = {
   branchEdges?: readonly GraphBranchEdge[];
   scopeParents?: Readonly<Record<string, string | null>>;
   markerHorizontalOffset?: number;
+  entryItemIds?: Readonly<Record<string, LayoutItemId | null>>;
 };
