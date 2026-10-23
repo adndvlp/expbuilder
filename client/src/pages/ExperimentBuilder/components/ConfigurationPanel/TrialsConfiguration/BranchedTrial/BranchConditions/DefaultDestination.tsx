@@ -16,6 +16,7 @@ export default function DefaultDestination({
 }: Props) {
   const { getTrial, updateTrial, updateLoop } = useTrials();
   const [error, setError] = useState<string | null>(null);
+  const isInLoop = trial.parentLoopId != null;
   return (
     <label
       style={{
@@ -36,7 +37,9 @@ export default function DefaultDestination({
       <select
         aria-label="Default destination"
         style={{ width: "100%", maxWidth: "480px", minHeight: "40px" }}
-        value={trial.defaultNextTrialId ?? ""}
+        value={
+          trial.defaultNextTrialId ?? (isInLoop ? "" : "FINISH_EXPERIMENT")
+        }
         onChange={async (event) => {
           const target = event.target.value || null;
           try {
@@ -57,7 +60,7 @@ export default function DefaultDestination({
           }
         }}
       >
-        <option value="">End this route</option>
+        {isInLoop && <option value="">End this route</option>}
         {candidates.map((item) => (
           <option key={item.id} value={item.id}>
             {item.name}
