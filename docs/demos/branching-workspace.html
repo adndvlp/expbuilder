@@ -208,13 +208,56 @@
     if(ha==='top'&&hb==='bottom')return {source:b,target:a};
     return null;
   };
-  const reconcileGraph = s => {
+  const entryOrder = (s,ids,unit=id=>id) => [...new Set([
+    ...(s.scopeOrder?.root??[]),...s.trials.map(t=>t.id),...s.loops.map(l=>l.id),...ids
+  ].map(unit))].filter(id=>ids.has(id));
+  const sourceHeads = (order,reverse) => {
+    // One representative per source component, including cycles. Saved order breaks ties.
+    const allowed=new Set(order),forward=new Map(order.map(id=>[id,[]]));
+    for(const target of order)for(const source of reverse.get(target)??[])if(allowed.has(source))forward.get(source).push(target);
+    const seen=new Set(),finished=[];
+    const visit=id=>{if(seen.has(id))return;seen.add(id);for(const next of forward.get(id))visit(next);finished.push(id);};
+    order.forEach(visit);
+    const groups=new Map();let count=0;
+    const assign=(id,group)=>{if(groups.has(id))return;groups.set(id,group);for(const parent of reverse.get(id)??[])if(allowed.has(parent))assign(parent,group);};
+    for(const id of finished.reverse())if(!groups.has(id))assign(id,count++);
+    const incoming=new Set();
+    for(const source of order)for(const target of forward.get(source))if(groups.get(source)!==groups.get(target))incoming.add(groups.get(target));
+    const chosen=new Set();return order.filter(id=>{const group=groups.get(id);if(incoming.has(group)||chosen.has(group))return false;chosen.add(group);return true;});
+  };
+  const remainingStart = s => {
+    const unit=id=>{const value=item(s,id);return value?ancestors(s,value).at(-1)?.id??id:null;};
+    const units=new Set(s.trials.map(t=>unit(t.id)).filter(id=>resolve(s,id))),reverse=new Map();
+    const join=(source,target)=>{
+      const from=unit(source),to=unit(target);if(!units.has(from)||!units.has(to)||from===to)return;
+      if(!reverse.has(to))reverse.set(to,new Set());reverse.get(to).add(from);
+    };
+    connections(s).forEach(e=>join(e.source,e.target));
+    s.loops.forEach(l=>join(l.id,resolve(s,l.nextId)));
+    return resolve(s,sourceHeads(entryOrder(s,units,unit),reverse)[0]);
+  };
+  const survivingContinuation = (s,before) => {
+    // Walk the original decisions before deletion: Default first, then Then go to.
+    const outgoing=new Map();
+    for(const edge of connections(before)){if(!outgoing.has(edge.source))outgoing.set(edge.source,[]);outgoing.get(edge.source).push(edge.target);}
+    const seen=new Set(),pending=[resolve(before,before.entryId)];
+    while(pending.length){
+      const id=pending.pop();if(!id||seen.has(id))continue;seen.add(id);
+      if(realTrial(s,id))return id;
+      const next=[...(outgoing.get(id)??[]),...ancestors(before,realTrial(before,id)).map(l=>resolve(before,l.nextId))];
+      pending.push(...next.filter(Boolean).reverse());
+    }
+    return null;
+  };
+  const reconcileGraph = (s,before=s) => {
     // Every connected trial has a fallback among its existing destinations.
     // Keep its Default, or use the first surviving destination, without changing conditions.
     const firstDestination=new Map();
     for(const edge of connections(s))if(!firstDestination.has(edge.source))firstDestination.set(edge.source,edge.target);
     for(const t of s.trials)if(firstDestination.has(t.id))t.defaultNextTrialId=firstDestination.get(t.id);
     liftDetached(s);
+    // A nonempty workspace always has one executable start. Repair it once per transaction.
+    if(!resolve(s,s.entryId))s.entryId=survivingContinuation(s,before)??remainingStart(s);
     const entry=resolve(s,s.entryId);if(!entry)return s;
     const live=reachable(s),pending=new Set(s.trials.filter(t=>!live.trials.has(t.id)).map(t=>t.id));
     // Collapse inactive loop scopes into their existing entry units. Loop
@@ -236,17 +279,12 @@
     if(!terminals.size)return s;
     const upstream=new Set(),queue=[...terminals];
     while(queue.length){const id=queue.pop();if(upstream.has(id))continue;upstream.add(id);queue.push(...(reverse.get(id)??[]));}
-    const heads=[...upstream].filter(id=>![...(reverse.get(id)??[])].some(parent=>upstream.has(parent)));
-    const candidates=[...new Set(heads.map(id=>resolve(s,id)).filter(Boolean))];
-    if(candidates.length!==1){
-      const error=new Error('El cambio deja varias cabeceras posibles. Selecciona un único inicio antes de aplicarlo.');
-      error.code='AMBIGUOUS_ENTRY';error.candidates=candidates;throw error;
-    }
-    s.entryId=candidates[0];return s;
+    const heads=sourceHeads(entryOrder(s,upstream,unit),reverse);
+    s.entryId=resolve(s,heads[0]);return s;
   };
   const editGraph = (s,command,...args) => {
     const draft=copy(s),result=command(draft,...args);
-    reconcileGraph(draft);
+    reconcileGraph(draft,s);
     Object.assign(s,draft);
     return result;
   };
@@ -375,7 +413,7 @@
     const t=M.realTrial(s,selectedId),l=s.loops.find(l=>l.id===selectedId),live=M.reachable(s),c=M.componentFor(s,selectedId),edge=M.connections(s).find(e=>e.id===edgeId);
     return html`<aside className="sidebar"><div className="side-head stack"><div className="row between"><h2>${multipleIds?'Selección múltiple':edge?'Conexión seleccionada':t?'Trial configuration':l?'Loop configuration':'Experiment'}</h2>${multipleIds?html`<span className="pill">${multipleIds.length} ${multipleIds.length===1?'nodo':'nodos'}</span>`:t||l?html`<span className=${`pill ${c?.locked?'live':'free'}`}>${c?.locked?'Estructura fija':c?.attached?'Conexión parcial':'Grupo libre'}</span>`:null}</div>
       ${t||l?html`<label>Name<input aria-label="Item name" value=${(t||l).name} onChange=${e=>mutate(d=>M.item(d,selectedId).name=e.target.value)}/></label>`:null}
-      <${TargetSelect} s=${s} value=${s.entryId} label="Inicio de ejecución" onChange=${id=>mutate(d=>d.entryId=id)}/>
+      <${TargetSelect} s=${s} value=${s.entryId} label="Inicio de ejecución" allowNull=${false} onChange=${id=>mutate(d=>d.entryId=id)}/>
     </div><div className="side-body stack">
       ${multipleIds?html`<section className="stack"><p className="small">Marca los checkboxes para añadir o quitar nodos. Haz clic en el fondo para salir.</p><ul className="notice-list">${multipleIds.map(id=>html`<li key=${id}>${M.item(s,id)?.name}</li>`)}</ul><button className="danger" disabled=${!multipleIds.length} onClick=${onDeleteSelection}>Eliminar seleccionados</button></section>`:null}
       ${edge?html`<section className="rule"><div className="rule-head">Conexión seleccionada</div><div className="rule-body stack"><p className="small">${M.item(s,edge.source).name} → ${M.item(s,edge.target).name}</p><p className="muted small">${edge.refs.map(r=>r.kind==='default'?'Default':'Then go to').join(' + ')}</p><button className="danger" onClick=${onDeleteSelection}>Eliminar conexión y sus referencias</button></div></section>`:null}
@@ -585,7 +623,7 @@
       ${modal?.type==='branch'&&M.realTrial(s,selectedId)?html`<${BranchDialog} s=${s} t=${M.realTrial(s,selectedId)} mutate=${mutate} onClose=${()=>setModal(null)}/>`:null}
       ${modal?.type==='group'?html`<${GroupModal} s=${s} selectedId=${selectedId} onClose=${()=>setModal(null)} onCreate=${(ids,name)=>{const draft=M.copy(s);const id=M.groupLoop(draft,ids,name);mutate(()=>draft);selectItem(id);setModal(null);}}/>`:null}
       ${modal?.type==='inspect'?html`<${Inspector} s=${s} mutate=${mutate} onClose=${()=>setModal(null)}/>`:null}
-      ${modal?.type==='questions'?html`<${Modal} title="Decisiones por resolver" onClose=${()=>setModal(null)}><p className="muted small">Estas decisiones de producto están expuestas en el prototipo; no cambian la aplicación real.</p><ul className="notice-list"><li><strong>Inicio:</strong> hay un único inicio. Incorporar una estructura por delante del inicio actual promueve su cabecera. Los retornos conservan el inicio mientras el ciclo permanezca conectado.</li><li><strong>Nuevas conexiones:</strong> la primera salida configura Default; las adicionales crean Then go to. El Default siempre apunta a un destino conectado. Falta definir cuándo exigir la condición IF de los Then go to antes de generar el experimento real.</li><li><strong>Convergencias:</strong> los trials no alcanzables siguen movibles aunque apunten a la secuencia principal. Sus conexiones se adaptan y no se exportan hasta integrarse.</li><li><strong>Cambio de ámbito:</strong> conectar desde dentro de un loop hacia un grupo libre lo incorpora a ese loop. Desconectar una subestructura interna que pierde acceso desde la entrada la devuelve al canvas principal.</li><li><strong>Loops vacíos:</strong> aquí se conservan en el editor y se excluyen del HTML. Hay que decidir si conservarlos o eliminarlos al retirar su último trial.</li><li><strong>Ciclos:</strong> se permiten. Hay que definir advertencias por rutas sin salida, sin convertirlas automáticamente en loops.</li></ul><//>`:null}
+      ${modal?.type==='questions'?html`<${Modal} title="Decisiones por resolver" onClose=${()=>setModal(null)}><p className="muted small">Estas decisiones de producto están expuestas en el prototipo; no cambian la aplicación real.</p><ul className="notice-list"><li><strong>Inicio:</strong> hay un único inicio. Incorporar una estructura por delante del inicio actual promueve su cabecera. Los retornos conservan el inicio mientras el ciclo permanezca conectado. Al borrar el inicio se sigue su Default, saltando los trials eliminados; si no sobrevive ninguna continuación, se toma una cabecera de las estructuras restantes según su orden guardado. Solo un canvas sin trials queda sin inicio.</li><li><strong>Nuevas conexiones:</strong> la primera salida configura Default; las adicionales crean Then go to. El Default siempre apunta a un destino conectado. Falta definir cuándo exigir la condición IF de los Then go to antes de generar el experimento real.</li><li><strong>Convergencias:</strong> los trials no alcanzables siguen movibles aunque apunten a la secuencia principal. Sus conexiones se adaptan y no se exportan hasta integrarse.</li><li><strong>Cambio de ámbito:</strong> conectar desde dentro de un loop hacia un grupo libre lo incorpora a ese loop. Desconectar una subestructura interna que pierde acceso desde la entrada la devuelve al canvas principal.</li><li><strong>Loops vacíos:</strong> aquí se conservan en el editor y se excluyen del HTML. Hay que decidir si conservarlos o eliminarlos al retirar su último trial.</li><li><strong>Ciclos:</strong> se permiten. Hay que definir advertencias por rutas sin salida, sin convertirlas automáticamente en loops.</li></ul><//>`:null}
     </div>`;
   }
   ReactDOM.createRoot(document.getElementById('app')).render(html`<${ReactFlowProvider}><${App}/><//>`);

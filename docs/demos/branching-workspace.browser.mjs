@@ -412,6 +412,51 @@ try {
     await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
     await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
   });
+  await run('deleting a branching start automatically follows Default with one badge and one undoable edit',async()=>{
+    await choose(2);const before=await state();await page.getByTestId('item-start').click();await page.keyboard.press('Delete');
+    await page.getByTestId('item-start').waitFor({state:'detached'});const after=await state();
+    assert.equal(after.entryId,'a');await expect(page.getByTestId('item-a').getByTestId('start-badge')).toBeVisible();
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await expect(page.getByRole('dialog')).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.map(t=>t.id).sort()),['a','end']);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'b').locked),false);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await expect(page.getByTestId('item-start').getByTestId('start-badge')).toBeVisible();
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('deleting the whole main sequence automatically activates a remaining island and undo restores both',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const id of ['a','b'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(3);await page.keyboard.press('Delete');
+    await page.getByTestId('item-start').waitFor({state:'detached'});const after=await state();assert.equal(after.entryId,'loca');
+    await expect(page.getByTestId('item-loca').getByTestId('start-badge')).toBeVisible();await expect(page.getByTestId('start-badge')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.map(t=>t.id).sort()),['loca','loca1','loca2']);
+    await snapshot('automatic-start');await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('deleting every trial leaves no start until the first new trial is added',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const trial of before.trials)await page.getByTestId('item-'+trial.id).getByRole('checkbox').check();
+    await page.keyboard.press('Delete');await expect(page.getByTestId('start-badge')).toHaveCount(0);
+    assert.equal((await state()).entryId,null);assert.equal((await state()).trials.length,0);
+    await page.getByTitle('Add trial',{exact:true}).click();const after=await state();assert.equal(after.entryId,after.trials[0].id);
+    await expect(page.getByTestId('item-'+after.entryId).getByTestId('start-badge')).toBeVisible();
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.length),1);
+    await page.keyboard.press('Control+z');assert.equal((await state()).trials.length,0);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('a replacement start inside a loop is marked on its real trial or collapsed loop',async()=>{
+    for(const collapsed of [false,true]){
+      await choose(1);const loop=(await state()).loops.find(l=>l.name==='Loop principal');
+      if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      const before=await state();await page.getByTestId('item-start').click();await page.keyboard.press('Delete');
+      await page.getByTestId('item-start').waitFor({state:'detached'});assert.equal((await state()).entryId,'p');
+      await expect(page.getByTestId('item-'+(collapsed?loop.id:'p')).getByTestId('start-badge')).toBeVisible();
+      await expect(page.getByTestId('start-badge')).toHaveCount(1);
+      assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).loops.length),2);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
   await run('Delete ungroups expanded and collapsed loops while preserving nested loops and trials',async()=>{
     for(const collapsed of [false,true]){
       await choose(1);const before=await state(),loop=before.loops.find(l=>l.name==='Loop principal');

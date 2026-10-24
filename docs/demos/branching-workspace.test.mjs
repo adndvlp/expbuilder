@@ -176,9 +176,66 @@ test('deleting a trial removes its rules and incoming references but preserves d
   assert.ok(!M.connections(s).some(e=>e.source==='loca'||e.target==='loca'));
   assert.equal(M.componentFor(s,'child').locked,false);
 });
-test('deleting the entry does not silently choose a new start', () => {
+test('deleting the entry promotes its Default continuation and keeps unrelated trials free', () => {
   const s=make();M.deleteTrial(s,'a');
+  assert.equal(s.entryId,'b');assert.deepEqual(ids(M.reachable(s).trials),['b']);
+  assert.equal(M.componentFor(s,'loca').locked,false);
+});
+test('deleting a branching entry follows Default regardless of duplicate rules, visual position or branch order',()=>{
+  const s=make();M.connect(s,'a','loca');
+  M.realTrial(s,'a').thenGoTo.push({id:'same-destination',targetId:'b',component:'button'});
+  M.realTrial(s,'a').destinationOrder=['loca','b'];s.anchors.b={x:900,y:900};s.anchors.loca={x:0,y:0};
+  M.deleteTrial(s,'a');
+  assert.equal(s.entryId,'b');assert.deepEqual(ids(M.compile(s).trials.map(t=>t.id)),['b']);
+});
+test('batch deletion follows the removed prefix independently of checkbox selection order',()=>{
+  for(const deleted of [['a','b'],['b','a']]){
+    const s=make();s.trials.push(M.trial('c','C'));M.setDefault(s,'b','c');M.connect(s,'a','loca');
+    M.deleteItems(s,deleted);
+    assert.equal(s.entryId,'c');assert.deepEqual(ids(M.reachable(s).trials),['c']);
+  }
+});
+test('deleting a whole Default branch uses a surviving Then destination and tolerates deleted cycles',()=>{
+  const s=make();M.setDefault(s,'b','a');M.connect(s,'a','loca');M.connect(s,'a','child');
+  M.deleteItems(s,['a','b']);
+  assert.equal(s.entryId,'loca');assert.deepEqual(ids(M.reachable(s).trials),['child','loca']);
+});
+test('deleting the whole main sequence starts the first remaining structure at its head',()=>{
+  const s=make();s.trials=[s.trials[0],s.trials[1],s.trials[3],s.trials[2],M.trial('other','Other')];
+  M.deleteItems(s,['a','b']);
+  assert.equal(s.entryId,'loca');assert.deepEqual(ids(M.reachable(s).trials),['child','loca']);
+  assert.equal(M.componentFor(s,'other').locked,false);
+});
+test('automatic replacement respects saved structure order',()=>{
+  const s=make();s.trials.push(M.trial('other','Other'));s.scopeOrder={root:['a','b','other','loca','child']};
+  M.deleteItems(s,['b','a']);assert.equal(s.entryId,'other');
+});
+test('a remaining cyclic structure starts in its source cycle rather than at a downstream trial',()=>{
+  const s=make();s.trials.push(M.trial('x','X',null,'y'),M.trial('y','Y',null,'child'));
+  M.realTrial(s,'y').thenGoTo.push({id:'return',targetId:'x'});M.realTrial(s,'loca').defaultNextTrialId=null;
+  s.scopeOrder={root:['a','b','child','x','y','loca']};
+  M.deleteItems(s,['a','b']);assert.equal(s.entryId,'x');
+  assert.deepEqual(ids(M.reachable(s).trials),['child','x','y']);
+});
+test('a disconnected nested loop becomes the sole start while retaining its ownership and repetitions',()=>{
+  for(const expanded of [false,true]){
+    const s=make(),inner=M.groupLoop(s,['child'],'Inner'),outer=M.groupLoop(s,['loca',inner],'Outer');
+    M.item(s,outer).expanded=expanded;M.item(s,inner).expanded=expanded;
+    M.deleteItems(s,['a','b']);assert.equal(M.resolve(s,s.entryId),'loca');
+    assert.deepEqual(ids(M.reachable(s).loops),ids([inner,outer]));
+    assert.equal(M.realTrial(s,'child').parentLoopId,inner);assert.equal(M.item(s,inner).parentLoopId,outer);
+    assert.equal(M.compile(s).loops.length,2);assert.doesNotThrow(()=>M.layout(s));
+  }
+});
+test('deleting every trial leaves an empty start and the next added trial becomes the new start',()=>{
+  const s=make();M.deleteItems(s,s.trials.map(t=>t.id));
   assert.equal(s.entryId,null);assert.equal(M.compile(s).trials.length,0);
+  const id=M.addTrial(s);assert.equal(s.entryId,id);assert.deepEqual(ids(M.reachable(s).trials),[id]);
+});
+test('deleting the real entry of a loop continues the main sequence from a surviving trial',()=>{
+  const s=make(),loop=M.groupLoop(s,['a','b'],'Main loop');s.entryId=loop;
+  M.deleteTrial(s,'a');assert.equal(M.resolve(s,s.entryId),'b');
+  assert.deepEqual(ids(M.reachable(s).trials),['b']);assert.doesNotThrow(()=>M.layout(s));
 });
 test('deleting a nested loop entry lifts its remaining trials to the main canvas', () => {
   const s=make();const inner=M.groupLoop(s,['loca','child'],'Inner');M.deleteTrial(s,'loca');
@@ -264,11 +321,11 @@ test('pointing to a former start is partial once a prefix became the current sta
   assert.equal(M.componentFor(s,'other').locked,false);
   assert.equal(M.componentFor(s,'other').attached,true);
 });
-test('multiple possible prefix heads reject the edit atomically instead of inventing an order',()=>{
+test('multiple exposed prefix heads use a stable automatic start without requiring a selector',()=>{
   const s=M.makeState('Multiple heads',[M.trial('a','A',null,'p'),M.trial('p','P',null,'x'),M.trial('x','X',null,'a'),M.trial('y','Y',null,'a')],[],'a');
-  M.connect(s,'p','y');const before=M.serialize(s);
-  assert.throws(()=>M.deleteTrial(s,'p'),/cabeceras/);
-  assert.equal(M.serialize(s),before);
+  M.connect(s,'p','y');M.deleteTrial(s,'p');
+  assert.equal(s.entryId,'x');assert.deepEqual(ids(M.reachable(s).trials),['a','x']);
+  assert.equal(M.componentFor(s,'y').locked,false);
 });
 test('reconciling a graph is idempotent',()=>{
   const s=make();M.setDefault(s,'child','a');const before=M.serialize(s);
