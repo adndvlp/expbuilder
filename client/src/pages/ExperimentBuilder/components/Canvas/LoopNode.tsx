@@ -1,4 +1,5 @@
 import "./index.css";
+import type { ReactNode } from "react";
 import { TbRepeat } from "react-icons/tb";
 import CanvasNodeHandles from "./components/CanvasNodeHandles";
 
@@ -11,7 +12,7 @@ type LoopNodeData = {
   onOpenLoop?: () => void;
 };
 
-function LoopNode({ data }: { data: LoopNodeData }) {
+function LoopNode({ data, children }: { data: LoopNodeData; children?: ReactNode }) {
   return (
     <div
       className={[
@@ -24,6 +25,7 @@ function LoopNode({ data }: { data: LoopNodeData }) {
       onClick={data.onClick}
     >
       <CanvasNodeHandles />
+      {children}
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <TbRepeat size={16} />
         {data.name}
