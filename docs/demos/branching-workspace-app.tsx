@@ -8,10 +8,13 @@ import { directCurve } from '../../client/src/pages/ExperimentBuilder/components
 import { assignBranchColorSlots } from '../../client/src/pages/ExperimentBuilder/components/Canvas/services/assignBranchEdgeColors';
 import { getBranchEdgeStroke } from '../../client/src/pages/ExperimentBuilder/components/Canvas/services/branchEdgeTheme';
 import { MarkerType } from '@xyflow/react';
+import { getLoopBranchLevels as getDomainLoopBranchLevels } from '../../server/routes/timeline/loopBranching/scopeGraph.js';
+import { createLoopBranch as createDomainLoopBranch } from '../../server/routes/timeline/loopBranching/createLoopBranch.js';
 export { default as TrialNode } from '../../client/src/pages/ExperimentBuilder/components/Canvas/TrialNode';
 export { default as LoopNode } from '../../client/src/pages/ExperimentBuilder/components/Canvas/LoopNode';
 export { default as AddTrialModal } from '../../client/src/pages/ExperimentBuilder/components/Canvas/components/AddTrialModal';
-export { default as LoopRangeModal } from '../../client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/LoopRangeModal';
+export { default as LoopBranchLevelModal } from '../../client/src/pages/ExperimentBuilder/components/Canvas/features/loop-branching/LoopBranchLevelModal';
+export { selectLoopBranchLevel } from '../../client/src/pages/ExperimentBuilder/modules/experiment-authoring/intents/loopBranch';
 export { default as NavigationRoutingEdge } from '../../client/src/pages/ExperimentBuilder/components/Canvas/components/NavigationRoutingEdge';
 export { default as LoopRoutingEdge } from '../../client/src/pages/ExperimentBuilder/components/Canvas/components/LoopRoutingEdge';
 export { default as CanvasViewportFitter } from '../../client/src/pages/ExperimentBuilder/components/Canvas/components/CanvasViewportFitter';
@@ -55,6 +58,35 @@ const order = (ids: string[], declared: string[] = []) => {
   const rank = new Map(declared.map((id, index) => [String(id), index]));
   return [...ids].sort((a,b) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity));
 };
+// Adapt only the storage shape. The app's pure domain functions run on this memory copy.
+function loopBranchDocument(s: any) {
+  const model=M(),edges=model.connections(s);
+  const own=(scope: string|null)=>order(model.members(s,scope).map((i: any)=>i.id),s.scopeOrder?.[scope??'root']);
+  return {
+    entryItemId:s.entryId,
+    timeline:own(null).map(id=>({id,name:model.item(s,id).name,type:s.loops.some((l: any)=>l.id===id)?'loop':'trial'})),
+    trials:s.trials.map((t: any)=>({
+      id:t.id,type:'Trial',name:t.name,parentLoopId:t.parentLoopId,
+      defaultNextTrialId:model.realTrial(s,t.defaultNextTrialId)?t.defaultNextTrialId:null,
+      branches:order(edges.filter((e: any)=>e.source===t.id).map((e: any)=>e.target),t.destinationOrder),
+      branchConditions:t.thenGoTo.map(({targetId,...rule}: any)=>({...model.copy(rule),nextTrialId:targetId})),
+    })),
+    loops:s.loops.map((l: any)=>({id:l.id,name:l.name,parentLoopId:l.parentLoopId,entryItemId:l.entryId,nextItemId:l.nextId,trials:own(l.id)})),
+  };
+}
+export function loopBranchLevels(s: any,sourceId: string,scopeTrialId=sourceId) {
+  const document=loopBranchDocument(s),source=document.trials.find((t: any)=>t.id===sourceId),scopeTrial=document.trials.find((t: any)=>t.id===scopeTrialId);
+  if(!source||!scopeTrial)throw Error('Source must be a trial');
+  return getDomainLoopBranchLevels(document,{...scopeTrial,branches:source.branches});
+}
+export function planLoopBranch(s: any,sourceId: string,scopeId: string|null,mode: string) {
+  if(mode!=='parallel'&&mode!=='sequential')throw Error('Invalid placement mode');
+  const document=loopBranchDocument(s),source=document.trials.find((t: any)=>t.id===sourceId);
+  if(!source)throw Error('Source must be a trial');
+  const result=createDomainLoopBranch(document,source,scopeId,mode);
+  if(result.error)throw Error(result.error);
+  return {document,source,trial:result.trial,crossedLoopIds:result.crossedLoopIds};
+}
 export function inputFor(s: any, ids = new Set([...s.trials, ...s.loops].map((i: any) => i.id))) {
   const model = M();
   const all = [...s.trials, ...s.loops].filter(i => ids.has(i.id));
@@ -111,15 +143,16 @@ export function inputFor(s: any, ids = new Set([...s.trials, ...s.loops].map((i:
 export function productionLayout(s: any, ids?: Set<string>) {
   return buildUnifiedFlowLayout(inputFor(s,ids) as any);
 }
-export function insertionEndpoints(s: any, itemId: string) {
+export function insertionEndpoints(s: any, itemId: string,fromTrialId?: string) {
   const model=M(),component=model.componentFor(s,itemId);
   if(!component||component.locked)return null;
   const expanded=model.copy(s);
   expanded.loops.forEach((l: any)=>{if(component.ids.has(l.id))l.expanded=true;});
   const flow=productionLayout(expanded,component.ids);
-  const trials=flow.nodes.filter(n=>n.type==='trial').sort((a,b)=>a.position.y-b.position.y||a.position.x-b.position.x);
+  const reachable=fromTrialId?model.reachable({...s,entryId:fromTrialId}).trials:null;
+  const trials=flow.nodes.filter(n=>n.type==='trial'&&(!reachable||reachable.has(String(n.data.itemId)))).sort((a,b)=>a.position.y-b.position.y||a.position.x-b.position.x);
   if(!trials.length)return null;
-  return {entryId:String(trials[0].data.itemId),exitId:String(trials.at(-1)!.data.itemId),ids:[...component.ids] as string[]};
+  return {entryId:fromTrialId??String(trials[0].data.itemId),exitId:String(trials.at(-1)!.data.itemId),ids:[...component.ids] as string[]};
 }
 export function previewInsertion(s: any,itemId: string,candidate: any) {
   const state=M().copy(s),ends=M().insertStructure(state,itemId,candidate);

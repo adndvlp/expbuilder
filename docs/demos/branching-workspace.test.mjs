@@ -15,6 +15,14 @@ const make = () => M.makeState('Test', [
   M.trial('a', 'A', null, 'b'), M.trial('b', 'B'),
   M.trial('loca', 'LOCA', null, 'child'), M.trial('child', 'Child'),
 ], [], 'a');
+const makeBranchLevels = () => {
+  const s=M.makeState('Branch levels',[
+    M.trial('start','Inicio',null,'x'),M.trial('x','Source',null,'y'),M.trial('y','Inside',null,'ancestor'),
+    M.trial('ancestor','Outer exit',null,'root-exit'),M.trial('root-exit','Root exit')
+  ],[],'start');
+  const inner=M.groupLoop(s,['x','y'],'Inner'),outer=M.groupLoop(s,[inner,'ancestor'],'Outer');
+  M.connect(s,'x','ancestor');M.connect(s,'x','root-exit');return {s,inner,outer};
+};
 function originalLayout(graph,s) {
   return context.AppCanvas.buildUnifiedFlowLayout({timeline:graph.root.items,expandedPath:Object.values(graph.scopes).filter(scope=>s.loops.find(l=>l.id===String(scope.scopeId))?.expanded).map(scope=>({loop:{id:scope.scopeId,parentLoopId:scope.parentScopeId},items:scope.items})),branchEdges:graph.edges,scopeParents:Object.fromEntries(Object.values(graph.scopes).map(scope=>[scope.scopeId,scope.parentScopeId])),entryItemIds:Object.fromEntries([['root',graph.root.entryItemId],...Object.values(graph.scopes).map(scope=>['loop-scope:'+encodeURIComponent(scope.scopeId),scope.entryItemId])]),selectedItemId:null,selectedScopeId:null,onSelectTrial(){},onSelectLoop(){},onToggleLoop(){},onAddBranch(){}});
 }
@@ -105,6 +113,214 @@ test('loop ownership alone does not make disconnected trials executable', () => 
   M.connect(s, 'b', 'loca');
   assert.equal(M.componentFor(s, l).locked, true);
   assert.ok(M.compile(s).loops.some(loop => loop.id === l));
+});
+test('loop entry follows the selected structure regardless of checkbox order',()=>{
+  for(const selected of [['a','b'],['b','a']]){
+    const s=make(),before=JSON.stringify(M.connections(s)),loop=M.groupLoop(s,selected);
+    assert.equal(M.item(s,loop).entryId,'a');
+    for(const id of selected)assert.equal(M.item(s,id).parentLoopId,loop);
+    assert.equal(JSON.stringify(M.connections(s)),before);
+    assert.deepEqual(ids(M.reachable(s).trials),['a','b']);assert.doesNotThrow(()=>M.layout(s));
+  }
+});
+test('selecting a loop and its visible descendants wraps the loop while retaining nested ownership',()=>{
+  const s=make(),inner=M.groupLoop(s,['child'],'Inner');
+  const outer=M.groupLoop(s,['child',inner,'loca']);
+  assert.equal(M.item(s,outer).entryId,'loca');assert.equal(M.item(s,inner).parentLoopId,outer);
+  assert.equal(M.item(s,'child').parentLoopId,inner);assert.equal(M.item(s,'loca').parentLoopId,outer);
+  assert.doesNotThrow(()=>M.layout(s));
+});
+test('grouping rejects gaps and disconnected branches atomically instead of dropping selected items',()=>{
+  const s=make();s.trials.push(M.trial('end','End'));M.setDefault(s,'b','end');
+  let before=M.serialize(s);assert.throws(()=>M.groupLoop(s,['a','end']),/conectad|entrada|intermedio/i);assert.equal(M.serialize(s),before);
+  M.connect(s,'a','loca');before=M.serialize(s);
+  assert.throws(()=>M.groupLoop(s,['b','loca']),/conectad|entrada|intermedio/i);assert.equal(M.serialize(s),before);
+});
+test('grouping a scope entry replaces its saved slot and updates the containing loop entry',()=>{
+  const s=make();M.setDefault(s,'b','loca');s.scopeOrder={root:['a','b','loca','child']};
+  const outer=M.groupLoop(s,['a','b','loca','child'],'Outer'),inner=M.groupLoop(s,['b','a'],'Inner');
+  assert.equal(M.item(s,outer).entryId,inner);assert.equal(M.item(s,inner).entryId,'a');
+  assert.deepEqual(JSON.parse(JSON.stringify(s.scopeOrder.root)),[outer]);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.scopeOrder[outer])),[inner,'loca','child']);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.scopeOrder[inner])),['a','b']);
+  assert.deepEqual(ids(M.reachable(s).loops),ids([inner,outer]));assert.doesNotThrow(()=>M.layout(s));
+});
+test('a selected cycle retains its scope entry and every selected trial',()=>{
+  const s=make();M.setDefault(s,'b','a');s.entryId='b';
+  const loop=M.groupLoop(s,['a','b']);assert.equal(M.item(s,loop).entryId,'b');
+  assert.equal(M.item(s,'a').parentLoopId,loop);assert.equal(M.item(s,'b').parentLoopId,loop);
+});
+test('loop branch levels use the app current, ancestor and root scopes with unique destination counts',()=>{
+  const {s,inner,outer}=makeBranchLevels();M.realTrial(s,'x').thenGoTo.push({id:'shared',targetId:'y'});const before=M.serialize(s);
+  assert.deepEqual(JSON.parse(JSON.stringify(M.loopBranchLevels(s,'x'))),[
+    {scopeId:inner,name:'Inner',relation:'current',branchCount:1},
+    {scopeId:outer,name:'Outer',relation:'ancestor',branchCount:1},
+    {scopeId:null,name:'Main timeline',relation:'root',branchCount:1}
+  ]);assert.equal(M.serialize(s),before);assert.deepEqual(JSON.parse(JSON.stringify(M.loopBranchLevels(s,'start'))),[]);
+});
+test('parallel additions belong to the chosen scope without changing existing destinations or loop ownership',()=>{
+  for(const level of ['inner','outer','root']){
+    const {s,inner,outer}=makeBranchLevels(),scope=level==='inner'?inner:level==='outer'?outer:null,loops=JSON.stringify(s.loops);
+    const created=M.addLoopBranch(s,'x',scope,'parallel');
+    assert.equal(M.item(s,created).parentLoopId,scope);assert.equal(M.item(s,'x').defaultNextTrialId,'y');
+    for(const target of ['y','ancestor','root-exit',created])assert.ok(M.connections(s).some(e=>e.source==='x'&&e.target===target));
+    assert.equal(JSON.stringify(s.loops),loops);assert.doesNotThrow(()=>M.layout(s));
+  }
+});
+test('placement is required only when the chosen level already has destinations',()=>{
+  const {s,inner}=makeBranchLevels();M.removeConnection(s,'x','root-exit');const levels=M.loopBranchLevels(s,'x');
+  assert.equal(context.AppCanvas.selectLoopBranchLevel({levels},inner).requiresPlacement,true);
+  assert.equal(context.AppCanvas.selectLoopBranchLevel({levels},null).requiresPlacement,false);
+  const created=M.addLoopBranch(s,'x',null,'parallel');assert.equal(M.item(s,created).parentLoopId,null);
+  assert.equal(M.item(s,'x').defaultNextTrialId,'y');assert.ok(M.item(s,'x').thenGoTo.some(r=>r.targetId===created));
+});
+test('sequential insertion at root rewires only root destinations and keeps conditions on their source as in the app',()=>{
+  const {s,inner,outer}=makeBranchLevels(),source=M.item(s,'x'),rule=source.thenGoTo.find(r=>r.targetId==='root-exit');
+  rule.customParameters={button:'kept'};const ruleId=rule.id,created=M.addLoopBranch(s,'x',null,'sequential');
+  assert.equal(M.item(s,created).parentLoopId,null);assert.equal(M.item(s,created).defaultNextTrialId,'root-exit');
+  assert.equal(M.item(s,'x').defaultNextTrialId,created);
+  assert.equal(M.item(s,'x').thenGoTo.find(r=>r.id===ruleId).targetId,created);
+  assert.deepEqual(JSON.parse(JSON.stringify(M.item(s,'x').thenGoTo.find(r=>r.id===ruleId).customParameters)),{button:'kept'});
+  for(const target of ['y','ancestor'])assert.ok(M.connections(s).some(e=>e.source==='x'&&e.target===target));
+  assert.ok(!M.connections(s).some(e=>e.source==='x'&&e.target==='root-exit'));
+  assert.equal(M.item(s,'x').parentLoopId,inner);assert.equal(M.item(s,'ancestor').parentLoopId,outer);
+  assert.ok(s.scopeOrder.root.indexOf(created)<s.scopeOrder.root.indexOf('root-exit'));
+});
+test('sequential insertion in the current loop leaves ancestor and root exits unchanged',()=>{
+  const {s,inner}=makeBranchLevels(),created=M.addLoopBranch(s,'x',inner,'sequential');
+  assert.equal(M.item(s,created).parentLoopId,inner);assert.equal(M.item(s,created).defaultNextTrialId,'y');
+  assert.equal(M.item(s,'x').defaultNextTrialId,created);
+  for(const target of ['ancestor','root-exit'])assert.ok(M.connections(s).some(e=>e.source==='x'&&e.target===target));
+  assert.deepEqual(JSON.parse(JSON.stringify(s.scopeOrder[inner])),['x',created,'y']);
+});
+test('multiple existing exits remain explicit branching references after sequential insertion at their level',()=>{
+  const {s}=makeBranchLevels();s.trials.push(M.trial('root-2','Root 2'));M.setDefault(s,'root-exit','root-2');M.connect(s,'x','root-2');
+  const created=M.addLoopBranch(s,'x',null,'sequential');
+  assert.deepEqual(ids(M.connections(s).filter(e=>e.source===created).map(e=>e.target)),['root-2','root-exit']);
+  assert.equal(M.item(s,created).defaultNextTrialId,'root-exit');
+  assert.ok(M.item(s,created).thenGoTo.some(r=>r.targetId==='root-2'));
+  assert.equal(M.connections(s).filter(e=>e.source==='x'&&e.target===created).length,1);
+});
+test('loop level additions reject unrelated scopes, root sources and invalid modes atomically',()=>{
+  const {s}=makeBranchLevels(),before=M.serialize(s);
+  for(const [source,scope,mode] of [['x','missing','parallel'],['start',null,'parallel'],['x',null,'invalid']]){
+    assert.throws(()=>M.addLoopBranch(s,source,scope,mode));assert.equal(M.serialize(s),before);
+  }
+});
+test('available branch levels follow arbitrary nesting depth',()=>{
+  const {s,outer}=makeBranchLevels();let top=outer;
+  for(let depth=3;depth<=5;depth++){
+    top=M.groupLoop(s,[top],'Level '+depth);const levels=M.loopBranchLevels(s,'x');
+    assert.equal(levels.length,depth+1);assert.equal(levels.at(-2).scopeId,top);assert.equal(levels.at(-1).scopeId,null);
+  }
+});
+test('a loose connection requests levels from the loop endpoint without changing the graph',()=>{
+  const {s,inner,outer}=makeBranchLevels(),free=M.addTrial(s),before=M.serialize(s);
+  const outgoing=M.loopConnectionContext(s,'x',free),incoming=M.loopConnectionContext(s,free,'x');
+  assert.equal(outgoing.looseTrialId,free);assert.equal(outgoing.scopeTrialId,'x');
+  assert.deepEqual(JSON.parse(JSON.stringify(outgoing.levels.map(l=>l.scopeId))),[inner,outer,null]);
+  assert.deepEqual(JSON.parse(JSON.stringify(incoming.levels.map(l=>l.scopeId))),[inner,outer,null]);
+  assert.ok(incoming.levels.every(l=>l.branchCount===0));assert.equal(M.serialize(s),before);
+  assert.equal(M.loopConnectionContext(s,'x','y'),null);assert.equal(M.loopConnectionContext(s,'start','root-exit'),null);
+});
+test('connecting an existing loose trial honors the chosen current, ancestor or root scope without creating a trial',()=>{
+  for(const level of ['current','ancestor','root']){
+    const {s,inner,outer}=makeBranchLevels(),free=M.addTrial(s),count=s.trials.length,scope=level==='current'?inner:level==='ancestor'?outer:null;
+    M.connectAtLoopLevel(s,'x',free,scope);
+    assert.equal(s.trials.length,count);assert.equal(M.item(s,free).parentLoopId,scope);
+    assert.equal(M.item(s,'x').defaultNextTrialId,'y');assert.ok(M.item(s,'x').thenGoTo.some(r=>r.targetId===free));
+    assert.doesNotThrow(()=>M.layout(s));
+  }
+});
+test('a loose prefix connected to a loop entry becomes that scope entry in structural order',()=>{
+  const {s,inner}=makeBranchLevels();s.trials.push(M.trial('head','Head',null,'tail'),M.trial('tail','Tail'));
+  M.connectAtLoopLevel(s,'tail','x',inner);
+  assert.equal(M.item(s,inner).entryId,'head');
+  for(const id of ['head','tail','x','y'])assert.equal(M.item(s,id).parentLoopId,inner);
+  assert.equal(M.item(s,'tail').defaultNextTrialId,'x');assert.doesNotThrow(()=>M.layout(s));
+});
+test('an incoming partial connection stays movable at root and cannot silently ignore a chosen loop level',()=>{
+  const {s,inner}=makeBranchLevels(),free=M.addTrial(s),before=M.serialize(s);
+  assert.throws(()=>M.connectAtLoopLevel(s,free,'y',inner),/entrada|alcanzable/i);assert.equal(M.serialize(s),before);
+  M.connectAtLoopLevel(s,free,'y',null);assert.equal(M.item(s,free).parentLoopId,null);
+  assert.equal(M.componentFor(s,free).locked,false);assert.equal(M.componentFor(s,free).attached,true);
+});
+test('connecting a loose structure moves its root items and retains its nested loops and internal branching',()=>{
+  const {s,outer}=makeBranchLevels();s.trials.push(M.trial('free-head','Free head',null,'free-child'),M.trial('free-child','Free child'));
+  const nested=M.groupLoop(s,['free-child'],'Free nested');M.connectAtLoopLevel(s,'x','free-head',outer);
+  assert.equal(M.item(s,'free-head').parentLoopId,outer);assert.equal(M.item(s,nested).parentLoopId,outer);
+  assert.equal(M.item(s,'free-child').parentLoopId,nested);assert.equal(M.item(s,'free-head').defaultNextTrialId,'free-child');
+  assert.doesNotThrow(()=>M.layout(s));
+});
+test('scoped target reconnection preserves all edge references while honoring a root destination',()=>{
+  const {s}=makeBranchLevels(),free=M.addTrial(s);M.item(s,'x').thenGoTo.push({id:'shared',targetId:'y',customParameters:{kept:true}});
+  const edge=M.connectAtLoopLevel(s,'x',free,null,{source:'x',target:'y'});
+  assert.equal(edge,JSON.stringify(['x',free]));assert.equal(M.item(s,free).parentLoopId,null);
+  assert.equal(M.item(s,'x').defaultNextTrialId,free);assert.equal(M.item(s,'x').thenGoTo.find(r=>r.id==='shared').targetId,free);
+  assert.deepEqual(JSON.parse(JSON.stringify(M.item(s,'x').thenGoTo.find(r=>r.id==='shared').customParameters)),{kept:true});
+  assert.ok(!M.connections(s).some(e=>e.source==='x'&&e.target==='y'));
+});
+test('scoped source reconnection updates the old parent and the new loop entry atomically',()=>{
+  const {s,inner}=makeBranchLevels(),free=M.addTrial(s);
+  M.connectAtLoopLevel(s,free,'x',inner,{source:'start',target:'x'});
+  assert.equal(M.item(s,'start').defaultNextTrialId,null);assert.equal(M.item(s,free).defaultNextTrialId,'x');
+  assert.equal(M.item(s,free).parentLoopId,inner);assert.equal(M.item(s,inner).entryId,free);
+});
+test('scoped connections reject unrelated scopes and loop markers without changing the graph',()=>{
+  const {s,inner}=makeBranchLevels(),free=M.addTrial(s),before=M.serialize(s);
+  assert.throws(()=>M.connectAtLoopLevel(s,'x',free,'missing'));assert.equal(M.serialize(s),before);
+  assert.throws(()=>M.connectAtLoopLevel(s,inner,free,inner));assert.equal(M.serialize(s),before);
+});
+test('creating and attaching a movable destination use the same per-level placement decision',()=>{
+  const {s,inner,outer}=makeBranchLevels(),free=M.addTrial(s),before=M.serialize(s);
+  for(const scope of [inner,outer,null]){
+    assert.equal(M.loopBranchSelection(s,{sourceId:'x'},scope).requiresPlacement,true);
+    assert.equal(M.loopBranchSelection(s,{sourceId:'x',targetId:free},scope).requiresPlacement,true);
+  }
+  assert.equal(M.loopBranchSelection(s,{sourceId:'x',targetId:free,previous:{source:'x',target:'y'}},inner).requiresPlacement,false);
+  assert.equal(M.serialize(s),before);
+});
+test('sequential attachment inserts the existing trial before only the destinations in the chosen level',()=>{
+  for(const level of ['current','ancestor','root']){
+    const {s,inner,outer}=makeBranchLevels(),free=M.addTrial(s),count=s.trials.length;
+    const scope=level==='current'?inner:level==='ancestor'?outer:null,target=level==='current'?'y':level==='ancestor'?'ancestor':'root-exit';
+    M.connectAtLoopLevel(s,'x',free,scope,null,'sequential');
+    assert.equal(s.trials.length,count);assert.equal(M.item(s,free).parentLoopId,scope);
+    assert.equal(M.item(s,'x').defaultNextTrialId,free);assert.equal(M.item(s,free).defaultNextTrialId,target);
+    for(const other of ['y','ancestor','root-exit'].filter(id=>id!==target))assert.ok(M.connections(s).some(e=>e.source==='x'&&e.target===other));
+    assert.ok(!M.connections(s).some(e=>e.source==='x'&&e.target===target));assert.doesNotThrow(()=>M.layout(s));
+  }
+});
+test('sequential attachment preserves an existing nested structure and appends the old continuation at its final trial',()=>{
+  const {s,inner}=makeBranchLevels();s.trials.push(M.trial('head','Head',null,'tail'),M.trial('tail','Tail'));
+  const nested=M.groupLoop(s,['tail'],'Free nested'),count=s.trials.length;
+  M.connectAtLoopLevel(s,'x','head',inner,null,'sequential');
+  assert.equal(s.trials.length,count);assert.equal(M.item(s,'head').defaultNextTrialId,'tail');assert.equal(M.item(s,'tail').defaultNextTrialId,'y');
+  assert.equal(M.item(s,'tail').parentLoopId,nested);assert.equal(M.item(s,nested).parentLoopId,inner);assert.equal(M.item(s,'y').parentLoopId,inner);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.scopeOrder[inner])),['x','head',nested,'y']);assert.doesNotThrow(()=>M.layout(s));
+});
+test('sequential attachment merges shared condition references and preserves multiple old destinations at the structure exit',()=>{
+  const {s}=makeBranchLevels();s.trials.push(M.trial('free','Free',null,'tail'),M.trial('tail','Tail'),M.trial('root-2','Root 2'));
+  M.setDefault(s,'root-exit','root-2');M.connect(s,'x','root-2');const rule=M.item(s,'x').thenGoTo.find(r=>r.targetId==='root-exit');rule.customParameters={kept:true};const ruleId=rule.id;
+  M.connectAtLoopLevel(s,'x','free',null,null,'sequential');
+  assert.equal(M.item(s,'free').defaultNextTrialId,'tail');assert.equal(M.item(s,'tail').defaultNextTrialId,'root-exit');
+  assert.ok(M.item(s,'tail').thenGoTo.some(r=>r.targetId==='root-2'));
+  assert.equal(M.item(s,'x').thenGoTo.find(r=>r.id===ruleId).targetId,'free');
+  assert.deepEqual(JSON.parse(JSON.stringify(M.item(s,'x').thenGoTo.find(r=>r.id===ruleId).customParameters)),{kept:true});
+  assert.equal(M.connections(s).filter(e=>e.source==='x'&&e.target==='free').length,1);
+});
+test('reconnection excludes the replaced edge and inserts sequentially before other destinations at the level',()=>{
+  const {s,inner}=makeBranchLevels(),free=M.addTrial(s),other=M.addLoopBranch(s,'x',inner,'parallel');
+  M.item(s,'x').thenGoTo.push({id:'moved',targetId:'y',customParameters:{kept:true}});
+  assert.equal(M.loopBranchSelection(s,{sourceId:'x',targetId:free,previous:{source:'x',target:'y'}},inner).requiresPlacement,true);
+  M.connectAtLoopLevel(s,'x',free,inner,{source:'x',target:'y'},'sequential');
+  assert.equal(M.item(s,'x').defaultNextTrialId,free);assert.equal(M.item(s,free).defaultNextTrialId,other);
+  assert.equal(M.item(s,'x').thenGoTo.find(r=>r.id==='moved').targetId,free);
+  assert.ok(!M.connections(s).some(e=>e.source===free&&e.target==='y'));
+});
+test('invalid placement modes cannot partially attach or move an existing structure',()=>{
+  const {s,inner}=makeBranchLevels(),free=M.addTrial(s),before=M.serialize(s);
+  assert.throws(()=>M.connectAtLoopLevel(s,'x',free,inner,null,'invalid'));assert.equal(M.serialize(s),before);
 });
 test('disconnecting from a nested loop lifts the disconnected subtree to the root canvas', () => {
   const s = M.makeState('Nested', [M.trial('a','A',null,'x'),M.trial('x','X',null,'y'),M.trial('y','Y',null,'z'),M.trial('z','Z')], [], 'a');
@@ -239,8 +455,57 @@ test('deleting the real entry of a loop continues the main sequence from a survi
 });
 test('deleting a nested loop entry lifts its remaining trials to the main canvas', () => {
   const s=make();const inner=M.groupLoop(s,['loca','child'],'Inner');M.deleteTrial(s,'loca');
-  assert.equal(s.loops.find(l=>l.id===inner).entryId,null);
+  assert.ok(!M.item(s,inner));
   assert.equal(s.trials.find(t=>t.id==='child').parentLoopId,null);
+});
+test('deleting the last trial removes its loop, stored positions and scope references while preserving continuation',()=>{
+  const s=make(),loop=M.groupLoop(s,['a'],'Main loop');
+  s.entryId=loop;M.item(s,loop).nextId='b';s.anchors[loop]={x:900,y:100};
+  M.deleteTrial(s,'a');
+  assert.ok(!M.item(s,loop));assert.equal(s.entryId,'b');assert.ok(!s.anchors[loop]);assert.ok(!s.scopeOrder[loop]);
+  assert.ok(!Object.values(s.scopeOrder).some(order=>order.includes(loop)));
+  assert.deepEqual(ids(M.reachable(s).trials),['b']);assert.doesNotThrow(()=>M.layout(s));
+});
+test('deleting the only trial of nested loops removes every empty ancestor in one graph edit',()=>{
+  const s=make(),inner=M.groupLoop(s,['child'],'Inner'),outer=M.groupLoop(s,[inner],'Outer');
+  M.deleteTrial(s,'child');
+  assert.ok(!M.item(s,inner));assert.ok(!M.item(s,outer));assert.equal(s.loops.length,0);
+  assert.ok(!s.scopeOrder[inner]);assert.ok(!s.scopeOrder[outer]);
+  assert.equal(s.entryId,'a');assert.deepEqual(ids(M.reachable(s).trials),['a','b']);
+});
+test('an outer loop with remaining trials survives removal of its empty nested loop',()=>{
+  const s=make(),outer=M.groupLoop(s,['loca','child'],'Outer'),inner=M.groupLoop(s,['child'],'Inner');
+  M.deleteTrial(s,'child');
+  assert.ok(!M.item(s,inner));assert.equal(M.item(s,'loca').parentLoopId,outer);
+  assert.equal(M.item(s,outer).entryId,'loca');assert.equal(M.leafTrials(s,outer).length,1);
+  assert.equal(M.componentFor(s,outer).locked,false);assert.doesNotThrow(()=>M.layout(s));
+});
+test('removing an empty entry loop repairs its parent entry before reconciling the remaining body',()=>{
+  const s=make(),inner=M.groupLoop(s,['loca'],'Inner'),outer=M.groupLoop(s,[inner,'child'],'Outer');
+  M.item(s,inner).nextId='child';M.deleteTrial(s,'loca');
+  assert.ok(!M.item(s,inner));assert.equal(M.item(s,outer).entryId,'child');
+  assert.equal(M.item(s,'child').parentLoopId,outer);assert.doesNotThrow(()=>M.layout(s));
+});
+test('deleting all trials also removes all nested loops and leaves a genuinely empty workspace',()=>{
+  const s=make(),main=M.groupLoop(s,['a','b'],'Main'),inner=M.groupLoop(s,['child'],'Inner');
+  M.groupLoop(s,['loca',inner],'Outer');M.deleteItems(s,s.trials.map(t=>t.id));
+  assert.equal(s.trials.length,0);assert.equal(s.loops.length,0);assert.equal(s.entryId,null);
+  assert.deepEqual(ids(M.compile(s).loops),[]);assert.ok(!s.scopeOrder[main]);
+  assert.doesNotThrow(()=>M.layout(s));
+});
+test('reconciliation removes legacy empty loop trees and redirects their entry to the surviving continuation',()=>{
+  const s=make();M.realTrial(s,'a').defaultNextTrialId=null;s.loops.push(
+    {id:'empty-inner',name:'Empty inner',parentLoopId:'empty-outer',entryId:null,nextId:'b',repetitions:2,expanded:false},
+    {id:'empty-outer',name:'Empty outer',parentLoopId:null,entryId:'empty-inner',nextId:null,repetitions:3,expanded:true}
+  );s.entryId='empty-outer';
+  M.reconcileGraph(s);assert.equal(s.loops.length,0);assert.equal(s.entryId,'b');
+  const before=M.serialize(s);M.reconcileGraph(s);assert.equal(M.serialize(s),before);
+});
+test('a loop emptied by releasing its body is removed without deleting the released trials',()=>{
+  const s=make(),loop=M.groupLoop(s,['a','b'],'Main');M.item(s,loop).entryId=null;
+  M.reconcileGraph(s);
+  assert.ok(!M.item(s,loop));for(const id of ['a','b'])assert.equal(M.item(s,id).parentLoopId,null);
+  assert.deepEqual(ids(M.reachable(s).trials),['a','b']);
 });
 for(const fixture of context.AppCanvas.flatCurveScenarios){
   test('reuses app fixture: '+fixture.name+' in the main structure and as an island',()=>{
@@ -383,6 +648,58 @@ test('invalid reconnection leaves the entire graph unchanged',()=>{
   assert.equal(M.serialize(s),before);
   assert.throws(()=>M.reconnectTarget(s,'a','missing','b'),/Conexión/);
   assert.equal(M.serialize(s),before);
+});
+test('moving the source removes the old parent connection and gives a new parent its first Default',()=>{
+  const s=make();s.trials.push(M.trial('free','Free'));
+  const edge=M.reconnectSource(s,'a','b','free');
+  assert.equal(edge,JSON.stringify(['free','b']));
+  assert.equal(M.realTrial(s,'a').defaultNextTrialId,null);
+  assert.equal(M.realTrial(s,'free').defaultNextTrialId,'b');
+  assert.ok(!M.connections(s).some(e=>e.source==='a'&&e.target==='b'));
+});
+test('moving the source preserves an existing parent Default and adds a Then go to',()=>{
+  const s=make();M.reconnectSource(s,'a','b','loca');
+  assert.equal(M.realTrial(s,'loca').defaultNextTrialId,'child');
+  assert.ok(M.realTrial(s,'loca').thenGoTo.some(r=>r.targetId==='b'));
+  assert.equal(M.realTrial(s,'a').defaultNextTrialId,null);
+});
+test('moving a shared edge transfers every condition to its new parent and restores the old parent fallback',()=>{
+  const s=make();M.connect(s,'a','loca');
+  const rules=[{id:'shared-1',targetId:'b',customParameters:{label:'kept'}},{id:'shared-2',targetId:'b',rules:[{value:2}]}];
+  M.realTrial(s,'a').thenGoTo.push(...M.copy(rules));M.reconnectSource(s,'a','b','child');
+  assert.equal(M.realTrial(s,'a').defaultNextTrialId,'loca');
+  assert.ok(M.realTrial(s,'a').thenGoTo.every(r=>r.targetId!=='b'));
+  assert.equal(M.realTrial(s,'child').defaultNextTrialId,'b');
+  assert.deepEqual(JSON.parse(JSON.stringify(M.realTrial(s,'child').thenGoTo)),rules);
+  assert.equal(M.connections(s).find(e=>e.source==='child'&&e.target==='b').refs.length,3);
+});
+test('moving the source onto an existing connection merges its edge and retains both parents conditions',()=>{
+  const s=make();M.connect(s,'loca','b');
+  const existing=JSON.parse(JSON.stringify(M.realTrial(s,'loca').thenGoTo));
+  M.realTrial(s,'a').thenGoTo.push({id:'shared',targetId:'b',customParameters:{kept:true}});
+  M.reconnectSource(s,'a','b','loca');
+  assert.equal(M.realTrial(s,'loca').defaultNextTrialId,'child');
+  assert.deepEqual(JSON.parse(JSON.stringify(M.realTrial(s,'loca').thenGoTo)),[...existing,{id:'shared',targetId:'b',customParameters:{kept:true}}]);
+  assert.equal(M.connections(s).filter(e=>e.source==='loca'&&e.target==='b').length,1);
+});
+test('moving conditions with colliding IDs retains their data under distinct IDs in the new parent',()=>{
+  const s=make();M.realTrial(s,'loca').thenGoTo.push({id:'same',targetId:'child',customParameters:{owner:'new'}});
+  M.realTrial(s,'a').thenGoTo.push({id:'same',targetId:'b',customParameters:{owner:'old'}});
+  M.reconnectSource(s,'a','b','loca');const rules=M.realTrial(s,'loca').thenGoTo;
+  assert.equal(new Set(rules.map(r=>r.id)).size,2);
+  assert.deepEqual(JSON.parse(JSON.stringify(rules.map(({id,...r})=>r))),[{targetId:'child',customParameters:{owner:'new'}},{targetId:'b',customParameters:{owner:'old'}}]);
+});
+test('moving the source into a loop applies the same ownership rules as a new connection',()=>{
+  const s=make(),loop=M.groupLoop(s,['loca','child'],'Loop');
+  M.reconnectSource(s,'a','b','loca');
+  assert.equal(M.realTrial(s,'b').parentLoopId,loop);assert.doesNotThrow(()=>M.layout(s));
+});
+test('source reconnection rejects markers and missing edges atomically, and unchanged endpoints are a no-op',()=>{
+  const s=make(),loop=M.groupLoop(s,['loca','child'],'Loop'),before=M.serialize(s);
+  assert.throws(()=>M.reconnectSource(s,'a','b',loop),/trial/i);assert.equal(M.serialize(s),before);
+  assert.throws(()=>M.reconnectSource(s,'a','missing','loca'),/trial|Conexión/i);assert.equal(M.serialize(s),before);
+  assert.throws(()=>M.reconnectSource(s,'b','a','loca'),/Conexión/i);assert.equal(M.serialize(s),before);
+  assert.equal(M.reconnectSource(s,'a','b','a'),JSON.stringify(['a','b']));assert.equal(M.serialize(s),before);
 });
 test('deleting an expanded or collapsed loop ungroups its children without deleting their decisions',()=>{
   for(const expanded of [false,true]){

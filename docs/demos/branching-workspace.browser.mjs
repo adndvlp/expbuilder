@@ -44,15 +44,22 @@ const selectConnection=async(source,target)=>{
   await page.mouse.click(point.x,point.y);await page.mouse.move(0,0);await expect(edge).toHaveClass(/selected/);
   return edge;
 };
-const dragConnectionTarget=async(edge,point)=>{
-  const anchor=edge.getByRole('img',{name:'Arrastrar para reconectar',exact:true});await anchor.waitFor();const box=await anchor.boundingBox();
+const dragConnectionEnd=async(edge,end,point)=>{
+  const label=end==='source'?'Arrastrar origen para reconectar':'Arrastrar destino para reconectar';
+  const anchor=edge.getByRole('img',{name:label,exact:true});await anchor.waitFor();const box=await anchor.boundingBox();
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(point.x,point.y,{steps:20});await page.mouse.up();await page.mouse.move(0,0);
 };
+const dragConnectionTarget=(edge,point)=>dragConnectionEnd(edge,'target',point);
 const dragHandles=async(a,ha,b,hb)=>{
   const first=await page.getByTestId('item-'+a).locator('[data-handleid="'+(ha==='top'?'flow-target':'flow-source')+'"]').boundingBox();
   const last=await page.getByTestId('item-'+b).locator('[data-handleid="'+(hb==='top'?'flow-target':'flow-source')+'"]').boundingBox();
   await page.mouse.move(first.x+first.width/2,first.y+first.height/2);await page.mouse.down();
   await page.mouse.move(last.x+last.width/2,last.y+last.height/2,{steps:20});await page.mouse.up();await page.mouse.move(0,0);
+};
+const loadLooseLoopFixture=async()=>{
+  await choose(1);const free=await page.evaluate(()=>{
+    const s=workspaceDemo.getState(),id=WorkspaceDemo.addTrial(s,{x:1400,y:100});workspaceDemo.load(s);return id;
+  });await waitForCanvasViewport(page.locator('.canvas-area'));return free;
 };
 const loadInsertionFixture=async(complex=false)=>{
   await page.evaluate(complex=>{
@@ -85,9 +92,10 @@ const dragOverEdge=async(id,offset=0)=>{
   return target;
 };
 const selectBox=async(ids)=>{
+  await waitForCanvasViewport(page.locator('.canvas-area'));
   const boxes=await Promise.all(ids.map(id=>page.getByTestId('item-'+id).boundingBox()));
-  const start={x:Math.min(...boxes.map(b=>b.x))-26,y:Math.min(...boxes.map(b=>b.y))-26};
-  const end={x:Math.max(...boxes.map(b=>b.x+b.width))+26,y:Math.max(...boxes.map(b=>b.y+b.height))+26};
+  const start={x:Math.min(...boxes.map(b=>b.x))-4,y:Math.min(...boxes.map(b=>b.y))-4};
+  const end={x:Math.max(...boxes.map(b=>b.x+b.width))+4,y:Math.max(...boxes.map(b=>b.y+b.height))+4};
   await page.mouse.move(start.x,start.y);await page.mouse.down({button:'left'});await page.mouse.move(end.x,end.y,{steps:20});
 };
 try {
@@ -119,12 +127,13 @@ try {
     assert.notEqual(selected.stroke,original.stroke);assert.ok(selected.width>original.width);assert.notEqual(selected.filter,'none');
     const arrow=await path.evaluate(p=>{const id=p.getAttribute('marker-end').match(/#([^'")]+)/)[1];const marker=document.getElementById(id).querySelector('polyline');return getComputedStyle(marker).fill;});
     assert.equal(arrow,selected.stroke);
-    await expect(edge.getByRole('img',{name:'Arrastrar para reconectar',exact:true})).toBeVisible();
+    await expect(edge.getByRole('img',{name:'Arrastrar origen para reconectar',exact:true})).toBeVisible();
+    await expect(edge.getByRole('img',{name:'Arrastrar destino para reconectar',exact:true})).toBeVisible();
     assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions),geometry);
     await snapshot('selected-edge');
     await page.getByTestId('item-a').click();await page.mouse.move(0,0);
     await expect(page.locator('.react-flow__edge.selected')).toHaveCount(0);
-    await expect(page.getByRole('img',{name:'Arrastrar para reconectar',exact:true})).toHaveCount(0);
+    await expect(page.locator('.edge-reconnect-icon')).toHaveCount(0);
     await expect(page.getByTestId('item-a').locator('.trial-node')).toHaveClass(/trial-node--selected/);
     const restored=await path.evaluate(p=>({stroke:getComputedStyle(p).stroke,width:parseFloat(getComputedStyle(p).strokeWidth),filter:getComputedStyle(p).filter}));
     assert.deepEqual(restored,original);
@@ -262,14 +271,15 @@ try {
       await page.mouse.click(1080,850);await expect(page.getByRole('checkbox')).toHaveCount(0);
     }
   });
-  await run('multiple selection includes loops and Delete removes exactly the checked nodes in one undoable action',async()=>{
+  await run('Delete removes checked trials, ungroups checked loops and cleans empty scopes in one undoable action',async()=>{
     await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
     await page.getByTestId('item-'+outer.id).dblclick();
     await expect(page.getByRole('checkbox',{name:'Seleccionar Loop principal',exact:true})).toBeChecked();
     await page.getByRole('checkbox',{name:'Seleccionar Nested A',exact:true}).check();
     await page.keyboard.press('Delete');
     const after=await state();assert.ok(!after.loops.some(l=>l.id===outer.id));assert.ok(!after.trials.some(t=>t.id==='x'));
-    assert.ok(after.trials.some(t=>t.id==='y'));assert.ok(after.loops.some(l=>l.name==='Nested loop'));
+    assert.ok(after.trials.some(t=>t.id==='y'));assert.ok(!after.loops.some(l=>l.name==='Nested loop'));
+    assert.equal(after.trials.find(t=>t.id==='y').parentLoopId,null);
     await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
     await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
   });
@@ -367,7 +377,9 @@ try {
   });
   await run('dragging a selected edge target changes its rule and releases the old destination',async()=>{
     await choose(0);const edge=await selectConnection('a','b');
-    await expect(edge.locator('.react-flow__edgeupdater-source')).toHaveCount(0);
+    await expect(edge.locator('.react-flow__edgeupdater-source')).toHaveCount(1);
+    await expect(edge.locator('.edge-reconnect-icon')).toHaveCount(2);
+    for(const path of await edge.locator('.edge-reconnect-icon path').all())await expect(path).toHaveAttribute('stroke','#fff');
     const target=await page.getByTestId('item-loca').locator('[data-handleid="flow-target"]').boundingBox();
     await dragConnectionTarget(edge,{x:target.x+target.width/2,y:target.y+target.height/2});
     await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='a').defaultNextTrialId==='loca');
@@ -377,6 +389,58 @@ try {
     await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
     await expect(page.locator('.trial-node--selected')).toHaveCount(0);
     await snapshot('reconnected-edge');
+  });
+  await run('dragging the source changes the parent and updates both branching panels in one undoable edit',async()=>{
+    await choose(0);const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-start').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='start').thenGoTo.some(r=>r.targetId==='b'));
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,null);
+    assert.equal(after.trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);await expect(page.locator('.trial-node--selected')).toHaveCount(0);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('reconnected-source');await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('FINISH_EXPERIMENT');await expect(page.getByLabel('Then go to · 1',{exact:true})).toHaveCount(0);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await page.getByTestId('item-start').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('a');await expect(page.getByLabel('Then go to · 1',{exact:true})).toHaveValue('b');
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+  });
+  await run('moving a shared edge source to an empty parent assigns its Default and moves all conditions',async()=>{
+    await choose(0);await page.evaluate(()=>{const s=workspaceDemo.getState();s.trials.find(t=>t.id==='a').thenGoTo.push({id:'shared-1',targetId:'b',customParameters:{kept:true}},{id:'shared-2',targetId:'b'});workspaceDemo.load(s);});
+    const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-free').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='free').defaultNextTrialId==='b');
+    const after=await state(),oldParent=after.trials.find(t=>t.id==='a'),newParent=after.trials.find(t=>t.id==='free');
+    assert.equal(oldParent.defaultNextTrialId,null);assert.equal(oldParent.thenGoTo.length,0);
+    assert.deepEqual(newParent.thenGoTo,before.trials.find(t=>t.id==='a').thenGoTo);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnecting the source to an existing pair leaves one selected edge and preserves its rules',async()=>{
+    await choose(0);await page.evaluate(()=>{const s=workspaceDemo.getState();WorkspaceDemo.connect(s,'start','b');s.trials.find(t=>t.id==='a').thenGoTo.push({id:'transferred',targetId:'b'});workspaceDemo.load(s);});
+    const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-start').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>!workspaceDemo.getState().trials.find(t=>t.id==='a').thenGoTo.length);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+    assert.equal(after.trials.find(t=>t.id==='start').thenGoTo.filter(r=>r.targetId==='b').length,2);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).filter(e=>e.source==='start'&&e.target==='b').length),1);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('source reconnection cancels on empty canvas, same-end handles and loop markers',async()=>{
+    await choose(0);const before=await state(),edge=await selectConnection('start','a');
+    await dragConnectionEnd(edge,'source',{x:1070,y:850});assert.deepEqual(await state(),before);
+    const top=await page.getByTestId('item-free').locator('[data-handleid="flow-target"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:top.x+top.width/2,y:top.y+top.height/2});assert.deepEqual(await state(),before);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await choose(1);const nestedBefore=await state(),nestedEdge=await selectConnection('start','p'),loop=nestedBefore.loops.find(l=>l.name==='Loop principal');
+    const marker=await page.getByTestId('item-'+loop.id).boundingBox();
+    await dragConnectionEnd(nestedEdge,'source',{x:marker.x+marker.width/2,y:marker.y+marker.height});assert.deepEqual(await state(),nestedBefore);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
   });
   await run('dropping a selected connection on empty canvas keeps it unchanged',async()=>{
     await choose(0);const before=JSON.stringify(await state()),edge=await selectConnection('start','a');
@@ -471,6 +535,48 @@ try {
       await page.keyboard.press('Control+z');assert.deepEqual(await state(),selected);
     }
   });
+  await run('deleting the last trial removes its expanded or collapsed loop and undo restores both',async()=>{
+    for(const collapsed of [false,true]){
+      await choose(0);await page.getByTestId('item-free').click();await page.getByTitle('Add loop',{exact:true}).click();
+      await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+      const loop=(await state()).loops[0];if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      const before=await state();await page.locator('.trial-list-button').filter({hasText:/^Trial suelto/}).click();await page.keyboard.press('Delete');
+      await expect(page.getByTestId('item-'+loop.id)).toHaveCount(0);await expect(page.getByTestId('item-free')).toHaveCount(0);
+      const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));assert.equal(after.entryId,'start');
+      assert.ok(!after.scopeOrder[loop.id]);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+      await expect(page.getByTestId('item-'+loop.id)).toBeVisible();await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('deleting the only nested trial removes empty ancestor loops in the same undoable action',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),inner=WorkspaceDemo.groupLoop(s,['free'],'Inner'),outer=WorkspaceDemo.groupLoop(s,[inner],'Outer');
+      s.loops.forEach(l=>l.expanded=false);workspaceDemo.load(s);
+    });
+    const before=await state();assert.equal(before.loops.length,2);await page.locator('.trial-list-button').filter({hasText:/^Trial suelto/}).click();
+    await page.keyboard.press('Backspace');await expect(page.locator('.loop-node')).toHaveCount(0);
+    const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);await expect(page.locator('.loop-node')).toHaveCount(1);
+    await page.keyboard.press('Meta+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('removing the final inner trial keeps outer loops with remaining content',async()=>{
+    await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.locator('.trial-list-button').filter({hasText:/^Nested B/}).click();await page.keyboard.press('Delete');
+    assert.ok((await state()).loops.some(l=>l.id===inner.id));const oneLeft=await state();
+    await page.locator('.trial-list-button').filter({hasText:/^Nested A/}).click();await page.keyboard.press('Delete');
+    await expect(page.getByTestId('item-'+inner.id)).toHaveCount(0);const after=await state();
+    assert.ok(after.loops.some(l=>l.id===outer.id));assert.equal(after.trials.find(t=>t.id==='p').parentLoopId,outer.id);
+    assert.equal(after.loops.length,2);await expect(page.getByTestId('item-'+outer.id)).toBeVisible();
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),oneLeft);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('deleting all nested content leaves no trials or loop markers and undo restores the whole structure',async()=>{
+    await choose(1);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const trial of before.trials)await page.getByTestId('item-'+trial.id).getByRole('checkbox').check();
+    await page.keyboard.press('Delete');await expect(page.locator('.react-flow__node')).toHaveCount(0);
+    const after=await state();assert.equal(after.trials.length,0);assert.equal(after.loops.length,0);assert.equal(after.entryId,null);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
   await run('editing fields, open dialogs and an empty selection do not delete graph elements',async()=>{
     await choose(0);await page.mouse.click(1080,850);
     const none=await state();await page.keyboard.press('Delete');await page.keyboard.press('Backspace');assert.deepEqual(await state(),none);
@@ -550,6 +656,213 @@ try {
     await page.getByTitle('Remove condition',{exact:true}).first().click();await page.getByRole('button',{name:'Save configuration',exact:true}).click();
     assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,child.id),false);
   });
+  await run('green plus inside a loop uses the app level selector before placement and both dialogs cancel without changes',async()=>{
+    await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();
+    for(const name of ['Nested loop','Loop principal','Main timeline'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeVisible();
+    const checkbox=page.getByRole('checkbox',{name:'Nested loop',exact:true}),checkBox=await checkbox.boundingBox(),labelText=await checkbox.locator('xpath=..').locator(':scope > span').first().boundingBox();
+    assert.ok(labelText.x>checkBox.x+checkBox.width);assert.ok(Math.abs(labelText.y+labelText.height/2-checkBox.y-checkBox.height/2)<2,'the app level labels must remain beside their checkboxes');
+    await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();assert.deepEqual(await state(),before);
+    await snapshot('branch-levels');await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();await page.getByRole('checkbox',{name:inner.name,exact:true}).check();
+    await page.getByRole('button',{name:'Continue',exact:true}).click();await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await page.getByTestId('item-y').click();await page.getByTestId('item-y').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+  });
+  await run('the first destination at each chosen nesting level is created directly and one undo restores the graph',async()=>{
+    for(const level of ['current','ancestor','root']){
+      await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+      const scope=level==='current'?inner.id:level==='ancestor'?outer.id:null,name=level==='current'?inner.name:level==='ancestor'?outer.name:'Main timeline';
+      await page.getByTestId('item-y').click();await page.getByTestId('item-y').getByTitle('Add branch',{exact:true}).click();
+      await page.getByRole('checkbox',{name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+      assert.ok(created);assert.equal(created.parentLoopId,scope);assert.equal(after.trials.find(t=>t.id==='y').defaultNextTrialId,created.id);
+      await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toHaveCount(0);
+      await expect(page.getByTestId('item-'+created.id).locator('.trial-node')).toHaveClass(/trial-node--selected/);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('branches in another nesting level do not force placement or pull a new ancestor trial into the inner loop',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await page.getByRole('checkbox',{name:outer.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+    assert.equal(created.parentLoopId,outer.id);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,'y');
+    assert.ok(after.trials.find(t=>t.id==='x').thenGoTo.some(r=>r.targetId===created.id));
+    await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('branch-level-ancestor');
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('an occupied level offers the app Sequential and Parallel choices with matching ownership and continuations',async()=>{
+    for(const mode of ['parallel','sequential']){
+      await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+      await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+      await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      await page.getByRole('button',{name:mode==='parallel'?'As Branch (Parallel)':'As Parent (Sequential)',exact:true}).click();
+      const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+      assert.equal(created.parentLoopId,inner.id);assert.equal(created.defaultNextTrialId,mode==='sequential'?'y':null);
+      assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,mode==='sequential'?created.id:'y');
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
+  await run('a sequential root insertion moves only exits in that level and preserves source conditions and all other levels',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const M=WorkspaceDemo,s=M.makeState('Level exits',[M.trial('start','Inicio',null,'x'),M.trial('x','Source',null,'y'),M.trial('y','Inside',null,'ancestor'),M.trial('ancestor','Outer exit',null,'root-exit'),M.trial('root-exit','Root exit',null,'root-2'),M.trial('root-2','Root 2')],[],'start');
+      const inner=M.groupLoop(s,['x','y'],'Inner');M.groupLoop(s,[inner,'ancestor'],'Outer');
+      M.connect(s,'x','ancestor');M.connect(s,'x','root-exit');M.connect(s,'x','root-2');M.item(s,'x').thenGoTo.find(r=>r.targetId==='root-exit').customParameters={kept:true};workspaceDemo.load(s);
+    });
+    const before=await state(),rule=before.trials.find(t=>t.id==='x').thenGoTo.find(r=>r.targetId==='root-exit');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id)),source=after.trials.find(t=>t.id==='x');
+    assert.equal(created.parentLoopId,null);assert.equal(created.defaultNextTrialId,'root-exit');
+    assert.equal(source.thenGoTo.find(r=>r.id===rule.id).targetId,created.id);assert.deepEqual(source.thenGoTo.find(r=>r.id===rule.id).customParameters,{kept:true});
+    const edges=await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()));
+    for(const target of ['y','ancestor',created.id])assert.ok(edges.some(e=>e.source==='x'&&e.target===target));
+    for(const target of ['root-exit','root-2'])assert.ok(edges.some(e=>e.source===created.id&&e.target===target));
+    assert.deepEqual(after.loops,before.loops);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('level additions also preserve isolated loops and remain outside the generated experiment until connected',async()=>{
+    await choose(1);const before=await state(),compiled=await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()));
+    await page.getByTestId('item-l2').click();await page.getByTestId('item-l2').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('checkbox',{name:'Loop aislado',exact:true})).toBeVisible();
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));assert.equal(created.parentLoopId,null);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,created.id),false);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState())),compiled);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('connecting a loose trial asks for a loop level in either drag direction and Cancel leaves the graph unchanged',async()=>{
+    for(const reverse of [false,true]){
+      const free=await loadLooseLoopFixture(),before=await state();
+      if(reverse)await dragHandles(free,'top','x','bottom');else await dragHandles('x','bottom',free,'top');
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();
+      for(const name of ['Nested loop','Loop principal','Main timeline'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeVisible();
+      assert.deepEqual(await state(),before);await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    }
+  });
+  await run('an existing loose trial connects at the selected loop level without creating extra trials or replacing other destinations',async()=>{
+    for(const level of ['current','ancestor','root']){
+      const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+      const scope=level==='current'?inner.id:level==='ancestor'?outer.id:null,name=level==='current'?inner.name:level==='ancestor'?outer.name:'Main timeline';
+      await dragHandles('x','bottom',free,'top');assert.deepEqual(await state(),before);
+      await page.getByRole('checkbox',{name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      if(level==='current'){
+        await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+        await page.getByRole('button',{name:'As Branch (Parallel)',exact:true}).click();
+      }else await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toHaveCount(0);
+      const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,scope);
+      assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,'y');assert.ok(after.trials.find(t=>t.id==='x').thenGoTo.some(r=>r.targetId===free));
+      await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toHaveCount(0);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('the level selector preserves a loose structure with its children and nested loops when connecting it',async()=>{
+    const free=await loadLooseLoopFixture();const nested=await page.evaluate(free=>{
+      const s=workspaceDemo.getState(),child=WorkspaceDemo.addTrial(s);WorkspaceDemo.connect(s,free,child);
+      const loop=WorkspaceDemo.groupLoop(s,[child],'Loose nested');workspaceDemo.load(s);return {child,loop};
+    },free);
+    const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:outer.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,outer.id);
+    assert.equal(after.loops.find(l=>l.id===nested.loop).parentLoopId,outer.id);assert.equal(after.trials.find(t=>t.id===nested.child).parentLoopId,nested.loop);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,nested.child);
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('connecting a loose parent to the first loop trial promotes the loop entry after level confirmation',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await dragHandles(free,'bottom','x','top');await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.loops.find(l=>l.id===inner.id).entryId,free);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,inner.id);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'x');assert.equal(after.trials.find(t=>t.id==='x').parentLoopId,inner.id);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('an unreachable incoming parent can remain a movable root connection without silently moving into a loop',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state();await dragHandles(free,'bottom','y','top');
+    await page.getByRole('checkbox',{name:'Nested loop',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    assert.deepEqual(await state(),before);await expect(page.getByRole('status')).toContainText('entrada del loop');
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.trials.find(t=>t.id===free).parentLoopId,null);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'y');
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,free),false);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnecting either edge endpoint to a loose trial waits for its level and remains one undoable edit',async()=>{
+    for(const end of ['target','source']){
+      const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+      const oldSource=end==='target'?'x':'p',edge=await selectConnection(oldSource,end==='target'?'y':'x');
+      const handle=await page.getByTestId('item-'+free).locator('[data-handleid="'+(end==='target'?'flow-target':'flow-source')+'"]').boundingBox();
+      const point={x:handle.x+handle.width/2,y:handle.y+handle.height/2};
+      await dragConnectionEnd(edge,end,point);await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);await expect(edge).toHaveClass(/selected/);
+      await dragConnectionEnd(edge,end,point);await page.getByRole('checkbox',{name:end==='target'?'Main timeline':inner.name,exact:true}).check();
+      await page.getByRole('button',{name:'Continue',exact:true}).click();const after=await state();
+      assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,end==='target'?null:inner.id);
+      if(end==='target')assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+      else{assert.equal(after.trials.find(t=>t.id==='p').defaultNextTrialId,null);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'x');}
+      await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
+  await run('an occupied connection level waits for Parallel or Sequential and Cancel preserves the pending structure',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await expect(page.getByRole('button',{name:'As Parent (Sequential)',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'As Branch (Parallel)',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();
+    const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'y');assert.equal(after.trials.find(t=>t.id===free).parentLoopId,inner.id);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('Sequential inserts an entire existing nested structure before the selected level continuation',async()=>{
+    const free=await loadLooseLoopFixture(),nested=await page.evaluate(free=>{
+      const s=workspaceDemo.getState(),child=WorkspaceDemo.addTrial(s);WorkspaceDemo.connect(s,free,child);
+      const loop=WorkspaceDemo.groupLoop(s,[child],'Loose nested');workspaceDemo.load(s);return {child,loop};
+    },free);
+    const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state();
+    assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,nested.child);assert.equal(after.trials.find(t=>t.id===nested.child).defaultNextTrialId,'y');
+    assert.equal(after.trials.find(t=>t.id===nested.child).parentLoopId,nested.loop);assert.equal(after.trials.find(t=>t.id==='y').parentLoopId,inner.id);
+    assert.equal(after.loops.find(l=>l.id===nested.loop).parentLoopId,inner.id);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('sequential-existing-structure');await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('Sequential at root preserves destinations at other levels and keeps every source condition',async()=>{
+    const free=await loadLooseLoopFixture();await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),extra=WorkspaceDemo.addTrial(s);WorkspaceDemo.setDefault(s,'end',extra);
+      WorkspaceDemo.connect(s,'x','end');WorkspaceDemo.connect(s,'x',extra);WorkspaceDemo.item(s,'x').thenGoTo.find(r=>r.targetId==='end').customParameters={kept:true};workspaceDemo.load(s);
+    });
+    const before=await state(),extra=before.trials.at(-1).id,rule=before.trials.find(t=>t.id==='x').thenGoTo.find(r=>r.targetId==='end');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state(),source=after.trials.find(t=>t.id==='x'),target=after.trials.find(t=>t.id===free);
+    assert.equal(after.trials.length,before.trials.length);assert.equal(target.parentLoopId,null);assert.equal(target.defaultNextTrialId,'end');assert.ok(target.thenGoTo.some(r=>r.targetId===extra));
+    assert.equal(source.defaultNextTrialId,free);assert.ok(source.thenGoTo.some(r=>r.targetId==='y'));
+    assert.equal(source.thenGoTo.find(r=>r.id===rule.id).targetId,free);assert.deepEqual(source.thenGoTo.find(r=>r.id===rule.id).customParameters,{kept:true});
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnection asks placement only for other destinations and preserves the old edge until the last confirmation',async()=>{
+    const free=await loadLooseLoopFixture(),other=await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),inner=s.loops.find(l=>l.name==='Nested loop'),id=WorkspaceDemo.addLoopBranch(s,'x',inner.id,'parallel');workspaceDemo.load(s);return id;
+    });await waitForCanvasViewport(page.locator('.canvas-area'));
+    const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),edge=await selectConnection('x','y');
+    const handle=await page.getByTestId('item-'+free).locator('[data-handleid="flow-target"]').boundingBox(),point={x:handle.x+handle.width/2,y:handle.y+handle.height/2};
+    await dragConnectionEnd(edge,'target',point);await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await dragConnectionEnd(edge,'target',point);await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state();
+    assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,other);
+    assert.equal(after.trials.length,before.trials.length);await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
   await run('nested loop detach lifts trials into the root canvas',async()=>{
     await choose(1);
     await page.locator('.trial-list-button').filter({hasText:/^Nested A/}).click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
@@ -580,13 +893,61 @@ try {
     await expect(page.getByTestId('item-'+outer.id).getByTestId('start-badge')).toBeVisible();
     await expect(page.getByTestId('start-badge')).toHaveCount(1);
   });
-  await run('loop grouping modal creates a nested-capable ownership scope',async()=>{
-    await choose(0);await page.locator('.trial-list-button').filter({hasText:/^LOCA/}).click();
-    await page.getByTitle('Add loop',{exact:true}).click();
-    await page.getByRole('checkbox').nth(3).check();await page.getByRole('checkbox').nth(4).check();
-    await page.getByRole('checkbox').nth(5).check();
-    await page.getByRole('button',{name:'Confirm (3 items)',exact:true}).click();
-    const s=await state();assert.equal(s.loops.length,1);assert.equal(s.trials.find(t=>t.id==='loca1').parentLoopId,s.loops[0].id);
+  await run('the loop button directly groups checked nodes in structural order as one undoable edit',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-b').dblclick();
+    await page.getByTestId('item-a').getByText('Ensayo A',{exact:true}).click();await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(after.loops.length,1);assert.equal(loop.entryId,'a');
+    for(const id of ['a','b'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(after.trials.find(t=>t.id==='start').parentLoopId,null);
+    await expect(page.getByTestId('item-'+loop.id).locator('.loop-node')).toHaveClass(/loop-node--selected/);
+    await expect(page.getByLabel('Repetitions',{exact:true})).toHaveValue('3');await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByText('Select trials/loops for loop',{exact:true})).toHaveCount(0);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('rectangle selection creates a loop directly while retaining the main start and outgoing connection',async()=>{
+    await choose(0);const before=await state();await selectBox(['start','a']);await page.mouse.up();await page.mouse.move(0,0);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(2);await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(loop.entryId,'start');assert.equal(after.entryId,'start');
+    for(const id of ['start','a'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(after.trials.find(t=>t.id==='b').parentLoopId,null);assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'b');
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await expect(page.getByTestId('item-start').getByTestId('start-badge')).toBeVisible();
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('selection-loop');
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('direct grouping retains disconnected structures in the editor without exporting them',async()=>{
+    await choose(0);await page.getByTestId('item-loca2').dblclick();
+    for(const id of ['loca1','loca'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(loop.entryId,'loca');
+    for(const id of ['loca','loca1','loca2'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,loop.id),false);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).loops.length),0);
+  });
+  await run('direct selection creates nested loops without flattening selected descendants or changing branching',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal'),inner=before.loops.find(l=>l.name==='Nested loop');
+    await page.getByTestId('item-y').dblclick();
+    for(const id of ['x',inner.id,'p'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),created=after.loops.find(l=>!before.loops.some(old=>old.id===l.id));
+    assert.equal(created.parentLoopId,outer.id);assert.equal(created.entryId,'p');
+    assert.equal(after.loops.find(l=>l.id===outer.id).entryId,created.id);assert.equal(after.loops.find(l=>l.id===inner.id).parentLoopId,created.id);
+    for(const id of ['x','y'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,inner.id);
+    assert.deepEqual(after.trials.map(t=>[t.id,t.defaultNextTrialId,t.thenGoTo]),before.trials.map(t=>[t.id,t.defaultNextTrialId,t.thenGoTo]));
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('the loop button preserves empty or invalid selections and creates no partial groups',async()=>{
+    await choose(0);const before=await state();await page.getByTitle('Add loop',{exact:true}).click();assert.deepEqual(await state(),before);
+    await expect(page.getByRole('status')).toContainText('Selecciona trials o loops');
+    await expect(page.getByText('Select trials/loops for loop',{exact:true})).toHaveCount(0);
+    await page.getByTestId('item-start').dblclick();await page.getByTestId('item-b').getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();assert.deepEqual(await state(),before);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(2);await expect(page.getByRole('status')).toContainText('sin saltar trials intermedios');
+    await page.getByTestId('item-a').getByRole('checkbox').check();await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();assert.equal((await state()).loops.length,1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
   });
   await run('real handle drag assigns Default first, Then go to second, and rejects equal ends',async()=>{
     await choose(0);

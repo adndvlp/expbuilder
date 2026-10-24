@@ -2,9 +2,10 @@ type Props = {
   onConfirm: (addAsBranch: boolean) => void;
   onClose: () => void;
   parentName?: string;
+  existingTrialName?: string;
 };
 
-function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
+function AddTrialModal({ onConfirm, onClose, parentName, existingTrialName }: Props) {
   return (
     <div
       style={{
@@ -29,7 +30,7 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
           fontSize: 18,
         }}
       >
-        Add New Trial
+        {existingTrialName !== undefined ? "Connect Existing Trial" : "Add New Trial"}
       </h5>
 
       <p
@@ -45,7 +46,10 @@ function AddTrialModal({ onConfirm, onClose, parentName }: Props) {
         <strong>{parentName || "The selected item"}</strong> already has
         branches.
         <br />
-        Do you want to add the new trial as a <strong>branch</strong> (parallel)
+        {existingTrialName !== undefined ? (
+          <>Do you want to connect <strong>{existingTrialName || "the selected trial"}</strong> as a </>
+        ) : "Do you want to add the new trial as a "}
+        <strong>branch</strong> (parallel)
         or as a <strong>parent</strong> (sequential before branches)?
       </p>
 
