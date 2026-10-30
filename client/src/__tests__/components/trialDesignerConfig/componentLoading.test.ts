@@ -50,14 +50,6 @@ describe("useLoadComponents", () => {
               },
             ],
           },
-          __canvasStyles: {
-            source: "typed",
-            value: {
-              width: 1000,
-              height: 700,
-              progressBar: true,
-            },
-          },
         },
         fromJsPsychCoords,
         CANVAS_WIDTH: 1000,

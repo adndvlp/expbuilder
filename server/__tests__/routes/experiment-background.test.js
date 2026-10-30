@@ -66,7 +66,7 @@ test.each([undefined, {}, { fullScreen: false }, { backgroundColor: "", progress
 test("new builds use the saved color without changing or resaving trials", async () => {
   db.data.trials.push({ experimentID: "E1", entryItemId: 1,
     trials: [{ id: 1, plugin: "plugin-dynamic", branches: [], branchConditions: [], defaultNextTrialId: null,
-      columnMapping: { __canvasStyles: { source: "typed", value: { backgroundColor: "#ff0000" } } } }],
+      columnMapping: { } }],
     loops: [], timeline: [{ id: 1, type: "trial" }] });
   const trials = structuredClone(db.data.trials);
   await db.write();
@@ -96,13 +96,13 @@ test("publication replaces a stale local style rather than dropping the saved ap
   expect($("head style").text()).not.toContain("#ff0000");
 });
 
-test.each(["run", "preview", "publish"])("rejects a parallel appearance on %s before producing an artifact", async mode => {
-  const before = fs.readFileSync(path.join(directory, "database/db.json"), "utf8");
-  const response = await build(mode, { canvasStyles: { backgroundColor: "#ff0000" } });
-  expect(response.status).toBe(400);
-  expect(response.body.error).toMatch(/appearance|canvasStyles/i);
-  expect(fs.readFileSync(path.join(directory, "database/db.json"), "utf8")).toBe(before);
-  expect(fs.existsSync(path.join(directory, "experiments_html", "E1.html"))).toBe(false);
-  expect(fs.existsSync(path.join(directory, "trials_previews_html", "E1.html"))).toBe(false);
-  expect(global.fetch).not.toHaveBeenCalled();
+test.each(["run", "preview", "publish"])("uses saved appearance with unused request attributes on %s", async mode => {
+  db.data.experiments[0].appearanceSettings = { backgroundColor: "#123456" };
+  await db.write();
+  const response = await build(mode, { unusedOption: { backgroundColor: "#ff0000" } });
+  expect(response.status).toBe(200);
+  const $ = load(htmlFor(mode));
+  expect($("style#experiment-appearance").text()).toContain("#123456");
+  await db.read();
+  expect(db.data.experiments[0].appearanceSettings).toEqual({ backgroundColor: "#123456" });
 });

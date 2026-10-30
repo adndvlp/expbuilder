@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import generateLoopCode from "../../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/LoopsConfiguration/useLoopCode";
 
 const rows = [1, 2, 3].map(row => ({
-  row, "__canvasStyles_Behavioral$20$Statements": { width: 1440, height: 900 },
+  row, stimulus: `Stimulus ${row}`,
 }));
 
 function selectedRows(participantNumber: unknown, categories = false, stimuliOrders = [[2, 0, 1]]) {
@@ -22,7 +22,7 @@ function selectedRows(participantNumber: unknown, categories = false, stimuliOrd
 
 describe("ordered loop stimulus selection", () => {
   it.each([undefined, null, NaN, 0, -1, 1.5, Infinity, "1"])(
-    "keeps the CSV rows and canvas variables without a valid participant number (%s)",
+    "keeps the CSV rows and stimulus variables without a valid participant number (%s)",
     participant => {
       expect(selectedRows(participant)).toEqual(rows);
       expect(selectedRows(participant, true)).toEqual(rows);

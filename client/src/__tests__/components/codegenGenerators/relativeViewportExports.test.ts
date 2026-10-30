@@ -8,14 +8,6 @@ it.each([false, true])(
       uploadedFiles: [],
       pluginName: "plugin-dynamic",
       columnMapping: {
-        __canvasStyles: {
-          source: "typed",
-          value: {
-            backgroundColor: "#abcdef",
-            fullScreen: false,
-            progressBar: false,
-          },
-        },
         components: {
           source: "typed",
           value: [
@@ -46,7 +38,10 @@ it.each([false, true])(
     });
     const suffix = isInLoop ? "_responsive" : "";
     for (const [index, row] of mappedJson.entries()) {
-      expect(row).not.toHaveProperty(`__canvasStyles${suffix}`);
+      expect(Object.keys(row).sort()).toEqual([
+        `components${suffix}`,
+        `response_components${suffix}`,
+      ]);
       expect(row[`components${suffix}`][0]).toMatchObject({
         type: "TextComponent",
         coordinates: { x: -88, y: 88 },

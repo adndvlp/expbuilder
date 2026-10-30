@@ -31,5 +31,5 @@ it("resizes the running iframe without rebuilding or reloading it", async () => 
   expect(screen.getByTitle("Experiment Preview")).toBe(iframe);
   expect(iframe).toHaveStyle({ width: "1478px", height: "903px" });
   expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-  expect(requestBodyFromLastPreviewPost()).not.toHaveProperty("canvasStyles");
+  expect(requestBodyFromLastPreviewPost()).toEqual({ generatedCode: expect.any(String) });
 });

@@ -1,3 +1,5 @@
+// TEMPORARY tester migration suite; remove with the converter.
+// Retirement: docs/temporary-migrations.md.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

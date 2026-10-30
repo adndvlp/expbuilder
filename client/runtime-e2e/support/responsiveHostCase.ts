@@ -10,7 +10,7 @@ export async function verifyResponsiveHost(page: Page) {
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`responsive-host-${Date.now()}`);
   await author.createTrial("embedded");
-  const scene = responsiveScene({ width: 1024, height: 768 });
+  const scene = responsiveScene();
   (scene.components.value as any[])[0].stimulus = typed(
     '<p style="margin:0;font-size:12px">HTML</p>',
   );

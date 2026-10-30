@@ -7,7 +7,6 @@ import { db, ensureDbData } from "../../utils/db.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { applyGeneratedArtifact } from "./artifact.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
-import { assertNoAppearanceOverride } from "./appearanceSettings.js";
 
 const router = Router();
 
@@ -21,7 +20,6 @@ function setExperimentBase($, experimentID) {
 /* istanbul ignore next -- run HTML permutations are covered by route integration tests. */
 router.post("/api/run-experiment/:experimentID", async (req, res) => {
   try {
-    assertNoAppearanceOverride(req.body);
     const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 
@@ -113,7 +111,6 @@ router.get("/:experimentID/preview", async (req, res) => {
 /* istanbul ignore next -- preview HTML permutations are covered by route integration tests. */
 router.post("/api/trials-preview/:experimentID", async (req, res) => {
   try {
-    assertNoAppearanceOverride(req.body);
     const { generatedCode } = req.body;
     const experimentID = req.params.experimentID;
 

@@ -1,6 +1,6 @@
-// TEMPORARY: import-only conversion for the migration release.
-// Remove this directory and its import/call in db/import.js afterwards.
-// See docs/legacy-experiment-import.md. Runtime accepts only the current contract.
+// TEMPORARY: converts tester backups during the current model transition.
+// Retire this module, its db/import.js import/call and migration-only tests
+// before the release for users. See docs/temporary-migrations.md.
 import { assertExperimentNavigation } from "../../timeline/branchContract.js";
 
 const navigationFields = ["branches", "branchConditions", "repeatConditions"];

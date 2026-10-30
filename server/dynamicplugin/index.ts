@@ -1598,8 +1598,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
             visualFrameBoundaryHandoffLeadMs,
           ),
           response_timing_quality: responseTimingData.response_timing_quality,
-          response_timing_quality_reason:
-            responseTimingData.response_timing_quality_reason,
+          response_timing_quality_reason: responseTimingData.response_timing_quality_reason,
           diagnostics_level: diagnostics.level,
           render_backend_requested: renderMetrics.render_backend_requested,
           render_backend: renderMetrics.render_backend,

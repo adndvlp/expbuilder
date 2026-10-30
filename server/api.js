@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import { db, dbPath, ensureDbData, userDataRoot } from "./utils/db.js";
+import { normalizeDynamicDatabase } from "./utils/dynamicConfigModel.js";
 import { __dirname } from "./utils/paths.js";
 import {
   serializeDbRequest,
@@ -68,6 +69,9 @@ app.use(restrictRemoteAccess);
 await withDbLock(async () => {
   await db.read();
   ensureDbData();
+  // TEMPORARY tester migration: remove this call/import, keeping initialization.
+  // Retirement and migration-only tests: docs/temporary-migrations.md.
+  db.data = normalizeDynamicDatabase(db.data);
   await db.write();
 });
 

@@ -19,8 +19,8 @@ All routes are prefixed with the Express server URL. `experimentID` refers to th
 | PUT | `/api/appearance-settings/:experimentID` | Save appearance settings. Body: `{ backgroundColor, fullScreen, progressBar }` |
 
 Run, preview and publication resolve appearance from the saved experiment,
-defaulting to white when unset. A parallel `canvasStyles` field in construction
-requests is rejected with HTTP 400 before creating an artifact.
+defaulting to white when unset. Construction requests use the fields listed
+above; appearance is configured through its dedicated settings API.
 
 ### Static File Serving
 - Files under an experiment's `img|aud|vid|others/` directories are resolved by exact `experimentID`
@@ -69,7 +69,7 @@ After deleting Loop1: same trial connections; TrialA and TrialB restored in orde
 
 Creation inserts the container at the first selected position and updates direct member ownership. Deletion replaces the container with its direct members at that position; nested loops remain containers. Neither operation substitutes loop IDs into branches or transfers branches from a loop to a trial. Responses include the canonical graph for the provider to adopt.
 
-Loops reject `branches` and `branchConditions`, including empty arrays. Trial mutations and timeline replacement reject existing loop IDs as branch destinations. REST mutations use the same validation contract; ZIP import applies the temporary compatibility conversion documented in [legacy-experiment-import.md](legacy-experiment-import.md).
+Loops reject `branches` and `branchConditions`, including empty arrays. Trial mutations and timeline replacement reject existing loop IDs as branch destinations. REST mutations use the same validation contract; ZIP import applies the temporary tester conversion tracked in [temporary-migrations.md](temporary-migrations.md), which must be retired before the release for users.
 
 ---
 

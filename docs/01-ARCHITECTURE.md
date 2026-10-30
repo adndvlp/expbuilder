@@ -97,7 +97,7 @@ JsPsych/
 │           │   │   ├── TrialsProvider/
 │           │   │   ├── PluginsProvider.tsx
 │           │   │   ├── DevModeProvider.tsx
-│           │   │   └── CanvasStylesProvider.tsx
+│           │   │   └── ExperimentAppearanceProvider.tsx
 │           │   └── hooks/            # Custom hooks
 │           │       ├── useTrials.ts
 │           │       ├── useExperimentID.ts

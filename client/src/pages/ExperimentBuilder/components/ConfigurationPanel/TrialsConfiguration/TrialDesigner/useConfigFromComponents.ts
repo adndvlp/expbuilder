@@ -209,8 +209,6 @@ export default function useConfigComponents({
       delete dynamicPluginConfig.response_components;
     }
 
-    delete dynamicPluginConfig.__canvasStyles;
-
     return dynamicPluginConfig;
   };
   return generateConfigFromComponents;

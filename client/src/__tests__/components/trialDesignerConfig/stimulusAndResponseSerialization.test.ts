@@ -60,7 +60,6 @@ describe("useConfigFromComponents", () => {
 
     expect(config.trial_duration).toEqual({ source: "typed", value: 1000 });
     expect(config.stale_field).toBeUndefined();
-    expect(config.__canvasStyles).toBeUndefined();
     expect(config.components.value).toEqual([
       expect.objectContaining({
         type: "TextComponent",

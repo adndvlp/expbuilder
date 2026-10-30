@@ -89,7 +89,6 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
     height: 8,
     _font_size_runtime_vw: { source: "typed", value: 4 },
   });
-  expect(edited.__canvasStyles).toBeUndefined();
   expect(edited.components.value[0].font_size).toBeUndefined();
   rerender({ width: 1920, height: 1080 });
   expect(result.current.export()).toEqual(edited);

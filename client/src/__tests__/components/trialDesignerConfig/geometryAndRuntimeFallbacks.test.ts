@@ -52,7 +52,6 @@ describe("useConfigFromComponents", () => {
     expect(html.height).toBe(200);
     expect(html.stimulus.value).toContain("&#9733;");
     expect(html.stimulus.value).not.toContain("fa-star");
-    expect(config.__canvasStyles).toBeUndefined();
   });
 
   it("uses runtime font and input-size fallbacks", () => {

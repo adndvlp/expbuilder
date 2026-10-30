@@ -112,6 +112,37 @@ const setupApi = async (seedFn, options = {}) => {
 }
 
 describe('api.js app setup', () => {
+  // TEMPORARY migration coverage; remove with its hook: docs/temporary-migrations.md.
+  test('persists normalized DynamicPlugin data before accepting requests and preserves manual programs', async () => {
+    const mapping = { trial_duration: { source: 'typed', value: 500 } }
+    const input = {
+      trials: ['automatic', 'manual'].map(experimentID => ({
+        experimentID, trials: [{ id: 1, plugin: 'plugin-dynamic',
+          columnMapping: { ...mapping, __internalProbe: { source: 'typed', value: true } },
+        }], updatedAt: 'keep',
+      })),
+      configs: ['automatic', 'manual'].map(experimentID => ({
+        experimentID, isDevMode: experimentID === 'manual',
+        data: { generatedCode: 'saved();', customCode: 'keep();' },
+      })),
+      sessionResults: [{ experimentID: 'automatic', data: [{ rt: 42 }] }],
+    }
+    const { cleanup, db } = await setupApi(data => Object.assign(data, structuredClone(input)))
+    try {
+      await db.read()
+      expect(db.data.trials).toEqual(input.trials.map(document => ({
+        ...document, trials: [{ ...document.trials[0], columnMapping: mapping }],
+      })))
+      expect(db.data.configs).toEqual([
+        { ...input.configs[0], data: { ...input.configs[0].data, generatedCode: '' } },
+        input.configs[1],
+      ])
+      expect(db.data.sessionResults).toEqual(input.sessionResults)
+    } finally {
+      cleanup()
+    }
+  })
+
   test('mounts editor routes and rejects unregistered endpoints', async () => {
     const { app, cleanup } = await setupApi()
     try {

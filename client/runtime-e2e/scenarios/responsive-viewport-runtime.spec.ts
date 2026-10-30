@@ -58,7 +58,7 @@ test(`[RUNTIME-RESPONSIVE-VIEWPORT] client expands beyond saved screens and pres
   await author.createTrial("responsive");
   await author.configureDynamicTrial(
     "responsive",
-    responsiveScene({ width: 1440, height: 900 }),
+    responsiveScene(),
   );
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
@@ -154,53 +154,6 @@ test(`[RUNTIME-RESPONSIVE-VIEWPORT] client expands beyond saved screens and pres
     body: JSON.stringify(geometries, null, 2),
     contentType: "application/json",
   });
-  await runtime.assertNoRuntimeFailures();
-});
-
-test("missing and malformed legacy sizes yield the same layout", async ({
-  page,
-}) => {
-  const author = new ScenarioAuthor(runtimeApiBaseUrl);
-  await author.createExperiment(`responsive-legacy-${Date.now()}`);
-  for (const [index, legacy] of [
-    undefined,
-    { width: 1024, height: 768 },
-    { width: 1440, height: 900 },
-    { width: "bad", height: -20 },
-  ].entries()) {
-    await author.createTrial(`legacy-${index}`);
-    await author.configureDynamicTrial(
-      `legacy-${index}`,
-      responsiveScene(legacy),
-    );
-    await author.session
-      .canvasDependencies()
-      .updateTrial(author.id(`legacy-${index}`), {
-        customOnStart: `trial.__canvasStyles = ${JSON.stringify(legacy ?? {})};`,
-      });
-  }
-  const artifact = await author.compileAndBuild();
-  const runtime = new RuntimeObserver(page);
-  await page.setViewportSize({ width: 1478, height: 903 });
-  await page.goto(artifact.experimentUrl);
-  const layouts = [];
-  for (let index = 0; index < 4; index++) {
-    await expect(page.locator(".dynamic-image-component")).toBeVisible();
-    await expect
-      .poll(async () => (await sceneBounds(page)).image.width)
-      .toBeCloseTo(147.8, 0);
-    layouts.push(await sceneBounds(page));
-    const previousRoot = await page
-      .locator("#jspsych-dynamic-plugin-container")
-      .elementHandle();
-    await page.mouse.click(1478 * 0.775, 903 * 0.85);
-    if (index < 3)
-      await expect
-        .poll(() => previousRoot!.evaluate((element) => element.isConnected))
-        .toBe(false);
-  }
-  await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
-  for (const layout of layouts) expect(layout).toEqual(layouts[0]);
   await runtime.assertNoRuntimeFailures();
 });
 

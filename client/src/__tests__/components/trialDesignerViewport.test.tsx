@@ -151,7 +151,6 @@ describe("TrialDesigner screen preview", () => {
     const { onSave, onAutoSave, setAppearance } = renderDesigner(mapping);
     const originalComponents = screen.getByTestId("canvas").textContent;
     const baseline = save(onSave);
-    expect(baseline).not.toHaveProperty("__canvasStyles");
     expect(JSON.parse(originalComponents!)[0]).toMatchObject({
       x: expect.closeTo(792),
       y: 360,
@@ -227,7 +226,6 @@ describe("TrialDesigner screen preview", () => {
     fireEvent.click(screen.getByText("Edit text"));
     act(() => vi.advanceTimersByTime(200));
     const edited = onAutoSave.mock.calls.at(-1)![0];
-    expect(edited.__canvasStyles).toEqual(baseline.__canvasStyles);
     expect(edited.response_components).toEqual(baseline.response_components);
     expect(edited.components.value[0]).toEqual({
       ...baseline.components.value[0],
@@ -239,7 +237,6 @@ describe("TrialDesigner screen preview", () => {
     vi.stubGlobal("screen", { width: 1440, height: 900 });
     const { onSave, onAutoSave } = renderDesigner({});
     const baseline = save(onSave);
-    expect(baseline).not.toHaveProperty("__canvasStyles");
     for (const preset of DEVICE_PRESETS) {
       fireEvent.click(
         screen.getByTitle(`${preset.label} — ${preset.description}`),
