@@ -23,6 +23,140 @@ const makeBranchLevels = () => {
   const inner=M.groupLoop(s,['x','y'],'Inner'),outer=M.groupLoop(s,[inner,'ancestor'],'Outer');
   M.connect(s,'x','ancestor');M.connect(s,'x','root-exit');return {s,inner,outer};
 };
+test('copy/paste keeps exactly the selected induced graph: a connected pair plus an isolated trial',()=>{
+  const s=make(),before=M.copy(s),fragment=M.copyItems(s,['a','b','child']);
+  assert.equal(M.serialize(s),M.serialize(before),'copy is read-only');
+  const {idMap,ids:added}=M.pasteItems(s,fragment);
+  assert.equal(added.length,3);assert.equal(s.entryId,'a');
+  assert.equal(M.realTrial(s,idMap.a).defaultNextTrialId,idMap.b);
+  assert.equal(M.realTrial(s,idMap.b).defaultNextTrialId,null);
+  assert.equal(M.realTrial(s,idMap.child).defaultNextTrialId,null);
+  assert.deepEqual(ids(M.componentFor(s,idMap.a).trials),ids([idMap.a,idMap.b]));
+  assert.deepEqual(ids(M.componentFor(s,idMap.child).trials),[idMap.child]);
+  assert.ok(added.every(id=>!M.reachable(s).trials.has(id)));
+  assert.deepEqual(s.trials.slice(0,before.trials.length),before.trials);
+});
+test('copy/paste prunes unselected destinations and repairs Default from remaining internal rules',()=>{
+  const s=make();M.connect(s,'a','loca');
+  const {idMap}=M.pasteItems(s,M.copyItems(s,['a','loca']));
+  const parent=M.realTrial(s,idMap.a);
+  assert.equal(parent.defaultNextTrialId,idMap.loca);
+  assert.equal(parent.thenGoTo[0].targetId,idMap.loca);
+  assert.equal(M.realTrial(s,idMap.loca).defaultNextTrialId,null);
+  assert.ok(!M.connections(s).some(e=>Object.values(idMap).includes(e.source)&&!Object.values(idMap).includes(e.target)));
+});
+test('copy/paste preserves convergences, self references, repeated rules and their metadata',()=>{
+  const s=make();M.connect(s,'a','loca');M.setDefault(s,'loca','b');M.connect(s,'b','b');
+  M.realTrial(s,'a').thenGoTo.push({id:'button-rule',targetId:'b',condition:{button:'continue'}});
+  const fragment=M.copyItems(s,['a','b','loca']),{idMap}=M.pasteItems(s,fragment);
+  const parent=M.realTrial(s,idMap.a),rule=parent.thenGoTo.find(r=>r.condition);
+  assert.equal(parent.defaultNextTrialId,idMap.b);assert.equal(rule.targetId,idMap.b);
+  assert.equal(rule.condition.button,'continue');assert.notEqual(rule.id,'button-rule');
+  assert.equal(M.connections(s).filter(e=>e.source===idMap.a&&e.target===idMap.b).length,1);
+  assert.equal(M.realTrial(s,idMap.loca).defaultNextTrialId,idMap.b);
+  assert.equal(M.realTrial(s,idMap.b).defaultNextTrialId,idMap.b);
+  rule.condition.button='changed';assert.equal(M.realTrial(s,'a').thenGoTo.at(-1).condition.button,'continue');
+});
+test('clipboard is a detached serializable snapshot and pastes repeatedly with fresh IDs',()=>{
+  const s=make(),fragment=M.copyItems(s,['a','b']),saved=JSON.stringify(fragment);
+  M.realTrial(s,'a').name='Changed';M.deleteTrial(s,'b');
+  const first=M.pasteItems(s,JSON.parse(saved)),second=M.pasteItems(s,fragment);
+  assert.equal(M.realTrial(s,first.idMap.a).name,'A 2');
+  assert.equal(M.realTrial(s,first.idMap.a).defaultNextTrialId,first.idMap.b);
+  assert.ok(second.ids.every(id=>!first.ids.includes(id)));
+  assert.equal(JSON.stringify(fragment),saved);
+  assert.deepEqual(M.restore(M.serialize(s)),s);
+});
+test('copying copies continues the same numerical name instead of accumulating suffixes',()=>{
+  const s=make();M.realTrial(s,'a').name='Ensayo A';
+  const first=M.pasteItems(s,M.copyItems(s,['a'])).idMap.a;
+  const second=M.pasteItems(s,M.copyItems(s,[first])).idMap[first];
+  const third=M.pasteItems(s,M.copyItems(s,[second])).idMap[second];
+  assert.deepEqual([first,second,third].map(id=>M.item(s,id).name),['Ensayo A 2','Ensayo A 3','Ensayo A 4']);
+});
+test('copy names skip occupied numbers across trials and loops and reserve each name in the same paste',()=>{
+  const s=make();M.realTrial(s,'a').name='Ensayo A';M.realTrial(s,'b').name='Ensayo A';M.realTrial(s,'loca').name='Ensayo A 2';
+  M.groupLoop(s,['loca','child'],'Ensayo A 3');
+  const {idMap}=M.pasteItems(s,M.copyItems(s,['a','b']));
+  assert.equal(M.item(s,idMap.a).name,'Ensayo A 4');assert.equal(M.item(s,idMap.b).name,'Ensayo A 5');
+});
+test('numbered names continue from their number and renamed copies start their new name',()=>{
+  const s=make();M.realTrial(s,'a').name='Ensayo A 2';M.realTrial(s,'b').name='Ensayo A 3';
+  const first=M.pasteItems(s,M.copyItems(s,['a'])).idMap.a;
+  assert.equal(M.item(s,first).name,'Ensayo A 4');
+  M.item(s,first).name='Etapa nueva';
+  const renamed=M.pasteItems(s,M.copyItems(s,[first])).idMap[first];
+  assert.equal(M.item(s,renamed).name,'Etapa nueva 2');
+});
+test('old copy labels normalize to numerical names when copied again',()=>{
+  for(const name of ['Ensayo A (copia)','Ensayo A (copia 2)','Ensayo A (copia) (copia)']){
+    const s=make();M.realTrial(s,'a').name=name;
+    const {idMap}=M.pasteItems(s,M.copyItems(s,['a']));assert.equal(M.item(s,idMap.a).name,'Ensayo A 2');
+  }
+});
+test('selecting a loop copies its entire nested body once, with scope order and continuations remapped',()=>{
+  const {s,inner,outer}=makeBranchLevels();M.item(s,outer).expanded=false;
+  const fragment=M.copyItems(s,[outer,inner,'x','root-exit']),{idMap}=M.pasteItems(s,fragment);
+  assert.equal(fragment.trials.length,4);assert.equal(fragment.loops.length,2);
+  const loop=M.item(s,idMap[outer]),nested=M.item(s,idMap[inner]);
+  assert.equal(loop.parentLoopId,null);assert.equal(loop.entryId,idMap[inner]);
+  assert.equal(loop.expanded,false);assert.equal(loop.repetitions,M.item(s,outer).repetitions);
+  assert.equal(nested.parentLoopId,loop.id);assert.equal(M.realTrial(s,idMap.x).parentLoopId,nested.id);
+  assert.deepEqual([...s.scopeOrder[loop.id]],[...s.scopeOrder[outer]].map(id=>idMap[id]));
+  assert.deepEqual([...s.scopeOrder[nested.id]],[...s.scopeOrder[inner]].map(id=>idMap[id]));
+  assert.ok(Object.values(idMap).every(id=>M.item(s,id)));
+});
+test('copying trials without their loop lifts only the selected trials into a free root structure',()=>{
+  const {s,inner}=makeBranchLevels(),{idMap}=M.pasteItems(s,M.copyItems(s,['x','y']));
+  assert.equal(s.loops.length,2);assert.equal(M.realTrial(s,idMap.x).parentLoopId,null);
+  assert.equal(M.realTrial(s,idMap.y).parentLoopId,null);
+  assert.equal(M.realTrial(s,idMap.x).defaultNextTrialId,idMap.y);
+  assert.equal(M.realTrial(s,idMap.y).defaultNextTrialId,null);
+  assert.equal(M.realTrial(s,'x').parentLoopId,inner);
+});
+test('copying sibling loops remaps loop continuations and cuts a continuation outside selection',()=>{
+  const s=make(),first=M.groupLoop(s,['a','b']),second=M.groupLoop(s,['loca','child']);
+  M.item(s,first).nextId=second;M.item(s,second).nextId='a';
+  const {idMap}=M.pasteItems(s,M.copyItems(s,[first,second]));
+  assert.equal(M.item(s,idMap[first]).nextId,idMap[second]);
+  assert.equal(M.item(s,idMap[second]).nextId,idMap.a);
+  const single=M.pasteItems(s,M.copyItems(s,[first]));
+  assert.equal(M.item(s,single.idMap[first]).nextId,null);
+});
+test('pasted islands retain relative positions and canonical layout while active layout stays fixed',()=>{
+  const s=make(),before=M.layout(s),fragment=M.copyItems(s,['a','b','loca','child']);
+  const {idMap}=M.pasteItems(s,fragment,{x:100,y:75}),after=M.layout(s);
+  for(const id of ['a','b','loca','child']){
+    assert.equal(after.positions[idMap[id]].x,before.positions[id].x+100,id+' x');
+    assert.equal(after.positions[idMap[id]].y,before.positions[id].y+75,id+' y');
+    assert.deepEqual(after.positions[id],before.positions[id]);
+  }
+});
+test('pasting into an empty canvas chooses exactly one start and leaves other copied islands free',()=>{
+  const source=make(),fragment=M.copyItems(source,['child','b','a']),s=M.makeState('Empty');
+  const {idMap}=M.pasteItems(s,fragment);
+  assert.equal(s.entryId,idMap.a);
+  assert.deepEqual(ids(M.reachable(s).trials),ids([idMap.a,idMap.b]));
+  assert.equal(M.componentFor(s,idMap.child).locked,false);
+});
+test('empty selection does not copy and invalid paste is atomic',()=>{
+  const s=make();assert.equal(M.copyItems(s,[]),null);
+  const before=M.serialize(s);assert.throws(()=>M.pasteItems(s,{schema:'other',trials:[],loops:[]}));
+  assert.equal(M.serialize(s),before);
+});
+test('every selection subset preserves exactly its internal edges in a graph with forks, merges and cycles',()=>{
+  const source=M.makeState('Graph',['a','b','c','d','e'].map(id=>M.trial(id,id.toUpperCase())),[],'a');
+  for(const [from,to] of [['a','b'],['a','c'],['b','d'],['c','d'],['d','a'],['e','d'],['c','c']])M.connect(source,from,to);
+  const edges=M.connections(source);
+  for(let mask=1;mask<32;mask++){
+    const selected=source.trials.filter((_,i)=>mask&(1<<i)).map(t=>t.id),s=M.copy(source),{idMap}=M.pasteItems(s,M.copyItems(s,selected));
+    const copiedIds=new Set(Object.values(idMap));
+    const expected=edges.filter(e=>selected.includes(e.source)&&selected.includes(e.target)).map(e=>JSON.stringify([idMap[e.source],idMap[e.target]])).sort();
+    const actual=M.connections(s).filter(e=>copiedIds.has(e.source)).map(e=>JSON.stringify([e.source,e.target])).sort();
+    assert.deepEqual([...actual],[...expected],'selection '+selected.join(','));
+    assert.equal(s.entryId,'a');assert.ok([...copiedIds].every(id=>!M.reachable(s).trials.has(id)));
+  }
+});
 function originalLayout(graph,s) {
   return context.AppCanvas.buildUnifiedFlowLayout({timeline:graph.root.items,expandedPath:Object.values(graph.scopes).filter(scope=>s.loops.find(l=>l.id===String(scope.scopeId))?.expanded).map(scope=>({loop:{id:scope.scopeId,parentLoopId:scope.parentScopeId},items:scope.items})),branchEdges:graph.edges,scopeParents:Object.fromEntries(Object.values(graph.scopes).map(scope=>[scope.scopeId,scope.parentScopeId])),entryItemIds:Object.fromEntries([['root',graph.root.entryItemId],...Object.values(graph.scopes).map(scope=>['loop-scope:'+encodeURIComponent(scope.scopeId),scope.entryItemId])]),selectedItemId:null,selectedScopeId:null,onSelectTrial(){},onSelectLoop(){},onToggleLoop(){},onAddBranch(){}});
 }

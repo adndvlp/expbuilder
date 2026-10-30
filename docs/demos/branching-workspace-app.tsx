@@ -10,6 +10,7 @@ import { getBranchEdgeStroke } from '../../client/src/pages/ExperimentBuilder/co
 import { MarkerType } from '@xyflow/react';
 import { getLoopBranchLevels as getDomainLoopBranchLevels } from '../../server/routes/timeline/loopBranching/scopeGraph.js';
 import { createLoopBranch as createDomainLoopBranch } from '../../server/routes/timeline/loopBranching/createLoopBranch.js';
+export { createUniqueItemName } from '../../server/routes/timeline/uniqueItemName.js';
 export { default as TrialNode } from '../../client/src/pages/ExperimentBuilder/components/Canvas/TrialNode';
 export { default as LoopNode } from '../../client/src/pages/ExperimentBuilder/components/Canvas/LoopNode';
 export { default as AddTrialModal } from '../../client/src/pages/ExperimentBuilder/components/Canvas/components/AddTrialModal';

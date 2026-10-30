@@ -35,6 +35,14 @@ await page.route('https://unpkg.com/**',async route=>{
 });
 const state=()=>page.evaluate(()=>window.workspaceDemo.getState());
 const snapshot=async name=>page.screenshot({path:'/private/tmp/branching-workspace-'+name+'.png',fullPage:true});
+const openPreview=()=>page.evaluate(()=>{
+  document.querySelector('iframe[title="Generated experiment preview"]')?.remove();
+  const frame=document.createElement('iframe');frame.title='Generated experiment preview';frame.sandbox='allow-scripts';
+  Object.assign(frame.style,{position:'fixed',inset:'0',width:'100%',height:'100%',zIndex:'99999'});
+  frame.srcdoc=workspaceDemo.generatedHTML();document.body.append(frame);
+});
+const closePreview=()=>page.locator('iframe[title="Generated experiment preview"]').evaluate(frame=>frame.remove());
+
 const choose=async index=>{const select=page.getByLabel('Escenario',{exact:true});if(await select.inputValue()===String(index))await select.selectOption(String(index===3?0:3));await select.selectOption(String(index));await page.waitForTimeout(350);};
 const run=async(name,fn)=>{await fn();console.log('PASS '+name);};
 const selectConnection=async(source,target)=>{
@@ -103,6 +111,10 @@ try {
   await page.waitForFunction(()=>!!window.workspaceDemo,{timeout:20000});
   await page.waitForTimeout(600);
   await run('renders the editor and persistent Add trial button',async()=>{
+    await expect(page.getByText('Trials guardados',{exact:true})).toHaveCount(0);
+    await expect(page.getByRole('button',{name:'Estado / HTML',exact:true})).toHaveCount(0);
+    await expect(page.locator('.canvas-hint,.statusbar,.trial-list-button')).toHaveCount(0);
+    await expect(page.getByRole('heading',{name:'Experiment',exact:true})).toHaveCount(0);
     await page.getByTitle('Add trial',{exact:true}).waitFor();
     assert.equal((await state()).trials.length,7);
     await expect(page.getByTestId('start-badge')).toHaveCount(1);
@@ -160,6 +172,82 @@ try {
     await page.getByTestId('item-a').click();
     await expect(page.getByTestId('item-a').locator('.trial-node')).toHaveClass(/trial-node--selected/);
     await expect(page.getByRole('checkbox')).toHaveCount(0);
+  });
+  await run('native copy/paste duplicates a connected pair plus an isolated selection with one undoable edit',async()=>{
+    await choose(0);const before=await state();
+    await page.getByTestId('item-start').dblclick();
+    await page.getByTestId('item-a').click();await page.getByTestId('item-loca2').click();
+    await page.keyboard.press('Meta+c');assert.deepEqual(await state(),before,'copy does not mutate');
+    await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+3);
+    const after=await state(),added=after.trials.filter(t=>!before.trials.some(old=>old.id===t.id)),first=added.find(t=>t.name==='Inicio 2'),second=added.find(t=>t.name==='Ensayo A 2'),single=added.find(t=>t.name==='Hijo 3');
+    assert.equal(first.defaultNextTrialId,second.id);assert.equal(second.defaultNextTrialId,null);assert.equal(single.defaultNextTrialId,null);
+    assert.equal(after.entryId,before.entryId);await expect(page.locator('.node-selection-control input:checked')).toHaveCount(3);
+    const live=await page.evaluate(()=>[...WorkspaceDemo.reachable(workspaceDemo.getState()).trials]);assert.ok(added.every(t=>!live.includes(t.id)));
+    const dragGeometry=await page.evaluate(ids=>ids.map(id=>({id,draggable:WorkspaceDemo.layout(workspaceDemo.getState()).flowNodes.find(n=>n.id===id).draggable})),added.map(t=>t.id));
+    assert.ok(dragGeometry.every(n=>n.draggable));
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('pasted-mixed-selection');
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+    await page.keyboard.press('Meta+v');await expect.poll(async()=>(await state()).trials.length).toBe(after.trials.length+3);
+    const twice=await state();assert.equal(new Set(twice.trials.map(t=>t.id)).size,twice.trials.length);
+    await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(twice.trials.length+3);
+    const third=(await state()).trials.filter(t=>!twice.trials.some(old=>old.id===t.id));
+    assert.deepEqual(third.map(t=>t.name).sort(),['Inicio 4','Ensayo A 4','Hijo 5'].sort());
+  });
+  await run('copy naming skips existing trial and loop names and continues when copying the copy',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const s=workspaceDemo.getState();s.trials.find(t=>t.id==='free').name='Ensayo A 2';
+      WorkspaceDemo.groupLoop(s,['loca','loca1','loca2'],'Ensayo A 3');workspaceDemo.load(s);
+    });
+    const before=await state();await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+1);
+    assert.ok((await state()).trials.some(t=>t.name==='Ensayo A 4'));
+    await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+2);
+    assert.ok((await state()).trials.some(t=>t.name==='Ensayo A 5'));
+  });
+  await run('copying a collapsed loop includes its nested contents without linking copies to originals',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.evaluate(id=>{const s=workspaceDemo.getState();s.loops.find(l=>l.id===id).expanded=false;workspaceDemo.load(s);},outer.id);
+    await page.getByTestId('item-'+outer.id).click();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).loops.length).toBe(before.loops.length+2);
+    const after=await state(),copied=after.loops.find(l=>l.name==='Loop principal 2'),nested=after.loops.find(l=>l.name==='Nested loop 2');
+    assert.equal(copied.expanded,false);assert.equal(nested.parentLoopId,copied.id);assert.equal(after.trials.length,before.trials.length+3);
+    const originalIds=[...before.trials,...before.loops].map(i=>i.id);
+    assert.equal(copied.nextId,null);
+    assert.ok(after.trials.filter(t=>!originalIds.includes(t.id)).every(t=>!originalIds.includes(t.defaultNextTrialId)&&t.thenGoTo.every(r=>!originalIds.includes(r.targetId))));
+    await expect(page.getByTestId('item-'+copied.id)).toBeVisible();await expect(page.getByTestId('start-badge')).toHaveCount(1);
+  });
+  await run('pasting into an empty canvas restores the snapshot and automatically chooses one start',async()=>{
+    await choose(0);await page.getByTestId('item-start').dblclick();await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');
+    await choose(3);await page.locator('.canvas-area').focus();await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(2);
+    const s=await state(),start=s.trials.find(t=>t.name==='Inicio 2'),next=s.trials.find(t=>t.name==='Ensayo A 2');
+    assert.equal(s.entryId,start.id);assert.equal(start.defaultNextTrialId,next.id);await expect(page.getByTestId('start-badge')).toHaveCount(1);
+  });
+  await run('text clipboard operations, unrelated text, edge selection and open dialogs do not copy or paste nodes',async()=>{
+    await choose(0);await page.getByTestId('item-start').click();
+    const name=page.getByLabel('Item name',{exact:true});await name.focus();await name.selectText();
+    const before=await state();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');assert.deepEqual(await state(),before);
+    await page.locator('.canvas-area').focus();await page.keyboard.press('Meta+v');assert.deepEqual(await state(),before,'plain text is not a graph fragment');
+    await page.getByTestId('item-b').click();await selectConnection('start','a');
+    const copied=await page.evaluate(()=>{const e=new ClipboardEvent('copy',{clipboardData:new DataTransfer(),bubbles:true,cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;});assert.equal(copied,false);
+    await page.getByTestId('item-start').click();await page.keyboard.press('Meta+c');
+    await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();const opened=await state();
+    await page.keyboard.press('Meta+v');assert.deepEqual(await state(),opened);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+  });
+  await run('clipboard snapshot survives source deletion and its serializable payload supports a fresh editor instance',async()=>{
+    await choose(0);await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');await page.keyboard.press('Delete');
+    const deleted=await state();await page.keyboard.press('Meta+v');await expect.poll(async()=>(await state()).trials.length).toBe(deleted.trials.length+1);
+    const after=await state(),copy=after.trials.find(t=>t.name==='Ensayo A 2');assert.equal(copy.defaultNextTrialId,null);
+    const payload=await page.evaluate(()=>{const data=new DataTransfer(),e=new ClipboardEvent('copy',{clipboardData:data,bubbles:true,cancelable:true});window.dispatchEvent(e);return data.getData('text/plain');});
+    assert.equal(JSON.parse(payload).schema,'branching-workspace-fragment/1');
+    await page.reload();await page.waitForFunction(()=>!!window.workspaceDemo);const before=await state();
+    await page.evaluate(payload=>{const data=new DataTransfer();data.setData('text/plain',payload);window.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));},payload);
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+1);
   });
   await run('checkboxes sit inside the visual trial and loop nodes and follow their animation',async()=>{
     for(const preset of [0,1]){
@@ -539,8 +627,8 @@ try {
     for(const collapsed of [false,true]){
       await choose(0);await page.getByTestId('item-free').click();await page.getByTitle('Add loop',{exact:true}).click();
       await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
-      const loop=(await state()).loops[0];if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
-      const before=await state();await page.locator('.trial-list-button').filter({hasText:/^Trial suelto/}).click();await page.keyboard.press('Delete');
+      const loop=(await state()).loops[0];await page.getByTestId('item-free').click();if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      const before=await state();await page.keyboard.press('Delete');
       await expect(page.getByTestId('item-'+loop.id)).toHaveCount(0);await expect(page.getByTestId('item-free')).toHaveCount(0);
       const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));assert.equal(after.entryId,'start');
       assert.ok(!after.scopeOrder[loop.id]);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
@@ -550,9 +638,11 @@ try {
   await run('deleting the only nested trial removes empty ancestor loops in the same undoable action',async()=>{
     await choose(0);await page.evaluate(()=>{
       const s=workspaceDemo.getState(),inner=WorkspaceDemo.groupLoop(s,['free'],'Inner'),outer=WorkspaceDemo.groupLoop(s,[inner],'Outer');
-      s.loops.forEach(l=>l.expanded=false);workspaceDemo.load(s);
+      workspaceDemo.load(s);
     });
-    const before=await state();assert.equal(before.loops.length,2);await page.locator('.trial-list-button').filter({hasText:/^Trial suelto/}).click();
+    await page.getByTestId('item-free').click();const outer=(await state()).loops.find(l=>l.name==='Outer');
+    await page.getByTestId('item-'+outer.id).getByTitle('Collapse loop',{exact:true}).click();
+    const before=await state();assert.equal(before.loops.length,2);
     await page.keyboard.press('Backspace');await expect(page.locator('.loop-node')).toHaveCount(0);
     const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));
     await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);await expect(page.locator('.loop-node')).toHaveCount(1);
@@ -560,9 +650,9 @@ try {
   });
   await run('removing the final inner trial keeps outer loops with remaining content',async()=>{
     await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
-    await page.locator('.trial-list-button').filter({hasText:/^Nested B/}).click();await page.keyboard.press('Delete');
+    await page.getByTestId('item-y').click();await page.keyboard.press('Delete');
     assert.ok((await state()).loops.some(l=>l.id===inner.id));const oneLeft=await state();
-    await page.locator('.trial-list-button').filter({hasText:/^Nested A/}).click();await page.keyboard.press('Delete');
+    await page.getByTestId('item-x').click();await page.keyboard.press('Delete');
     await expect(page.getByTestId('item-'+inner.id)).toHaveCount(0);const after=await state();
     assert.ok(after.loops.some(l=>l.id===outer.id));assert.equal(after.trials.find(t=>t.id==='p').parentLoopId,outer.id);
     assert.equal(after.loops.length,2);await expect(page.getByTestId('item-'+outer.id)).toBeVisible();
@@ -585,13 +675,13 @@ try {
     assert.equal((await state()).trials.find(t=>t.id==='a').name,'Rename');
     assert.equal((await state()).trials.length,none.trials.length);
     await selectConnection('start','a');
-    const select=page.getByLabel('Inicio de ejecución',{exact:true});await select.focus();
+    const select=page.getByLabel('Escenario',{exact:true});await select.focus();
     const focused=await state();await page.keyboard.press('Delete');assert.deepEqual(await state(),focused);
     await page.keyboard.press('Control+z');assert.deepEqual(await state(),focused);
     await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),focused);
-    await page.getByRole('button',{name:'Estado / HTML',exact:true}).click();
+    await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     const dialog=await state();await page.keyboard.press('Delete');await page.keyboard.press('Control+z');assert.deepEqual(await state(),dialog);
-    await page.getByRole('button',{name:'Close modal',exact:true}).click();
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
     await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     await expect(page.getByLabel('Default destination',{exact:true})).toBeVisible();
     const branching=await state();await page.keyboard.press('Delete');assert.deepEqual(await state(),branching);
@@ -627,7 +717,7 @@ try {
   });
   await run('default connection attaches LOCA and removal releases it',async()=>{
     await page.getByRole('button',{name:'Final Editor',exact:true}).count();
-    await page.locator('.trial-list-button').filter({hasText:/^Final/}).click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByTestId('item-b').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     await page.getByLabel('Default destination',{exact:true}).selectOption('loca');
     assert.equal(await page.evaluate(()=>WorkspaceDemo.reachable(workspaceDemo.getState()).trials.has('loca2')),true);
     await page.getByLabel('Default destination',{exact:true}).selectOption('FINISH_EXPERIMENT');await page.getByRole('button',{name:'Save configuration',exact:true}).click();
@@ -652,7 +742,7 @@ try {
     await page.getByRole('button',{name:'As Branch (Parallel)',exact:true}).click();
     const s=await state(),child=s.trials.at(-1);
     assert.ok(s.trials.find(t=>t.id==='start').thenGoTo.some(r=>r.targetId===child.id));
-    await page.locator('.trial-list-button').filter({hasText:/^Inicio/}).click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByTestId('item-start').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     await page.getByTitle('Remove condition',{exact:true}).first().click();await page.getByRole('button',{name:'Save configuration',exact:true}).click();
     assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,child.id),false);
   });
@@ -865,7 +955,7 @@ try {
   });
   await run('nested loop detach lifts trials into the root canvas',async()=>{
     await choose(1);
-    await page.locator('.trial-list-button').filter({hasText:/^Nested A/}).click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByTestId('item-x').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     await page.getByLabel('Default destination',{exact:true}).selectOption('');
     await page.getByRole('button',{name:'Save configuration',exact:true}).click();
     const s=await state();assert.equal(s.trials.find(t=>t.id==='y').parentLoopId,null);
@@ -901,7 +991,7 @@ try {
     for(const id of ['a','b'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
     assert.equal(after.trials.find(t=>t.id==='start').parentLoopId,null);
     await expect(page.getByTestId('item-'+loop.id).locator('.loop-node')).toHaveClass(/loop-node--selected/);
-    await expect(page.getByLabel('Repetitions',{exact:true})).toHaveValue('3');await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByLabel('Repetitions',{exact:true})).toHaveCount(0);await expect(page.getByRole('checkbox')).toHaveCount(0);
     await expect(page.getByText('Select trials/loops for loop',{exact:true})).toHaveCount(0);
     await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
     await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
@@ -984,11 +1074,11 @@ try {
     await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('b');
     await page.getByRole('button',{name:'Save configuration',exact:true}).click();
     await snapshot('default-insertion');
-    await page.getByRole('button',{name:'Estado / HTML',exact:true}).click();await page.getByRole('button',{name:'Ejecutar HTML',exact:true}).click();
+    await openPreview();
     const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
     for(const name of ['Ensayo A','Trial suelto','Final','Finish experiment'])await frame.getByRole('button',{name:'Default → '+name,exact:true}).click();
     await frame.getByRole('heading',{name:'Preview complete',exact:true}).waitFor();
-    await page.getByRole('button',{name:'Close modal',exact:true}).click();
+    await closePreview();
   });
   await run('multiple Then go to rows share one edge and keep the same destination as Default',async()=>{
     await choose(0);await page.getByTestId('item-free').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
@@ -1008,7 +1098,7 @@ try {
     for(const i of [4,5,6]){await choose(i);assert.ok((await state()).name.startsWith('DB · '));await snapshot('db-'+i);}
   });
   await run('deleting a trial preserves its descendants and supports Undo',async()=>{
-    await choose(0);await page.locator('.trial-list-button').filter({hasText:/^LOCA/}).click();
+    await choose(0);await page.getByTestId('item-loca').click();
     await page.getByRole('button',{name:'Eliminar trial',exact:true}).click();
     const s=await state();assert.ok(!s.trials.some(t=>t.id==='loca'));assert.ok(s.trials.some(t=>t.id==='loca1'));
     await page.getByTestId('item-loca').waitFor({state:'detached'});
@@ -1016,7 +1106,7 @@ try {
     await page.getByTestId('item-loca').waitFor();
   });
   const setDefaultFromPanel=async(name,target)=>{
-    await page.locator('.trial-list-button').filter({hasText:new RegExp('^'+name+'(?:HTML|Editor| )')}).first().click();
+    const trial=(await state()).trials.find(t=>t.name===name);await page.getByTestId('item-'+trial.id).click();
     await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
     await page.getByLabel('Default destination',{exact:true}).selectOption(target);
     await page.getByRole('button',{name:'Save configuration',exact:true}).click();
@@ -1047,7 +1137,6 @@ try {
     await choose(0);await setDefaultFromPanel('Hijo 2','start');
     assert.equal((await state()).entryId,'loca');
     await expect(page.getByTestId('item-loca').getByTestId('start-badge')).toBeVisible();
-    await expect(page.getByLabel('Inicio de ejecución',{exact:true})).toHaveValue('loca');
     assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'loca1').locked),true);
     await setDefaultFromPanel('Trial suelto','start');
     assert.equal((await state()).entryId,'loca');
@@ -1061,7 +1150,6 @@ try {
     assert.equal((await state()).entryId,'loca2');
     await expect(page.getByTestId('item-loca2').getByTestId('start-badge')).toBeVisible();
     await expect(page.getByTestId('start-badge')).toHaveCount(1);
-    await expect(page.getByLabel('Inicio de ejecución',{exact:true})).toHaveValue('loca2');
     assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).entryId),'loca2');
     await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('promoted-start');
   });
@@ -1081,8 +1169,7 @@ try {
     assert.equal(await canvas.evaluate(element=>{const bounds=element.getBoundingClientRect();return [...element.querySelectorAll('.react-flow__edge-path')].every(path=>{const box=path.getBoundingClientRect();return box.left>=bounds.left&&box.right<=bounds.right&&box.top>=bounds.top&&box.bottom<=bounds.bottom;});}),true,'all original app curves must remain in the viewport');
   });
   await run('HTML execution contains only connected trials',async()=>{
-    await choose(0);await page.getByRole('button',{name:'Estado / HTML',exact:true}).click();
-    await page.getByRole('button',{name:'Ejecutar HTML',exact:true}).click();
+    await choose(0);await openPreview();
     const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
     await frame.getByRole('heading',{name:'Inicio',exact:true}).waitFor();
     await frame.getByRole('button',{name:'Default → Ensayo A',exact:true}).click();
@@ -1090,11 +1177,10 @@ try {
     await frame.getByRole('button',{name:'Default → Finish experiment',exact:true}).click();
     await frame.getByRole('heading',{name:'Preview complete',exact:true}).waitFor();
     assert.equal(await frame.getByText('LOCA',{exact:true}).count(),0);
-    await page.getByRole('button',{name:'Close modal',exact:true}).click();
+    await closePreview();
   });
   await run('exported nested loops repeat before continuing to the final trial',async()=>{
-    await choose(1);await page.getByRole('button',{name:'Estado / HTML',exact:true}).click();
-    await page.getByRole('button',{name:'Ejecutar HTML',exact:true}).click();
+    await choose(1);await openPreview();
     const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
     await frame.getByRole('heading',{name:'Inicio',exact:true}).waitFor();
     const visited=[];
