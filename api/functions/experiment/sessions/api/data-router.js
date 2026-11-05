@@ -116,6 +116,15 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     return;
   }
 
+  // Explicit event ingestion must never fall through to session creation.
+  if (action === "appendEvents") {
+    if (!experimentID || !sessionId || !data) {
+      res.status(400).json({ success: false, message: "Event reception requires experimentID, sessionId and data" });
+      return;
+    }
+    return await handleAppendResult(req, res, experimentID, sessionId, data);
+  }
+
   // Detectar si es creación de sesión (experimentID, sessionId, sin data ni filename)
   if (experimentID && sessionId && !data) {
     return await handleCreateSession(req, res, experimentID, sessionId);

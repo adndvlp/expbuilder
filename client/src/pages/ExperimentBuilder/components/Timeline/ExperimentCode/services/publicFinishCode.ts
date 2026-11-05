@@ -53,33 +53,16 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         
         try {
           if (BATCH_CONFIG.useIndexedDB) {
-          // --- CON IndexedDB: Enviar datos acumulados ---
-          
-          // Esperar cualquier batch pendiente
-          if (pendingBatchSaves.length > 0) {
-            _setLoadingMsg('Uploading batches\u2026');
-            await Promise.allSettled(pendingBatchSaves);
-          }
-
-          const allTrials = await TrialDB.getAll();
-          
-          if (allTrials.length > 0) {
-            if (BATCH_CONFIG.size === 0) {
-              _setLoadingMsg('Uploading data\u2026');
-              await sendCompleteExperiment(allTrials);
-              await TrialDB.clear();
+            if (BATCH_CONFIG.size > 0) {
+              await _flushPublicBatches(true);
             } else {
-              BATCH_CONFIG.currentBatchNumber++;
-              _setLoadingMsg('Sending final batch\u2026');
-              await sendBatchConcatenated(allTrials, BATCH_CONFIG.currentBatchNumber);
-              await TrialDB.clear();
-              
-              if (pendingBatchSaves.length > 0) {
-                _setLoadingMsg('Finishing upload\u2026');
-                await Promise.allSettled(pendingBatchSaves);
+              const allTrials = await TrialDB.getAll();
+              if (allTrials.length > 0) {
+                _setLoadingMsg('Uploading data\u2026');
+                await sendCompleteExperiment(allTrials);
+                await TrialDB.deleteIds(allTrials.map(trial => trial.id));
               }
             }
-          }
           }
         } catch (error) {
           console.error('Error flushing trial data:', error);

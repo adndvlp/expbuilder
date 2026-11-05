@@ -19,7 +19,8 @@
  */
 import { jest } from "@jest/globals";
 import fetchMock from "../../helpers/fetch-mock.js";
-import { makeFsMock } from "../../helpers/firestore-mock.js";
+import { makeFsMock, makeSnapshot } from "../../helpers/firestore-mock.js";
+import CSV from "csv-string";
 
 const fs = makeFsMock();
 const mockWriteLog = jest.fn().mockResolvedValue(true);
@@ -130,6 +131,38 @@ function makeEvent({
 // ─── CASO 3: needsFinalization ─────────────────────────────────────────────
 
 describe("finalizeDisconnectedSessions — CASO 2 (IndexedDB)", () => {
+  test("H01: IndexedDB completion exports every received trial when needsFinalization is true", async () => {
+    fs.getRef("experiments/EID").get.mockResolvedValue({
+      exists: true,
+      data: () => ({ storageProvider: "googledrive", owner: "owner", driveFolderId: "folder" }),
+    });
+    mockGetValidToken.mockResolvedValue({ success: true, access_token: "token" });
+    mockCreateSession.mockResolvedValue({ success: true });
+    mockAppendResult.mockResolvedValue({ success: true, id: "file" });
+    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValue({
+      exists: true, data: () => ({ participantNumber: 23 }),
+    });
+    const trials = makeSnapshot(["A", "B", "C", "D", "E"].map((response, index) => ({
+      id: `trial-${index}`, data: { response, trial_index: index, clientTimestamp: index + 1 },
+    })));
+    fs.getCol("experiments/EID/sessions/S1/trials").get.mockResolvedValue(trials);
+    fetchMock.__setMockResponses([{ body: { files: [] } }]);
+    const event = makeEvent({ before: { connected: true }, after: {
+      connected: false, useIndexedDB: true, finished: true,
+      state: "completed", needsFinalization: true, storageProvider: "googledrive",
+    } });
+
+    await finalizeDisconnectedSessions(event);
+
+    expect(mockAppendResult).toHaveBeenCalledTimes(1);
+    const csv = CSV.parse(mockAppendResult.mock.calls[0][5]);
+    const responseColumn = csv[0].indexOf("response");
+    expect(csv.slice(1).map(row => row[responseColumn])).toEqual(["A", "B", "C", "D", "E"]);
+    expect(event.data.after.ref.update).toHaveBeenCalledWith(expect.objectContaining({
+      finalizationProcessed: true, resultsSent: 5,
+    }));
+  });
+
   test("disconnect + state=disconnected + !finished → enqueues durable timeout task", async () => {
     const ev = makeEvent({
       before: { connected: true },

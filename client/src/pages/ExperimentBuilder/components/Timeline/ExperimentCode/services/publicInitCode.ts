@@ -93,41 +93,14 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
 
           // Solo enviar batches si batchSize > 0
           if (BATCH_CONFIG.size > 0) {
-            const pendingCount = await TrialDB.count();
-            
-            // Enviar batch cuando se acumule el tamaño configurado
-            if (pendingCount >= BATCH_CONFIG.size) {
-              const batch = await TrialDB.getN(BATCH_CONFIG.size);
-              BATCH_CONFIG.currentBatchNumber++;
-              
-              // Enviar batch concatenado a Firestore
-              await sendBatchConcatenated(batch, BATCH_CONFIG.currentBatchNumber);
-              
-              // Eliminar trials enviados de IndexedDB
-              await TrialDB.deleteN(BATCH_CONFIG.size);
-              
-              console.log(\`Batch #\${BATCH_CONFIG.currentBatchNumber} sent, \${batch.length} trials\`);
-            }
+            await _flushPublicBatches();
           }
           // Si batchSize = 0, solo acumular en IndexedDB, enviar TODO en on_finish
         } else {
           // --- SIN IndexedDB: Enviar trial por trial a Firestore ---
           try {
-            const response = await fetch("${DATA_API_URL}", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                experimentID: "${experimentID}",
-                sessionId: trialSessionId,
-                data: data
-              })
-            });
-
-            if (!response.ok) {
-              console.error('Error sending trial to Firestore:', await response.text());
-            } else {
-              window.ExpBuilderNavigation.onTrialPersisted(data);
-            }
+            await _queuePublicDirectEvent(data);
+            window.ExpBuilderNavigation.onTrialPersisted(data);
           } catch (error) {
             console.error('Error sending trial:', error);
           }

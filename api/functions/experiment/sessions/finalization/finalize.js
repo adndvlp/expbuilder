@@ -120,7 +120,7 @@ export async function finalizeSession(experimentID, sessionId) {
     prepared.fileExists ? "(PATCH to existing file)" : "(new file)",
   );
 
-  await cleanupTemporarySession(sessionRef);
+  await cleanupTemporarySession(sessionRef, trialsSnapshot);
   await saveFinalSessionMetadata({
     experimentID,
     sessionId,

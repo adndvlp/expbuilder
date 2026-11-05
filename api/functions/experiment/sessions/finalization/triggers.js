@@ -122,7 +122,7 @@ export const finalizeDisconnectedSessions = onValueWritten(
     }
 
     // CASO 2: Sesión CON IndexedDB - manejar timeout (SIEMPRE con retoma)
-    if (isNowDisconnected && wasConnected && useIndexedDB) {
+    if (isNowDisconnected && wasConnected && useIndexedDB && afterData.needsFinalization !== true) {
       const state = afterData.state;
 
       // Si se desconectó pero NO finalizó, iniciar contador de timeout

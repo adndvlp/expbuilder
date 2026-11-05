@@ -33,7 +33,8 @@ let browser: Browser;
 
 describe("public IndexedDB isolation in Chromium", () => {
   beforeAll(async () => {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true,
+      executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined });
   });
 
   afterAll(async () => {

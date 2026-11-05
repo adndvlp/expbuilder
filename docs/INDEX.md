@@ -20,6 +20,7 @@ This documentation covers the complete architecture, data model, API, and system
 | [08-EXECUTION.md](08-EXECUTION.md) | Code generation, experiment compilation, preview, local run, Cloudflare publishing |
 | [09-CLIENT_SERVER.md](09-CLIENT_SERVER.md) | Providers, context, hooks, optimistic UI, data flow, autosave patterns |
 | [10-EXPERIMENT_CONFIG.md](10-EXPERIMENT_CONFIG.md) | Experiment settings: batch config, recruitment (Prolific/MTurk), CAPTCHA (hCaptcha/reCAPTCHA), session naming, appearance, Cloudflare tunnel |
+| [public-session-persistence-sdd.md](public-session-persistence-sdd.md) | Proposed public session persistence: IndexedDB, batching, shared resume timeout, stable identity, export retries, recovery after expiry and acceptance tests for the eight audited failures |
 | [11-DEVMODE.md](11-DEVMODE.md) | DevMode system, custom code components, jsPsych init overrides, pre-init code, code generation integration |
 | [12-PUBLISH_FLOW.md](12-PUBLISH_FLOW.md) | CSV handling (parse/generate), multimedia file upload/management, complete publish pipeline, local vs public code differences, experiment creation flow |
 | [13-CODE_GENERATION.md](13-CODE_GENERATION.md) | Full code generation pipeline: generateTrialLoopCodes, useLoopCode, ExperimentBase, execution order, local vs public config comparison |

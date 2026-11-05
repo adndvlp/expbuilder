@@ -1,7 +1,6 @@
 import { db } from "../../../app.js";
 
-export async function cleanupTemporarySession(sessionRef) {
-  const trialsSnapshot = await sessionRef.collection("trials").get();
+export async function cleanupTemporarySession(sessionRef, trialsSnapshot) {
   const CHUNK_SIZE = 500;
 
   for (let i = 0; i < trialsSnapshot.docs.length; i += CHUNK_SIZE) {
@@ -12,5 +11,8 @@ export async function cleanupTemporarySession(sessionRef) {
     await batch.commit();
   }
 
-  await sessionRef.delete();
+  await db.runTransaction(async transaction => {
+    const current = await transaction.get(sessionRef);
+    if (current?.data?.()?.eventProtocolVersion !== 1) transaction.delete(sessionRef);
+  });
 }

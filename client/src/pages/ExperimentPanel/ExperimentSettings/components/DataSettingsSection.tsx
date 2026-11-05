@@ -87,23 +87,20 @@ export function DataSettingsSection({
         </p>
       </div>
 
-      <NumberSetting
-        id="batchSize"
-        label="Batch Size"
-        min={0}
-        value={config.batchSize}
-        disabled={!config.useIndexedDB}
-        onChange={(value) => setConfig({ ...config, batchSize: value || 0 })}
-      >
-        <strong>0</strong>: Send all trials at the end (no batching)
-        <br />
-        <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 = batch
-        every 10 trials)
-        <br />
-        {!config.useIndexedDB && (
-          <em>(Only available with IndexedDB enabled)</em>
-        )}
-      </NumberSetting>
+      {config.useIndexedDB && (
+        <NumberSetting
+          id="batchSize"
+          label="Batch Size"
+          min={0}
+          value={config.batchSize}
+          onChange={(value) => setConfig({ ...config, batchSize: value || 0 })}
+        >
+          <strong>0</strong>: Send all trials at the end (no batching)
+          <br />
+          <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 = batch
+          every 10 trials)
+        </NumberSetting>
+      )}
 
       <NumberSetting
         id="resumeTimeout"

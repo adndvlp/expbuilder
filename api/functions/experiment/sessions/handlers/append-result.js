@@ -3,6 +3,7 @@ import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
 import MESSAGES from "../../api/messages.js";
 import validateJSON from "../validation/validate-json.js";
+import { handleAppendEvents } from "./append-events.js";
 
 /**
  * Sanitiza datos para Firestore, convirtiendo arrays/objetos anidados problemáticos.
@@ -74,6 +75,11 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
         });
         return;
       }
+    }
+
+    if (req.body?.action === "appendEvents") {
+      return await handleAppendEvents({ res, experimentID, sessionId, data: parsedData,
+        experiment: exp_data, sanitize: sanitizeForFirestore });
     }
 
     // Detectar si es un batch concatenado (tiene trialsData como string JSON).

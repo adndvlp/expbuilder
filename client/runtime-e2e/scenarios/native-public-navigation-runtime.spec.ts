@@ -6,6 +6,8 @@ import { branchingEvaluationRuntimeCode } from "../../src/pages/ExperimentBuilde
 import { generateOnFinishCode } from "../../src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
 import { runtimeApiBaseUrl } from "../support/session";
 import type { PublicExperimentCodeOptions } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicCodeTypes";
+import { publicEventTransportCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicEventTransportCode";
+import { publicEventStorageCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicEventStorageCode";
 import type { JsPsych, TimelineArray, initJsPsych } from "jspsych";
 
 type Row = Record<string, unknown>;
@@ -31,6 +33,9 @@ for (const indexedDB of [true, false]) {
       branchingEvaluation: branchingEvaluationRuntimeCode,
     } as PublicExperimentCodeOptions);
     const callback = init.slice(init.indexOf("on_data_update: ") + "on_data_update: ".length).trim().replace(/,\s*$/, "");
+    const transportCode = publicEventStorageCode() + "\nconst pendingBatchSaves = [];\n" + publicEventTransportCode({
+      experimentID: "public-fixture", DATA_API_URL: "/save",
+    } as PublicExperimentCodeOptions);
     const hooks = [1, 2, 3, 4, 5, 6].map(id => generateOnFinishCode({
       branches: id === 3 ? [4, 5] : id === 1 ? [2] : id === 2 ? [3] : id === target ? [6] : [],
       defaultNextTrialId: id === 1 ? 2 : id === 2 ? 3 : id === target ? 6 : null,
@@ -38,7 +43,7 @@ for (const indexedDB of [true, false]) {
       getVarName: name => name,
       isMergePoint: id === 4,
     }));
-    const result = await page.evaluate(async ({ runtimeCode, callback, hooks, indexedDB, target }) => {
+    const result = await page.evaluate(async ({ runtimeCode, callback, hooks, indexedDB, target, transportCode }) => {
       const events: number[] = [];
       const saved: number[] = [];
       const pending: Promise<unknown>[] = [];
@@ -52,12 +57,17 @@ for (const indexedDB of [true, false]) {
       runtime.firebase = { database: { ServerValue: { TIMESTAMP: 0 } } };
       const delay = () => new Promise(resolve => setTimeout(resolve, 25));
       const save = async (data: Row) => { await delay(); saved.push(Number(data.builder_id)); };
-      const callbackFactory = new Function("BATCH_CONFIG", "TrialDB", "trialSessionId", "sessionRef", "jsPsych", "_publicStorageKeys", "_createResumeCheckpoint", "fetch", `return (${callback});`);
+      const callbackFactory = new Function("BATCH_CONFIG", "TrialDB", "trialSessionId", "sessionRef", "jsPsych", "_publicStorageKeys", "_createResumeCheckpoint", "fetch", `${transportCode}\nreturn (${callback});`);
       const proxy = { data: { getLastTrialData: () => jsPsych.data.getLastTrialData() } };
       const onData = callbackFactory(
-        { useIndexedDB: indexedDB, size: 0 }, { add: save }, "public-session",
+        { useIndexedDB: indexedDB, size: 0, currentBatchNumber: 0 }, { add: save }, "public-session",
         { update: () => Promise.resolve() }, proxy, { resumeTrial: "public-checkpoint" }, checkpoint,
-        async (_url: string, request: { body: string }) => { await save(JSON.parse(request.body).data); return { ok: true }; },
+        async (_url: string, request: { body: string }) => {
+          const body = JSON.parse(request.body);
+          await save(body.data.events[0].payload);
+          return { ok: true, json: async () => ({ success: true, experimentID: body.experimentID,
+            sessionId: body.sessionId, acknowledged: body.data.events.map(({ eventId, sequence, payloadHash }: Row) => ({ eventId, sequence, payloadHash })) }) };
+        },
       );
       const jsPsych = runtime.initJsPsych({ use_webaudio: false, on_data_update(data: Row) { pending.push(onData(data)); } });
       class AutoTrial {
@@ -88,7 +98,7 @@ for (const indexedDB of [true, false]) {
       await jsPsych.run(timeline);
       await Promise.all(pending);
       return { events, saved, decisions, rows: jsPsych.data.get().values().length };
-    }, { runtimeCode: resumeCode(), callback, hooks, indexedDB, target });
+    }, { runtimeCode: resumeCode(), callback, hooks, indexedDB, target, transportCode });
     const expected = [1, 2, 3, target, 6];
     expect(result.events).toEqual(expected);
     expect(result.saved).toEqual(expected);

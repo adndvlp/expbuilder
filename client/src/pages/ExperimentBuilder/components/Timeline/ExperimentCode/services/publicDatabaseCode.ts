@@ -1,5 +1,6 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
 import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
+import { publicEventStorageCode, publicEventStorageMethods } from "./publicEventStorageCode";
 
 export function publicDatabaseCode(
   options: PublicExperimentCodeOptions,
@@ -48,16 +49,19 @@ export function publicDatabaseCode(
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
   window.JSPSYCH_EXPERIMENT_ID = '${experimentID}';
 
+${publicEventStorageCode()}
+
   // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
   const TrialDB = {
     dbName: ${JSON.stringify(storageKeys.trialDatabase)},
     storeName: 'trials',
+    counterName: 'session-sequences',
     db: null,
     TTL_DAYS: 3,
 
     async init() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open(this.dbName, 1);
+        const request = indexedDB.open(this.dbName, 2);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
@@ -77,6 +81,10 @@ export function publicDatabaseCode(
             store.createIndex('sessionId', 'sessionId', { unique: false });
             store.createIndex('timestamp', 'timestamp', { unique: false });
             store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(this.counterName)) {
+            db.createObjectStore(this.counterName, { keyPath: 'sessionId' });
+            _upgradePublicEvents(request.transaction, this.storeName, this.counterName);
           }
         };
       });
@@ -118,22 +126,7 @@ export function publicDatabaseCode(
       });
     },
 
-    async add(trial) {
-      if (!this.db) await this.init();
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const request = store.add({
-          ...trial,
-          timestamp: Date.now(),
-          createdAt: Date.now(),
-          sessionId: trialSessionId
-        });
-        
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    },
+${publicEventStorageMethods()}
 
     async getAll() {
       if (!this.db) await this.init();
