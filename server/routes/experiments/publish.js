@@ -21,7 +21,7 @@ const router = Router();
 
 function getDynamicPluginCdn() {
   let dynamicName = "jspsych-expbuilder-plugin-dynamic";
-  let dynamicVersion = "1.0.8";
+  let dynamicVersion = "1.1.0";
   try {
     const dynamicPkgPath = path.resolve(
       __dirname,

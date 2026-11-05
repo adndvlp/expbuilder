@@ -254,6 +254,8 @@ class ImageComponent {
     this.stage = getCanvasStage(container, {
       width: canvasWidth,
       height: canvasHeight,
+      dpr: getViewport(config).dpr,
+      rasterScale: getViewport(config).rasterScale,
       backgroundColor: "transparent",
       zIndex,
       backend: this.resolveParam(config.__renderBackend, "webgl-strict"),

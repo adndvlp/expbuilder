@@ -16,6 +16,7 @@ import { useComponentSelection } from "./hooks/useComponentSelection";
 import { useDesignerViewport } from "./hooks/useDesignerViewport";
 import { useDesignerComponents } from "./hooks/useDesignerComponents";
 import { relativeCoordinates } from "../../../../../../../../shared/dynamic-layout/geometry";
+import { DESIGN_SIZE } from "../../../../../../../../shared/dynamic-layout/scene";
 import useExperimentAppearance from "../../../../hooks/useExperimentAppearance";
 
 const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
@@ -37,7 +38,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   );
   const { appearance } = useExperimentAppearance();
   const { previewViewport, setPreviewViewport } = useDesignerViewport();
-  const { components, setComponents } = useDesignerComponents(previewViewport);
+  const { components, setComponents } = useDesignerComponents();
   const [isDemoRunning, setIsDemoRunning] = useState(false);
   const [gridEnabled, setGridEnabled] = useState(true);
 
@@ -48,8 +49,8 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   const { metadata: componentMetadata, loading: metadataLoading } =
     useComponentMetadata(selectedComponent?.type || null);
 
-  const CANVAS_WIDTH = previewViewport.width;
-  const CANVAS_HEIGHT = previewViewport.height;
+  const CANVAS_WIDTH = DESIGN_SIZE.width;
+  const CANVAS_HEIGHT = DESIGN_SIZE.height;
   const {
     canvasContainerRef,
     fromJsPsychCoords,
@@ -69,14 +70,13 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
   } = useDesignerPanels(previewViewport, isOpen);
 
   const toJsPsychCoords = useCallback(
-    (x: number, y: number) => relativeCoordinates(x, y, previewViewport),
-    [CANVAS_HEIGHT, CANVAS_WIDTH],
+    (x: number, y: number) => relativeCoordinates(x, y, DESIGN_SIZE),
+    [],
   );
 
   const generateConfigFromComponents = useConfigComponents({
     toJsPsychCoords,
     columnMapping,
-    previewViewport,
   });
 
   const autoSaveComponents = useCallback(
@@ -136,7 +136,7 @@ const KonvaTrialDesigner: React.FC<KonvaTrialDesignerProps> = ({
     isOpen: isOpen && !isDemoRunning,
     gridEnabled,
     stageScale,
-    previewViewport,
+    previewViewport: DESIGN_SIZE,
     components,
     editingTextId,
     generateConfig: generateConfigFromComponents,

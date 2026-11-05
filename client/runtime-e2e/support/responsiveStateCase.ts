@@ -92,20 +92,36 @@ export async function verifyResponsiveState(page: Page) {
   await expect(page.getByText("Second page", { exact: true })).toBeVisible();
   const sketch = page.locator("#sketchpad-canvas");
   const bounds = (await sketch.boundingBox())!;
-  await page.mouse.move(bounds.x + 20, bounds.y + 20);
+  await page.mouse.move(
+    bounds.x + bounds.width * 0.2,
+    bounds.y + bounds.height * 0.2,
+  );
   await page.mouse.down();
-  await page.mouse.move(bounds.x + 90, bounds.y + 60, { steps: 5 });
+  await page.mouse.move(
+    bounds.x + bounds.width * 0.7,
+    bounds.y + bounds.height * 0.7,
+    { steps: 5 },
+  );
   await page.mouse.up();
+  const ink = await sketch.evaluate((canvas: HTMLCanvasElement) => [
+    ...canvas
+      .getContext("2d")!
+      .getImageData(
+        Math.round(canvas.width * 0.45),
+        Math.round(canvas.height * 0.45),
+        1,
+        1,
+      ).data,
+  ]);
+  expect(ink[0]).toBeLessThan(180);
   const drawing = await sketch.evaluate((canvas: HTMLCanvasElement) =>
     canvas.toDataURL(),
   );
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: "note.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("Retain this file"),
-    });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "note.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Retain this file"),
+  });
   await expect(page.getByText("✓ Upload complete")).toBeVisible();
   await page.locator("video").evaluate(async (element: HTMLVideoElement) => {
     element.muted = true;

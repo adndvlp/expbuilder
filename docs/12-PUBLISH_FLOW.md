@@ -367,7 +367,7 @@ const { files } = await res.json();
      
      // Added:
      <script src="https://unpkg.com/jspsych@8.2.2"></script>
-     <script src="https://unpkg.com/jspsych-expbuilder-plugin-dynamic@1.0.2/dist/index.iife.js"></script>
+     <script src="https://unpkg.com/jspsych-expbuilder-plugin-dynamic@1.1.0/dist/index.iife.js"></script>
      ```
    - Injects only plugins actually used (via `getPluginScriptsFromTrials`)
    - Injects preload if media files exist

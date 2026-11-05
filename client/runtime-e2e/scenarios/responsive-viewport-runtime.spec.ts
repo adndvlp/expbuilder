@@ -56,10 +56,7 @@ test(`[RUNTIME-RESPONSIVE-VIEWPORT] client expands beyond saved screens and pres
   const author = new ScenarioAuthor(runtimeApiBaseUrl);
   await author.createExperiment(`responsive-client-${Date.now()}`);
   await author.createTrial("responsive");
-  await author.configureDynamicTrial(
-    "responsive",
-    responsiveScene(),
-  );
+  await author.configureDynamicTrial("responsive", responsiveScene());
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
   await page.setViewportSize({ width: 1440, height: 903 });
@@ -94,23 +91,28 @@ test(`[RUNTIME-RESPONSIVE-VIEWPORT] client expands beyond saved screens and pres
       .poll(async () => (await sceneBounds(page)).root.width)
       .toBeCloseTo(size.width, 0);
     const bounds = await sceneBounds(page);
+    const scale = Math.min(size.width / 2560, size.height / 1450);
+    const sceneWidth = 2560 * scale,
+      sceneHeight = 1450 * scale;
+    const offsetX = (size.width - sceneWidth) / 2,
+      offsetY = (size.height - sceneHeight) / 2;
     expect(bounds.root.height).toBeCloseTo(size.height, 0);
     expect(bounds.edge.x).toBeGreaterThanOrEqual(0);
     expect(bounds.edge.x + bounds.edge.width).toBeLessThanOrEqual(size.width);
     expect(bounds.image.x + bounds.image.width / 2).toBeCloseTo(
-      size.width * 0.75,
+      offsetX + sceneWidth * 0.75,
       0,
     );
     expect(bounds.image.y + bounds.image.height / 2).toBeCloseTo(
-      size.height * 0.225,
+      offsetY + sceneHeight * 0.225,
       0,
     );
-    expect(bounds.image.width).toBeCloseTo(size.width * 0.1, 0);
-    expect(bounds.text.width).toBeCloseTo(size.width * 0.4, 0);
-    expect(bounds.text.height).toBeCloseTo(size.width * 0.03, 0);
-    expect(bounds.input.width).toBeCloseTo(size.width * 0.35, 0);
-    expect(bounds.buffer.width).toBe(Math.round(size.width * bounds.dpr));
-    expect(bounds.buffer.height).toBe(Math.round(size.height * bounds.dpr));
+    expect(bounds.image.width).toBeCloseTo(sceneWidth * 0.1, 0);
+    expect(bounds.text.width).toBeCloseTo(sceneWidth * 0.4, 0);
+    expect(bounds.text.height).toBeCloseTo(sceneWidth * 0.03, 0);
+    expect(bounds.input.width).toBeCloseTo(sceneWidth * 0.35, 0);
+    expect(bounds.buffer.width).toBe(Math.round(sceneWidth * bounds.dpr));
+    expect(bounds.buffer.height).toBe(Math.round(sceneHeight * bounds.dpr));
     await expect(input).toHaveValue("Keep this answer");
     await expect(slider).toHaveValue("73");
     expect(
@@ -134,7 +136,11 @@ test(`[RUNTIME-RESPONSIVE-VIEWPORT] client expands beyond saved screens and pres
     geometries.push(bounds);
   }
   // Canvas buttons have retained hitboxes: use the current relative center.
-  await page.mouse.click(725 * 0.775, 375 * 0.85);
+  const lastScale = Math.min(725 / 2560, 375 / 1450);
+  await page.mouse.click(
+    (725 - 2560 * lastScale) / 2 + 2560 * lastScale * 0.775,
+    (375 - 1450 * lastScale) / 2 + 1450 * lastScale * 0.85,
+  );
 
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
   const { session } = await loadPersistedSession(

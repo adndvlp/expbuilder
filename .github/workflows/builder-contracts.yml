@@ -8,7 +8,6 @@ on:
       - "client/**"
       - "server/**"
       - "api/functions/**"
-      - "docs/loop-branching-spec/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/builder-contracts.yml"
@@ -17,7 +16,6 @@ on:
       - "client/**"
       - "server/**"
       - "api/functions/**"
-      - "docs/loop-branching-spec/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/builder-contracts.yml"
@@ -93,7 +91,7 @@ jobs:
         working-directory: client
         run: npm run check:max-lines
 
-      - name: Check acceptance coverage registry
+      - name: Check runtime scenario registry
         working-directory: client
         run: npm run check:runtime-coverage
 

@@ -11,7 +11,7 @@ export async function verifyResponsiveIframe(page: Page) {
   await author.configureDynamicTrial("iframe", responsiveScene());
   const artifact = await author.compileAndBuild();
   const runtime = new RuntimeObserver(page);
-  await page.route("**/favicon.ico", route => route.fulfill({ status: 204 }));
+  await page.route("**/favicon.ico", (route) => route.fulfill({ status: 204 }));
   // Give the parent the local server's origin; Chrome blocks an opaque public
   // about:blank document from initiating local-network iframe navigation.
   await page.goto(`${runtimeApiBaseUrl}/api/load-experiments`);
@@ -93,14 +93,21 @@ export async function verifyResponsiveHandoff(page: Page) {
       page.locator(`#jspsych-dynamic-frame-${index}-stimulus`),
     ).toBeVisible();
     await page.setViewportSize({ width, height: 903 });
+    const scale = Math.min(width / 2560, 903 / 1450);
+    const sceneWidth = 2560 * scale;
     await expect
-      .poll(() => surface.evaluate((element) => element.clientWidth))
-      .toBe(width);
+      .poll(() =>
+        surface.evaluate((element) => element.getBoundingClientRect().width),
+      )
+      .toBeCloseTo(sceneWidth, 0);
     const rect = await page
       .locator(`#jspsych-dynamic-frame-${index}-stimulus`)
       .boundingBox();
-    expect(rect!.x + rect!.width / 2).toBeCloseTo(width * 0.75, 0);
-    expect(rect!.width).toBeCloseTo(width * 0.1, 0);
+    expect(rect!.x + rect!.width / 2).toBeCloseTo(
+      (width - sceneWidth) / 2 + sceneWidth * 0.75,
+      0,
+    );
+    expect(rect!.width).toBeCloseTo(sceneWidth * 0.1, 0);
     expect(
       await surface
         .locator("canvas")
@@ -172,7 +179,11 @@ export async function verifyLateResponsiveImage(page: Page) {
     (await marker.boundingBox())!.x + (await marker.boundingBox())!.width / 2,
   ).toBeCloseTo(1063 * 0.75, 0);
   await expect(root.locator("canvas.dynamic-canvas-stage")).toHaveCount(1);
-  await page.mouse.click(1063 * 0.775, 696 * 0.85);
+  const scale = Math.min(1063 / 2560, 696 / 1450);
+  await page.mouse.click(
+    (1063 - 2560 * scale) / 2 + 2560 * scale * 0.775,
+    (696 - 1450 * scale) / 2 + 1450 * scale * 0.85,
+  );
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
   await expect(page.locator("#jspsych-dynamic-visual-bridge")).toHaveCount(0);
   await runtime.assertNoRuntimeFailures();

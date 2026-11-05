@@ -1,4 +1,5 @@
-import { TrialComponent, PreviewViewport } from "./types";
+import { TrialComponent } from "./types";
+import { DESIGN_SIZE } from "../../../../../../../../shared/dynamic-layout/scene";
 import { makeGrapesHtmlPortable } from "./GrapesEditors/portableHtml";
 
 type Props = {
@@ -10,14 +11,13 @@ type Props = {
     y: number;
   };
   columnMapping: Record<string, any>;
-  previewViewport?: PreviewViewport;
 };
 
 export default function useConfigComponents({
   toJsPsychCoords,
   columnMapping,
-  previewViewport,
 }: Props) {
+  const designWidth = DESIGN_SIZE.width;
   const generateConfigFromComponents = (comps: TrialComponent[]) => {
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
@@ -39,15 +39,15 @@ export default function useConfigComponents({
       // Only export editor box size for components whose backend uses width/height.
       // Survey, Sketchpad, and FileUpload size from runtime parameters/DOM.
       if (exportsEditorBoxSize && comp.width > 0) {
-        componentData.width = previewViewport
-          ? Number(((comp.width / previewViewport.width) * 100).toPrecision(12))
-          : comp.width;
+        componentData.width = Number(
+          ((comp.width / designWidth) * 100).toPrecision(12),
+        );
       }
 
       if (exportsEditorBoxSize && comp.height > 0) {
-        componentData.height = previewViewport
-          ? Number(((comp.height / previewViewport.width) * 100).toPrecision(12)) // vw units — same denominator as width
-          : comp.height;
+        componentData.height = Number(
+          ((comp.height / designWidth) * 100).toPrecision(12),
+        );
       }
 
       // Add rotation if present
@@ -92,11 +92,9 @@ export default function useConfigComponents({
         });
       }
 
-      // Convert font sizes from Konva px → vw so they scale with viewport at runtime
-      // (same strategy as width/height: divide by canvas width to get a vw percentage)
+      // Store design-unit fonts in the existing relative-width format.
       if (
         comp.type === "TextComponent" &&
-        previewViewport &&
         comp.config?.font_size?.source !== "csv" &&
         comp.config?._font_size_runtime_vw?.source !== "csv"
       ) {
@@ -107,15 +105,12 @@ export default function useConfigComponents({
         delete componentData.font_size;
         componentData._font_size_runtime_vw = {
           source: "typed",
-          value: Number(
-            ((fontSizePx / previewViewport.width) * 100).toPrecision(12),
-          ),
+          value: Number(((fontSizePx / designWidth) * 100).toPrecision(12)),
         };
       }
 
       if (
         comp.type === "ButtonResponseComponent" &&
-        previewViewport &&
         comp.config?.button_font_size?.source !== "csv" &&
         comp.config?._button_font_size_runtime_vw?.source !== "csv"
       ) {
@@ -126,13 +121,12 @@ export default function useConfigComponents({
         delete componentData.button_font_size;
         componentData._button_font_size_runtime_vw = {
           source: "typed",
-          value: Number(((bfsPx / previewViewport.width) * 100).toPrecision(12)),
+          value: Number(((bfsPx / designWidth) * 100).toPrecision(12)),
         };
       }
 
       if (
         comp.type === "InputResponseComponent" &&
-        previewViewport &&
         comp.config?.input_font_size?.source !== "csv" &&
         comp.config?._input_font_size_runtime_vw?.source !== "csv"
       ) {
@@ -143,17 +137,17 @@ export default function useConfigComponents({
         delete componentData.input_font_size;
         componentData._input_font_size_runtime_vw = {
           source: "typed",
-          value: Number(((ifsPx / previewViewport.width) * 100).toPrecision(12)),
+          value: Number(((ifsPx / designWidth) * 100).toPrecision(12)),
         };
         // Derive width and height from the resized box when present, so the
         // runtime matches the canvas without touching the font size.
         const canvasWidth = comp.inputWidth ?? 10 * ifsPx * 0.55;
         componentData.width = Number(
-          ((canvasWidth / previewViewport.width) * 100).toPrecision(12),
+          ((canvasWidth / designWidth) * 100).toPrecision(12),
         );
         const inputHeightPx = comp.inputHeight ?? ifsPx * 1.5;
         componentData.height = Number(
-          ((inputHeightPx / previewViewport.width) * 100).toPrecision(12),
+          ((inputHeightPx / designWidth) * 100).toPrecision(12),
         );
       }
 

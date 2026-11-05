@@ -1,31 +1,91 @@
-import { ViewportSize } from "../../../shared/dynamic-layout/geometry";
+import type { ViewportSize } from "../../../shared/dynamic-layout/geometry";
+import {
+  DESIGN_SIZE,
+  fitScene,
+  type SceneFit,
+} from "../../../shared/dynamic-layout/scene";
 
-export type RuntimeViewport = ViewportSize & { dpr: number; revision: number };
-export type LayoutContext = { getViewport(): RuntimeViewport };
+type HostRect = ViewportSize & { left: number; top: number };
+export type RuntimeViewport = ViewportSize &
+  SceneFit & {
+    logicalSize: ViewportSize;
+    hostRect: HostRect;
+    sceneRect: HostRect;
+    dpr: number;
+    revision: number;
+  };
+export type LayoutContext = {
+  getViewport(): RuntimeViewport;
+  getHostElement?(): HTMLElement;
+};
+
+function snapshot(
+  hostRect: HostRect,
+  dpr: number,
+  revision: number,
+): RuntimeViewport {
+  const fit = fitScene(hostRect, dpr) ?? {
+    scale: 0,
+    offsetX: 0,
+    offsetY: 0,
+    displayWidth: 0,
+    displayHeight: 0,
+    rasterScale: 0,
+  };
+  return {
+    ...DESIGN_SIZE,
+    ...fit,
+    logicalSize: DESIGN_SIZE,
+    hostRect,
+    dpr,
+    revision,
+    sceneRect: {
+      left: hostRect.left + fit.offsetX,
+      top: hostRect.top + fit.offsetY,
+      width: fit.displayWidth,
+      height: fit.displayHeight,
+    },
+  };
+}
 
 export function getViewport(config: any): RuntimeViewport {
   return (
-    config.__layoutContext?.getViewport() ?? {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      dpr: window.devicePixelRatio || 1,
-      revision: 0,
-    }
+    config.__layoutContext?.getViewport() ??
+    snapshot(
+      { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight },
+      window.devicePixelRatio || 1,
+      0,
+    )
   );
+}
+
+export function styleHost(element: HTMLElement, viewport: RuntimeViewport) {
+  const rect = viewport.hostRect;
+  Object.assign(element.style, {
+    position: "fixed",
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    overflow: "hidden",
+    textAlign: "left",
+  });
 }
 
 export function styleSurface(
   element: HTMLElement,
   viewport: RuntimeViewport,
   origin: { left: number; top: number },
+  position: "fixed" | "absolute" = "fixed",
 ) {
   Object.assign(element.style, {
-    position: "fixed",
-    left: `${origin.left}px`,
-    top: `${origin.top}px`,
+    position,
+    left: `${origin.left + viewport.offsetX}px`,
+    top: `${origin.top + viewport.offsetY}px`,
     width: `${viewport.width}px`,
     height: `${viewport.height}px`,
-    transform: "none",
+    transform: `scale(${viewport.scale})`,
+    transformOrigin: "top left",
     overflow: "hidden",
     textAlign: "left",
     containerType: "size",
@@ -51,12 +111,11 @@ export class RuntimeViewportController implements LayoutContext {
       origin: { left: number; top: number },
     ) => void,
   ) {
-    this.snapshot = {
-      width: 0,
-      height: 0,
-      dpr: window.devicePixelRatio || 1,
-      revision: 0,
-    };
+    this.snapshot = snapshot(
+      { left: 0, top: 0, width: 0, height: 0 },
+      window.devicePixelRatio || 1,
+      0,
+    );
     this.readyPromise = new Promise((resolve) => {
       this.readyResolve = resolve;
     });
@@ -125,15 +184,19 @@ export class RuntimeViewportController implements LayoutContext {
     const dpr = window.devicePixelRatio || 1;
     const previous = this.snapshot;
     if (
-      width === previous.width &&
-      height === previous.height &&
+      width === previous.hostRect.width &&
+      height === previous.hostRect.height &&
       dpr === previous.dpr &&
       origin.left === this.origin.left &&
       origin.top === this.origin.top
     )
       return;
     this.origin = origin;
-    this.snapshot = { width, height, dpr, revision: previous.revision + 1 };
+    this.snapshot = snapshot(
+      { ...origin, width, height },
+      dpr,
+      previous.revision + 1,
+    );
     this.apply(this.snapshot, this.origin);
     this.readyResolve?.();
     this.readyResolve = null;

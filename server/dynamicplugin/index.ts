@@ -1,6 +1,6 @@
 import { JsPsych, JsPsychPlugin, ParameterType, TrialType } from "jspsych";
 
-const version = "1.0.8";
+const version = "1.1.0";
 
 // Import all component types
 import ImageComponent from "./components/ImageComponent";
@@ -26,7 +26,9 @@ import {
   resolveTimingMs,
 } from "./utils/PrecisionTiming";
 import ResponseTimingManager from "./utils/ResponseTimingManager";
-import { RuntimeViewportController, styleSurface } from "./layout/RuntimeViewport";
+import { RuntimeViewportController, styleHost, styleSurface } from "./layout/RuntimeViewport";
+import { hostToScene, sceneToHost } from "../../shared/dynamic-layout/scene";
+import { relativeCenter } from "../../shared/dynamic-layout/geometry";
 import {
   getCanvasStages,
   StageMetrics,
@@ -1252,9 +1254,15 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     mainContainer.id = DYNAMIC_CONTAINER_ID;
     mainContainer.style.visibility = "hidden";
     display_element.appendChild(mainContainer);
+    const mainScene = document.createElement("div");
+    mainScene.dataset.dynamicScene = "true";
+    mainContainer.appendChild(mainScene);
 
     let viewportController: RuntimeViewportController;
-    const layoutContext = { getViewport: () => viewportController.getViewport() };
+    const layoutContext = {
+      getViewport: () => viewportController.getViewport(),
+      getHostElement: () => mainContainer,
+    };
 
     const initialDiagnostics = getDiagnosticsOptions(trial);
     const timing = createPrecisionTiming({
@@ -1265,7 +1273,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
     // Store component instances and rendered elements
     const stimulusComponents: any[] = [];
     const responseComponents: any[] = [];
-    let visualRenderContainer = mainContainer;
+    let visualRenderContainer = mainScene;
     let hasResponded = false;
     let trialEnded = false;
     let trialEndedByResponse = false;
@@ -1281,7 +1289,13 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       trial,
       timing,
       container: mainContainer,
-      getViewport: layoutContext.getViewport,
+      getViewport: () => layoutContext.getViewport().hostRect,
+      toLayoutPoint: point => {
+        const viewport = layoutContext.getViewport();
+        const logical = hostToScene(point, viewport);
+        return logical.x >= 0 && logical.x <= viewport.width && logical.y >= 0 && logical.y <= viewport.height
+          ? logical : null;
+      },
       onFinish: (timestamp, options) =>
         handleParticipantResponse(timestamp, options),
     });
@@ -1365,13 +1379,18 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
       });
     };
 
+    let previousRasterScale = 0;
     viewportController = new RuntimeViewportController(this.jsPsych, display_element, (viewport, origin) => {
-      styleSurface(mainContainer, viewport, origin);
-      if (visualRenderContainer !== mainContainer) styleSurface(visualRenderContainer, viewport, origin);
+      styleHost(mainContainer, viewport);
+      styleSurface(mainScene, viewport, { left: 0, top: 0 }, "absolute");
+      if (visualRenderContainer !== mainScene) styleSurface(visualRenderContainer, viewport, origin);
       for (const stage of getCanvasStages(visualRenderContainer)) {
-        stage.resize(viewport.width, viewport.height, viewport.dpr);
+        stage.resize(viewport.width, viewport.height, viewport.dpr, viewport.rasterScale);
       }
-      for (const { instance } of allComponents) instance.updateLayout?.(viewport);
+      if (previousRasterScale !== viewport.rasterScale) {
+        for (const { instance } of allComponents) instance.updateLayout?.(viewport);
+      }
+      previousRasterScale = viewport.rasterScale;
       for (const stage of getCanvasStages(visualRenderContainer)) stage.commit(performance.now(), true);
       // A screenshot of the previous frame must not overlay a resized scene.
       removePreservedVisualBridge();
@@ -1670,14 +1689,12 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           trialData[`${prefix}_text`] = config.text;
         }
 
-        // Coordinates → pixel center in the actual viewport at trial end time.
-        // CSS formula: left = calc(50% + x*0.5 vw), top = calc(50% - y*0.5 vh)
+        // Visible CSS-pixel center relative to the real host, including letterboxing.
         if (config.coordinates !== undefined) {
-          const cx = config.coordinates.x ?? 0;
-          const cy = config.coordinates.y ?? 0;
+          const viewport = layoutContext.getViewport();
+          const center = sceneToHost(relativeCenter(config.coordinates, viewport), viewport);
           trialData[`${prefix}_coordinates`] = JSON.stringify({
-            x: Math.round(layoutContext.getViewport().width * (0.5 + cx / 200)),
-            y: Math.round(layoutContext.getViewport().height * (0.5 - cy / 200)),
+            x: Math.round(center.x), y: Math.round(center.y),
           });
         }
 
@@ -1741,11 +1758,10 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           config.coordinates !== undefined &&
           config.type !== "ClickResponseComponent"
         ) {
-          const cx = config.coordinates.x ?? 0;
-          const cy = config.coordinates.y ?? 0;
+          const viewport = layoutContext.getViewport();
+          const center = sceneToHost(relativeCenter(config.coordinates, viewport), viewport);
           trialData[`${prefix}_coordinates`] = JSON.stringify({
-            x: Math.round(layoutContext.getViewport().width * (0.5 + cx / 200)),
-            y: Math.round(layoutContext.getViewport().height * (0.5 - cy / 200)),
+            x: Math.round(center.x), y: Math.round(center.y),
           });
         }
         if (
@@ -1877,7 +1893,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         setPersistentVisualHandoff(offsetTime);
         monitorPreservedVisualBridge(display_element);
       } else {
-        preserveCanvasVisualBridge(mainContainer, display_element);
+        preserveCanvasVisualBridge(mainScene, display_element);
       }
 
       // Clean up components
@@ -1913,7 +1929,8 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
         visualRenderContainer = getPersistentVisualSurface();
         styleSurface(visualRenderContainer, layoutContext.getViewport(), viewportController.origin);
         for (const stage of getCanvasStages(visualRenderContainer)) {
-          stage.resize(layoutContext.getViewport().width, layoutContext.getViewport().height, layoutContext.getViewport().dpr);
+          const viewport = layoutContext.getViewport();
+          stage.resize(viewport.width, viewport.height, viewport.dpr, viewport.rasterScale);
           stage.resetForTrial();
         }
         mainContainer.style.visibility = "visible";
@@ -1923,7 +1940,7 @@ class DynamicPlugin implements JsPsychPlugin<Info> {
           "unclosed_no_next_visual_onset_commit",
         );
         removePersistentVisualSurface();
-        visualRenderContainer = mainContainer;
+        visualRenderContainer = mainScene;
       }
 
       renderAllComponents();

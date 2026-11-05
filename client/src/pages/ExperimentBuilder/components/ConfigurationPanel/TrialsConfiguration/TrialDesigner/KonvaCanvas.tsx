@@ -12,6 +12,10 @@ import CanvasBackdrop from "./KonvaCanvas/CanvasBackdrop";
 import { findTopComponentAtPoint } from "./KonvaCanvas/hitTesting";
 import { createViewportGrid } from "./editorGrid";
 import ViewportGridOverlay from "./ViewportGridOverlay";
+import {
+  DESIGN_SIZE,
+  fitScene,
+} from "../../../../../../../../shared/dynamic-layout/scene";
 
 // Extra canvas space (in stage coords) so Transformer handles at node edges
 // are never clipped by the canvas boundary.
@@ -74,8 +78,8 @@ function KonvaCanvas({
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   stageScale,
-  viewportWidth = CANVAS_WIDTH * stageScale,
-  viewportHeight = CANVAS_HEIGHT * stageScale,
+  viewportWidth,
+  viewportHeight,
   onDrop,
   stageRef,
   selectedId,
@@ -92,14 +96,8 @@ function KonvaCanvas({
   previewViewport,
   appearance,
 }: Props) {
-  const grid = React.useMemo(
-    () =>
-      createViewportGrid({
-        width: previewViewport.width,
-        height: previewViewport.height,
-      }),
-    [previewViewport.width, previewViewport.height],
-  );
+  const frameFit = stageScale / (fitScene(previewViewport)?.scale || 1);
+  const grid = React.useMemo(() => createViewportGrid(DESIGN_SIZE), []);
   const [htmlSceneMetrics, setHtmlSceneMetrics] =
     React.useState<HtmlSceneMetrics>({});
   const [activeDomId, setActiveDomId] = React.useState<string | null>(null);
@@ -126,12 +124,13 @@ function KonvaCanvas({
       <div
         data-designer-viewport="true"
         style={{
-          width: viewportWidth,
-          height: viewportHeight,
+          width: viewportWidth ?? previewViewport.width * frameFit,
+          height: viewportHeight ?? previewViewport.height * frameFit,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          background: appearance.backgroundColor,
         }}
       >
         <div
@@ -190,12 +189,12 @@ function KonvaCanvas({
         >
           <CanvasBackdrop backgroundColor={appearance.backgroundColor} />
           {gridEnabled && (
-            <ViewportGridOverlay grid={grid} viewport={previewViewport} />
+            <ViewportGridOverlay grid={grid} viewport={DESIGN_SIZE} />
           )}
 
           <ExperimentalHtmlSceneLayer
             components={components}
-            previewViewport={previewViewport}
+            previewViewport={DESIGN_SIZE}
             stageScale={stageScale}
             metrics={htmlSceneMetrics}
             uploadedFiles={uploadedFiles}
@@ -270,7 +269,7 @@ function KonvaCanvas({
                   <AlignmentGuidesLayer
                     guides={activeGuides}
                     stageScale={stageScale}
-                    viewport={previewViewport}
+                    viewport={DESIGN_SIZE}
                   />
                 </Group>
               </Layer>

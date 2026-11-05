@@ -83,6 +83,7 @@ export default function ExperimentalHtmlSceneLayer({
         zIndex: activeDomId ? 5 : 3,
         overflow: "hidden",
         textAlign: "left",
+        containerType: "size",
       }}
     >
       <style>{RUNTIME_COPY_STYLES}</style>

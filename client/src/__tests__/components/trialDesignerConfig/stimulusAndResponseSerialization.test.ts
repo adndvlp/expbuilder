@@ -1,5 +1,4 @@
 import {
-  previewViewport,
   describe,
   expect,
   it,
@@ -20,9 +19,6 @@ describe("useConfigFromComponents", () => {
       height: 90,
       rotation: 15,
       zIndex: 2,
-      screenLayouts: {
-        "1440x900": { x: 10, y: 20, width: 30, height: 9 },
-      },
       config: {
         text: { source: "typed", value: "Hello" },
         font_size: { source: "typed", value: 20 },
@@ -52,7 +48,6 @@ describe("useConfigFromComponents", () => {
           trial_duration: { source: "typed", value: 1000 },
           stale_field: { source: "none", value: null },
         },
-        previewViewport,
       }),
     );
 
@@ -64,13 +59,13 @@ describe("useConfigFromComponents", () => {
       expect.objectContaining({
         type: "TextComponent",
         coordinates: { x: 12, y: 8 },
-        width: 30,
-        height: 9,
+        width: 11.71875,
+        height: 3.515625,
         rotation: 15,
         zIndex: 2,
         text: { source: "typed", value: "Hello" },
         font_color: { source: "typed", value: "#ff0000" },
-        _font_size_runtime_vw: { source: "typed", value: 2 },
+        _font_size_runtime_vw: { source: "typed", value: 0.78125 },
       }),
     ]);
     expect(config.response_components.value).toEqual([
@@ -78,8 +73,8 @@ describe("useConfigFromComponents", () => {
         type: "ButtonResponseComponent",
         component_id: "button-1",
         coordinates: { x: 50, y: 40 },
-        width: 20,
-        height: 6,
+        width: 7.8125,
+        height: 2.34375,
         zIndex: 3,
         button_text: { source: "typed", value: "Continue" },
         button_color: { source: "typed", value: "#0088ff" },
@@ -89,7 +84,7 @@ describe("useConfigFromComponents", () => {
       config.response_components.value[0]._button_font_size_runtime_vw,
     ).toEqual({
       source: "typed",
-      value: expect.closeTo(1.8),
+      value: expect.closeTo(0.703125),
     });
   });
 
@@ -104,7 +99,6 @@ describe("useConfigFromComponents", () => {
             value: [{ type: "ButtonResponseComponent" }],
           },
         },
-        previewViewport,
       }),
     );
 
@@ -134,7 +128,6 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        previewViewport,
       }),
     );
 
@@ -147,10 +140,10 @@ describe("useConfigFromComponents", () => {
         placeholder: { source: "typed", value: "Answer" },
         _input_font_size_runtime_vw: {
           source: "typed",
-          value: expect.closeTo(2.2),
+          value: expect.closeTo(0.859375),
         },
-        width: 24,
-        height: 6,
+        width: 9.375,
+        height: 2.34375,
       }),
     );
   });
@@ -171,15 +164,14 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        previewViewport,
       }),
     );
 
     const config = result.current([inputComponent]);
     expect(config.response_components.value[0]).toEqual(
       expect.objectContaining({
-        width: expect.closeTo(12.1),
-        height: expect.closeTo(3.3),
+        width: expect.closeTo(4.7265625),
+        height: expect.closeTo(1.2890625),
       }),
     );
   });

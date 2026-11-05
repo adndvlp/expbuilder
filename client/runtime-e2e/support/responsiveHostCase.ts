@@ -60,6 +60,9 @@ export async function verifyResponsiveHost(page: Page) {
       const rect = element.getBoundingClientRect();
       const wrapper =
         element.parentElement!.parentElement!.getBoundingClientRect();
+      const scene = element
+        .querySelector<HTMLElement>("[data-dynamic-scene]")!
+        .getBoundingClientRect();
       const canvas = element.querySelector<HTMLCanvasElement>(
         "canvas.dynamic-canvas-stage",
       )!;
@@ -70,6 +73,10 @@ export async function verifyResponsiveHost(page: Page) {
         height: rect.height,
         wrapperTop: wrapper.top,
         wrapperHeight: wrapper.height,
+        sceneWidth: scene.width,
+        sceneHeight: scene.height,
+        sceneLeft: scene.left,
+        sceneTop: scene.top,
         bufferWidth: canvas.width,
         bufferHeight: canvas.height,
         dpr: devicePixelRatio,
@@ -82,8 +89,8 @@ export async function verifyResponsiveHost(page: Page) {
     expect(measured.top).toBeCloseTo(measured.wrapperTop, 0);
     expect(measured.height).toBeCloseTo(measured.wrapperHeight, 0);
     expect(measured.top).toBeGreaterThan(40); // progress bar owns its space
-    expect(measured.bufferWidth).toBe(Math.round(measured.width * 2));
-    expect(measured.bufferHeight).toBe(Math.round(measured.height * 2));
+    expect(measured.bufferWidth).toBe(Math.round(measured.sceneWidth * 2));
+    expect(measured.bufferHeight).toBe(Math.round(measured.sceneHeight * 2));
     expect(
       await root
         .locator("canvas.dynamic-canvas-stage")
@@ -127,10 +134,12 @@ export async function verifyResponsiveHost(page: Page) {
       .evaluate((element, original) => element === original, originalCanvas),
   ).toBe(true);
   const bounds = (await root.boundingBox())!;
-  await page.touchscreen.tap(
-    bounds.x + bounds.width * 0.775,
-    bounds.y + bounds.height * 0.85,
-  );
+  const visibleScene = (await root
+    .locator("[data-dynamic-scene]")
+    .boundingBox())!;
+  const responseX = visibleScene.x - bounds.x + visibleScene.width * 0.775;
+  const responseY = visibleScene.y - bounds.y + visibleScene.height * 0.85;
+  await page.touchscreen.tap(bounds.x + responseX, bounds.y + responseY);
   await expect(page.getByText("Experiment complete. Thank you!")).toBeVisible();
   const { session: persisted } = await loadPersistedSession(
     author.experimentId,
@@ -140,7 +149,7 @@ export async function verifyResponsiveHost(page: Page) {
     (value) => String(value.builder_id) === String(author.id("embedded")),
   )!;
   expect(row.response_device).toBe("touch");
-  expect(Number(row.response_canvas_x)).toBeCloseTo(bounds.width * 0.775, 0);
-  expect(Number(row.response_canvas_y)).toBeCloseTo(bounds.height * 0.85, 0);
+  expect(Number(row.response_canvas_x)).toBeCloseTo(responseX, 0);
+  expect(Number(row.response_canvas_y)).toBeCloseTo(responseY, 0);
   await runtime.assertNoRuntimeFailures();
 }

@@ -74,7 +74,7 @@ const RESPONSE_COMPONENT_MAP = {
 ### Trial Execution Flow
 
 1. Create main container (`#jspsych-dynamic-plugin-container`)
-2. Size transparent surfaces to the current runtime viewport
+2. Measure the available jsPsych host and fit the shared internal scene inside it
 3. Instantiate all stimulus and response components
 4. Sort by `zIndex` for layering
 5. Render all components in parallel
@@ -84,19 +84,18 @@ const RESPONSE_COMPONENT_MAP = {
 7. Collect data from all components (flat structure, prefixed by component name)
 8. Clean up components + observer
 
-### Screen Layout Resolution
+### Proportional Presentation
 
-The `resolveScreenLayout()` function picks the best-fitting layout for the current viewport:
-- Checks `config.screenLayouts` (map of `"WxH"` → layout config)
-- Uses width-axis Manhattan distance with 200px threshold
-- Falls back to default layout if no close match
+DynamicPlugin and the visual editor share an internal 2560 × 1450 scene defined in `shared/dynamic-layout/scene.ts`. All component positions, sizes and fonts are resolved there, then the complete scene is centered and scaled to fit the available host. The scale can exceed 1 on larger displays. Different aspect ratios leave space around the scene.
+
+The base size is an implementation constant, absent from trial/component configuration. Canvas buffers use the displayed size and device pixel ratio. Pointer hit testing uses scene coordinates, while exported response coordinates remain CSS pixels relative to the real host. See [the scaling SDD](dynamic-plugin-proportional-scaling-sdd.md).
 
 ### Visual Designer (Frontend)
 
 The `TrialDesigner` component provides:
 - Konva.js canvas for drag-and-drop component placement
 - Component properties panel
-- Screen layout presets for different viewport sizes
+- Device preview presets that fit the same composition without changing saved geometry
 - CSV column binding via UI
 
 When the designer is saved, the entire config replaces `columnMapping`.

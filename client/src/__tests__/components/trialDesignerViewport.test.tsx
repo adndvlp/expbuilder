@@ -118,7 +118,9 @@ function save(onSave: ReturnType<typeof vi.fn>) {
 function expectViewport(width: number, height: number) {
   const fit = Math.min(viewport.width / width, viewport.height / height, 1);
   const canvas = screen.getByTestId("canvas");
-  expect(Number(canvas.dataset.scale)).toBeCloseTo(fit);
+  expect(Number(canvas.dataset.scale)).toBeCloseTo(
+    fit * Math.min(width / 2560, height / 1450),
+  );
   expect(Number(canvas.dataset.viewportWidth)).toBeCloseTo(width * fit);
   expect(Number(canvas.dataset.viewportHeight)).toBeCloseTo(height * fit);
 }
@@ -145,22 +147,22 @@ describe("TrialDesigner screen preview", () => {
     vi.unstubAllGlobals();
   });
 
-  it("projects relative geometry for every preset without changing the export or autosaving", () => {
+  it("fits the same composition in every preset without changing the export or autosaving", () => {
     const mapping = trialMapping();
     const originalMapping = structuredClone(mapping);
     const { onSave, onAutoSave, setAppearance } = renderDesigner(mapping);
     const originalComponents = screen.getByTestId("canvas").textContent;
     const baseline = save(onSave);
     expect(JSON.parse(originalComponents!)[0]).toMatchObject({
-      x: expect.closeTo(792),
-      y: 360,
-      width: 360,
-      height: 144,
+      x: expect.closeTo(1408),
+      y: 580,
+      width: 640,
+      height: 256,
       textFontSize: 36,
     });
     expect(screen.getByTestId("canvas")).toHaveAttribute(
       "data-design-width",
-      "1440",
+      "2560",
     );
     const toggle = screen.getByRole("button", { name: "Grid" });
     expect(toggle).toHaveAttribute("aria-pressed", "true");
@@ -179,10 +181,10 @@ describe("TrialDesigner screen preview", () => {
       const projected = JSON.parse(
         screen.getByTestId("canvas").textContent!,
       )[0];
-      expect(projected.x).toBeCloseTo(preset.width * 0.55);
-      expect(projected.y).toBeCloseTo(preset.height * 0.4);
-      expect(projected.width).toBeCloseTo(preset.width * 0.25);
-      expect(projected.height).toBeCloseTo(preset.width * 0.1);
+      expect(projected.x).toBeCloseTo(2560 * 0.55);
+      expect(projected.y).toBeCloseTo(1450 * 0.4);
+      expect(projected.width).toBeCloseTo(2560 * 0.25);
+      expect(projected.height).toBeCloseTo(2560 * 0.1);
       expect(save(onSave)).toEqual(baseline);
     }
 
