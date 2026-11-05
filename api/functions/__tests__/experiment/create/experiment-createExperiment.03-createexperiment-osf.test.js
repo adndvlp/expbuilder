@@ -8,6 +8,7 @@
  * 500 generic, 200 happy path.
  */
 import { jest } from "@jest/globals";
+import fetchMock from "../../helpers/fetch-mock.js";
 import { makeFsMock, makeReq, makeRes, makeSnapshot } from "../../helpers/firestore-mock.js";
 
 const fs = makeFsMock();
@@ -69,6 +70,7 @@ const { createExperiment, apiDeleteExperiment } = await import(
 );
 
 beforeEach(() => {
+  fetchMock.__reset();
   fs.refsByPath.clear();
   fs.colsByPath.clear();
   fs.db.collection.mockClear();
@@ -110,7 +112,7 @@ describe("createExperiment — OSF", () => {
       "My Exp",
     );
 
-    const body = fs.getRef("experiments/EID").create.mock.calls[0][0];
+    const body = (await fs.getRef("experiments/EID").get()).data();
     expect(body.osfComponentId).toBe("comp9");
     expect(body.osfUploadLink).toBe(
       "https://files.osf.io/v1/resources/comp9/providers/osfstorage/",
@@ -119,54 +121,22 @@ describe("createExperiment — OSF", () => {
     expect(body).not.toHaveProperty("dropboxFolder");
   });
 
-  test("OSF without osfProjectId in user doc falls back to folderPath", async () => {
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({}),
-    });
-    mockCreateFolder.mockResolvedValueOnce({
-      success: true,
-      componentId: "comp9",
-      uploadLink: "u",
-    });
-
-    await createExperiment("EID", "My Exp", "u1", "osf");
-
-    expect(mockCreateFolder).toHaveBeenCalledWith(
-      "osf",
-      "tok",
-      "/ExpBuilder/My Exp", // fallback
-      "My Exp",
-    );
+  test("OSF project preparation runs after reservation and uses the actual project ID", async () => {
+    mockGetValidToken.mockResolvedValue({ success: true, access_token: "tok" });
+    fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: true, data: () => ({}) });
+    fetchMock.__setMockResponses([{ status: 201, body: { data: { id: "proj-new" } } }]);
+    mockCreateFolder.mockResolvedValueOnce({ success: true, componentId: "comp9", uploadLink: "u" });
+    const result = await createExperiment("EID", "My Exp", "u1", "osf");
+    expect(result.success).toBe(true);
+    expect(fs.getRef("users/u1").update).toHaveBeenCalledWith({ osfProjectId: "proj-new" });
+    expect(mockCreateFolder).toHaveBeenCalledWith("osf", "tok", "proj-new", "My Exp");
   });
-
-  // ─── BUG FIX (E-?: createExperiment defensive userDoc.exists) ───────────
-  test("OSF with missing user doc falls back to folderPath (no TypeError)", async () => {
-    // Repro: previously `userData = userDoc.data()` returned undefined when
-    // doc didn't exist; `userData.osfProjectId` then threw TypeError that
-    // was swallowed by the outer catch — surfaced as cryptic storageError
-    // and the experiment was created with storageProvider=osf but no
-    // componentId. `publishExperiment` already guarded with userDoc.exists;
-    // createExperiment now matches.
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
+  test("a missing OSF user leaves an inactive reservation without an invalid folder path", async () => {
     fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
-    mockCreateFolder.mockResolvedValueOnce({
-      success: true,
-      componentId: "comp9",
-      uploadLink: "u",
-    });
-
-    const r = await createExperiment("EID", "My Exp", "u1", "osf");
-
-    expect(r.success).toBe(true);
-    expect(r.folderCreated).toBe(true);
-    expect(r).not.toHaveProperty("storageError");
-    expect(mockCreateFolder).toHaveBeenCalledWith(
-      "osf",
-      "tok",
-      "/ExpBuilder/My Exp", // fell back cleanly
-      "My Exp",
-    );
+    const result = await createExperiment("EID", "My Exp", "u1", "osf");
+    expect(result.success).toBe(false);
+    expect(result.storageError).toContain("Connect your OSF account");
+    expect(mockCreateFolder).not.toHaveBeenCalled();
+    expect((await fs.getRef("experiments/EID").get()).data()).toMatchObject({ owner: "u1", active: false, provisioningState: "failed" });
   });
 });

@@ -97,7 +97,7 @@ describe("createExperiment — folder failure", () => {
     const r = await createExperiment("EID", "Exp", "u1", "dropbox");
     expect(r.success).toBe(false);
     expect(r.storageError).toBe("quota exceeded");
-    // All-or-nothing: no experiment document without its storage folder.
-    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
+    // A failed preparation retains its inactive ownership reservation.
+    expect((await fs.getRef("experiments/EID").get()).data()).toMatchObject({ owner: "u1", active: false, provisioningState: "failed" });
   });
 });

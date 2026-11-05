@@ -78,8 +78,8 @@ beforeEach(() => {
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
-  mockGetValidToken.mockReset();
-  mockCreateFolder.mockReset();
+  mockGetValidToken.mockReset().mockResolvedValue({ success: true, access_token: "storage-token" });
+  mockCreateFolder.mockReset().mockResolvedValue({ success: true, folderId: "folder" });
   mockDeleteFolder.mockReset();
   mockCreateRepositoryGithub.mockReset();
   mockUploadFileGithub.mockReset();
@@ -90,6 +90,7 @@ beforeEach(() => {
   mockGetGithubToken.mockReset();
   mockGetGithubOwner.mockReset();
   fetchMock.__reset();
+  fs.getRef("experiments/EID").storedData = { owner: "u1", storageProvider: "googledrive" };
 });
 
 // ─── Preflight + validation ────────────────────────────────────────────────
@@ -108,7 +109,7 @@ describe("publishExperiment — experimentID handling", () => {
     experimentRef.get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "googledrive",
+        owner: "u1", storageProvider: "googledrive",
         driveFolderPath: "/ExpBuilder/r",
         driveFolderId: "old-folder-id",
       }),
@@ -152,7 +153,7 @@ describe("publishExperiment — experimentID handling", () => {
     experimentRef.get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "googledrive",
+        owner: "u1", storageProvider: "googledrive",
         driveFolderPath: "/ExpBuilder/r",
         driveFolderId: "deleted-folder-id",
       }),
@@ -187,7 +188,7 @@ describe("publishExperiment — experimentID handling", () => {
   test("same provider + invalid token → 400 and publish stops", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: false, error: "expired" });
 
@@ -219,7 +220,7 @@ describe("publishExperiment — experimentID handling", () => {
   test("same provider + folder creation failure → 400", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "dropbox", dropboxFolder: "/ExpBuilder/r" }),
+      data: () => ({ owner: "u1", storageProvider: "dropbox", dropboxFolder: "/ExpBuilder/r" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "dboxtok" });
     mockCreateFolder.mockResolvedValueOnce({
@@ -255,7 +256,7 @@ describe("publishExperiment — experimentID handling", () => {
     experimentRef.get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "dropbox",
+        owner: "u1", storageProvider: "dropbox",
         dropboxFolder: "/ExpBuilder/r",
       }),
     });
@@ -296,7 +297,7 @@ describe("publishExperiment — experimentID handling", () => {
     experimentRef.get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "osf",
+        owner: "u1", storageProvider: "osf",
         title: "my experiment",
         osfComponentId: "comp-old",
       }),
@@ -346,7 +347,7 @@ describe("publishExperiment — experimentID handling", () => {
   test("same provider + OSF without project id → 400", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "osf", title: "my experiment" }),
+      data: () => ({ owner: "u1", storageProvider: "osf", title: "my experiment" }),
     });
     fs.getRef("users/u1").get.mockResolvedValueOnce({
       exists: true,
@@ -380,7 +381,7 @@ describe("publishExperiment — experimentID handling", () => {
   test("experiment exists + provider change googledrive→dropbox → createFolder + Firestore update", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "dboxtok" });
     mockCreateFolder.mockResolvedValueOnce({ success: true });
@@ -422,7 +423,7 @@ describe("publishExperiment — experimentID handling", () => {
   test("experiment exists + provider change to OSF + no projectId → creates OSF project via fetch, then createFolder", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "osftok" });
     fs.getRef("users/u1").get.mockResolvedValueOnce({
@@ -430,7 +431,7 @@ describe("publishExperiment — experimentID handling", () => {
       data: () => ({}),
     });
     fetchMock.__setMockResponses([
-      { status: 201, body: { data: { id: "newproj" } } },
+      { status: 201, body: { experimentID: "EID", data: { id: "newproj" } } },
     ]);
     mockCreateFolder.mockResolvedValueOnce({
       success: true,

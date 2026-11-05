@@ -109,7 +109,7 @@ describe("deleteExperiment — OSF (E-4 fix)", () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "osf",
+        owner: "u1", storageProvider: "osf",
         osfComponentId: "comp42",
         osfUploadLink: "https://files.osf.io/v1/resources/comp42/providers/osfstorage/",
       }),

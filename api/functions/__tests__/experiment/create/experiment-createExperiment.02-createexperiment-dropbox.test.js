@@ -102,7 +102,7 @@ describe("createExperiment — dropbox", () => {
       "My Exp",
     );
 
-    const body = fs.getRef("experiments/EID").create.mock.calls[0][0];
+    const body = (await fs.getRef("experiments/EID").get()).data();
     expect(body.dropboxFolder).toBe("/ExpBuilder/My Exp");
     expect(body).not.toHaveProperty("driveFolderId");
     expect(body).not.toHaveProperty("osfComponentId");

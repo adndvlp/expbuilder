@@ -108,7 +108,7 @@ describe("deleteExperiment — GitHub cleanup", () => {
   test("deletes GitHub repo using explicit repoName and reports repoDeleted", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     fs.getRef("users/u1").get.mockResolvedValueOnce({
       exists: true,
@@ -134,6 +134,7 @@ describe("deleteExperiment — GitHub cleanup", () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
+        owner: "u1",
         title: "repo-from-title",
         storageProvider: "googledrive",
       }),
@@ -166,7 +167,7 @@ describe("deleteExperiment — GitHub cleanup", () => {
   test("returns repoWarning for GitHub delete errors and thrown failures", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     fs.getRef("users/u1").get.mockResolvedValueOnce({
       exists: true,
@@ -187,7 +188,7 @@ describe("deleteExperiment — GitHub cleanup", () => {
 
     fs.getRef("experiments/E2").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     fs.getRef("users/u1").get.mockRejectedValueOnce(new Error("user lookup down"));
     mockEmptyCleanupCollections("E2");
@@ -199,7 +200,7 @@ describe("deleteExperiment — GitHub cleanup", () => {
   test("skips repository deletion when GitHub user lookup is not ok", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     fs.getRef("users/u1").get.mockResolvedValueOnce({
       exists: true,

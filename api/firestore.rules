@@ -18,23 +18,27 @@ service cloud.firestore {
         get(/databases/$(database)/documents/experiments/$(experimentId)).data.owner == request.auth.uid;
       allow write: if false;
     }
+    match /experiments/{experimentId}/publication_attempts/{attemptId} {
+      allow read: if request.auth != null &&
+        get(/databases/$(database)/documents/experiments/$(experimentId)).data.owner == request.auth.uid;
+      allow write: if false;
+    }
     match /experiments/{experimentId} {
-      function verifyFields(){
-        return request.resource.data.keys().hasOnly(['active', 'id', 'owner', 'title', 'sessions', 'useValidation', 'allowJSON', 'allowCSV', 'requiredFields', 'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions', 'currentCondition', 'batchConfig', 'recruitmentConfig', 'captchaConfig'])
-      }
       function isOwner(){
-        return request.auth.uid == resource.data.owner;
+        return request.auth != null && request.auth.uid == resource.data.owner;
       }
-      allow read: if(request.auth.uid != null) &&
-        resource.data.owner == request.auth.uid;
-      allow create: if(request.auth.uid != null) &&
-       verifyFields() &&
-        request.resource.data.owner == request.auth.uid;
-      allow update: if isOwner() && (
-        verifyFields() ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['batchConfig', 'recruitmentConfig', 'captchaConfig']))
-      );
-      allow delete: if(request.auth.uid == resource.data.owner);
+      allow read: if isOwner();
+      // Creation and deletion go through the backend's ownership/provisioning policy.
+      allow create, delete: if false;
+      // Transitional client writes until M02 migrates functional settings locally.
+      // Operational switches remain editable without allowing counters or identity changes.
+      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'active', 'title', 'useValidation', 'allowJSON', 'allowCSV', 'requiredFields',
+        'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions',
+        'batchConfig', 'recruitmentConfig', 'captchaConfig'
+      ]) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['active']) ||
+        ( (!('provisioningState' in resource.data) || resource.data.provisioningState == 'ready') &&
+          (!('initialPublicationPending' in resource.data) || resource.data.initialPublicationPending == false)));
     }
   }
 }

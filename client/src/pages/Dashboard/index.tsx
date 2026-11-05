@@ -16,6 +16,7 @@ type Experiment = {
 function Dashboard() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPromptModal, setShowPromptModal] = useState(false);
 
@@ -54,30 +55,49 @@ function Dashboard() {
     }
   };
 
-  // Delete experiment
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, localOnly = false) => {
+    const user = auth?.currentUser;
+    const scope = localOnly || !user ? "local" : "remote";
     const confirmed = window.confirm(
-      "Delete this experiment?\n\n" +
-        "WARNING: This will permanently delete the associated GitHub repository (if published).\n\n" +
-        "Your data storage folder (Dropbox, Google Drive, or OSF) will NOT be affected.",
+      scope === "remote"
+        ? "Delete this experiment? This will permanently delete the associated GitHub repository and data storage folder if published, as well as the local experiment."
+        : "Delete this local experiment? Its published resources will remain available.",
     );
     if (!confirmed) return;
     setLoading(true);
-
-    // Get the authenticated user's uid if available
-    const uid = auth?.currentUser?.uid ?? null;
-    const body = uid ? { uid } : {};
-    const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
+    setDeleteError("");
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (scope === "remote" && user)
+        headers.Authorization = `Bearer ${await user.getIdToken()}`;
+      const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({
+          scope,
+          ...(scope === "remote" && user ? { uid: user.uid } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(
+          result.message ||
+            result.error ||
+            "Could not delete the experiment. Local data was preserved.",
+        );
+      }
       setExperiments((prev) => prev.filter((exp) => exp.experimentID !== id));
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Could not delete the experiment",
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   // Navigate to builder
@@ -131,6 +151,7 @@ function Dashboard() {
           + Create experiment
         </button>
       </div>
+      {deleteError && <p role="alert">{deleteError}</p>}
       <div className="dashboard-list">
         {experiments.map((exp) => (
           <div
@@ -149,6 +170,18 @@ function Dashboard() {
               disabled={loading}
             >
               Delete
+            </button>
+            <button
+              type="button"
+              className="gradient-btn right"
+              style={{ float: "right", marginLeft: 16 }}
+              disabled={loading}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleDelete(exp.experimentID, true);
+              }}
+            >
+              Delete local copy
             </button>
           </div>
         ))}

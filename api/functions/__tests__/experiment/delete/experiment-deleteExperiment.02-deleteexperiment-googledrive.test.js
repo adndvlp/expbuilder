@@ -109,7 +109,7 @@ describe("deleteExperiment — googledrive", () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "googledrive",
+        owner: "u1", storageProvider: "googledrive",
         driveFolderPath: "/ExpBuilder/EID",
       }),
     });

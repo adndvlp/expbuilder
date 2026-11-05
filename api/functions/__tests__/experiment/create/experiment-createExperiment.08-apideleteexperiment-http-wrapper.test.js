@@ -125,7 +125,7 @@ describe("apiDeleteExperiment — HTTP wrapper", () => {
   test("200 happy path returns deleteExperiment result body", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive", driveFolderPath: "/x" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive", driveFolderPath: "/x" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
     mockDeleteFolder.mockResolvedValueOnce({ success: true });

@@ -86,16 +86,12 @@ beforeEach(() => {
 // createExperiment
 // ─────────────────────────────────────────────────────────────────────────
 
-describe("createExperiment — no uid (anonymous)", () => {
-  test("skips folder creation entirely, doc saved without owner field", async () => {
-    const r = await createExperiment("EID", "Exp", undefined, "googledrive");
-
-    expect(r.success).toBe(true);
-    expect(r.folderCreated).toBe(false);
+describe("createExperiment — no authenticated uid", () => {
+  test("rejects before creating a reservation or touching providers", async () => {
+    await expect(createExperiment("EID", "Exp", undefined, "googledrive")).rejects.toMatchObject({ code: "AUTH_REQUIRED", status: 401 });
     expect(mockGetValidToken).not.toHaveBeenCalled();
     expect(mockCreateFolder).not.toHaveBeenCalled();
-
-    const body = fs.getRef("experiments/EID").create.mock.calls[0][0];
-    expect(body).not.toHaveProperty("owner");
+    expect(mockWriteLog).not.toHaveBeenCalled();
+    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
   });
 });

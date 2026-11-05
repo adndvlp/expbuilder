@@ -152,6 +152,7 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
 
     await request(app)
       .delete('/api/delete-experiment/E1')
+      .set('Authorization', 'Bearer test-token')
       .send({ uid: 'user-1' })
       .expect(200)
 
@@ -162,22 +163,26 @@ describe('DELETE /api/delete-experiment/:experimentID', () => {
     global.fetch = originalFetch
   })
 
-  test('continues when Firebase delete fails or throws', async () => {
+  test('preserves local data when Firebase delete fails or throws', async () => {
     const originalFetch = global.fetch
     process.env.FIREBASE_URL = 'https://firebase.example.com'
     global.fetch = jest.fn()
-      .mockResolvedValueOnce({ json: async () => ({ success: false, message: 'denied' }) })
+      .mockResolvedValueOnce({ status: 403, json: async () => ({ success: false, message: 'denied' }) })
       .mockRejectedValueOnce(new Error('network'))
 
     const first = await freshApp()
     first.db.data.experiments.push({ experimentID: 'E1', name: 'First', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     await first.db.write()
-    await request(first.app).delete('/api/delete-experiment/E1').send({ uid: 'user-1' }).expect(200)
+    await request(first.app).delete('/api/delete-experiment/E1').set('Authorization', 'Bearer test-token').send({ uid: 'user-1' }).expect(403)
+    await first.db.read()
+    expect(first.db.data.experiments).toHaveLength(1)
 
     const second = await freshApp()
     second.db.data.experiments.push({ experimentID: 'E2', name: 'Second', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     await second.db.write()
-    await request(second.app).delete('/api/delete-experiment/E2').send({ uid: 'user-1' }).expect(200)
+    await request(second.app).delete('/api/delete-experiment/E2').set('Authorization', 'Bearer test-token').send({ uid: 'user-1' }).expect(503)
+    await second.db.read()
+    expect(second.db.data.experiments).toHaveLength(1)
     global.fetch = originalFetch
   })
 })

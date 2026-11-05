@@ -108,13 +108,13 @@ describe("createExperiment — googledrive", () => {
 
     const ref = fs.getRef("experiments/EID");
     expect(ref.create).toHaveBeenCalledTimes(1);
-    const body = ref.create.mock.calls[0][0];
+    const body = (await ref.get()).data();
     expect(body).toMatchObject({
       title: "My Exp",
       storageProvider: "googledrive",
       driveFolderPath: "/ExpBuilder/My Exp",
       driveFolderId: "fldX",
-      active: true,
+      active: false,
       sessions: 0,
       owner: "u1",
       id: "EID",

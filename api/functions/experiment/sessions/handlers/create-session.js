@@ -1,3 +1,8 @@
+import {
+  assertExperimentPrepared,
+  requireExperimentPrepared,
+  sendExperimentAccessError,
+} from "../../access.js";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
@@ -9,8 +14,6 @@ import MESSAGES from "../../api/messages.js";
  */
 export async function handleCreateSession(req, res, experimentID, sessionId) {
   try {
-    await writeLog(experimentID, "createSession");
-
     const { batchSize, sessionName } = req.body;
     console.log(
       `[CREATE SESSION] batchSize received: ${batchSize} (type: ${typeof batchSize})`,
@@ -26,6 +29,8 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
     }
 
     const exp_data = exp_doc.data();
+    if (!requireExperimentPrepared(exp_data, res)) return;
+    await writeLog(experimentID, "createSession");
     if (!exp_data.active) {
       res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
       return;
@@ -79,6 +84,7 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
       participantNumber = await db.runTransaction(async (t) => {
         const exp_doc = await t.get(exp_doc_ref);
         const exp_data_txn = exp_doc.data();
+        assertExperimentPrepared(exp_data_txn);
         const currentCondition = exp_data_txn.currentCondition || 0;
 
         let nextCondition;
@@ -99,6 +105,7 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
         return currentCondition;
       });
     } catch (error) {
+      if (sendExperimentAccessError(res, error)) return;
       console.error("Error getting condition:", error);
       res.status(400).json(MESSAGES.UNKNOWN_ERROR_GETTING_CONDITION);
       return;
@@ -167,6 +174,7 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
       participantNumber: participantNumber,
     });
   } catch (error) {
+    if (sendExperimentAccessError(res, error)) return;
     console.error("Error in handleCreateSession:", error);
     res.status(500).json({
       success: false,

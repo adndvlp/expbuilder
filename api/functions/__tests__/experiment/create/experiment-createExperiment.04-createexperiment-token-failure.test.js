@@ -95,7 +95,7 @@ describe("createExperiment — token failure", () => {
     expect(r.success).toBe(false);
     expect(r.storageError).toBe("Token error: expired");
     expect(mockCreateFolder).not.toHaveBeenCalled();
-    // All-or-nothing: no experiment document without its storage folder.
-    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
+    // A failed preparation retains its inactive ownership reservation.
+    expect((await fs.getRef("experiments/EID").get()).data()).toMatchObject({ owner: "u1", active: false, provisioningState: "failed" });
   });
 });

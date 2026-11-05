@@ -44,7 +44,7 @@ describe("apiCondition — error branches", () => {
     await apiCondition(makeReq({ body: { experimentID: "EID" } }), res);
     expect(res.statusCode).toBe(400);
     expect(res.jsonBody.error).toBe("EXPERIMENT_NOT_FOUND");
-    expect(mockWriteLog).toHaveBeenCalledWith("EID", "getCondition");
+    expect(mockWriteLog).not.toHaveBeenCalled();
   });
 
   test("400 CONDITION_ASSIGNMENT_NOT_ACTIVE when flag off", async () => {

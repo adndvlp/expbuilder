@@ -20,11 +20,11 @@ export function makeFsMock() {
       const ref = {
         id: path.split("/").pop(),
         path,
-        get: jest.fn(),
-        set: jest.fn().mockResolvedValue(undefined),
-        create: jest.fn().mockResolvedValue(undefined),
-        update: jest.fn().mockResolvedValue(undefined),
-        delete: jest.fn().mockResolvedValue(undefined),
+        get: jest.fn(async () => ({ exists: ref.storedData !== undefined, data: () => ref.storedData })),
+        set: jest.fn(async (data, options) => { ref.storedData = options?.merge ? { ...ref.storedData, ...data } : data; }),
+        create: jest.fn(async (data) => { ref.storedData = data; }),
+        update: jest.fn(async (data) => { ref.storedData = { ...ref.storedData, ...data }; }),
+        delete: jest.fn(async () => { ref.storedData = undefined; }),
       };
       // Self-reference so `snapshot.docs[i].ref` patterns work
       ref.ref = ref;
@@ -58,7 +58,12 @@ export function makeFsMock() {
     batch: jest.fn(() => makeBatchMock()),
     runTransaction: jest.fn(async (fn) => {
       const t = {
-        get: jest.fn(async (ref) => await ref.get()),
+        get: jest.fn(async (ref) => {
+          const snapshot = await ref.get();
+          if (snapshot?.exists) ref.storedData = snapshot.data();
+          return snapshot;
+        }),
+        create: jest.fn((ref, data) => ref.create(data)),
         set: jest.fn((ref, data, opts) => ref.set(data, opts)),
         update: jest.fn((ref, data) => ref.update(data)),
         delete: jest.fn((ref) => ref.delete()),

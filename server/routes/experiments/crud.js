@@ -14,7 +14,10 @@ function receiptBelongsToExperiment(receipt, experimentID) {
     return String(receipt.experimentId) === String(experimentID);
   }
   try {
-    return String(JSON.parse(receipt.payload || "{}").experimentId) === String(experimentID);
+    return (
+      String(JSON.parse(receipt.payload || "{}").experimentId) ===
+      String(experimentID)
+    );
   } catch {
     return false;
   }
@@ -84,13 +87,36 @@ router.post("/api/create-experiment", async (req, res) => {
 router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    const { uid } = req.body;
+    const { uid, scope = uid ? "remote" : "local" } = req.body;
+    if (!["remote", "local"].includes(scope)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          code: "INVALID_DELETE_SCOPE",
+          error: "Choose local or remote deletion",
+        });
+    }
 
     await db.read();
     ensureDbData();
     const experiment = db.data.experiments.find(
       (e) => e.experimentID === experimentID,
     );
+
+    // Authorize and complete remote deletion before destroying any local recovery material.
+    if (scope === "remote") {
+      const remote = await deleteFromFirebase(
+        experiment,
+        experimentID,
+        uid,
+        req.get("authorization"),
+      );
+      if (!remote.success) return res.status(remote.status).json(remote.body);
+      // Other local mutations may have completed while the provider request was in flight.
+      await db.read();
+      ensureDbData();
+    }
 
     const experimentIndex = db.data.experiments.findIndex(
       (e) => e.experimentID === experimentID,
@@ -139,60 +165,75 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
       fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
     }
 
-    if (uid) {
-      await deleteFromFirebase(experiment, experimentID, uid);
-    }
-
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-async function deleteFromFirebase(experiment, experimentID, uid) {
+async function deleteFromFirebase(
+  experiment,
+  experimentID,
+  uid,
+  authorization,
+) {
+  if (!/^Bearer\s+\S+/i.test(authorization || "")) {
+    return {
+      success: false,
+      status: 401,
+      body: {
+        success: false,
+        code: "AUTH_REQUIRED",
+        error: "Sign in before deleting published resources",
+      },
+    };
+  }
+  const functionsUrl = resolveFirebaseFunctionsUrl();
+  if (!functionsUrl) {
+    return {
+      success: false,
+      status: 503,
+      body: {
+        success: false,
+        code: "BACKEND_UNAVAILABLE",
+        error: "Firebase Functions URL is not configured",
+      },
+    };
+  }
   try {
-    const sanitizedRepoName = experiment?.name
+    const repoName = experiment?.name
       ? experiment.name
           .replace(/\s+/g, "-")
           .replace(/[^a-zA-Z0-9-_]/g, "")
           .toLowerCase()
       : experimentID;
-
-    const functionsUrl = resolveFirebaseFunctionsUrl();
-    if (!functionsUrl) {
-      console.warn("Warning: Firebase experiment deletion skipped: Functions URL is not configured");
-      return;
-    }
-    const firebaseUrl = `${functionsUrl}/apiDeleteExperiment`;
-    const firebaseResponse = await fetch(firebaseUrl, {
+    const response = await fetch(`${functionsUrl}/apiDeleteExperiment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: authorization,
       },
-      body: JSON.stringify({
-        experimentID,
-        uid,
-        repoName: sanitizedRepoName,
-      }),
+      body: JSON.stringify({ experimentID, uid, repoName }),
     });
-
-    const firebaseData = await firebaseResponse.json();
-
-    if (firebaseData.success) {
-      console.log("Firebase experiment deleted successfully");
-      if (firebaseData.folderDeleted) console.log("Storage folder deleted");
-      if (firebaseData.repoDeleted) console.log("GitHub repository deleted");
-    } else {
-      console.warn(
-        "Warning: Firebase experiment deletion failed:",
-        firebaseData.message,
-      );
+    const body = await response.json();
+    if (
+      body.success ||
+      (response.status === 404 && body.code === "EXPERIMENT_NOT_FOUND")
+    ) {
+      return { success: true };
     }
-  } catch (firebaseError) {
-    console.error(
-      "Error calling Firebase delete experiment:",
-      firebaseError.message,
-    );
+    return { success: false, status: response.status || 400, body };
+  } catch (error) {
+    console.error("Error calling Firebase delete experiment:", error.message);
+    return {
+      success: false,
+      status: 503,
+      body: {
+        success: false,
+        code: "BACKEND_UNAVAILABLE",
+        error: "Could not verify remote deletion. Local data was preserved.",
+      },
+    };
   }
 }
 

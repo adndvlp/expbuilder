@@ -1,3 +1,4 @@
+import { requireExperimentPrepared } from "../../access.js";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
@@ -44,10 +45,14 @@ function sanitizeForFirestore(obj) {
 /**
  * Función auxiliar para agregar resultado (guarda en Firestore temporalmente)
  */
-export async function handleAppendResult(req, res, experimentID, sessionId, data) {
+export async function handleAppendResult(
+  req,
+  res,
+  experimentID,
+  sessionId,
+  data,
+) {
   try {
-    await writeLog(experimentID, "appendResult");
-
     const exp_doc_ref = db.collection("experiments").doc(experimentID);
     const exp_doc = await exp_doc_ref.get();
 
@@ -57,6 +62,8 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
     }
 
     const exp_data = exp_doc.data();
+    if (!requireExperimentPrepared(exp_data, res)) return;
+    await writeLog(experimentID, "appendResult");
     if (!exp_data.active) {
       res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
       return;
@@ -112,7 +119,11 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
         validationResult =
           missing.length === 0
             ? { valid: true }
-            : { valid: false, reason: "MISSING_FIELDS", missingFields: missing };
+            : {
+                valid: false,
+                reason: "MISSING_FIELDS",
+                missingFields: missing,
+              };
       }
       if (!validationResult.valid) {
         // Misc-3: surface validator reason + missing fields in the 400 body.

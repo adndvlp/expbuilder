@@ -1,3 +1,4 @@
+import { requireExperimentPrepared } from "../../access.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { Parser } from "json2csv";
@@ -24,8 +25,6 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    await writeLog(experimentID, "saveCompleteExperiment");
-
     const exp_doc_ref = db.collection("experiments").doc(experimentID);
     const exp_doc = await exp_doc_ref.get();
 
@@ -35,6 +34,8 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
     }
 
     const exp_data = exp_doc.data();
+    if (!requireExperimentPrepared(exp_data, res)) return;
+    await writeLog(experimentID, "saveCompleteExperiment");
     if (!exp_data.active) {
       res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
       return;

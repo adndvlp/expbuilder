@@ -108,7 +108,7 @@ describe("deleteExperiment — subcollection cleanup", () => {
   test("walks session_metadata, deletes participant_files + trials, then meta docs", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive", driveFolderPath: "/x" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive", driveFolderPath: "/x" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
     mockDeleteFolder.mockResolvedValueOnce({ success: true });
@@ -154,7 +154,7 @@ describe("deleteExperiment — subcollection cleanup", () => {
   test("paginates root subcollection deletes until a short page is reached", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ storageProvider: "googledrive" }),
+      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
     });
     fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
 

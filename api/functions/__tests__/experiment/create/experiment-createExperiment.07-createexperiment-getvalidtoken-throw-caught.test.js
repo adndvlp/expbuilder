@@ -93,7 +93,7 @@ describe("createExperiment — getValidToken throw caught", () => {
     const r = await createExperiment("EID", "Exp", "u1", "googledrive");
     expect(r.success).toBe(false);
     expect(r.storageError).toBe("network down");
-    expect(fs.getRef("experiments/EID").create).not.toHaveBeenCalled();
+    expect((await fs.getRef("experiments/EID").get()).data()).toMatchObject({ owner: "u1", active: false, provisioningState: "failed" });
   });
 });
 

@@ -138,7 +138,7 @@ async function publishToGithub(payload, authorization) {
     },
     body: JSON.stringify(payload),
   });
-  return githubResponse.json();
+  return { status: githubResponse.status, data: await githubResponse.json() };
 }
 
 /* istanbul ignore next -- publish filesystem/Firebase permutations are covered by route integration tests. */
@@ -200,15 +200,6 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       }
     }
 
-    if (experiment.storage !== normalizedStorage) {
-      experiment.storage = normalizedStorage;
-      experiment.updatedAt = new Date().toISOString();
-      await db.write();
-      console.log(
-        `Storage updated to ${normalizedStorage} for experiment ${experimentID}`,
-      );
-    }
-
     const sanitizedRepoName = experiment.name
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9-_]/g, "")
@@ -254,7 +245,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     const htmlContent = $.html();
 
     try {
-      const githubData = await publishToGithub(
+      const { data: githubData, status: githubStatus } = await publishToGithub(
         {
           uid,
           repoName: sanitizedRepoName,
@@ -269,15 +260,14 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
 
       if (githubData.success) {
+        experiment.storage = normalizedStorage;
         console.log(
           "Experiment published to GitHub Pages:",
           githubData.pagesUrl,
         );
-        if (githubData.pagesUrl) {
-          experiment.pagesUrl = githubData.pagesUrl;
-          experiment.updatedAt = new Date().toISOString();
-          await db.write();
-        }
+        if (githubData.pagesUrl) experiment.pagesUrl = githubData.pagesUrl;
+        experiment.updatedAt = new Date().toISOString();
+        await db.write();
         res.json({
           success: true,
           message: "Experiment published successfully",
@@ -286,8 +276,9 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
         });
       } else {
         console.warn("Warning: GitHub publish failed:", githubData.message);
-        res.status(400).json({
+        res.status(githubStatus >= 400 ? githubStatus : 400).json({
           success: false,
+          ...(githubData.code && { code: githubData.code }),
           error: githubData.message || "Failed to publish experiment",
         });
       }
@@ -300,7 +291,9 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     }
   } catch (error) {
     console.error(`Error publishing experiment: ${error.message}`);
-    res.status(error.status || 500).json({ success: false, error: error.message });
+    res
+      .status(error.status || 500)
+      .json({ success: false, error: error.message });
   }
 });
 

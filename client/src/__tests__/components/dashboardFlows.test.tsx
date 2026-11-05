@@ -82,7 +82,7 @@ describe("PromptModal", () => {
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (auth as any).currentUser = { uid: "user-123" };
+    (auth as any).currentUser = { uid: "user-123", getIdToken: vi.fn(async () => "firebase-id-token") };
     vi.spyOn(window, "confirm").mockReturnValue(true);
     globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "http://localhost:3000/api/load-experiments") {
@@ -198,8 +198,8 @@ describe("Dashboard", () => {
         "http://localhost:3000/api/delete-experiment/exp-1",
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid: "user-123" }),
+          headers: { "Content-Type": "application/json", Authorization: "Bearer firebase-id-token" },
+          body: JSON.stringify({ scope: "remote", uid: "user-123" }),
         },
       );
     });
@@ -274,10 +274,35 @@ describe("Dashboard", () => {
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ scope: "local" }),
         },
       );
     });
     expect(screen.getByText("Keep Study")).toBeInTheDocument();
   });
+  it("deletes only the local copy when explicitly selected, even while signed in", async () => {
+    render(<Dashboard />);
+    await screen.findByText("Memory Task");
+    fireEvent.click(screen.getAllByText("Delete local copy")[0]);
+    await waitFor(() => expect(screen.queryByText("Memory Task")).not.toBeInTheDocument());
+    expect(fetchMock()).toHaveBeenCalledWith("http://localhost:3000/api/delete-experiment/exp-1", {
+      method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scope: "local" }),
+    });
+    expect((auth as any).currentUser.getIdToken).not.toHaveBeenCalled();
+  });
+
+  it("shows a remote ownership error and preserves the experiment", async () => {
+    const previous = fetchMock().getMockImplementation()!;
+    fetchMock().mockImplementation(async (input, init) => {
+      if (init?.method === "DELETE") return okJson({ code: "EXPERIMENT_FORBIDDEN", message: "You do not own this experiment" }, false);
+      return previous(input, init);
+    });
+    render(<Dashboard />);
+    await screen.findByText("Memory Task");
+    fireEvent.click(screen.getAllByText("Delete")[0]);
+    expect(await screen.findByRole("alert")).toHaveTextContent("You do not own this experiment");
+    expect(screen.getByText("Memory Task")).toBeInTheDocument();
+    expect(screen.getByText("+ Create experiment")).not.toBeDisabled();
+  });
+
 });

@@ -1,3 +1,8 @@
+import {
+  getOwnedExperiment,
+  requireExperimentPrepared,
+  sendExperimentAccessError,
+} from "../../access.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../../app.js";
@@ -33,20 +38,18 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
   ]);
   if (ADMIN_ACTIONS.has(action)) {
     const { requireAuth } = await import("../../../utils/auth.js");
-    const authedUid = await requireAuth(req, res, { requireMatchingUid: false });
+    const authedUid = await requireAuth(req, res, {
+      requireMatchingUid: false,
+    });
     if (!authedUid) return;
-    // Verify the authed user owns this experiment.
-    const expDoc = await db.collection("experiments").doc(experimentID).get();
-    if (!expDoc.exists) {
-      res.status(404).json({ success: false, message: "Experiment not found" });
-      return;
-    }
-    if (expDoc.data().owner && expDoc.data().owner !== authedUid) {
-      res.status(403).json({
-        success: false,
-        message: "Authenticated user does not own this experiment",
-      });
-      return;
+    try {
+      await getOwnedExperiment(experimentID, authedUid);
+    } catch (error) {
+      if (sendExperimentAccessError(res, error)) return;
+      console.error("Could not authorize session administration:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
     }
   }
 
@@ -65,6 +68,13 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
 
   if (action === "finish" && experimentID && sessionId) {
     try {
+      const experiment = await db
+        .collection("experiments")
+        .doc(experimentID)
+        .get();
+      if (!experiment.exists)
+        return res.status(400).json(MESSAGES.EXPERIMENT_NOT_FOUND);
+      if (!requireExperimentPrepared(experiment.data(), res)) return;
       const result = await finalizeSession(experimentID, sessionId);
       res.status(200).json(result);
     } catch (error) {
@@ -139,8 +149,6 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
  * Función auxiliar para guardar archivo completo (legacy)
  */
 async function handlePostFile(req, res, experimentID, data, filename) {
-  await writeLog(experimentID, "saveData");
-
   const exp_doc_ref = db.collection("experiments").doc(experimentID);
   const exp_doc = await exp_doc_ref.get();
 
@@ -150,6 +158,8 @@ async function handlePostFile(req, res, experimentID, data, filename) {
   }
 
   const exp_data = exp_doc.data();
+  if (!requireExperimentPrepared(exp_data, res)) return;
+  await writeLog(experimentID, "saveData");
   if (!exp_data.active) {
     res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
     return;

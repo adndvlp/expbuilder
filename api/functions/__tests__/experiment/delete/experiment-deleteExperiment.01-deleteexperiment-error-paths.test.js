@@ -107,16 +107,14 @@ function mockEmptyCleanupCollections(experimentID = "EID") {
 describe("deleteExperiment — error paths", () => {
   test("throws EXPERIMENT_NOT_FOUND when exp doc missing", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({ exists: false });
-    await expect(deleteExperiment("EID", "u1")).rejects.toThrow(
-      "EXPERIMENT_NOT_FOUND",
-    );
+    await expect(deleteExperiment("EID", "u1")).rejects.toMatchObject({ code: "EXPERIMENT_NOT_FOUND", status: 404 });
   });
 
   test("continues with storageWarning when token lookup fails", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "dropbox",
+        owner: "u1", storageProvider: "dropbox",
         dropboxFolder: "/ExpBuilder/EID",
       }),
     });
@@ -136,7 +134,7 @@ describe("deleteExperiment — error paths", () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "dropbox",
+        owner: "u1", storageProvider: "dropbox",
         dropboxFolder: "/ExpBuilder/EID",
       }),
     });
@@ -155,7 +153,7 @@ describe("deleteExperiment — error paths", () => {
     fs.getRef("experiments/E2").get.mockResolvedValueOnce({
       exists: true,
       data: () => ({
-        storageProvider: "googledrive",
+        owner: "u1", storageProvider: "googledrive",
         driveFolderPath: "/ExpBuilder/E2",
       }),
     });

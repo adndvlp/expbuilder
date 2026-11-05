@@ -1,6 +1,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { requireAuth } from "../../utils/auth.js";
 import { deleteExperiment } from "../delete.js";
+import { sendExperimentAccessError } from "../access.js";
 
 /**
  * Endpoint HTTP para eliminar un experimento
@@ -33,6 +34,7 @@ export const apiDeleteExperiment = onRequest(
       const result = await deleteExperiment(experimentID, authedUid, repoName);
       res.status(200).json(result);
     } catch (error) {
+      if (sendExperimentAccessError(res, error)) return;
       if (error.message === "EXPERIMENT_NOT_FOUND") {
         res.status(404).json({
           success: false,

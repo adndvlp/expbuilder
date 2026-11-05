@@ -1,3 +1,4 @@
+import { requireExperimentPrepared } from "../../access.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { db } from "../../../app.js";
 import { getValidToken } from "../../../oauth/index.js";
@@ -75,7 +76,7 @@ export const uploadParticipantFile = onRequest(
       }
       // Estimate decoded bytes from the base64 portion of the data-URL.
       const base64Portion = file.data.includes(",")
-        ? file.data.split(",")[1] ?? ""
+        ? (file.data.split(",")[1] ?? "")
         : file.data;
       const padding = (base64Portion.match(/=+$/) || [""])[0].length;
       const decodedBytes = Math.floor((base64Portion.length * 3) / 4) - padding;
@@ -104,6 +105,7 @@ export const uploadParticipantFile = onRequest(
     }
 
     const expData = expDoc.data();
+    if (!requireExperimentPrepared(expData, res)) return;
     const storageProvider = expData.storageProvider || "googledrive";
     const ownerUid = expData.owner;
 

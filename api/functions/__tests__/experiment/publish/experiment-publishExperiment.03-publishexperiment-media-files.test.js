@@ -78,8 +78,8 @@ beforeEach(() => {
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
-  mockGetValidToken.mockReset();
-  mockCreateFolder.mockReset();
+  mockGetValidToken.mockReset().mockResolvedValue({ success: true, access_token: "storage-token" });
+  mockCreateFolder.mockReset().mockResolvedValue({ success: true, folderId: "folder" });
   mockDeleteFolder.mockReset();
   mockCreateRepositoryGithub.mockReset();
   mockUploadFileGithub.mockReset();
@@ -90,6 +90,7 @@ beforeEach(() => {
   mockGetGithubToken.mockReset();
   mockGetGithubOwner.mockReset();
   fetchMock.__reset();
+  fs.getRef("experiments/EID").storedData = { owner: "u1", storageProvider: "googledrive" };
 });
 
 // ─── Preflight + validation ────────────────────────────────────────────────
@@ -128,7 +129,7 @@ describe("publishExperiment — media files", () => {
     const res = makeRes();
     await publishExperiment(
       makeReq({
-        body: {
+        body: { experimentID: "EID",
           uid: "u1",
           repoName: "r",
           htmlContent: "<h/>",

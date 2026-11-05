@@ -78,8 +78,8 @@ beforeEach(() => {
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
-  mockGetValidToken.mockReset();
-  mockCreateFolder.mockReset();
+  mockGetValidToken.mockReset().mockResolvedValue({ success: true, access_token: "storage-token" });
+  mockCreateFolder.mockReset().mockResolvedValue({ success: true, folderId: "folder" });
   mockDeleteFolder.mockReset();
   mockCreateRepositoryGithub.mockReset();
   mockUploadFileGithub.mockReset();
@@ -90,6 +90,7 @@ beforeEach(() => {
   mockGetGithubToken.mockReset();
   mockGetGithubOwner.mockReset();
   fetchMock.__reset();
+  fs.getRef("experiments/EID").storedData = { owner: "u1", storageProvider: "googledrive" };
 });
 
 // ─── Preflight + validation ────────────────────────────────────────────────
@@ -115,7 +116,7 @@ describe("publishExperiment — preflight + validation", () => {
     // parameters" check now only covers repoName/htmlContent.
     const res = makeRes();
     await publishExperiment(
-      makeReq({ body: { repoName: "r", htmlContent: "<h/>" } }),
+      makeReq({ body: { experimentID: "EID", repoName: "r", htmlContent: "<h/>" } }),
       res,
     );
     // requireAuth is mocked to return "u1"; this request reaches the
@@ -126,7 +127,7 @@ describe("publishExperiment — preflight + validation", () => {
   test("400 when repoName missing", async () => {
     const res = makeRes();
     await publishExperiment(
-      makeReq({ body: { uid: "u", htmlContent: "<h/>" } }),
+      makeReq({ body: { experimentID: "EID", uid: "u", htmlContent: "<h/>" } }),
       res,
     );
     expect(res.statusCode).toBe(400);
@@ -135,7 +136,7 @@ describe("publishExperiment — preflight + validation", () => {
   test("400 when htmlContent missing", async () => {
     const res = makeRes();
     await publishExperiment(
-      makeReq({ body: { uid: "u", repoName: "r" } }),
+      makeReq({ body: { experimentID: "EID", uid: "u", repoName: "r" } }),
       res,
     );
     expect(res.statusCode).toBe(400);
