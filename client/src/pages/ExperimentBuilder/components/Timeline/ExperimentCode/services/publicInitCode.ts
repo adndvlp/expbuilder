@@ -60,55 +60,40 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
 
       on_data_update: async function (data) {
         const persistenceToken = window.ExpBuilderPersistence.start();
+        if (!window.ExpBuilderNavigation.isTransitionPending()) {
+          jsPsych.pauseExperiment();
+          publicOwnsPause = true;
+        }
+        let backed = false;
+        let queued = false;
         try {
-
-        // Agregar timestamp del cliente para ordenamiento correcto
-        data.clientTimestamp = Date.now();
-        data.sessionId = trialSessionId;
-        data.experimentID = "${experimentID}";
-        if (data.builder_id !== undefined && data.builder_id !== null) {
-          localStorage.setItem(
-            _publicStorageKeys.resumeTrial,
-            JSON.stringify(_createResumeCheckpoint(data))
-          );
-        }
-
-        // Actualizar estado a 'in-progress' en la primera actualización
-        if (data.trial_index === 0) {
-          sessionRef.update({
-            state: 'in-progress',
-            lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
-          }).catch(err => console.error('Error updating state:', err));
-        }
-
-        if (BATCH_CONFIG.useIndexedDB) {
-          // --- CON IndexedDB: Batching habilitado ---
-          try {
-            await TrialDB.add(data);
-            window.ExpBuilderNavigation.onTrialPersisted(data);
-          } catch (error) {
-            console.error('Error saving to IndexedDB:', error);
-            return;
+          data.clientTimestamp = Date.now();
+          data.sessionId = trialSessionId;
+          data.experimentID = "${experimentID}";
+          const checkpoint = data.builder_id !== undefined && data.builder_id !== null
+            ? _createResumeCheckpoint(data) : null;
+          if (data.trial_index === 0) {
+            sessionRef.update({ state: 'in-progress', lastUpdate: window.firebase.database.ServerValue.TIMESTAMP })
+              .catch(error => console.error('Error updating state:', error));
           }
-
-          // Solo enviar batches si batchSize > 0
-          if (BATCH_CONFIG.size > 0) {
-            await _flushPublicBatches();
-          }
-          // Si batchSize = 0, solo acumular en IndexedDB, enviar TODO en on_finish
-        } else {
-          // --- SIN IndexedDB: Enviar trial por trial a Firestore ---
-          try {
-            await _queuePublicDirectEvent(data);
-            window.ExpBuilderNavigation.onTrialPersisted(data);
-          } catch (error) {
-            console.error('Error sending trial:', error);
-          }
-        }
-
-        ${branchingEvaluation}${publicParams.on_data_update?.trim() ? `\n\n        // --- User code (on_data_update) ---\n        ${publicParams.on_data_update.trim()}` : ""}
+          const persistence = _persistPublicResponse(data, checkpoint);
+          queued = true;
+          await persistence;
+          backed = true;
+          ${branchingEvaluation}${publicParams.on_data_update?.trim() ? `\n        // --- User code (on_data_update) ---\n        ${publicParams.on_data_update.trim()}` : ""}
+        } catch (error) {
+          if (!queued) publicPreparationError = error;
+          _publicPersistenceError(error);
         } finally {
           window.ExpBuilderPersistence.finish(persistenceToken);
+          if (backed) _resumePublicAfterBackup();
+        }
+        if (backed && BATCH_CONFIG.useIndexedDB && BATCH_CONFIG.size > 0) {
+          try { await _flushPublicBatches(); }
+          catch (error) {
+            console.error('Batch retained for retry:', error);
+            window.ExpBuilderRuntime?.reportError(error, { source: 'public-batch' });
+          }
         }
       },
 `;

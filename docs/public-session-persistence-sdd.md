@@ -1,6 +1,6 @@
 # SDD: persistencia y recuperación de sesiones públicas
 
-Estado: punto 1 implementado y verificado localmente mediante TDD. Puntos 2–5 pendientes. Evidencia y límites en la sección 16.
+Estado: puntos 1 y 2 implementados y verificados localmente mediante TDD. Puntos 3–5 pendientes. Evidencia y límites en las secciones 16 y 17.
 
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
@@ -10,7 +10,7 @@ Conseguir que las respuestas de un experimento publicado lleguen a su proveedor 
 
 El diseño cubre IndexedDB activado y desactivado; lotes `0`, `1` y `N`; Google Drive, Dropbox y OSF; finalización normal; desconexión; retoma; expiración; recuperación posterior y republicación. Incluye los ocho escenarios del [informe de investigación](investigaciones/indexeddb-2026-11-05.md).
 
-Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementó únicamente el punto 1 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
+Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1 y 2 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
 
 El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su servidor no se sustituyen incidentalmente. Una extracción compartida debe conservar sus garantías y pruebas. La lógica de trials, loops, condiciones y branching se integra con la persistencia; no se redefine su significado.
 
@@ -401,3 +401,59 @@ El recorrido con emuladores y proveedores cloud completos de la sección 12 sigu
 No se inició el punto 2. Siguen pendientes la asignación duradera completa para todos los modos, el checkpoint atómico con su progreso de navegación, la barrera que impida cerrar antes del último ensayo y la verificación del conjunto esperado de cierre. El lote 0 mantiene por ahora su endpoint directo; solo se reforzaron su comprobación de éxito y el borrado exacto.
 
 También siguen pendientes el exportador por revisiones con reintentos duraderos, la recuperación después de expirar, la unificación del timeout, el bloqueo de retoma después del vencimiento, la configuración fija por publicación y la recuperación de datos anteriores. La primera entrega no convierte los errores del proveedor en recuperaciones automáticas ni actualiza por sí sola el HTML ya publicado.
+
+## 17. Entrega del punto 2: identidad, checkpoint y cierre
+
+Estado de esta entrega: terminado el punto 2; ejecución detenida antes de iniciar el punto 3, conforme a la instrucción del usuario. La sección 16 conserva el registro histórico de la primera entrega.
+
+### Ciclos RED → GREEN observados
+
+| Regresión | RED comprobado | GREEN comprobado |
+|---|---|---|
+| H08: recargar una sesión con lote 0 | No existía registro duradero; cambiaban asignación y contador. | La creación transaccional conserva ID, participante y condición; registra una sola participación. |
+| Creaciones simultáneas y límite de participación | Dos solicitudes podían asignar o contar la misma identidad más de una vez; una retoma quedaba bloqueada por el límite. | La misma identidad se asigna una vez, solo una identidad consume el último cupo y una sesión existente puede retomar al alcanzarse el límite. |
+| H03: abortar la escritura local o retener la respuesta HTTP | El checkpoint avanzaba sin respaldo. | Checkpoint, evento y manifiesto se confirman juntos en IndexedDB; sin IndexedDB, el checkpoint acompaña la recepción transaccional del servidor y se refleja localmente después del recibo. |
+| H04: última respuesta lenta | El cierre mostraba éxito con el último envío pendiente. | Espera los callbacks de persistencia y todos los envíos antes de solicitar el cierre. |
+| H05: cierre de lote 0 | Usaba un endpoint separado; el endpoint antiguo incrementaba nuevamente una participación ya registrada. | Envía al terminar mediante `appendEvents` y `completeSession`; el endpoint antiguo deja de incrementar identidades ya registradas. |
+| Recibos de cierre ausentes, pendientes o inconsistentes | No se comprobaban contra el conjunto esperado. | Solo se acepta una confirmación positiva de la misma sesión, cantidad, última secuencia y SHA-256 canónico de IDs/secuencias/hashes. HTTP 202 no anuncia éxito. |
+| Repetir el cierre o fallar el proveedor | No existían recibo verificable ni cierre idempotente. | Dos cierres simultáneos no exportan simultáneamente por este endpoint. Un cierre confirmado devuelve el mismo recibo; un error conserva payloads y permite reintentar la misma sesión cerrada. |
+| Checkpoints de loops con respuestas anidadas | La escritura fallaba por arrays anidados incompatibles con Firestore. | Se aplica la serialización existente y se recupera el checkpoint original al retomar. |
+| Error al preparar la navegación | Podía convertirse en un cierre vacío exitoso. | Impide avanzar y certificar un conjunto incompleto. |
+| Checkpoint local más antiguo que el servidor | Sin una secuencia propia, sincronizar el contador podía hacer parecer reciente un checkpoint antiguo. | Se compara la secuencia del checkpoint, independientemente del siguiente número de evento. |
+| Identificar el checkpoint solo por builder/índice | Esos valores pueden repetirse al recargar o ejecutar loops. | El marcador de respuesta completada incluye el ID y la secuencia del evento que lo respalda, en ambos modos. |
+| Recibos sin payload recuperable o filas antiguas fuera del manifiesto | Podía certificarse una exportación incompleta o con filas ajenas al conjunto esperado. | Se rechaza el cierre antes de exportar y se conserva el material para conciliación. |
+
+### Implementación incluida
+
+- Registro duradero para todos los tamaños de lote y ambos modos. Asignación, contador y límite se resuelven en una transacción. El navegador conserva el ID antes de solicitar el registro, de modo que perder su respuesta HTTP no obliga a crear otra identidad.
+- IndexedDB v3 guarda el evento, el checkpoint con su secuencia y un manifiesto de identidad/hash en una transacción. El manifiesto sobrevive al borrado de payloads reconocidos. La actualización conserva los pendientes v1/v2; la lectura de pendientes se limita a la sesión actual.
+- El avance ordinario de jsPsych se pausa hasta respaldar la respuesta. El branching conserva su propia barrera. Con IndexedDB, la carga puede continuar en segundo plano después del commit local. Sin IndexedDB, se espera el recibo del servidor y los pendientes permanecen únicamente en memoria.
+- La retoma usa el checkpoint respaldado más reciente del servidor o de IndexedDB. Un cursor de inicio de trial solo se conserva si corresponde a la misma respuesta completada y respaldada. La copia en `localStorage` deja de ser la prueba de persistencia.
+- `completeSession` verifica el conjunto esperado, su secuencia contigua y la disponibilidad de payloads o recibos de exportación. Cierra la ejecución antes del envío al proveedor. Nuevas respuestas se rechazan tras el cierre; los reintentos idénticos siguen reconocidos.
+- El lote 0 conserva sus respuestas en el navegador durante la ejecución y usa el cierre común al terminar. Se mantiene su limitación acordada: el timeout no puede exportar respuestas que el servidor nunca recibió.
+- El navegador comprueba el recibo de cierre antes de actualizar presencia, limpiar las referencias de retoma, mostrar éxito o ejecutar la redirección de reclutamiento. Si la sesión ya estaba cerrada, reintenta confirmar su guardado sin ejecutar de nuevo los trials.
+- Se ofrece reintentar el guardado mientras la página permanece abierta. No se confunde esa opción con los reintentos duraderos del exportador del punto 3.
+
+Pruebas principales: [registro duradero](../api/functions/__tests__/experiment/sessions/sessions-registration-durable.test.js), [cierre verificado](../api/functions/__tests__/experiment/sessions/sessions-verified-completion.test.js), [checkpoint y barrera del navegador](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/__tests__/publicVerifiedCompletion.browser.test.ts), [runtime generado con jsPsych real](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/__tests__/publicGeneratedRuntime.browser.test.ts) y [selección del checkpoint al retomar](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/__tests__/publicCheckpointRestore.test.ts).
+
+### Resultados de verificación
+
+| Comprobación | Resultado |
+|---|---|
+| Tests de sesiones de Firebase Functions | 52 suites, **287 tests aprobados**. Adaptador transaccional en memoria, handlers y finalizador reales, proveedor simulado; se comprueba el contenido del CSV. |
+| Persistencia pública en Chrome con IndexedDB real | 4 archivos, **31 tests aprobados**. Incluyen el JavaScript público completo con jsPsych real y HTTP/presencia simulados. |
+| Regresiones de generación, navegación y previews | 14 archivos, **74 tests aprobados**. |
+| Branching público con jsPsych real | **4 escenarios aprobados** con persistencia lenta simulada en ambos modos. |
+| TypeScript | Aprobado. |
+| Compilación de producción del cliente | Aprobada. Vite conserva advertencias de chunks grandes e importaciones compartidas. |
+| Lint de los archivos revisados, límite de 300 líneas y whitespace | Aprobados. |
+
+Los tests existentes de lote 0 se adaptaron al nuevo endpoint común; comprueban que una escritura que llega durante el vaciado también se incluye en el conjunto esperado. Las pruebas de identidad conservan sus comprobaciones de contenido y deduplicación. No se omitieron pruebas por sus fallos iniciales.
+
+### Límite de esta entrega
+
+El cierre HTTP usa el finalizador actual. Todavía no existen trabajos de exportación por revisión, reintentos automáticos duraderos, conciliación de una escritura incierta ni recuperación de un trabajador interrumpido. Un cierre que sigue ejecutándose responde pendiente; esa respuesta no permite anunciar éxito.
+
+Cuando una sesión tiene respuestas ya exportadas y limpiadas, y otras respuestas nuevas pendientes, el cierre se rechaza conservando las copias disponibles: actualizar ese archivo con garantías requiere el conciliador del punto 3. Esto evita, entre otros casos, sobrescribir en OSF un archivo anterior con solo las respuestas nuevas. Si todo el conjunto ya cuenta con recibos de exportación confirmada, puede reconocerse sin reenviarlo. Los datos antiguos sin recibos verificables requieren la transición posterior; no se certifican por inferencia.
+
+Siguen pendientes las reglas comunes de timeout, la expiración y recuperación, la configuración fija entre publicaciones, la política completa de conservación local, el recorrido con emuladores/proveedores cloud y la herramienta de recuperación anterior. No se desplegó el backend, no se republicó ningún experimento y no se modificaron los datos de la sesión reportada.

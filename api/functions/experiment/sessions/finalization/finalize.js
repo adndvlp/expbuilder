@@ -44,7 +44,7 @@ export async function finalizeSession(experimentID, sessionId) {
     );
   }
 
-  const { sessionState, rtdbMetadata } = await readRealtimeSessionData(
+  const { sessionState: realtimeState, rtdbMetadata } = await readRealtimeSessionData(
     experimentID,
     sessionId,
   );
@@ -64,6 +64,7 @@ export async function finalizeSession(experimentID, sessionId) {
   }
 
   const sessionData = sessionDoc.data();
+  const sessionState = sessionData.lifecycle === "completed" ? "completed" : realtimeState;
   const trialsSnapshot = await sessionRef.collection("trials").get();
 
   if (trialsSnapshot.empty) {

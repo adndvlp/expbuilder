@@ -145,7 +145,7 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("window.beforePublic = true;");
     expect(code).toContain("on_trial_finish: function(data)");
     expect(code).toContain("display_element: 'jspsych-container'");
-    expect(code).toContain('storage: "cloud"');
+    expect(code).toContain("storage: 'cloud'");
   });
 
   it("skips remote config without experiment id and can emit dev-mode base code", async () => {

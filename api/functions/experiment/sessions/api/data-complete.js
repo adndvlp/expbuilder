@@ -168,14 +168,13 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
       );
     }
 
-    // S-10: increment the experiment's sessions counter. Default-flow runs
-    // (batch=0) also count as sessions for analytics — `handleCreateSession`
-    // and `handlePostFile` already increment; this aligns the missing path.
+    // Compatibility for older published clients. Registration already counts
+    // durable identities, including batch zero; uploading must not count again.
     try {
-      await exp_doc_ref.set(
-        { sessions: FieldValue.increment(1) },
-        { merge: true },
-      );
+      const registered = await exp_doc_ref.collection("sessions").doc(sessionId).get();
+      if (!registered?.exists) {
+        await exp_doc_ref.set({ sessions: FieldValue.increment(1) }, { merge: true });
+      }
     } catch (counterErr) {
       console.error(
         "Error incrementing sessions counter in apiDataComplete:",

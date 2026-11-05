@@ -56,12 +56,13 @@ ${publicEventStorageCode()}
     dbName: ${JSON.stringify(storageKeys.trialDatabase)},
     storeName: 'trials',
     counterName: 'session-sequences',
+    manifestName: 'event-manifest',
     db: null,
     TTL_DAYS: 3,
 
     async init() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open(this.dbName, 2);
+        const request = indexedDB.open(this.dbName, 3);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
@@ -81,6 +82,10 @@ ${publicEventStorageCode()}
             store.createIndex('sessionId', 'sessionId', { unique: false });
             store.createIndex('timestamp', 'timestamp', { unique: false });
             store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains(this.manifestName)) {
+            const manifest = db.createObjectStore(this.manifestName, { keyPath: ['sessionId', 'sequence'] });
+            manifest.createIndex('sessionId', 'sessionId');
           }
           if (!db.objectStoreNames.contains(this.counterName)) {
             db.createObjectStore(this.counterName, { keyPath: 'sessionId' });
@@ -133,7 +138,7 @@ ${publicEventStorageMethods()}
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.getAll();
+        const request = store.index('sessionId').getAll(trialSessionId);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -145,7 +150,7 @@ ${publicEventStorageMethods()}
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.count();
+        const request = store.index('sessionId').count(trialSessionId);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -157,7 +162,7 @@ ${publicEventStorageMethods()}
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.getAll(null, n);
+        const request = store.index('sessionId').getAll(trialSessionId, n);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

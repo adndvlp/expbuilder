@@ -125,6 +125,8 @@ export function publicSessionCode(
 
   // Set JSPSYCH_SESSION_ID immediately so file uploads always have the current sessionId
   window.JSPSYCH_SESSION_ID = trialSessionId;
+  // Keep the identity even if registration commits but its HTTP response is lost.
+  localStorage.setItem(_publicStorageKeys.sessionId, trialSessionId);
 
   let participantNumber;
 
@@ -139,6 +141,7 @@ export function publicSessionCode(
           sessionId: trialSessionId,
           uid: Uid,
           batchSize: ${batchConfig.batchSize},
+          metadata,
           ...(_preSessionName ? { sessionName: _preSessionName } : {})
         }),
       });
@@ -156,7 +159,7 @@ export function publicSessionCode(
         throw new Error(result.message || 'Failed to create session');
       }
       
-      return result.participantNumber;
+      return result;
     } catch (error) {
       console.error('Error in createSession:', error);
       alert('Error creating session: ' + error.message);

@@ -8,6 +8,7 @@ import { runtimeApiBaseUrl } from "../support/session";
 import type { PublicExperimentCodeOptions } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicCodeTypes";
 import { publicEventTransportCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicEventTransportCode";
 import { publicEventStorageCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicEventStorageCode";
+import { publicResponsePersistenceCode } from "../../src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicResponsePersistenceCode";
 import type { JsPsych, TimelineArray, initJsPsych } from "jspsych";
 
 type Row = Record<string, unknown>;
@@ -33,9 +34,9 @@ for (const indexedDB of [true, false]) {
       branchingEvaluation: branchingEvaluationRuntimeCode,
     } as PublicExperimentCodeOptions);
     const callback = init.slice(init.indexOf("on_data_update: ") + "on_data_update: ".length).trim().replace(/,\s*$/, "");
-    const transportCode = publicEventStorageCode() + "\nconst pendingBatchSaves = [];\n" + publicEventTransportCode({
+    const transportCode = publicEventStorageCode() + "\nconst pendingBatchSaves = [], _publicSessionState = { receivedEvents: [] }; function _setLoadingMsg() {}\n" + publicEventTransportCode({
       experimentID: "public-fixture", DATA_API_URL: "/save",
-    } as PublicExperimentCodeOptions);
+    } as PublicExperimentCodeOptions) + publicResponsePersistenceCode();
     const hooks = [1, 2, 3, 4, 5, 6].map(id => generateOnFinishCode({
       branches: id === 3 ? [4, 5] : id === 1 ? [2] : id === 2 ? [3] : id === target ? [6] : [],
       defaultNextTrialId: id === 1 ? 2 : id === 2 ? 3 : id === target ? 6 : null,
@@ -58,9 +59,16 @@ for (const indexedDB of [true, false]) {
       const delay = () => new Promise(resolve => setTimeout(resolve, 25));
       const save = async (data: Row) => { await delay(); saved.push(Number(data.builder_id)); };
       const callbackFactory = new Function("BATCH_CONFIG", "TrialDB", "trialSessionId", "sessionRef", "jsPsych", "_publicStorageKeys", "_createResumeCheckpoint", "fetch", `${transportCode}\nreturn (${callback});`);
-      const proxy = { data: { getLastTrialData: () => jsPsych.data.getLastTrialData() } };
+      const proxy = { data: { getLastTrialData: () => jsPsych.data.getLastTrialData() },
+        pauseExperiment: () => jsPsych.pauseExperiment(), resumeExperiment: () => jsPsych.resumeExperiment() };
+      let sequence = 0;
       const onData = callbackFactory(
-        { useIndexedDB: indexedDB, size: 0, currentBatchNumber: 0 }, { add: save }, "public-session",
+        { useIndexedDB: indexedDB, size: 0, currentBatchNumber: 0 }, {
+          syncManifest: async () => {},
+          add: async (data: Row, checkpoint: Row) => {
+            await save(data); return { payload: data, checkpoint, eventId: `event-${sequence}`, sequence: sequence++ };
+          },
+        }, "public-session",
         { update: () => Promise.resolve() }, proxy, { resumeTrial: "public-checkpoint" }, checkpoint,
         async (_url: string, request: { body: string }) => {
           const body = JSON.parse(request.body);

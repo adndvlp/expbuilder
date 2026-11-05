@@ -8,6 +8,7 @@ import validateJSON from "../validation/validate-json.js";
 import { getValidToken } from "../../../oauth/index.js";
 import { finalizeSession } from "../finalization/finalize.js";
 import { postFile } from "../storage.js";
+import { handleCompleteSession } from "../handlers/complete-session.js";
 import {
   handleCreateSession,
   handleAppendResult,
@@ -63,6 +64,8 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     return await handleDeleteSession(req, res, experimentID, sessionId);
   }
 
+  if (action === "completeSession") return await handleCompleteSession(req, res);
+
   if (action === "finish" && experimentID && sessionId) {
     try {
       const result = await finalizeSession(experimentID, sessionId);
@@ -95,6 +98,8 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
       res.status(400).json({ error: "sessionName must be <= 200 characters" });
       return;
     }
+    // Session display names deliberately reject ASCII control characters.
+    // eslint-disable-next-line no-control-regex
     if (/[\x00-\x1F]/.test(trimmed)) {
       res
         .status(400)

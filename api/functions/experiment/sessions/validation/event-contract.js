@@ -18,7 +18,7 @@ export function validatePublicEvents(data, experiment) {
   }
   const seen = new Set();
   return data.events.map(event => {
-    const { eventId, sequence, payload, payloadHash } = event ?? {};
+    const { eventId, sequence, payload, payloadHash, checkpoint } = event ?? {};
     if (typeof eventId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(eventId)
         || !Number.isSafeInteger(sequence) || sequence < 0
         || !payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -34,6 +34,7 @@ export function validatePublicEvents(data, experiment) {
         || (experiment.requiredFields ?? []).some(key => !Object.hasOwn(payload, key)))) {
       throw invalid("Event is missing required fields or JSON/CSV reception is disabled");
     }
-    return { eventId, sequence, payloadHash: computedHash, payload };
+    if (checkpoint != null && (typeof checkpoint !== "object" || Array.isArray(checkpoint))) throw invalid("Invalid event checkpoint");
+    return { eventId, sequence, payloadHash: computedHash, payload, ...(checkpoint != null && { checkpoint }) };
   });
 }

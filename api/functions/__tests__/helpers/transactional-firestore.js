@@ -8,8 +8,14 @@ export function makeTransactionalFirestore() {
   let failure = null;
   let autoId = 0;
   const copy = value => value === undefined ? undefined : structuredClone(value);
+  function validate(value) {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value) && value.some(Array.isArray)) throw new Error('Firestore does not support nested arrays');
+    Object.values(value).forEach(validate);
+  }
   const snapshot = ref => ({ id: ref.id, ref, exists: records.has(ref.path), data: () => copy(records.get(ref.path)) });
   function write(ref, value, merge = false) {
+    validate(value);
     const before = records.get(ref.path) ?? {};
     const resolved = Object.fromEntries(Object.entries(value).map(([key, item]) => [key,
       item?.__op === "increment" ? (before[key] ?? 0) + item.value : copy(item)]));
@@ -33,8 +39,8 @@ export function makeTransactionalFirestore() {
   function transaction() {
     const operations = [];
     return {
-      get: async ref => { if (operations.length) throw new Error("Transaction read after write"); return snapshot(ref); },
-      set: (ref, data, options) => operations.push(() => write(ref, data, options?.merge)),
+      get: async ref => { if (operations.length) throw new Error("Transaction read after write"); return typeof ref.doc === "function" ? ref.get() : snapshot(ref); },
+      set: (ref, data, options) => { validate(data); operations.push(() => write(ref, data, options?.merge)); },
       update: (ref, data) => operations.push(() => write(ref, data, true)),
       delete: ref => operations.push(() => records.delete(ref.path)),
       commit: async () => {

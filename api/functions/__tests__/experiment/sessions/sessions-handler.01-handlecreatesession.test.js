@@ -4,7 +4,7 @@
  * the layer being verified.
  */
 import { jest } from "@jest/globals";
-import { makeFsMock, makeReq, makeRes, makeSnapshot } from "../../helpers/firestore-mock.js";
+import { makeFsMock, makeReq, makeRes } from "../../helpers/firestore-mock.js";
 
 const fs = makeFsMock();
 const mockWriteLog = jest.fn().mockResolvedValue(true);
@@ -38,13 +38,7 @@ jest.unstable_mockModule("../../../experiment/sessions/storage.js", () => ({
   escapeDriveQueryValue: (v) => String(v ?? ""),
 }));
 
-const {
-  handleCreateSession,
-  handleAppendResult,
-  handleListSessions,
-  handleDownloadSession,
-  handleDeleteSession,
-} = await import("../../../experiment/sessions/handler.js");
+const { handleCreateSession } = await import("../../../experiment/sessions/handler.js");
 
 beforeEach(() => {
   fs.refsByPath.clear();
@@ -119,7 +113,7 @@ describe("handleCreateSession", () => {
         currentCondition: 0,
       }),
     });
-    sessionRef.get.mockResolvedValueOnce({ exists: false });
+    sessionRef.get.mockResolvedValue({ exists: false });
 
     const res = makeRes();
     await handleCreateSession(
@@ -147,7 +141,7 @@ describe("handleCreateSession", () => {
     );
   });
 
-  test("when batchSize=0 does NOT create Firestore session doc (data goes straight to storage at end)", async () => {
+  test("when batchSize=0 creates durable session metadata without transmitting trials", async () => {
     const expRef = fs.getRef("experiments/EID");
     const sessionRef = fs.getRef("experiments/EID/sessions/S1");
     expRef.get.mockResolvedValue({
@@ -159,7 +153,7 @@ describe("handleCreateSession", () => {
         currentCondition: 0,
       }),
     });
-    sessionRef.get.mockResolvedValueOnce({ exists: false });
+    sessionRef.get.mockResolvedValue({ exists: false });
 
     const res = makeRes();
     await handleCreateSession(
@@ -170,7 +164,7 @@ describe("handleCreateSession", () => {
     );
 
     expect(res.statusCode).toBe(201);
-    expect(sessionRef.set).not.toHaveBeenCalled();
+    expect(sessionRef.set).toHaveBeenCalledWith(expect.objectContaining({ participantNumber: 0, condition: 0, trialCount: 0 }), undefined);
     // experiment sessions counter still incremented
     expect(expRef.set).toHaveBeenCalled();
   });
@@ -180,11 +174,11 @@ describe("handleCreateSession", () => {
       exists: true,
       data: () => ({ active: true, activeConditionAssignment: false }),
     });
-    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValueOnce({ exists: false });
+    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValue({ exists: false });
     // txn reads exp doc and writes new currentCondition
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ activeConditionAssignment: false, currentCondition: 7 }),
+      data: () => ({ active: true, activeConditionAssignment: false, currentCondition: 7 }),
     });
     const res = makeRes();
     await handleCreateSession(makeReq({ body: {} }), res, "EID", "S1");

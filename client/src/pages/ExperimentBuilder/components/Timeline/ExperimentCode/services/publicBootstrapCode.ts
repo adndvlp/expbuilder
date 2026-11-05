@@ -59,7 +59,6 @@ export function publicBootstrapCode(
       _setLoadingMsg('Creating session\u2026');
     }
 
-${resumeStartupCode(storageKeys.resumeTrial)}
     
     // --- Configuración de Batching (cargada desde Firestore) ---
     const BATCH_CONFIG = {
@@ -95,7 +94,26 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
     // SIEMPRE llamar a createSession (para crear documento en Firestore)
     // El backend maneja sesiones duplicadas (409) y las retorna correctamente
     _setLoadingMsg('Creating session…');
-    participantNumber = await createSession();
+    const _publicSessionState = await createSession();
+    participantNumber = _publicSessionState.participantNumber;
+    if (typeof participantNumber !== 'number' || !Number.isFinite(participantNumber)) {
+      throw new Error('participantNumber not assigned');
+    }
+    if (BATCH_CONFIG.useIndexedDB) await TrialDB.syncManifest(_publicSessionState.receivedEvents || []);
+    const _savedLocalState = BATCH_CONFIG.useIndexedDB ? await TrialDB.getState() : null;
+    const _serverSequence = _publicSessionState.resumeCheckpointSequence ?? -1;
+    const _backedCheckpoint = _savedLocalState?.checkpoint && (_savedLocalState.checkpointSequence ?? -1) >= _serverSequence
+      ? _savedLocalState.checkpoint : _publicSessionState.resumeCheckpoint;
+    let _cachedCheckpoint = null;
+    try { _cachedCheckpoint = JSON.parse(localStorage.getItem(_publicStorageKeys.resumeTrial) || 'null'); } catch (_) {}
+    const _canKeepStartCursor = _backedCheckpoint && _cachedCheckpoint
+      && _canonicalPublicEvent(_cachedCheckpoint.completed) === _canonicalPublicEvent(_backedCheckpoint.completed);
+    if (_publicSessionState.lifecycle === 'completed' || !_backedCheckpoint) {
+      localStorage.removeItem(_publicStorageKeys.resumeTrial);
+    } else if (!_canKeepStartCursor) {
+      localStorage.setItem(_publicStorageKeys.resumeTrial, JSON.stringify(_backedCheckpoint));
+    }
+${resumeStartupCode(storageKeys.resumeTrial)}
 
     // If session name has counter token, generate final name now that participantNumber is known
     if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
@@ -125,6 +143,7 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
 
     // --- Configurar onDisconnect para finalizar sesión automáticamente ---
     const sessionRef = db.ref('sessions/${experimentID}/' + trialSessionId);
+    if (_publicSessionState.lifecycle !== 'completed') {
     await sessionRef.set({
       connected: true,
       experimentID: '${experimentID}',
@@ -146,6 +165,7 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
       disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
       storage: '${useStorage}'
     });
+    }
 
     ${evaluateCondition}
 ${activateResumeRouteDecisionCode()}

@@ -86,7 +86,8 @@ describe("public batches with real IndexedDB", () => {
       await page.reload();
       await startPublicRuntime(page);
       await page.evaluate(() => window.publicBatchTest.finish());
-      expect(uploads).toHaveLength(2);
+      expect(uploads.filter(body => body.action === 'appendEvents')).toHaveLength(2);
+      expect(uploads.at(-1)?.action).toBe('completeSession');
       expect(uploads[0].action).toBe("appendEvents");
       expect(uploads[0].data.events?.[0]).toEqual(uploads[1].data.events?.[0]);
       expect(uploads[0].data.events?.[0].eventId).toEqual(expect.any(String));
@@ -151,10 +152,10 @@ describe("public batches with real IndexedDB", () => {
     } finally { await context.close(); }
   });
 
-  it("preserves batch-zero data when the direct-upload response does not confirm success", async () => {
+  it("preserves batch-zero data when receipt of its upload is not confirmed", async () => {
     const { context, page } = await pageFixture();
     try {
-      await page.route("**/apiDataComplete", route => route.fulfill({ json: { success: false } }));
+      await page.route("**/apiData", route => route.fulfill({ json: { success: false } }));
       await startPublicRuntime(page, 0);
       await page.evaluate(data => window.publicBatchTest.call(data), trial("A"));
       await drain(page);
@@ -164,14 +165,17 @@ describe("public batches with real IndexedDB", () => {
     } finally { await context.close(); }
   });
 
-  it("deletes only the batch-zero snapshot that was acknowledged, preserving later writes", async () => {
+  it("also flushes a write that arrives while the batch-zero snapshot is uploading", async () => {
     const { context, page } = await pageFixture();
     try {
       let release!: () => void, arrived!: () => void;
       const blocked = new Promise<void>(resolve => { release = resolve; });
       const request = new Promise<void>(resolve => { arrived = resolve; });
-      await page.route("**/apiDataComplete", async route => {
-        arrived(); await blocked; await route.fulfill({ json: { success: true } });
+      const uploads: Upload[] = [];
+      await page.route("**/apiData", async route => {
+        const body = route.request().postDataJSON() as Upload; uploads.push(body);
+        if (uploads.length === 1) { arrived(); await blocked; }
+        await route.fulfill({ json: receipt(body) });
       });
       await startPublicRuntime(page, 0);
       await page.evaluate(data => window.publicBatchTest.call(data), trial("A"));
@@ -181,8 +185,9 @@ describe("public batches with real IndexedDB", () => {
       await page.evaluate(data => window.publicBatchTest.call(data), trial("B", 1));
       await drain(page);
       release(); await finishing;
-      const pending = await page.evaluate(() => window.publicBatchTest.db.getAll());
-      expect(pending.map(row => row.builder_id)).toEqual(["B"]);
+      expect(uploads.flatMap(responses)).toEqual(["A", "B"]);
+      expect(uploads.at(-1)).toMatchObject({ action: 'completeSession', expectedEventCount: 2 });
+      expect(await page.evaluate(() => window.publicBatchTest.db.count())).toBe(0);
     } finally { await context.close(); }
   });
 

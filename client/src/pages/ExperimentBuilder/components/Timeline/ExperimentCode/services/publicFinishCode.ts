@@ -40,7 +40,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     baseCode,
   ];
   return `
-      on_finish: async function() {
+      on_finish: publicFinishHandler = async function() {
         if (window.ExpBuilderNavigation.isTransitionPending()) {
           window.ExpBuilderRuntime?.emit(
             'experiment-finish-suppressed',
@@ -48,51 +48,38 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           );
           return;
         }
+        publicClosing = true;
         _showLoading('Saving your data\u2026');
-        await new Promise(r => setTimeout(r, 0));
-        
+        await new Promise(resolve => setTimeout(resolve, 0));
         try {
-          if (BATCH_CONFIG.useIndexedDB) {
-            if (BATCH_CONFIG.size > 0) {
-              await _flushPublicBatches(true);
-            } else {
-              const allTrials = await TrialDB.getAll();
-              if (allTrials.length > 0) {
-                _setLoadingMsg('Uploading data\u2026');
-                await sendCompleteExperiment(allTrials);
-                await TrialDB.deleteIds(allTrials.map(trial => trial.id));
-              }
-            }
-          }
+          await _completePublicSession();
         } catch (error) {
-          console.error('Error flushing trial data:', error);
-          _setLoadingMsg(
-            'Error saving data. Your progress was preserved. Please reload to retry.'
-          );
+          _publicPersistenceError(error);
           return;
         }
-        
+
         _setLoadingMsg('Finishing up\u2026');
         
         try {
-          const needsBackendFinalization = !(BATCH_CONFIG.useIndexedDB && BATCH_CONFIG.size === 0);
-          
           await sessionRef.update({
             connected: false,
             finished: true,
-            needsFinalization: needsBackendFinalization,
+            needsFinalization: false,
+            sessionProtocolVersion: 2,
+            finalizationProcessed: true,
             state: 'completed',
             finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
+          // Cancel only after the durable completed state was confirmed.
+          await sessionRef.onDisconnect().cancel();
         } catch (error) {
-          console.error('Error marking session as finished:', error);
-          _setLoadingMsg('Error saving data. Please contact support.');
+          _publicPersistenceError(error);
           return;
         }
 
-        // Cancel only after the durable completed state was confirmed.
-        sessionRef.onDisconnect().cancel();
+        document.getElementById('expbuilder-retry-save')?.remove();
+
         window.ExpBuilderNavigation.clearTransientState();
         localStorage.removeItem(_publicStorageKeys.sessionId);
         localStorage.removeItem(_publicStorageKeys.participant);
@@ -180,7 +167,11 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         : ""
     }
 
-    ${baseCode}
+    if (_publicSessionState.lifecycle === 'completed') {
+      await publicFinishHandler();
+    } else {
+      ${baseCode}
+    }
 
 })();
 `;

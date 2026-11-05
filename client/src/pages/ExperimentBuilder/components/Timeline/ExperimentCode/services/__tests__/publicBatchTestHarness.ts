@@ -8,11 +8,14 @@ import type { PublicExperimentCodeOptions } from "../publicCodeTypes";
 
 export type Row = Record<string, unknown>;
 export type Event = { eventId: string; sequence: number; payloadHash: string; payload: Row };
-export type Upload = { experimentID: string; sessionId: string; action?: string; data: { events?: Event[]; trialsData?: string } };
+export type Upload = { experimentID: string; sessionId: string; action?: string; data: { events?: Event[]; trialsData?: string };
+  expectedEventCount?: number; expectedLastSequence?: number; eventsHash?: string };
 type Runtime = {
-  db: { getAll(): Promise<Row[]>; count(): Promise<number>; close?: () => void };
+  db: { getAll(): Promise<Row[]>; count(): Promise<number>; getState(): Promise<{ events: Row[]; checkpoint?: Row }>; close?: () => void };
   pending: Promise<unknown>[]; errors: string[]; acknowledged: unknown[];
   call(data: Row): void; finish(): Promise<void>; success: boolean;
+  pauses: number; resumes: number; updates: Row[]; messages: string[];
+  checkpoint?: (data: Row) => Row;
 };
 declare global { interface Window { publicBatchTest: Runtime } }
 
@@ -29,28 +32,31 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
   } as PublicExperimentCodeOptions;
   const callbackCode = (publicInitCode(options) + publicFinishCode(options)).split("// __INIT_JSPSYCH_END__")[0];
   await page.evaluate(({ databaseCode, batchCode, callbackCode, persistenceCode, size, indexed }) => {
-    const runtime = { pending: [], errors: [], acknowledged: [], success: false } as unknown as Runtime;
+    const runtime = { pending: [], errors: [], acknowledged: [], success: false,
+      pauses: 0, resumes: 0, updates: [], messages: [] } as unknown as Runtime;
     window.publicBatchTest = runtime;
     let callbacks: { on_data_update(row: Row): Promise<void>; on_finish(): Promise<void> };
     runtime.db = new Function("initJsPsych", `
       const trialSessionId = 'S1';
       const BATCH_CONFIG = { useIndexedDB: ${indexed}, size: ${size}, currentBatchNumber: 0 };
-      const metadata = {}, _publicStorageKeys = { resumeTrial: 'checkpoint', sessionId: 'session', participant: 'participant' };
-      const _createResumeCheckpoint = data => ({ completed: data.builder_id });
-      const sessionRef = { update: async () => {}, onDisconnect: () => ({ cancel() {} }) };
+      const metadata = {}, _publicSessionState = { receivedEvents: [] }, _publicStorageKeys = { resumeTrial: 'checkpoint', sessionId: 'session', participant: 'participant' };
+      const _createResumeCheckpoint = data => window.publicBatchTest.checkpoint?.(data) ?? ({ completed: data.builder_id });
+      const sessionRef = { update: async value => window.publicBatchTest.updates.push(value), onDisconnect: () => ({ cancel() {} }) };
       window.firebase = { database: { ServerValue: { TIMESTAMP: 1 } } };
       window.ExpBuilderNavigation = {
         onTrialPersisted: data => window.publicBatchTest.acknowledged.push(data.builder_id),
         checkpointTrialStart() {}, isTransitionPending: () => false, clearTransientState() {}
       };
-      function _showLoading() {} function _setLoadingMsg() {}
+      window.ExpBuilderRuntime = { reportError: error => window.publicBatchTest.errors.push(String(error)) };
+      function _showLoading() {} function _setLoadingMsg(value) { window.publicBatchTest.messages.push(value); }
       function _showSuccess() { window.publicBatchTest.success = true; }
       ${persistenceCode}
       ${databaseCode}
       ${batchCode}
       ${callbackCode}
       return TrialDB;
-    `)((value: typeof callbacks) => { callbacks = value; return { data: { get: () => ({}) } }; });
+    `)((value: typeof callbacks) => { callbacks = value; return { data: { get: () => ({}) },
+      pauseExperiment: () => runtime.pauses++, resumeExperiment: () => runtime.resumes++ }; });
     runtime.call = data => {
       runtime.pending.push(callbacks.on_data_update(data).catch(error => runtime.errors.push(String(error))));
     };
@@ -60,13 +66,15 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
 }
 
 export function receipt(body: Upload) {
+  const completion = body.action === 'completeSession' ? { confirmed: true, expectedEventCount: body.expectedEventCount,
+    expectedLastSequence: body.expectedLastSequence, eventsHash: body.eventsHash } : undefined;
   return { success: true, experimentID: body.experimentID, sessionId: body.sessionId,
-    acknowledged: (body.data.events ?? []).map(({ eventId, sequence, payloadHash }) => ({ eventId, sequence, payloadHash })) };
+    completion, acknowledged: (body.data?.events ?? []).map(({ eventId, sequence, payloadHash }) => ({ eventId, sequence, payloadHash })) };
 }
 
 export function responses(body: Upload) {
-  return body.data.events?.map(event => event.payload.builder_id)
-    ?? JSON.parse(body.data.trialsData ?? "[]").map((row: Row) => row.builder_id);
+  return body.data?.events?.map(event => event.payload.builder_id)
+    ?? JSON.parse(body.data?.trialsData ?? "[]").map((row: Row) => row.builder_id);
 }
 
 export const trial = (builder_id: string, trial_index = 0) => ({ builder_id, trial_index, trial_type: "test", response: builder_id });

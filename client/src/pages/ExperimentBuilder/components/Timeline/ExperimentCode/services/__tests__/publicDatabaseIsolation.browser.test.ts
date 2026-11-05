@@ -43,7 +43,7 @@ describe("public IndexedDB isolation in Chromium", () => {
 
   it("does not read or clear pending trials owned by another experiment", async () => {
     const context = await browser.newContext();
-    await context.route("http://public-storage.test/**", (route) =>
+    await context.route("https://public-storage.test/**", (route) =>
       route.fulfill({
         status: 200,
         contentType: "text/html",
@@ -51,7 +51,7 @@ describe("public IndexedDB isolation in Chromium", () => {
       }),
     );
     const page = await context.newPage();
-    await page.goto("http://public-storage.test/");
+    await page.goto("https://public-storage.test/");
 
     const result = await page.evaluate(
       async ({ firstCode, secondCode }) => {
