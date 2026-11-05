@@ -13,6 +13,7 @@ export type RuntimeReferencedRule = RuntimeBranchRule & {
 };
 
 export type RuntimeBranchCondition = {
+  kind?: "route" | "condition";
   id?: string | number;
   rules?: RuntimeReferencedRule[];
   nextTrialId?: string | number | null;
@@ -142,6 +143,7 @@ export function decideBranch(
   assertTarget(defaultNextTrialId);
   for (const condition of conditions) {
     assertTarget(condition.nextTrialId);
+    if (condition.kind === "route") continue;
     if (!evaluateBranchCondition(trialData, condition)) continue;
     return {
       targetId: condition.nextTrialId ?? null,

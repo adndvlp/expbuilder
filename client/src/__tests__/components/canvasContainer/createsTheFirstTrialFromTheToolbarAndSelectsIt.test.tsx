@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 
 const mocks = vi.hoisted(() => ({
   trialsContext: {} as any,
@@ -133,13 +133,15 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByTitle("Add trial"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
-        type: "Trial",
-        name: "New Trial",
-        plugin: "plugin-dynamic",
-        parameters: {},
-        trialCode: "",
-      }));
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "Trial",
+          name: "New Trial",
+          plugin: "plugin-dynamic",
+          parameters: {},
+          trialCode: "",
+        }),
+      );
     });
     expect(mocks.trialsContext.updateTimeline).not.toHaveBeenCalled();
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(

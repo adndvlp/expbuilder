@@ -1,3 +1,4 @@
+import type { WorkspaceSelection } from "../modules/experiment-workspace/selection";
 import { createContext } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Loop, Trial } from "../components/ConfigurationPanel/types";
@@ -45,6 +46,9 @@ export type TrialsContextType = {
   loopTimeline: TimelineItem[];
   loopTimelineCache: LoopTimelineCache;
   activeLoopId: string | number | null;
+
+  workspaceSelection: WorkspaceSelection;
+  setWorkspaceSelection: Dispatch<SetStateAction<WorkspaceSelection>>;
 
   // Estado de selección
   selectedTrial: Trial | null;
@@ -114,6 +118,8 @@ const TrialsContext = createContext<TrialsContextType>({
   loopTimeline: [],
   loopTimelineCache: {},
   activeLoopId: null,
+  workspaceSelection: null,
+  setWorkspaceSelection: () => {},
   selectedTrial: null,
   setSelectedTrial: () => {},
   selectedLoop: null,

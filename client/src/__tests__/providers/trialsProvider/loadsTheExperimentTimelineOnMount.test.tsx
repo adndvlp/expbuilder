@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, render, waitFor } from "@testing-library/react";
 import React from "react";
 import { useParams } from "react-router";
@@ -179,9 +180,7 @@ describe("TrialsProvider", () => {
     queueFetchResponses(okJson({ trialsMetadata: loopTimeline }));
 
     const result = await act(async () => {
-      return view
-        .getContext()
-        ?.getLoopTimeline("loop-1", { mode: "query" });
+      return view.getContext()?.getLoopTimeline("loop-1", { mode: "query" });
     });
 
     expect(result).toEqual(loopTimeline);

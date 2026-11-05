@@ -1,6 +1,6 @@
 # Eliminación de conexiones de branching
 
-Estado: propuesta; sin cambios de implementación.
+Estado: sustituida por [la SDD de integración del workspace](branching-workspace-sdd.md). La separación de fuentes que se describe abajo es una propuesta anterior; el diseño acordado usa Default/Then como única autoridad y `branches` como dato derivado.
 
 ## Resultado requerido
 

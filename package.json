@@ -75,7 +75,8 @@
     "test:e2e:cloud": "node scripts/run-cloud-e2e.mjs",
     "test:e2e:cloud:providers": "node scripts/run-cloud-e2e.mjs providers",
     "test:e2e:cloud:browser": "node scripts/run-cloud-e2e.mjs browser",
-    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:workspace": "node scripts/run-workspace-tests.mjs"
   },
   "jest": {
     "testEnvironment": "node",
@@ -133,6 +134,7 @@
       "preload.js",
       ".env.production",
       "server/**",
+      "shared/**",
       "!server/cloudflared/**",
       "!server/dynamicplugin/node_modules",
       "!server/dynamicplugin/components",

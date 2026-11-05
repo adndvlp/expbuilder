@@ -1,3 +1,7 @@
+import {
+  selectWorkspaceItem,
+  type WorkspaceSelection,
+} from "../../modules/experiment-workspace/selection";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import TrialsContext, {
@@ -18,28 +22,36 @@ type Props = {
 };
 
 export default function TrialsProvider({ children }: Props) {
+  const [workspaceSelection, setWorkspaceSelection] =
+    useState<WorkspaceSelection>(null);
   const [selectedTrial, setSelectedTrialState] = useState<Trial | null>(null);
   const [selectedLoop, setSelectedLoopState] = useState<Loop | null>(null);
   const trialSelection = useMemo(
     () => createStateStore<Trial | null>(null),
     [],
   );
-  const loopSelection = useMemo(
-    () => createStateStore<Loop | null>(null),
-    [],
-  );
+  const loopSelection = useMemo(() => createStateStore<Loop | null>(null), []);
 
   const experimentID = useExperimentID();
 
-  const setSelectedTrial = useCallback<
-    TrialsContextType["setSelectedTrial"]
-  >((nextSelection) => {
-    const next = trialSelection.resolve(nextSelection);
-    setSelectedTrialState(next);
-  }, [trialSelection]);
+  const setSelectedTrial = useCallback<TrialsContextType["setSelectedTrial"]>(
+    (nextSelection) => {
+      const previous = trialSelection.get();
+      const next = trialSelection.resolve(nextSelection);
+      setWorkspaceSelection((old) =>
+        selectWorkspaceItem(old, next?.id ?? null, previous?.id),
+      );
+      setSelectedTrialState(next);
+    },
+    [trialSelection],
+  );
   const setSelectedLoop = useCallback<TrialsContextType["setSelectedLoop"]>(
     (nextSelection) => {
+      const previous = loopSelection.get();
       const next = loopSelection.resolve(nextSelection);
+      setWorkspaceSelection((old) =>
+        selectWorkspaceItem(old, next?.id ?? null, previous?.id),
+      );
       setSelectedLoopState(next);
     },
     [loopSelection],
@@ -121,10 +133,10 @@ export default function TrialsProvider({ children }: Props) {
 
   const deleteAllTrials = useCallback(async (): Promise<boolean> => {
     try {
-      await experimentAuthoringClient.deleteAllTrials(experimentID);
-
-      // Limpiar estado local
-      clearGraph();
+      const response =
+        await experimentAuthoringClient.deleteAllTrials(experimentID);
+      if (response.graph?.workspace) applyGraphSnapshot(response.graph);
+      else clearGraph();
       setSelectedTrial(null);
       setSelectedLoop(null);
       resetLoopTimelineCache();
@@ -135,6 +147,7 @@ export default function TrialsProvider({ children }: Props) {
       return false;
     }
   }, [
+    applyGraphSnapshot,
     experimentID,
     clearGraph,
     resetLoopTimelineCache,
@@ -148,13 +161,14 @@ export default function TrialsProvider({ children }: Props) {
     if (experimentID) {
       // The experiment ID is an external route input; entering a cold builder
       // must fetch its timeline once after the route commits.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       void getTimeline();
     }
   }, [experimentID, getTimeline]);
 
   const contextValue = useMemo<TrialsContextType>(
     () => ({
+      workspaceSelection,
+      setWorkspaceSelection,
       timeline,
       graph,
       applyGraphSnapshot,
@@ -184,6 +198,7 @@ export default function TrialsProvider({ children }: Props) {
       isLoading,
     }),
     [
+      workspaceSelection,
       activeLoopId,
       activateLoopTimeline,
       applyGraphSnapshot,

@@ -14,7 +14,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const source = readFileSync(new URL('./branching-workspace.html', import.meta.url));
 const server = createServer((req,res) => { res.setHeader('Content-Type','text/html');res.end(source); });
 await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
-const executable = '/private/tmp/branching-curves-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell';
+const executable = process.env.PLAYWRIGHT_EXECUTABLE_PATH || '/private/tmp/branching-curves-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell';
 const browser = await chromium.launch({headless:true,...(existsSync(executable)?{executablePath:executable}:{})});
 const page = await browser.newPage({viewport:{width:1500,height:980}});
 const errors = [];
@@ -44,7 +44,7 @@ const openPreview=()=>page.evaluate(()=>{
 const closePreview=()=>page.locator('iframe[title="Generated experiment preview"]').evaluate(frame=>frame.remove());
 
 const choose=async index=>{const select=page.getByLabel('Escenario',{exact:true});if(await select.inputValue()===String(index))await select.selectOption(String(index===3?0:3));await select.selectOption(String(index));await page.waitForTimeout(350);};
-const run=async(name,fn)=>{await fn();console.log('PASS '+name);};
+const run=async(name,fn)=>{if(process.env.WORKSPACE_BROWSER_TEST&&!name.includes(process.env.WORKSPACE_BROWSER_TEST))return;await fn();console.log('PASS '+name);};
 const selectConnection=async(source,target)=>{
   const id=await page.evaluate(({source,target})=>WorkspaceDemo.layout(workspaceDemo.getState()).flowEdges.find(e=>e.source===source&&e.target===target).id,{source,target});
   const edge=page.locator('.react-flow__edge[data-id="'+id+'"]');
@@ -462,6 +462,75 @@ try {
     await page.mouse.up();await page.mouse.move(0,0);
     const after=await state();assert.equal(after.trials.find(t=>t.id==='b').parentLoopId,null);
     assert.equal(after.trials.find(t=>t.id==='last').defaultNextTrialId,'b');
+  });
+  await run('collapsed loop aggregates cannot be deleted or reconnected; expanded connections remain editable',async()=>{
+    for(const variant of ['outgoing','incoming','boundary','nested']){
+      const {marker,inner}=await page.evaluate(variant=>{
+        const M=WorkspaceDemo,s=M.makeState('Collapsed connections',[
+          M.trial('start','Inicio',null,variant==='boundary'?'end':'a'),
+          M.trial('a','A',null,'b'),M.trial('b','B',null,'end'),M.trial('end','Final'),
+        ],[],'start');
+        M.connect(s,variant==='incoming'?'start':'a',variant==='incoming'?'b':'end');
+        const inner=M.groupLoop(s,['a','b'],'Inner'),marker=variant==='nested'?M.groupLoop(s,[inner],'Outer'):inner;
+        s.loops.forEach(l=>l.expanded=false);workspaceDemo.load(s);return {marker,inner};
+      },variant);
+      await waitForCanvasViewport(page.locator('.canvas-area'));
+      await page.getByTestId('item-start').dblclick();
+      await expect(page.getByTestId('item-start').getByRole('checkbox')).toBeChecked();
+      const edge=await selectConnection(variant==='incoming'?'start':marker,variant==='incoming'?marker:'end');
+      await expect(page.locator('.node-selection-control')).toHaveCount(0);
+      await expect(page.getByRole('button',{name:'Eliminar conexión',exact:true})).toBeDisabled();
+      await expect(edge.locator('.edge-reconnect-icon,.react-flow__edgeupdater')).toHaveCount(0);
+      const before=await state();
+      for(const key of ['Delete','Backspace']){
+        await page.keyboard.press(key);assert.deepEqual(await state(),before,variant+' '+key);
+        await expect(edge).toHaveClass(/selected/);
+      }
+      await page.getByTestId('item-'+marker).getByTitle('Expand loop',{exact:true}).click();
+      if(marker!==inner)await page.getByTestId('item-'+inner).getByTitle('Expand loop',{exact:true}).click();
+      await waitForCanvasViewport(page.locator('.canvas-area'));
+      const pair=variant==='incoming'?['start','b']:['a','end'];
+      const editable=await selectConnection(...pair),expanded=await state();
+      await expect(page.getByRole('button',{name:'Eliminar conexión',exact:true})).toBeEnabled();
+      await expect(editable.locator('.edge-reconnect-icon')).toHaveCount(2);
+      await page.getByRole('button',{name:'Eliminar conexión',exact:true}).click();
+      const remaining=await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).map(e=>[e.source,e.target]));
+      assert.ok(!remaining.some(([a,b])=>a===pair[0]&&b===pair[1]),variant);
+      const other=variant==='incoming'?['start','a']:['b','end'];
+      assert.ok(remaining.some(([a,b])=>a===other[0]&&b===other[1]),variant+' retains the other connection');
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),expanded);
+    }
+  });
+  await run('a free loop with converging exits expands and drags at its automatic position without crossing nodes',async()=>{
+    const loop=await page.evaluate(()=>{
+      const M=WorkspaceDemo,s=M.makeState('Automatic free loop',[
+        M.trial('start','Inicio',null,'end'),M.trial('a','A',null,'b'),
+        M.trial('b','B',null,'end'),M.trial('end','Final'),
+      ],[],'start');
+      M.connect(s,'a','end');const loop=M.groupLoop(s,['a','b'],'Free loop');M.item(s,loop).expanded=false;
+      workspaceDemo.load(s);return loop;
+    });
+    await page.getByTestId('item-'+loop).getByTitle('Expand loop',{exact:true}).click();
+    const checkGeometry=async()=>{
+      await page.mouse.move(0,0);await waitForCanvasViewport(page.locator('.canvas-area'));
+      const nodes=await page.locator('.react-flow__node').all();
+      const edges=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).flowEdges.filter(e=>!e.data.control).map(e=>e.id));
+      for(const id of edges){
+        const path=page.locator('.react-flow__edge[data-id="'+id+'"] .react-flow__edge-path');
+        await expect(path).toHaveAttribute('d',/C/);await expectPathAvoidsNodes(path,nodes);
+      }
+    };
+    await checkGeometry();await snapshot('free-loop-obstacle-route');
+    const before=await state(),main=await page.evaluate(()=>{
+      const layout=WorkspaceDemo.layout(workspaceDemo.getState());return ['start','end'].map(id=>layout.positions[id]);
+    });
+    const box=await page.getByTestId('item-'+loop).boundingBox();
+    await dragToPoint(loop,{x:box.x+box.width/2+50,y:box.y+box.height/2+60});await page.mouse.up();
+    await checkGeometry();assert.notDeepEqual((await state()).anchors,before.anchors);
+    assert.deepEqual(await page.evaluate(()=>{
+      const layout=WorkspaceDemo.layout(workspaceDemo.getState());return ['start','end'].map(id=>layout.positions[id]);
+    }),main);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
   });
   await run('dragging a selected edge target changes its rule and releases the old destination',async()=>{
     await choose(0);const edge=await selectConnection('a','b');

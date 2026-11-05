@@ -1,131 +1,21 @@
 import "@xyflow/react/dist/style.css";
-import { ReactFlow } from "@xyflow/react";
-import BranchedTrial from "../ConfigurationPanel/TrialsConfiguration/BranchedTrial";
-import LoopNode from "./LoopNode";
-import TrialNode from "./TrialNode";
-import CanvasModals from "./components/CanvasModals";
-import CanvasToolbar from "./components/CanvasToolbar";
-import CanvasViewportFitter from "./components/CanvasViewportFitter";
-import CanvasGraphStatus from "./components/CanvasGraphStatus";
-import LoopRoutingEdge from "./components/LoopRoutingEdge";
-import NavigationRoutingEdge from "./components/NavigationRoutingEdge";
-import { useCanvasWorkspace } from "./hooks/useCanvasWorkspace";
-import { getCanvasLayoutSignature } from "./services/getCanvasLayoutSignature";
-import { getCanvasLayoutBounds } from "./services/canvasLayoutBounds";
-import {
-  getCanvasBackground,
-  getFabStyle,
-  getIsDarkMode,
-  getPatternStyle,
-} from "./utils/styleUtils";
-
-const nodeTypes = { trial: TrialNode, loop: LoopNode };
-const edgeTypes = { loop: LoopRoutingEdge, navigation: NavigationRoutingEdge };
-const proOptions = { hideAttribution: true };
-const reactFlowStyle = { background: "transparent" };
-
-function Canvas() {
-  const workspace = useCanvasWorkspace();
-  const {
-    nodes,
-    edges,
-    expanded,
-    actionScope,
-    selectedItem,
-    hasSelection,
-    loopActions,
-    branchActions,
-    moveActions,
-  } = workspace;
-  const isDark = getIsDarkMode();
-  const selectedTrial = workspace.trials.selectedTrial;
-  const selectedItemId = selectedItem?.id ?? null;
-  const layoutSignature = getCanvasLayoutSignature(nodes, edges);
-  const bounds = getCanvasLayoutBounds(nodes, edges);
-
-  return (
-    <div style={getCanvasBackground(isDark)}>
-      <div style={getPatternStyle(isDark)} />
-      <div className="canvas-workspace">
-        <CanvasToolbar
-          fabStyle={getFabStyle(isDark)}
-          scopeKind={actionScope.kind}
-          itemCount={actionScope.items.length}
-          hasSelection={hasSelection}
-          onCreateLoop={loopActions.handleCreateLoop}
-          onAddTrial={() => void loopActions.onAddTrial("Trial")}
-          onShowBranches={() => workspace.setShowBranchedModal(true)}
-          onMoveItem={
-            hasSelection && selectedTrial
-              ? () => moveActions.onMoveItem(selectedTrial.id)
-              : undefined
-          }
-        />
-
-        {workspace.showBranchedModal && selectedItem && (
-          <BranchedTrial
-            selectedTrial={selectedItem}
-            onClose={() => workspace.setShowBranchedModal(false)}
-            isOpen
-          />
-        )}
-
-        <ReactFlow
-          proOptions={proOptions}
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          minZoom={0.1}
-          nodesConnectable={false}
-          panOnDrag
-          panOnScroll
-          zoomOnDoubleClick={false}
-          zoomOnPinch
-          zoomOnScroll={false}
-          style={reactFlowStyle}
-          onPaneClick={workspace.clearSelection}
-        >
-          <CanvasViewportFitter
-            layoutSignature={layoutSignature}
-            bounds={bounds}
-          />
-        </ReactFlow>
-
-        <CanvasGraphStatus
-          isLoopLoading={expanded.isLoading}
-          loopLoadFailed={Boolean(expanded.error)}
-          diagnostics={workspace.trials.graph?.diagnostics ?? []}
-        />
-
-        <CanvasModals
-          timeline={actionScope.items}
-          selectedItemId={selectedItemId}
-          showLoopModal={loopActions.showLoopModal}
-          onAddLoop={loopActions.handleAddLoop}
-          onCloseLoop={() => loopActions.setShowLoopModal(false)}
-          showAddTrialModal={branchActions.showAddTrialModal}
-          pendingParentId={branchActions.pendingParentId}
-          onAddTrial={branchActions.handleAddTrialConfirm}
-          onCloseAddTrial={() => {
-            branchActions.cancelLoopBranchFlow();
-          }}
-          showLoopBranchLevelModal={branchActions.showLoopBranchLevelModal}
-          loopBranchLevels={branchActions.loopBranchLevels}
-          isCreatingLoopBranch={branchActions.isCreatingLoopBranch}
-          onSelectLoopBranchLevel={branchActions.handleLoopBranchLevelConfirm}
-          onCloseLoopBranchLevel={branchActions.cancelLoopBranchFlow}
-          showMoveItemModal={moveActions.showMoveItemModal}
-          itemToMove={moveActions.itemToMove}
-          onMoveItem={moveActions.handleMoveItemConfirm}
-          onCloseMoveItem={() => {
-            moveActions.setShowMoveItemModal(false);
-            moveActions.setItemToMove(null);
-          }}
-        />
+import { ReactFlowProvider } from "@xyflow/react";
+import useTrials from "../../hooks/useTrials";
+import LegacyCanvas from "./LegacyCanvas";
+import WorkspaceCanvas from "./workspace/WorkspaceCanvas";
+export default function Canvas() {
+  const { graph, isLoading } = useTrials();
+  if (!graph)
+    return (
+      <div role="status">
+        {isLoading ? "Loading experiment…" : "Unable to load experiment."}
       </div>
-    </div>
+    );
+  return graph?.workspace ? (
+    <ReactFlowProvider>
+      <WorkspaceCanvas document={graph.workspace} />
+    </ReactFlowProvider>
+  ) : (
+    <LegacyCanvas />
   );
 }
-
-export default Canvas;

@@ -1,3 +1,4 @@
+import { projectExecutionGraph } from "../../../../../../shared/experiment-workspace/projection.js";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import type { ExecutionAddress } from "./executionAddress";
 
@@ -65,6 +66,7 @@ function buildAddressesByTarget(
 export function buildExecutionAddressManifest(
   graph: ExperimentGraphSnapshot,
 ): ExecutionAddressManifest {
+  graph = projectExecutionGraph(graph);
   const scopes = [graph.root, ...Object.values(graph.scopes)];
   return {
     version: 3,

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 import {
   bindCanvasMocks,
   installTrialsContext,
@@ -123,17 +123,26 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
-        branches: [3],
-      }));
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          branches: [3],
+        }),
+      );
     });
     expect(mocks.trialsContext.updateLoop).not.toHaveBeenCalled();
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(2, expect.objectContaining({
-      branches: [],
-    }));
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(4, expect.objectContaining({
-      branches: [2],
-    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      2,
+      expect.objectContaining({
+        branches: [],
+      }),
+    );
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      4,
+      expect.objectContaining({
+        branches: [2],
+      }),
+    );
   });
 
   it("does not duplicate a reconnected child already owned by the parent", async () => {
@@ -157,9 +166,12 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("Move"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
-        branches: [3],
-      }));
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          branches: [3],
+        }),
+      );
     });
   });
 });

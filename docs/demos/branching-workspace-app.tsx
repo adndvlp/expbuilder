@@ -219,6 +219,12 @@ export function findInsertion(s: any,flow: any,itemId: string,point: {x:number;y
   if(fork)return fork;
   return best;
 }
+function withConnectionSemantics(edge: any, semantic: Map<string,string>) {
+  const semantics=[...new Set((edge.data.semanticEdgeIds??[]).map((id: string)=>semantic.get(id)).filter(Boolean))];
+  const single=semantics.length===1?semantics[0]:null;
+  const control=edge.data.kind!=='flow';
+  return {...edge,data:{...edge.data,semantics,semantic:single,selectionId:single??edge.id,control,editable:!control&&single!==null}};
+}
 export function layout(s: any) {
   const model = M(), groups = model.components(s), positions: any = {}, sizes: any = {}, componentIds: any = {};
   const nodes: any[] = [], edges: any[] = [], occupied: any[] = [];
@@ -252,9 +258,7 @@ export function layout(s: any) {
       if(data.routeX!==undefined)data.routeX+=dx;
       if(data.routeTopY!==undefined)data.routeTopY+=dy;
       if(data.routeBottomY!==undefined)data.routeBottomY+=dy;
-      data.semantic = (data.semanticEdgeIds??[]).map((id: string)=>semantic.get(id)).find(Boolean);
-      data.control = data.kind!=='flow';
-      edges.push({...edge,source:byId.get(edge.source),target:byId.get(edge.target),data});
+      edges.push(withConnectionSemantics({...edge,source:byId.get(edge.source),target:byId.get(edge.target),data},semantic));
     }
   }
   // Boundary connections never participate in positioning the reachable graph.
@@ -281,7 +285,7 @@ export function layout(s: any) {
   const slots=assignBranchColorSlots([...edges,...projected.edges],full.branchEdges);
   for(const edge of projected.edges){
     const stroke=getBranchEdgeStroke(slots.get(edge.id));
-    edges.push({...edge,type:'navigation',markerEnd:{type:MarkerType.ArrowClosed,color:stroke,width:20,height:20},style:{stroke,strokeWidth:1.5},data:{...edge.data,semantic:(edge.data.semanticEdgeIds??[]).map((id: string)=>semantic.get(id)).find(Boolean),control:false,boundary:true}});
+    edges.push(withConnectionSemantics({...edge,type:'navigation',markerEnd:{type:MarkerType.ArrowClosed,color:stroke,width:20,height:20},style:{stroke,strokeWidth:1.5},data:{...edge.data,boundary:true}},semantic));
   }
   return {positions,sizes,componentIds,groups,boxes:[],flowNodes:nodes,flowEdges:edges};
 }

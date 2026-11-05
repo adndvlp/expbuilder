@@ -67,6 +67,27 @@ export function assertTrialBranching(doc, trial) {
   };
   if (trial.defaultNextTrialId !== null)
     assertConnected(trial.defaultNextTrialId);
+  if (doc.workspaceSchemaVersion === 2) {
+    const expected = new Set(
+      [
+        trial.defaultNextTrialId,
+        ...trial.branchConditions.map((c) => c.nextTrialId),
+      ]
+        .filter((id) => id != null && id !== "FINISH_EXPERIMENT")
+        .map(String),
+    );
+    if (
+      expected.size !== trial.branches.length ||
+      trial.branches.some((id) => !expected.has(String(id)))
+    )
+      fail("Workspace branches must be derived from Default and Then");
+    if (
+      trial.branchConditions.some(
+        (c) => !["route", "condition"].includes(c.kind),
+      )
+    )
+      fail("Invalid workspace reference kind");
+  }
   for (const condition of trial.branchConditions) {
     if (
       !condition ||

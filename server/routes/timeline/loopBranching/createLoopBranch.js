@@ -47,6 +47,7 @@ export function createLoopBranch(
   targetScopeId,
   mode,
   mutationTimestamp = new Date().toISOString(),
+  allocateId = allocateTrialId,
 ) {
   const sourceOwnerId = getItemOwnerId(experimentDoc, sourceTrial.id);
   if (sourceOwnerId === null || sourceOwnerId === undefined) {
@@ -73,7 +74,7 @@ export function createLoopBranch(
       : experimentDoc.loops.find((loop) => idsMatch(loop.id, normalizedTarget));
   const now = mutationTimestamp;
   const trial = {
-    id: allocateTrialId(experimentDoc),
+    id: allocateId(experimentDoc),
     type: "Trial",
     name: createUniqueItemName(experimentDoc, "New Trial", "New Trial"),
     plugin: "plugin-dynamic",

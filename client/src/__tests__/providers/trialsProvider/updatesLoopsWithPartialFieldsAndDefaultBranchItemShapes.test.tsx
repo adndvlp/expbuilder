@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { GraphScopeView } from "../../../pages/ExperimentBuilder/modules/experiment-graph/types";

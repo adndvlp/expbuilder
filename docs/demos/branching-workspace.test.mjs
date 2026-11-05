@@ -1,3 +1,6 @@
+import {applyWorkspaceCommand} from '../../shared/experiment-workspace/commands.js';
+import {modelDocument,toModel} from '../../shared/experiment-workspace/documentAdapter.js';
+import { createWorkspaceModel } from '../../shared/experiment-workspace/model.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,6 +12,14 @@ const require = createRequire(new URL('../../client/package.json',import.meta.ur
 const context = vm.createContext({ structuredClone, console, React:require('react'), ReactDOM:require('react-dom'), ReactFlow:require('@xyflow/react'), jsxRuntime:require('react/jsx-runtime') });
 vm.runInContext(html.match(/<script id="workspace-model">([\s\S]*?)<\/script>/)[1], context);
 vm.runInContext(html.match(/<script id="app-canvas-library">([\s\S]*?)<\/script>/)[1], context);
+if(process.env.WORKSPACE_SHARED_MODEL) {
+  const {buildSync}=require('esbuild');
+  const source=new URL('../../client/src/pages/ExperimentBuilder/components/Canvas/workspace/',import.meta.url).pathname;
+  const code=buildSync({stdin:{contents:`export * from '${source}layout.js';export * from '${source}insertion.js';`,resolveDir:source},bundle:true,write:false,platform:'node',format:'cjs',external:['react','@xyflow/react']}).outputFiles[0].text;
+  const module={exports:{}};new Function('require','module','exports',code)(require,module,module.exports);
+  context.AppCanvas={...context.AppCanvas,...module.exports};
+  context.WorkspaceDemo=createWorkspaceModel(context.AppCanvas);
+}
 const M = context.WorkspaceDemo;
 const ids = (items) => [...items].sort();
 const make = () => M.makeState('Test', [
@@ -166,6 +177,63 @@ function compareGeometry(expected,actual,offset={x:0,y:0}) {
   const translated=expected.edges.map(e=>({...e,data:{...e.data,...(e.data.curve?{curve:e.data.curve.map(c=>Object.fromEntries(Object.entries(c).map(([key,p])=>[key,{x:p.x+offset.x,y:p.y+offset.y}])))}:{}),...(e.data.routeX===undefined?{}:{routeX:e.data.routeX+offset.x,routeTopY:e.data.routeTopY+offset.y,routeBottomY:e.data.routeBottomY+offset.y})}}));
   assert.deepEqual(clean(actual.flowEdges.filter(e=>expected.edges.some(original=>original.id===e.id))),clean(translated));
 }
+
+test('collapsed loop edges retain every represented pair and become editable only when expanded',()=>{
+  for(const variant of ['outgoing','incoming','boundary','nested']){
+    const s=M.makeState('Collapsed connections',[
+      M.trial('start','Inicio',null,variant==='boundary'?'end':'a'),
+      M.trial('a','A',null,'b'),M.trial('b','B',null,'end'),M.trial('end','Final'),
+    ],[],'start');
+    const inbound=variant==='incoming';
+    M.connect(s,inbound?'start':'a',inbound?'b':'end');
+    const inner=M.groupLoop(s,['a','b'],'Inner');
+    const marker=variant==='nested'?M.groupLoop(s,[inner],'Outer'):inner;
+    s.loops.forEach(l=>l.expanded=false);
+    const expected=inbound?[['start','a'],['start','b']]:[['a','end'],['b','end']];
+    const collapsed=M.layout(s).flowEdges.find(e=>inbound?e.source==='start'&&e.target===marker:e.source===marker&&e.target==='end');
+    assert.ok(collapsed,variant);
+    assert.deepEqual([...collapsed.data.semantics].sort(),expected.map(pair=>JSON.stringify(pair)).sort(),variant);
+    assert.equal(collapsed.data.semantic,null,'an aggregate must not impersonate its first pair');
+    assert.equal(collapsed.data.selectionId,collapsed.id);
+    assert.equal(collapsed.data.editable,false);
+    assert.equal(Boolean(collapsed.data.boundary),variant==='boundary');
+    s.loops.forEach(l=>l.expanded=true);
+    const expanded=M.layout(s).flowEdges;
+    for(const pair of expected){
+      const id=JSON.stringify(pair),edge=expanded.find(e=>e.data.semantic===id);
+      assert.ok(edge,variant+' '+id);assert.equal(edge.data.selectionId,id);assert.equal(edge.data.editable,true);
+    }
+    assert.deepEqual([...M.connections(s).filter(e=>expected.some(([from,to])=>from===e.source&&to===e.target)).map(e=>e.id)].sort(),expected.map(pair=>JSON.stringify(pair)).sort());
+  }
+});
+test('several rules for the same trial pair remain one editable edge',()=>{
+  const s=make();M.realTrial(s,'a').thenGoTo.push({id:'first',targetId:'b'},{id:'second',targetId:'b'});
+  const edge=M.layout(s).flowEdges.find(e=>e.source==='a'&&e.target==='b');
+  assert.deepEqual([...edge.data.semantics],[JSON.stringify(['a','b'])]);
+  assert.equal(edge.data.editable,true);assert.equal(edge.data.semantic,JSON.stringify(['a','b']));
+});
+test('an expanded free loop with converging exits routes at its automatic and dragged positions',()=>{
+  const initial=M.makeState('Free loop',[
+    M.trial('start','Inicio',null,'end'),M.trial('a','A',null,'b'),
+    M.trial('b','B',null,'end'),M.trial('end','Final'),
+  ],[],'start');
+  M.connect(initial,'a','end');const loop=M.groupLoop(initial,['a','b'],'Free loop');
+  M.item(initial,loop).expanded=false;
+  const collapsed=M.layout(initial),active=JSON.stringify(['start','end'].map(id=>collapsed.positions[id]));
+  for(const [dx,dy] of [[0,0],[-160,-180],[240,200]]){
+    const s=M.copy(initial);M.item(s,loop).expanded=true;
+    const anchors=JSON.stringify(s.anchors),expanded=M.layout(s);
+    assert.equal(JSON.stringify(s.anchors),anchors,'routing must not silently move the group');
+    assert.equal(JSON.stringify(['start','end'].map(id=>expanded.positions[id])),active);
+    M.moveComponent(s,loop,dx,dy);const moved=M.layout(s);
+    assert.equal(JSON.stringify(['start','end'].map(id=>moved.positions[id])),active);
+    for(const id of [loop,'a','b']){
+      assert.equal(moved.positions[id].x-expanded.positions[id].x,dx);
+      assert.equal(moved.positions[id].y-expanded.positions[id].y,dy);
+    }
+    assert.equal(moved.flowEdges.filter(e=>e.data.boundary).length,2);
+  }
+});
 
 test('new trials are saved, free, and absent from the executable manifest', () => {
   const s = make(); const id = M.addTrial(s, { x: 800, y: 80 });
@@ -940,8 +1008,12 @@ test('sequential insertion rewires every reference on the targeted edge and pres
   const preview=context.AppCanvas.previewInsertion(s,'loca',candidate);
   assert.equal(M.serialize(s),before,'preview never changes editor state');
   assert.equal(preview.entryId,'loca');assert.equal(preview.exitId,'child');
-  M.insertStructure(s,'loca',candidate);
-  assert.equal(M.serialize(s),M.serialize(preview.state),'commit uses the exact preview operation');
+  if(process.env.WORKSPACE_SHARED_MODEL) {
+    const document={...modelDocument(s),workspaceSchemaVersion:2,editorLayout:{positionsByItemId:s.anchors}};
+    const committed=applyWorkspaceCommand(document,{kind:'insertStructure',args:{...candidate,itemId:'loca',endpoints:context.AppCanvas.insertionEndpoints(s,'loca')}},{layout:context.AppCanvas.layout,insertionEndpoints:context.AppCanvas.insertionEndpoints});
+    Object.assign(s,toModel(committed.document));
+  }else M.insertStructure(s,'loca',candidate);
+  assert.deepEqual(JSON.parse(M.serialize(s)),JSON.parse(M.serialize(preview.state)),'commit uses the exact preview operation');
   assert.equal(M.realTrial(s,'a').defaultNextTrialId,'loca');
   assert.equal(M.realTrial(s,'child').defaultNextTrialId,'b');
   assert.equal(M.realTrial(s,'a').thenGoTo[0].targetId,'loca');
