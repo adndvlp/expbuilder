@@ -2,7 +2,14 @@ import fs from "fs";
 import path from "path";
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
+import {
+  withDbLock,
+  withDbMutation,
+} from "../../modules/session-persistence/dbQueue.js";
+import {
+  defaultFunctionalSettings,
+  ensureSettingsDocument,
+} from "../../utils/functionalSettings.js";
 import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
 import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
@@ -69,10 +76,13 @@ router.post("/api/create-experiment", async (req, res) => {
       storage,
     };
 
-    await db.read();
-    ensureDbData();
-    db.data.experiments.push(experiment);
-    await db.write();
+    await withDbMutation((data) => {
+      data.experiments.push(experiment);
+      const config = ensureSettingsDocument(data, experimentID);
+      config.functionalSettings = defaultFunctionalSettings();
+      config.settingsMigration = { state: "complete", source: "new" };
+      config.updatedAt = experiment.createdAt;
+    });
 
     res.json({
       success: true,
@@ -89,13 +99,11 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     const { experimentID } = req.params;
     const { uid, scope = uid ? "remote" : "local" } = req.body;
     if (!["remote", "local"].includes(scope)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          code: "INVALID_DELETE_SCOPE",
-          error: "Choose local or remote deletion",
-        });
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_DELETE_SCOPE",
+        error: "Choose local or remote deletion",
+      });
     }
 
     await db.read();

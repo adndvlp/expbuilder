@@ -1,3 +1,4 @@
+import { defaultFunctionalSettings } from "../../lib/functionalSettings";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LocalConfiguration, {
@@ -26,7 +27,7 @@ const mocks = vi.hoisted(() => ({
       "BASE_TIMELINE_CODE();" +
       "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
   ),
-  firestoreData: null as null | Record<string, any>,
+  settingsSections: null as null | Record<string, any>,
 }));
 
 vi.mock(
@@ -45,8 +46,8 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useDevMode", () => ({
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(() => ({ id: "exp-1" })),
   getDoc: vi.fn(async () => ({
-    exists: () => Boolean(mocks.firestoreData),
-    data: () => mocks.firestoreData,
+    exists: () => Boolean(mocks.settingsSections),
+    data: () => mocks.settingsSections,
   })),
 }));
 
@@ -68,7 +69,8 @@ const defaultProps = {
   getTrial: vi.fn(),
   getLoopTimeline: vi.fn(),
   getLoop: vi.fn(),
-  appearance: {    backgroundColor: "#ffffff",
+  appearance: {
+    backgroundColor: "#ffffff",
     fullScreen: true,
     progressBar: true,
   },
@@ -76,6 +78,18 @@ const defaultProps = {
 
 function mockSessionNameFetch() {
   globalThis.fetch = vi.fn(async (url: string) => {
+    if (url.includes("/api/functional-settings/"))
+      return {
+        ok: true,
+        json: async () => ({
+          functionalSettings: {
+            ...defaultFunctionalSettings(),
+            ...mocks.settingsSections,
+          },
+          revision: 1,
+          settingsMigration: { state: "complete", source: "local" },
+        }),
+      } as Response;
     if (url.includes("/api/session-name-config/exp-1")) {
       return {
         ok: true,
@@ -107,7 +121,7 @@ describe("experiment configuration generators", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSessionNameFetch();
-    mocks.firestoreData = null;
+    mocks.settingsSections = null;
     mocks.devMode = {
       isDevMode: false,
       code:
@@ -197,10 +211,13 @@ describe("experiment configuration generators", () => {
   });
 
   it("falls back to empty session tokens and the default separator", async () => {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ tokens: null, separator: null }),
-    }) as Response);
+    globalThis.fetch = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          json: async () => ({ tokens: null, separator: null }),
+        }) as Response,
+    );
 
     const { result } = renderHook(() => LocalConfiguration(defaultProps));
     const code = await result.current.generateLocalExperiment();
@@ -222,8 +239,8 @@ describe("experiment configuration generators", () => {
     expect(code).toContain("const _SESSION_NAME_TOKENS = [];");
   });
 
-  it("builds public experiment HTML with Firestore-backed batch, captcha and recruitment settings", async () => {
-    mocks.firestoreData = {
+  it("builds public experiment HTML with locally saved batch, captcha and recruitment settings", async () => {
+    mocks.settingsSections = {
       batchConfig: {
         useIndexedDB: false,
         batchSize: 5,
@@ -263,7 +280,9 @@ describe("experiment configuration generators", () => {
     expect(code).toContain(
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );
-    expect(code).toContain("await _showCaptchaGate(\"site-key-123\", \"recaptcha\")");
+    expect(code).toContain(
+      'await _showCaptchaGate("site-key-123", "recaptcha")',
+    );
     expect(code).toContain("batchSize: 5");
     expect(code).toContain("resumeTimeoutMinutes: 45");
     expect(code).toContain("useIndexedDB: false");

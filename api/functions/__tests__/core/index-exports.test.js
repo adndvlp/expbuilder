@@ -15,6 +15,7 @@ const osfManage = jest.fn();
 const createOAuthStateEndpoint = jest.fn();
 const getOAuthClientIds = jest.fn();
 const uploadParticipantFile = jest.fn();
+const getExperimentFunctionalSettings = jest.fn();
 const mockSetGlobalOptions = jest.fn();
 
 jest.unstable_mockModule("../../experiment/sessions/index.js", () => ({
@@ -53,8 +54,14 @@ jest.unstable_mockModule("../../oauth/api/state.js", () => ({
 jest.unstable_mockModule("../../oauth/api/public-client-ids.js", () => ({
   getOAuthClientIds,
 }));
-jest.unstable_mockModule("../../experiment/participant-files/api/upload.js", () => ({
-  uploadParticipantFile,
+jest.unstable_mockModule(
+  "../../experiment/participant-files/api/upload.js",
+  () => ({
+    uploadParticipantFile,
+  }),
+);
+jest.unstable_mockModule("../../experiment/functional-settings/api.js", () => ({
+  getExperimentFunctionalSettings,
 }));
 jest.unstable_mockModule("firebase-functions/v2", () => ({
   setGlobalOptions: mockSetGlobalOptions,
@@ -94,6 +101,7 @@ describe("functions/index.js", () => {
       createOAuthStateEndpoint,
       getOAuthClientIds,
       uploadParticipantFile,
+      getExperimentFunctionalSettings,
     });
     expect(functionsYamlEndpoints.sort()).toEqual(
       [
@@ -112,6 +120,7 @@ describe("functions/index.js", () => {
         "createOAuthStateEndpoint",
         "getOAuthClientIds",
         "uploadParticipantFile",
+        "getExperimentFunctionalSettings",
       ].sort(),
     );
   });

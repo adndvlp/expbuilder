@@ -165,6 +165,14 @@ describe('POST /api/trials-preview/:experimentID', () => {
   })
 })
 
+const savedSettings = {
+  schemaVersion: 1, revision: 1,
+  batchConfig: { useIndexedDB: true, batchSize: 0, resumeTimeoutMinutes: 30 },
+  recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+  captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' },
+};
+const settingsDoc = (experimentID) => ({ experimentID, functionalSettings: savedSettings, settingsMigration: { state: 'complete', source: 'local' } });
+
 describe('POST /api/publish-experiment/:experimentID', () => {
   afterEach(() => {
     delete process.env.GITHUB_FILE_LIMIT_BYTES
@@ -182,7 +190,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     const { app } = await freshApp()
     await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1' })
+      .send({ functionalSettings: savedSettings, uid: 'u1' })
       .expect(400)
   })
 
@@ -190,7 +198,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     const { app } = await freshApp()
     await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'code' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' })
       .expect(404)
   })
 
@@ -203,6 +211,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
     const videoDir = path.join(tmpDir, 'PublishExp', 'vid')
     fs.mkdirSync(videoDir, { recursive: true })
@@ -210,7 +219,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
 
     const res = await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'jsPsych.run(timeline);' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'jsPsych.run(timeline);' })
       .expect(413)
 
     expect(res.body).toMatchObject({

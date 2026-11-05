@@ -50,15 +50,13 @@ describeEmulator("M01 ownership and Firestore rules (real emulator)", () => {
     ));
   });
   beforeEach(async () => {
-    await db
-      .doc("experiments/study")
-      .set({
-        owner: "alice",
-        id: "study",
-        active: true,
-        sessions: 9,
-        currentCondition: 4,
-      });
+    await db.doc("experiments/study").set({
+      owner: "alice",
+      id: "study",
+      active: true,
+      sessions: 9,
+      currentCondition: 4,
+    });
   });
   afterAll(async () => {
     await db?.terminate();
@@ -84,6 +82,9 @@ describeEmulator("M01 ownership and Firestore rules (real emulator)", () => {
     "storageProvider",
     "mutationLease",
     "provisioningState",
+    "publishedSettings",
+    "recruitmentConfig",
+    "captchaConfig",
   ])("owner cannot overwrite server field %s", async (field) => {
     const value = ["sessions", "currentCondition"].includes(field)
       ? { integerValue: "0" }
@@ -99,15 +100,13 @@ describeEmulator("M01 ownership and Firestore rules (real emulator)", () => {
       "alice",
     );
   });
-  test("owners can save transitional settings on a backend-created document", async () => {
-    await db
-      .doc("experiments/study")
-      .update({
-        schemaVersion: 2,
-        provisioningState: "ready",
-        createdAt: new Date(),
-        driveFolderId: "folder",
-      });
+  test("owners cannot change published functional settings through the client", async () => {
+    await db.doc("experiments/study").update({
+      schemaVersion: 2,
+      provisioningState: "ready",
+      createdAt: new Date(),
+      driveFolderId: "folder",
+    });
     const response = await client(
       "PATCH",
       {
@@ -118,10 +117,10 @@ describeEmulator("M01 ownership and Firestore rules (real emulator)", () => {
       "alice",
       "?updateMask.fieldPaths=batchConfig",
     );
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
     expect(
-      (await db.doc("experiments/study").get()).data().batchConfig.batchSize,
-    ).toBe(7);
+      (await db.doc("experiments/study").get()).data().batchConfig,
+    ).toBeUndefined();
   });
   test("settings and reads are denied to another user and unauthenticated clients", async () => {
     expect((await client("GET", undefined, "bob")).status).toBe(403);
@@ -166,13 +165,11 @@ describeEmulator("M01 ownership and Firestore rules (real emulator)", () => {
     ).toBe(403);
   });
   test("a pending first publication cannot be activated directly by its owner", async () => {
-    await db
-      .doc("experiments/study")
-      .update({
-        active: false,
-        provisioningState: "ready",
-        initialPublicationPending: true,
-      });
+    await db.doc("experiments/study").update({
+      active: false,
+      provisioningState: "ready",
+      initialPublicationPending: true,
+    });
     expect(
       (
         await client(

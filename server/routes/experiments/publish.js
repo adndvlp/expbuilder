@@ -16,6 +16,12 @@ import {
 import { applyGeneratedArtifact } from "./artifact.js";
 import { resolveExperimentAppearance } from "./appearanceSettings.js";
 import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
+import {
+  settingsDocument,
+  readFunctionalSettings,
+  validateFunctionalSettings,
+  settingsError,
+} from "../../utils/functionalSettings.js";
 
 const router = Router();
 
@@ -200,6 +206,30 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       }
     }
 
+    const localSettings = readFunctionalSettings(
+      settingsDocument(db.data, experimentID),
+    );
+    if (!localSettings.functionalSettings) {
+      throw settingsError(
+        "SETTINGS_REVIEW_REQUIRED",
+        422,
+        "Review and save the experiment configuration before publishing.",
+      );
+    }
+    const functionalSettings = validateFunctionalSettings(
+      req.body.functionalSettings,
+    );
+    if (
+      JSON.stringify(functionalSettings) !==
+      JSON.stringify(localSettings.functionalSettings)
+    ) {
+      throw settingsError(
+        "SETTINGS_REVISION_CONFLICT",
+        409,
+        "Settings changed after generation. Generate the experiment again before publishing.",
+      );
+    }
+
     const sanitizedRepoName = experiment.name
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9-_]/g, "")
@@ -255,6 +285,7 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
           mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
           experimentID,
           storageProvider: normalizedStorage,
+          functionalSettings,
         },
         req.get("authorization"),
       );
@@ -293,7 +324,11 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     console.error(`Error publishing experiment: ${error.message}`);
     res
       .status(error.status || 500)
-      .json({ success: false, error: error.message });
+      .json({
+        success: false,
+        ...(error.code && { code: error.code }),
+        error: error.message,
+      });
   }
 });
 

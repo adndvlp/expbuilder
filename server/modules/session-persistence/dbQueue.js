@@ -57,47 +57,48 @@ export function serializeDbRequest(req, res, next) {
       (req.path === "/api/create-tunnel" ||
         req.path === "/api/close-tunnel")) ||
     (method === "POST" && req.path.startsWith("/api/upload-files/")) ||
+    (method === "POST" &&
+      /^\/api\/functional-settings\/[^/]+\/migrate\/?$/.test(req.path)) ||
     (method === "GET" && req.path.startsWith("/api/upload-jobs/")) ||
     (method === "GET" && /^\/[^/]+\/?$/.test(req.path)) ||
     (method === "GET" && /^\/[^/]+\/preview\/?$/.test(req.path)) ||
-    (method === "GET" && req.path.startsWith("/api/participant-files-serve/")) ||
+    (method === "GET" &&
+      req.path.startsWith("/api/participant-files-serve/")) ||
     (method === "GET" && /^\/[^/]+\/(?:img|aud|vid|others)\//.test(req.path))
   ) {
     next();
     return;
   }
-  withDbLock(
-    async () => {
-      await db.read();
-      ensureDbData();
-      return new Promise((resolve, reject) => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          resolve();
-        };
+  withDbLock(async () => {
+    await db.read();
+    ensureDbData();
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
 
-        res.once("finish", finish);
-        res.once("close", () => {
-          if (res.writableFinished) finish();
-        });
-        if (typeof res.end === "function") {
-          const originalEnd = res.end;
-          res.end = function (...args) {
-            try {
-              return originalEnd.apply(this, args);
-            } finally {
-              finish();
-            }
-          };
-        }
-        try {
-          next();
-        } catch (error) {
-          reject(error);
-        }
+      res.once("finish", finish);
+      res.once("close", () => {
+        if (res.writableFinished) finish();
       });
-    },
-  ).catch(next);
+      if (typeof res.end === "function") {
+        const originalEnd = res.end;
+        res.end = function (...args) {
+          try {
+            return originalEnd.apply(this, args);
+          } finally {
+            finish();
+          }
+        };
+      }
+      try {
+        next();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }).catch(next);
 }

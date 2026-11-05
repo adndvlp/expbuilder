@@ -1,5 +1,6 @@
 import {
-  existingExperiment,
+  localSettings,
+  localSettingsFetch,
   failedResponse,
   fetchMock,
   firestoreMocks,
@@ -15,23 +16,25 @@ describe("ExperimentSettings", () => {
   registerExperimentsettingsHooks();
 
   it("renders IndexedDB-off storage and MTurk guidance while allowing IndexedDB to be re-enabled", async () => {
-    firestoreMocks.getDoc.mockResolvedValueOnce(
-      existingExperiment({
-        batchConfig: {
-          useIndexedDB: false,
-          batchSize: 0,
-          resumeTimeoutMinutes: 30,
-        },
-        recruitmentConfig: {
-          platform: "mturk",
-          prolificCompletionCode: "",
-        },
-        captchaConfig: {
-          enabled: false,
-          provider: "hcaptcha",
-          siteKey: "",
-        },
-      }),
+    localSettingsFetch.mockResolvedValueOnce(
+      okJson(
+        localSettings({
+          batchConfig: {
+            useIndexedDB: false,
+            batchSize: 0,
+            resumeTimeoutMinutes: 30,
+          },
+          recruitmentConfig: {
+            platform: "mturk",
+            prolificCompletionCode: "",
+          },
+          captchaConfig: {
+            enabled: false,
+            provider: "hcaptcha",
+            siteKey: "",
+          },
+        }),
+      ),
     );
     fetchMock().mockResolvedValueOnce(okJson(null));
 
@@ -55,7 +58,7 @@ describe("ExperimentSettings", () => {
   });
 
   it("blocks combined save when session naming tokens are not unique", async () => {
-    firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
+    localSettingsFetch.mockResolvedValueOnce(okJson(localSettings({})));
     fetchMock().mockResolvedValueOnce(
       okJson({
         tokens: [token({ id: "date-token", type: "date" })],
@@ -75,17 +78,16 @@ describe("ExperimentSettings", () => {
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
   });
 
-  it("surfaces errors from the session-name API during combined save", async () => {
+  it("surfaces errors from an atomic local configuration save", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
-    fetchMock()
-      .mockResolvedValueOnce(
-        okJson({
-          tokens: [token({ id: "counter-token", type: "counter" })],
-          separator: "_",
-        }),
-      )
-      .mockResolvedValueOnce(failedResponse());
+    localSettingsFetch.mockResolvedValueOnce(okJson(localSettings({})));
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        tokens: [token({ id: "counter-token", type: "counter" })],
+        separator: "_",
+      }),
+    );
+    localSettingsFetch.mockResolvedValueOnce(failedResponse());
 
     render(<ExperimentSettings experimentID="exp-published" />);
 
@@ -93,8 +95,8 @@ describe("ExperimentSettings", () => {
     fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(
-      await screen.findByText("Error saving configuration"),
+      await screen.findByText(/Could not access the saved configuration/),
     ).toBeInTheDocument();
-    expect(firestoreMocks.setDoc).toHaveBeenCalledTimes(1);
+    expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
   });
 });

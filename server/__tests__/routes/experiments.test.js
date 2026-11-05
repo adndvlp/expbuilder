@@ -420,12 +420,20 @@ describe('POST /api/trials-preview/:experimentID', () => {
   })
 })
 
+const savedSettings = {
+  schemaVersion: 1, revision: 1,
+  batchConfig: { useIndexedDB: true, batchSize: 0, resumeTimeoutMinutes: 30 },
+  recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+  captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' },
+};
+const settingsDoc = (experimentID) => ({ experimentID, functionalSettings: savedSettings, settingsMigration: { state: 'complete', source: 'local' } });
+
 describe('POST /api/publish-experiment/:experimentID', () => {
   test('validates uid, generated public code, and experiment existence', async () => {
     const { app } = await freshApp()
     await request(app).post('/api/publish-experiment/E1').send({ generatedPublicCode: 'code' }).expect(400)
-    await request(app).post('/api/publish-experiment/E1').send({ uid: 'u1' }).expect(400)
-    await request(app).post('/api/publish-experiment/E1').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(404)
+    await request(app).post('/api/publish-experiment/E1').send({ functionalSettings: savedSettings, uid: 'u1' }).expect(400)
+    await request(app).post('/api/publish-experiment/E1').send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' }).expect(404)
   })
 
   test('blocks publishing a structurally invalid graph', async () => {
@@ -447,11 +455,12 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       loops: [],
       timeline: [{ id: 1, type: 'trial', name: 'T1', branches: ["missing"] }],
     })
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
 
     const res = await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'code' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' })
       .expect(400)
 
     expect(res.body.code).toBe('GRAPH_INVALID')
@@ -489,11 +498,12 @@ describe('POST /api/publish-experiment/:experimentID', () => {
         { id: 2, type: 'trial', name: 'T2', branches: [] },
       ],
     })
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
 
     await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
       .expect(400)
 
     await db.read()
@@ -532,12 +542,13 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     fs.writeFileSync(path.join(tmpDir, 'Publish Exp!', 'img', 'image.png'), 'image-data')
     fs.writeFileSync(path.join(tmpDir, 'Publish Exp!', 'img', '.DS_Store'), 'ignore')
     fs.writeFileSync(path.join(tmpDir, 'Publish Exp!', 'img', '.upload-temp.png'), 'ignore')
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
 
     const res = await request(app)
       .post('/api/publish-experiment/E1')
       .set('Authorization', 'Bearer firebase-id-token')
-      .send({ uid: 'u1', storage: 'dropbox', generatedPublicCode: 'const publicCode = true;' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', storage: 'dropbox', generatedPublicCode: 'const publicCode = true;' })
       .expect(200)
 
     expect(res.body.pagesUrl).toBe('https://pages.example.com/publish-exp')
@@ -545,6 +556,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     expect(global.fetch.mock.calls[0][0]).toBe('https://firebase.example.com/publishExperiment')
     expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer firebase-id-token')
     expect(body.repoName).toBe('publish-exp')
+    expect(body.functionalSettings).toEqual(savedSettings)
     expect(body.storageProvider).toBe('dropbox')
     expect(body.htmlContent).toContain('const publicCode = true;')
     expect(body.htmlContent).toContain('plugin-preload')
@@ -575,11 +587,12 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       updatedAt: new Date().toISOString(),
     })
     db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
 
     await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'const publicCode = true;' })
       .expect(200)
 
     const body = JSON.parse(global.fetch.mock.calls[0][1].body)
@@ -597,11 +610,12 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
     fs.mkdirSync(path.join(tmpDir, 'Big Media', 'vid'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Big Media', 'vid', 'movie.mp4'), 'too-large')
+    db.data.configs.push(settingsDoc('E1'))
     await db.write()
 
     const res = await request(app)
       .post('/api/publish-experiment/E1')
-      .send({ uid: 'u1', generatedPublicCode: 'code' })
+      .send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' })
       .expect(413)
 
     expect(res.body.code).toBe('GITHUB_FILE_TOO_LARGE')
@@ -618,14 +632,16 @@ describe('POST /api/publish-experiment/:experimentID', () => {
     const first = await freshApp()
     first.db.data.experiments.push({ experimentID: 'E1', name: 'Fail One', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     first.db.data.trials.push({ entryItemId: null, experimentID: 'E1', trials: [], loops: [], timeline: [] })
+    first.db.data.configs.push(settingsDoc('E1'))
     await first.db.write()
-    await request(first.app).post('/api/publish-experiment/E1').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(400)
+    await request(first.app).post('/api/publish-experiment/E1').send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' }).expect(400)
 
     const second = await freshApp()
     second.db.data.experiments.push({ experimentID: 'E2', name: 'Fail Two', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     second.db.data.trials.push({ entryItemId: null, experimentID: 'E2', trials: [], loops: [], timeline: [] })
+    second.db.data.configs.push(settingsDoc('E2'))
     await second.db.write()
-    const res = await request(second.app).post('/api/publish-experiment/E2').send({ uid: 'u1', generatedPublicCode: 'code' }).expect(500)
+    const res = await request(second.app).post('/api/publish-experiment/E2').send({ functionalSettings: savedSettings, uid: 'u1', generatedPublicCode: 'code' }).expect(500)
     expect(res.body.error).toContain('network down')
     global.fetch = originalFetch
   })

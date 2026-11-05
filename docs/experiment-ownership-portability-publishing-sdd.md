@@ -596,7 +596,7 @@ Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos 
 | Etapa | Estado | Evidencia / siguiente paso |
 |---|---|---|
 | M01 | Implementado y verificado localmente | Política común, reserva transaccional inactiva, preparación, exclusión de mutaciones, captura compatible, reglas y eliminación local/remota verificadas. Despliegue pendiente. |
-| M02 | Pendiente | Depende de M01; definir servicios locales y preservar campos en `save-config` |
+| M02 | Implementado y verificado localmente | Ajustes locales con revisiones, migración autorizada, revisión visible, generación sin Firestore y conservación de campos. Despliegue pendiente. |
 | M03 | Pendiente | Depende de M02; resolver medios por ID antes de habilitar copias |
 | M04 | Pendiente | Verificar asociaciones legadas; retirar cambio implícito de proveedor |
 | M05 | Pendiente | Congelar artefacto y definir protocolo 2 completo |
@@ -645,6 +645,50 @@ node --experimental-vm-modules node_modules/jest/bin/jest.js --runTestsByPath se
 Desde `client`, ejecutar `node node_modules/vitest/vitest.mjs run src/__tests__/components/dashboardFlows.test.tsx` y `node node_modules/typescript/bin/tsc -b --pretty false`. El runner del emulador selecciona una versión instalada de Node compatible con el SDK, usa el proyecto demo `demo-expbuilder-m01` y no contacta Firebase de producción. `--baseline-rules` permite comprobar las reglas de `HEAD` antes de incorporar el cambio; tras un commit esa referencia ya no representa necesariamente las reglas anteriores.
 
 Siguiente etapa: M02, configuración funcional local y migración autorizada. La base local del tester, sus respaldos y los experimentos de producción no se migraron ni se usaron como datos de prueba.
+
+### Sesión M02 — 2026-11-05
+
+Se completó la configuración funcional local de batching, reclutamiento y CAPTCHA. Los diseños nuevos guardan valores predeterminados explícitos desde su creación; los legados sin configuración comprobable muestran revisión pendiente. El editor funciona antes de publicar, guarda sin Firebase y ofrece recuperar ajustes publicados mediante una acción explícita. Guardar un borrador afecta la base local; las reglas reservan la modificación de los ajustes remotos para el backend de publicación.
+
+El contrato puro y su validación común viven en `api/functions/experiment/functional-settings/model.js`, con tipos compartidos por el cliente. El servidor local resuelve ese mismo módulo desde el repositorio durante desarrollo y desde `resources/api` en Electron, conforme al empaquetado existente. Se validan proveedores, tipos, tamaño de lote entero no negativo, timeout de 1 a 1440 minutos y clave pública cuando CAPTCHA está habilitado. Los campos ajenos al contrato se excluyen.
+
+Las rutas `GET/PUT /api/functional-settings/:experimentID` guardan `functionalSettings` y `settingsMigration` junto a los demás campos de `configs`. Las escrituras usan `withDbMutation`, revisiones asignadas por el servidor y `expectedRevision`; una edición concurrente devuelve `409 SETTINGS_REVISION_CONFLICT`. Guardar código o nombres de sesión conserva los ajustes y su procedencia. El guardado combinado de ajustes y nombres de sesión se realiza en una sola mutación local. Los valores manuales se identifican como `local`; aceptar explícitamente los predeterminados de un legado se identifica como `reviewed_defaults`.
+
+`POST /api/functional-settings/:experimentID/migrate` transmite el token al endpoint nuevo `getExperimentFunctionalSettings`. El backend comprueba token y propietario mediante la política M01 antes de leer ajustes. Devuelve únicamente los tres apartados funcionales y la identidad verificada del proyecto, experimento y propietario; la API local establece `cloudBinding` después de comprobar esa respuesta. La migración exige revisión local incompleta, conserva configuraciones ya completas y vuelve a comprobar la revisión al aplicar el resultado. La espera remota queda fuera del bloqueo global de peticiones para permitir una edición local concurrente. Los fallos conservan la revisión pendiente; los paquetes marcados con procedencia `package` se revisan localmente en lugar de recuperar al autor original. M03 incorporará esa marca al flujo de copia.
+
+`generateExperiment` utiliza ajustes locales validados o la instantánea de ajustes proporcionada por el publicador. Se retiraron la lectura de Firestore y el fallback silencioso. Publicar con configuración incompleta falla antes de generar o contactar proveedores. El cliente envía los mismos ajustes usados para generar; la API local comprueba que siguen correspondiendo a la revisión guardada. El backend valida y registra `publishedSettings` y los campos funcionales de compatibilidad después de completar las subidas, preservando pausa y contadores. El artefacto completo congelado y la reconciliación de fallos posteriores al commit pertenecen a M05/M06.
+
+Compatibilidad y despliegue: se agregó el endpoint al export de funciones y a `functions.yaml`. El publicador remoto admite temporalmente solicitudes antiguas sin `functionalSettings`; la retirada se coordinará con el protocolo versionado. Las reglas M02 ya bloquean las escrituras directas de ajustes funcionales, por lo que deben publicarse junto con el editor actualizado y las funciones correspondientes. La migración remota requiere desplegar el endpoint nuevo. Los criterios A07–A10 se verificaron localmente; el intercambio completo entre usuarios sigue dependiendo de M03–M07. El registro de esta sesión describe código y emuladores, sin despliegue en producción.
+
+Evidencia de TDD y regresión:
+
+| Comprobación                                                                 | Resultado                                                                                          |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Nuevos casos HTTP y del hook antes de implementar persistencia local         | Fallaron al faltar las rutas y mantenerse la dependencia de Firestore                              |
+| Publicación con ajustes locales antes de conectar el snapshot remoto         | Falló la comprobación de `publishedSettings`; 38 casos anteriores siguieron correctos              |
+| Reglas anteriores de `HEAD` con los casos M02                                | 3 fallos esperados y 14 correctos                                                                  |
+| Reglas nuevas y reserva concurrente en Firestore Emulator                    | 17 correctos                                                                                       |
+| Suite unitaria completa de `api/functions`                                   | 569 correctas en 118 suites; los 17 casos del emulador se ejecutaron aparte                        |
+| Regresión del servidor, configuración, publicación, ZIP y cola de base local | 134 correctas en 10 suites                                                                         |
+| Regresión de interfaz, generación y acciones del timeline                    | 151 correctas en 29 archivos; 36 casos afectados se repitieron tras el ajuste final del formulario |
+| TypeScript y compilación de producción del cliente                           | Correctos; salida de Vite en un directorio temporal                                                |
+| Sintaxis JavaScript y diff                                                   | 18 archivos correctos y `git diff --check` correcto                                                |
+
+Comandos reproducibles desde la raíz, además de los comandos API/emulador registrados en M01:
+
+```sh
+node --experimental-vm-modules node_modules/jest/bin/jest.js --runTestsByPath server/__tests__/routes/functional-settings.test.js server/__tests__/routes/experiments.test.js server/__tests__/routes/experiments-extended.test.js server/__tests__/routes/configs.test.js server/__tests__/routes/db.test.js server/__tests__/routes/db-extended.test.js server/__tests__/routes/db-navigation-import.test.js server/__tests__/routes/db-legacy-import.test.js server/__tests__/routes/experiment-delete-ownership.test.js server/__tests__/db-queue.test.js --runInBand
+node client/node_modules/typescript/bin/tsc -b client/tsconfig.json --pretty false
+```
+
+Desde `client`:
+
+```sh
+node node_modules/vitest/vitest.mjs run src/__tests__/components/experimentSettings src/__tests__/components/codegenRuntime src/__tests__/components/configurationGenerators.test.tsx src/__tests__/components/configurationPublicDataUrl.test.tsx src/__tests__/components/timelineActions
+node node_modules/vite/bin/vite.js build --outDir /private/tmp/expbuilder-m02-client-build
+```
+
+Siguiente etapa: M03, medios por identidad y paquetes v2 con copia/restauración explícitas. La base local del usuario y sus archivos previos se conservaron como cambios ajenos a esta implementación.
 
 ## 20. Referencias técnicas
 

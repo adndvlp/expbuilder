@@ -1,3 +1,14 @@
+import { defaultFunctionalSettings } from "../../../lib/functionalSettings";
+vi.mock("../../../lib/functionalSettings", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../lib/functionalSettings")>();
+  return {
+    ...actual,
+    requireFunctionalSettings: vi.fn(async () =>
+      actual.defaultFunctionalSettings(),
+    ),
+  };
+});
 import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PublishExperiment from "../../../pages/ExperimentBuilder/components/Timeline/PublishExperiment";

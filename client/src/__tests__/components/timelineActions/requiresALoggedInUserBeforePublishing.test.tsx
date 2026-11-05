@@ -1,3 +1,14 @@
+import { defaultFunctionalSettings } from "../../../lib/functionalSettings";
+vi.mock("../../../lib/functionalSettings", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../lib/functionalSettings")>();
+  return {
+    ...actual,
+    requireFunctionalSettings: vi.fn(async () =>
+      actual.defaultFunctionalSettings(),
+    ),
+  };
+});
 import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PublishExperiment from "../../../pages/ExperimentBuilder/components/Timeline/PublishExperiment";
@@ -162,7 +173,10 @@ describe("PublishExperiment", () => {
 
     await api.handlePublishToGitHub();
 
-    expect(props.generateExperiment).toHaveBeenCalledWith("googledrive");
+    expect(props.generateExperiment).toHaveBeenCalledWith(
+      "googledrive",
+      defaultFunctionalSettings(),
+    );
     expect(fetchMock()).toHaveBeenCalledWith(
       `${API_URL}/api/publish-experiment/exp-123`,
       {
@@ -175,6 +189,7 @@ describe("PublishExperiment", () => {
           uid: "user-123",
           storage: "googledrive",
           generatedPublicCode: "public-code",
+          functionalSettings: defaultFunctionalSettings(),
         }),
         credentials: "include",
         mode: "cors",
@@ -211,7 +226,10 @@ describe("PublishExperiment", () => {
 
     await api.publishWithStorage("user-123", "googledrive");
 
-    expect(props.generateExperiment).toHaveBeenCalledWith("googledrive");
+    expect(props.generateExperiment).toHaveBeenCalledWith(
+      "googledrive",
+      defaultFunctionalSettings(),
+    );
     expect(fetchMock()).not.toHaveBeenCalled();
     expect(props.setPublishStatus).toHaveBeenCalledWith(
       "Error: Failed to generate public experiment code",

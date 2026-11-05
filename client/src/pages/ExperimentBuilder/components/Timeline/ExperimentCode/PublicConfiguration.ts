@@ -2,6 +2,11 @@ import { UploadedFile } from "./useExperimentCode";
 import { ExperimentAppearance } from "../../../appearance";
 import ExperimentBase from "./ExperimentBase";
 import useDevMode from "../../../hooks/useDevMode";
+import {
+  requireFunctionalSettings,
+  validateFunctionalSettings,
+  type FunctionalSettings,
+} from "../../../../../lib/functionalSettings";
 import { auth } from "../../../../../lib/firebase";
 import {
   getActiveFirebaseConfig,
@@ -66,64 +71,15 @@ export default function PublicConfiguration({
 
   const progressBar = appearance?.progressBar ?? false;
 
-  const generateExperiment = async (storageOverride?: string) => {
+  const generateExperiment = async (
+    storageOverride?: string,
+    settingsSnapshot?: FunctionalSettings,
+  ) => {
     const useStorage = storageOverride || storage;
 
-    // Cargar configuración de batching desde Firestore
-    let batchConfig = {
-      useIndexedDB: true,
-      batchSize: 0,
-      resumeTimeoutMinutes: 30,
-    };
-
-    let recruitmentConfig = {
-      platform: "none" as "none" | "prolific" | "mturk",
-      prolificCompletionCode: "",
-    };
-
-    let captchaConfig = {
-      enabled: false,
-      provider: "hcaptcha" as "hcaptcha" | "recaptcha",
-      siteKey: "",
-    };
-
-    try {
-      const { doc, getDoc } = await import("firebase/firestore");
-      const { db } = await import("../../../../../lib/firebase");
-
-      if (experimentID && db) {
-        const docRef = doc(db, "experiments", experimentID);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.batchConfig) {
-            batchConfig = {
-              useIndexedDB: data.batchConfig.useIndexedDB ?? true,
-              batchSize: data.batchConfig.batchSize ?? 0,
-              resumeTimeoutMinutes: data.batchConfig.resumeTimeoutMinutes ?? 30,
-            };
-          }
-          if (data.recruitmentConfig) {
-            recruitmentConfig = {
-              platform: data.recruitmentConfig.platform ?? "none",
-              prolificCompletionCode:
-                data.recruitmentConfig.prolificCompletionCode ?? "",
-            };
-          }
-          if (data.captchaConfig) {
-            captchaConfig = {
-              enabled: data.captchaConfig.enabled ?? false,
-              provider: data.captchaConfig.provider ?? "hcaptcha",
-              siteKey: data.captchaConfig.siteKey ?? "",
-            };
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("Error loading batch config; using defaults:", error);
-      // Continuar con valores por defecto
-    }
+    const { batchConfig, recruitmentConfig, captchaConfig } = settingsSnapshot
+      ? validateFunctionalSettings(settingsSnapshot)
+      : await requireFunctionalSettings(experimentID);
 
     // Fetch session name config from local API (baked in at code-generation time)
     let sessionNameTokens: SessionNameToken[] = [];
@@ -170,10 +126,10 @@ export default function PublicConfiguration({
         VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
         VITE_FIREBASE_DATABASE_URL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
         VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        VITE_FIREBASE_STORAGE_BUCKET:
-          import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        VITE_FIREBASE_MESSAGING_SENDER_ID:
-          import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        VITE_FIREBASE_STORAGE_BUCKET: import.meta.env
+          .VITE_FIREBASE_STORAGE_BUCKET,
+        VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env
+          .VITE_FIREBASE_MESSAGING_SENDER_ID,
         VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
       },
       activeFirebase,

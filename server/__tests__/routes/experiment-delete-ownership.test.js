@@ -48,17 +48,15 @@ async function expectPreserved() {
 }
 
 test("remote denial preserves the local design, history and media and forwards authentication", async () => {
-  global.fetch = jest
-    .fn()
-    .mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({
-        success: false,
-        code: "EXPERIMENT_FORBIDDEN",
-        message: "Not the owner",
-      }),
-    });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    json: async () => ({
+      success: false,
+      code: "EXPERIMENT_FORBIDDEN",
+      message: "Not the owner",
+    }),
+  });
   const response = await request(app)
     .delete("/api/delete-experiment/study")
     .set("Authorization", "Bearer test-token")
@@ -120,6 +118,15 @@ test("a successful authorized remote deletion happens before local destruction",
 });
 
 test("publication forwards ownership rejection without changing local storage", async () => {
+  const { defaultFunctionalSettings } = await import(
+    "../../utils/functionalSettings.js"
+  );
+  const functionalSettings = defaultFunctionalSettings();
+  db.data.configs.push({
+    experimentID: "study",
+    functionalSettings,
+    settingsMigration: { state: "complete", source: "local" },
+  });
   app.use((await import("../../routes/experiments/publish.js")).default);
   db.data.experiments[0].storage = "googledrive";
   db.data.trials = [
@@ -132,17 +139,15 @@ test("publication forwards ownership rejection without changing local storage", 
     },
   ];
   await db.write();
-  global.fetch = jest
-    .fn()
-    .mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({
-        success: false,
-        code: "EXPERIMENT_FORBIDDEN",
-        message: "Not the owner",
-      }),
-    });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    json: async () => ({
+      success: false,
+      code: "EXPERIMENT_FORBIDDEN",
+      message: "Not the owner",
+    }),
+  });
   const result = await request(app)
     .post("/api/publish-experiment/study")
     .set("Authorization", "Bearer test-token")
@@ -150,6 +155,7 @@ test("publication forwards ownership rejection without changing local storage", 
       uid: "owner",
       storage: "dropbox",
       generatedPublicCode: "const test = true;",
+      functionalSettings,
     });
   expect(result.status).toBe(403);
   expect(result.body.code).toBe("EXPERIMENT_FORBIDDEN");

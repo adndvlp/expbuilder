@@ -17,6 +17,7 @@ import {
   sendExperimentAccessError,
 } from "../access.js";
 import { withExperimentMutation } from "../mutation.js";
+import { validateFunctionalSettings } from "../functional-settings/model.js";
 
 /**
  * Endpoint unificado para publicar experimento en GitHub
@@ -54,6 +55,11 @@ export const publishExperiment = onRequest(
         storageProvider,
       } = req.body;
       const uid = authedUid;
+      // Older clients remain compatible until the versioned publication protocol.
+      const functionalSettings =
+        req.body.functionalSettings === undefined
+          ? null
+          : validateFunctionalSettings(req.body.functionalSettings);
 
       assertExperimentID(experimentID);
       if (
@@ -240,10 +246,21 @@ export const publishExperiment = onRequest(
               mediaUploads: mediaUploadStats,
             });
           }
-          if (mutation.data.initialPublicationPending === true) {
+          if (
+            functionalSettings ||
+            mutation.data.initialPublicationPending === true
+          ) {
             await mutation.update({
-              active: true,
-              initialPublicationPending: false,
+              ...(functionalSettings && {
+                publishedSettings: functionalSettings,
+                batchConfig: functionalSettings.batchConfig,
+                recruitmentConfig: functionalSettings.recruitmentConfig,
+                captchaConfig: functionalSettings.captchaConfig,
+              }),
+              ...(mutation.data.initialPublicationPending === true && {
+                active: true,
+                initialPublicationPending: false,
+              }),
             });
           }
           return reply.status(repoExists ? 200 : 201).json({
@@ -262,6 +279,10 @@ export const publishExperiment = onRequest(
       return res.status(response.status).json(response.body);
     } catch (error) {
       if (sendExperimentAccessError(res, error)) return;
+      if (error.code === "SETTINGS_INVALID")
+        return res
+          .status(422)
+          .json({ success: false, code: error.code, message: error.message });
       console.error("Error in publishExperiment:", error);
       // T-11: don't leak internal error.message to clients.
       return res.status(500).json({

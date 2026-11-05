@@ -1,28 +1,19 @@
+import type { SettingsSections } from "../../../lib/functionalSettings";
+
 export type StatusMessage = {
   type: "success" | "error";
   text: string;
 };
 
-export type BatchConfig = {
-  useIndexedDB: boolean;
-  batchSize: number;
-  resumeTimeoutMinutes: number;
-};
+export type BatchConfig = SettingsSections["batchConfig"];
 
 export type RecruitmentPlatform = "none" | "prolific" | "mturk";
 
-export type RecruitmentConfig = {
-  platform: RecruitmentPlatform;
-  prolificCompletionCode: string;
-};
+export type RecruitmentConfig = SettingsSections["recruitmentConfig"];
 
 export type CaptchaProvider = "hcaptcha" | "recaptcha";
 
-export type CaptchaConfig = {
-  enabled: boolean;
-  provider: CaptchaProvider;
-  siteKey: string;
-};
+export type CaptchaConfig = SettingsSections["captchaConfig"];
 
 export type SessionNameTokenType =
   | "date"

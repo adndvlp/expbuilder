@@ -38,64 +38,104 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       <h2 style={{ color: "var(--text-dark)", marginBottom: 24, fontSize: 24 }}>
         Experiment Data Configuration
       </h2>
-      <DataSettingsSection
-        experimentExists={settings.experimentExists}
-        config={settings.config}
-        setConfig={settings.setConfig}
-        onSave={saveFromBatch}
-        saving={settings.saving}
-        message={saveOrigin === "batch" ? settings.message : null}
-      />
-      <SessionNameSection
-        tokens={settings.sessionNameTokens}
-        separator={settings.sessionNameSeparator}
-        preview={settings.sessionNamePreview}
-        saving={settings.saving}
-        message={settings.sessionNameMessage}
-        onAddToken={settings.addSessionToken}
-        onRemoveToken={settings.removeSessionToken}
-        onReorderToken={settings.reorderSessionToken}
-        onUpdateToken={settings.updateSessionToken}
-        onSeparatorChange={settings.setSessionNameSeparator}
-        onSave={settings.handleSaveSessionName}
-      />
-      {settings.experimentExists && (
-        <>
-          <RecruitmentSection
-            config={settings.recruitmentConfig}
-            setConfig={settings.setRecruitmentConfig}
-          />
-          <CaptchaSection
-            config={settings.captchaConfig}
-            setConfig={settings.setCaptchaConfig}
-          />
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button
-              onClick={saveFromRest}
-              disabled={settings.saving}
-              className="gradient-btn"
-              style={{
-                opacity: settings.saving ? 0.6 : 1,
-                cursor: settings.saving ? "not-allowed" : "pointer",
-              }}
-            >
-              {settings.saving ? "Saving..." : "Save Configuration"}
-            </button>
-            {saveOrigin === "rest" && settings.message && (
-              <p
-                style={{
-                  color:
-                    settings.message.type === "success" ? "#4caf50" : "#f44336",
-                  fontWeight: "600",
-                  fontSize: 14,
+      <p>
+        Settings are saved on this device. Changes apply on the next
+        publication.
+      </p>
+      {settings.loadError && <p role="alert">{settings.loadError}</p>}
+      {settings.settingsMigration &&
+        settings.settingsMigration.state !== "complete" && (
+          <div role="status" style={{ marginBottom: 20 }}>
+            <p>
+              This experiment needs configuration review. Recover your published
+              settings or review the values below and save them before
+              publishing.
+            </p>
+            {settings.settingsMigration.source !== "package" && (
+              <button
+                disabled={settings.saving}
+                onClick={() => {
+                  setSaveOrigin("rest");
+                  void settings.handleMigrate();
                 }}
               >
-                {settings.message.text}
-              </p>
+                Recover my published settings
+              </button>
             )}
           </div>
-        </>
+        )}
+      {experimentID && (
+        <button disabled={settings.saving} onClick={settings.handleReload}>
+          Reload saved settings
+        </button>
       )}
+      <fieldset
+        disabled={
+          settings.saving || (!!experimentID && !settings.experimentExists)
+        }
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <DataSettingsSection
+          experimentExists={settings.experimentExists}
+          config={settings.config}
+          setConfig={settings.setConfig}
+          onSave={saveFromBatch}
+          saving={settings.saving}
+          message={saveOrigin === "batch" ? settings.message : null}
+        />
+        <SessionNameSection
+          tokens={settings.sessionNameTokens}
+          separator={settings.sessionNameSeparator}
+          preview={settings.sessionNamePreview}
+          saving={settings.saving}
+          message={settings.sessionNameMessage}
+          onAddToken={settings.addSessionToken}
+          onRemoveToken={settings.removeSessionToken}
+          onReorderToken={settings.reorderSessionToken}
+          onUpdateToken={settings.updateSessionToken}
+          onSeparatorChange={settings.setSessionNameSeparator}
+          onSave={settings.handleSaveSessionName}
+        />
+        {settings.experimentExists && (
+          <>
+            <RecruitmentSection
+              config={settings.recruitmentConfig}
+              setConfig={settings.setRecruitmentConfig}
+            />
+            <CaptchaSection
+              config={settings.captchaConfig}
+              setConfig={settings.setCaptchaConfig}
+            />
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <button
+                onClick={saveFromRest}
+                disabled={settings.saving}
+                className="gradient-btn"
+                style={{
+                  opacity: settings.saving ? 0.6 : 1,
+                  cursor: settings.saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {settings.saving ? "Saving..." : "Save Configuration"}
+              </button>
+              {saveOrigin === "rest" && settings.message && (
+                <p
+                  style={{
+                    color:
+                      settings.message.type === "success"
+                        ? "#4caf50"
+                        : "#f44336",
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
+                  {settings.message.text}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </fieldset>
       <AppearanceSettings experimentID={experimentID} />
       <CustomDomainSettings experimentID={experimentID} />
     </div>

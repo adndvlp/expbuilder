@@ -16,12 +16,14 @@ import { createOAuthStateEndpoint } from "./oauth/api/state.js";
 import { getOAuthClientIds } from "./oauth/api/public-client-ids.js";
 import { uploadParticipantFile } from "./experiment/participant-files/api/upload.js";
 import { setGlobalOptions } from "firebase-functions/v2";
+import { getExperimentFunctionalSettings } from "./experiment/functional-settings/api.js";
 
 setGlobalOptions({
   maxInstances: 5,
 });
 
 export {
+  getExperimentFunctionalSettings,
   apiData,
   apiDataComplete,
   apiDeleteExperiment,

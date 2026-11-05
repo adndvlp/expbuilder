@@ -1,4 +1,5 @@
 import {
+  localSettingsFetch,
   failedResponse,
   fetchMock,
   firestoreMocks,
@@ -8,7 +9,7 @@ import {
   type SessionToken,
 } from "./testHarness";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import ExperimentSettings from "../../../pages/ExperimentPanel/ExperimentSettings";
 
 describe("ExperimentSettings", () => {
@@ -25,24 +26,19 @@ describe("ExperimentSettings", () => {
     expect(fetchMock()).not.toHaveBeenCalled();
   });
 
-  it("logs Firebase load failures without blocking local settings", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-    firestoreMocks.getDoc.mockRejectedValueOnce(new Error("firebase down"));
-    fetchMock().mockRejectedValueOnce(new Error("session api down"));
-
+  it("shows local read failures and allows retrying without Firestore", async () => {
+    localSettingsFetch.mockRejectedValueOnce(
+      new Error("Local API unavailable"),
+    );
     render(<ExperimentSettings experimentID="exp-load-error" />);
-
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Local API unavailable",
+    );
+    fireEvent.click(screen.getByText("Reload saved settings"));
     expect(
-      await screen.findByText("Session Name Configuration"),
+      await screen.findByLabelText("Use IndexedDB (Client-side persistence)"),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(consoleError).toHaveBeenCalledWith(
-        "Error loading Firebase configuration:",
-        expect.any(Error),
-      );
-    });
+    expect(firestoreMocks.getDoc).not.toHaveBeenCalled();
   });
 
   it("handles empty and non-ok session config responses", async () => {
@@ -83,9 +79,7 @@ describe("ExperimentSettings", () => {
     render(<ExperimentSettings experimentID="exp-123" />);
 
     expect(
-      await screen.findByText(
-        /Data configuration options are available after the experiment is published/,
-      ),
+      await screen.findByLabelText("Use IndexedDB (Client-side persistence)"),
     ).toBeInTheDocument();
     expect(await screen.findByText("Date")).toBeInTheDocument();
 

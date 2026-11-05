@@ -6,8 +6,11 @@
 
 import { Router } from "express";
 import { db } from "../utils/db.js";
+import functionalSettingsRouter from "./functional-settings.js";
+import { withDbMutation } from "../modules/session-persistence/dbQueue.js";
 
 const router = Router();
+router.use(functionalSettingsRouter);
 
 /**
  * Loads the saved configuration of an experiment.
@@ -55,33 +58,35 @@ router.post("/api/save-config/:experimentID", async (req, res) => {
   try {
     const { config, isDevMode, isSaveMode } = req.body;
 
-    await db.read();
-    const existingIndex = db.data.configs.findIndex(
-      (c) => c.experimentID === req.params.experimentID,
-    );
+    const configDoc = await withDbMutation((data) => {
+      const existingIndex = data.configs.findIndex(
+        (c) => c.experimentID === req.params.experimentID,
+      );
 
-    const configDoc = {
-      experimentID: req.params.experimentID,
-      data: config,
-      isDevMode: isDevMode,
-      isSaveMode: isSaveMode ?? false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      const configDoc = {
+        ...(existingIndex !== -1 ? data.configs[existingIndex] : {}),
+        experimentID: req.params.experimentID,
+        data: config,
+        isDevMode: isDevMode,
+        isSaveMode: isSaveMode ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    if (existingIndex !== -1) {
-      configDoc.createdAt = db.data.configs[existingIndex].createdAt;
-      // Preserve sessionNameConfig — only copy if it's actual data (not null/undefined)
-      const existingSnc = db.data.configs[existingIndex].sessionNameConfig;
-      if (existingSnc != null && Array.isArray(existingSnc.tokens)) {
-        configDoc.sessionNameConfig = existingSnc;
+      if (existingIndex !== -1) {
+        configDoc.createdAt = data.configs[existingIndex].createdAt;
+        // Preserve sessionNameConfig — only copy if it's actual data (not null/undefined)
+        const existingSnc = data.configs[existingIndex].sessionNameConfig;
+        if (existingSnc != null && Array.isArray(existingSnc.tokens)) {
+          configDoc.sessionNameConfig = existingSnc;
+        } else delete configDoc.sessionNameConfig;
+        data.configs[existingIndex] = configDoc;
+      } else {
+        data.configs.push(configDoc);
       }
-      db.data.configs[existingIndex] = configDoc;
-    } else {
-      db.data.configs.push(configDoc);
-    }
 
-    await db.write();
+      return configDoc;
+    });
     res.json({ success: true, config: configDoc });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -114,28 +119,28 @@ router.get("/api/session-name-config/:experimentID", async (req, res) => {
 router.post("/api/session-name-config/:experimentID", async (req, res) => {
   try {
     const { tokens, separator } = req.body;
-    await db.read();
-    let configDoc = db.data.configs.find(
-      (c) => c.experimentID === req.params.experimentID,
-    );
-    if (!configDoc) {
-      configDoc = {
-        experimentID: req.params.experimentID,
-        data: {},
-        isDevMode: false,
-        isSaveMode: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    await withDbMutation((data) => {
+      let configDoc = data.configs.find(
+        (c) => c.experimentID === req.params.experimentID,
+      );
+      if (!configDoc) {
+        configDoc = {
+          experimentID: req.params.experimentID,
+          data: {},
+          isDevMode: false,
+          isSaveMode: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        data.configs.push(configDoc);
+      }
+      /* istanbul ignore next -- request validation tests cover normal body; missing fields use stable defaults. */
+      configDoc.sessionNameConfig = {
+        tokens: tokens ?? [],
+        separator: separator ?? "_",
       };
-      db.data.configs.push(configDoc);
-    }
-    /* istanbul ignore next -- request validation tests cover normal body; missing fields use stable defaults. */
-    configDoc.sessionNameConfig = {
-      tokens: tokens ?? [],
-      separator: separator ?? "_",
-    };
-    configDoc.updatedAt = new Date().toISOString();
-    await db.write();
+      configDoc.updatedAt = new Date().toISOString();
+    });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -103,6 +103,12 @@ endpoints:
     entryPoint: getOAuthClientIds
     region: [us-central1]
     httpsTrigger: {}
+  getExperimentFunctionalSettings:
+    platform: gcfv2
+    entryPoint: getExperimentFunctionalSettings
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
   uploadParticipantFile:
     platform: gcfv2
     entryPoint: uploadParticipantFile

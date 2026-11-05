@@ -1,5 +1,6 @@
 import {
-  existingExperiment,
+  localSettings,
+  localSettingsFetch,
   fetchMock,
   firestoreMocks,
   okJson,
@@ -14,23 +15,25 @@ describe("ExperimentSettings", () => {
   registerExperimentsettingsHooks();
 
   it("loads published experiment settings and saves batch, recruitment, captcha, and session naming config", async () => {
-    firestoreMocks.getDoc.mockResolvedValueOnce(
-      existingExperiment({
-        batchConfig: {
-          useIndexedDB: true,
-          batchSize: 12,
-          resumeTimeoutMinutes: 45,
-        },
-        recruitmentConfig: {
-          platform: "none",
-          prolificCompletionCode: "",
-        },
-        captchaConfig: {
-          enabled: false,
-          provider: "hcaptcha",
-          siteKey: "",
-        },
-      }),
+    localSettingsFetch.mockResolvedValueOnce(
+      okJson(
+        localSettings({
+          batchConfig: {
+            useIndexedDB: true,
+            batchSize: 12,
+            resumeTimeoutMinutes: 45,
+          },
+          recruitmentConfig: {
+            platform: "none",
+            prolificCompletionCode: "",
+          },
+          captchaConfig: {
+            enabled: false,
+            provider: "hcaptcha",
+            siteKey: "",
+          },
+        }),
+      ),
     );
     fetchMock()
       .mockResolvedValueOnce(
@@ -78,44 +81,43 @@ describe("ExperimentSettings", () => {
     fireEvent.click(screen.getByText("- hyphen"));
     fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
-    await waitFor(() => {
-      expect(firestoreMocks.setDoc).toHaveBeenCalledWith(
-        "experiments/exp-published",
-        {
-          batchConfig: {
-            useIndexedDB: true,
-            batchSize: 25,
-            resumeTimeoutMinutes: 90,
-          },
-          recruitmentConfig: {
-            platform: "prolific",
-            prolificCompletionCode: "COMPLETE42",
-          },
-          captchaConfig: {
-            enabled: true,
-            provider: "recaptcha",
-            siteKey: "recaptcha-site-key",
-          },
-        },
-        { merge: true },
-      );
-    });
-
-    const [url, options] = fetchMock().mock.calls[1];
+    await waitFor(() => expect(localSettingsFetch).toHaveBeenCalledTimes(2));
+    const [url, options] = localSettingsFetch.mock.calls[1];
     expect(url).toBe(
-      "http://localhost:3000/api/session-name-config/exp-published",
+      "http://localhost:3000/api/functional-settings/exp-published",
     );
-    expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
-      separator: "-",
-      tokens: [expect.objectContaining({ type: "counter" })],
+    expect(options.method).toBe("PUT");
+    expect(JSON.parse(options.body)).toEqual({
+      expectedRevision: 1,
+      settings: {
+        batchConfig: {
+          useIndexedDB: true,
+          batchSize: 25,
+          resumeTimeoutMinutes: 90,
+        },
+        recruitmentConfig: {
+          platform: "prolific",
+          prolificCompletionCode: "COMPLETE42",
+        },
+        captchaConfig: {
+          enabled: true,
+          provider: "recaptcha",
+          siteKey: "recaptcha-site-key",
+        },
+      },
+      sessionNameConfig: {
+        separator: "-",
+        tokens: [expect.objectContaining({ type: "counter" })],
+      },
     });
     expect(
-      await screen.findByText("Configuration saved successfully!"),
+      await screen.findByText(/Configuration saved locally/),
     ).toBeInTheDocument();
+    expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
   });
 
   it("does not save published settings if the experiment id is later cleared", async () => {
-    firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
+    localSettingsFetch.mockResolvedValueOnce(okJson(localSettings({})));
     fetchMock().mockResolvedValueOnce(
       okJson({
         tokens: [token({ id: "counter-token", type: "counter" })],
@@ -129,7 +131,7 @@ describe("ExperimentSettings", () => {
 
     await screen.findAllByText("Save Configuration");
     rerender(<ExperimentSettings experimentID={undefined} />);
-    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
+    expect(screen.queryByText("Save Configuration")).not.toBeInTheDocument();
 
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
     expect(fetchMock()).toHaveBeenCalledTimes(1);

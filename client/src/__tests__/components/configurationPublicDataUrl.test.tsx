@@ -1,3 +1,4 @@
+import { defaultFunctionalSettings } from "../../lib/functionalSettings";
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicConfiguration from "../../pages/ExperimentBuilder/components/Timeline/ExperimentCode/PublicConfiguration";
@@ -21,7 +22,7 @@ const mocks = vi.hoisted(() => ({
       public: "window.beforePublic = true;",
     },
   },
-  firestoreData: {
+  settingsSections: {
     batchConfig: {
       useIndexedDB: false,
       batchSize: 5,
@@ -62,8 +63,8 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useDevMode", () => ({
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(() => ({ id: "exp-1" })),
   getDoc: vi.fn(async () => ({
-    exists: () => Boolean(mocks.firestoreData),
-    data: () => mocks.firestoreData,
+    exists: () => Boolean(mocks.settingsSections),
+    data: () => mocks.settingsSections,
   })),
 }));
 
@@ -81,7 +82,8 @@ const defaultProps = {
   getTrial: vi.fn(),
   getLoopTimeline: vi.fn(),
   getLoop: vi.fn(),
-  appearance: {    backgroundColor: "#ffffff",
+  appearance: {
+    backgroundColor: "#ffffff",
     fullScreen: true,
     progressBar: true,
   },
@@ -101,9 +103,19 @@ describe("public experiment data URL", () => {
     // tracked config (vitest.config `env`), never from machine-local .env
     // files — that is what makes this deterministic on every machine.
     vi.stubEnv("DEV", false);
-    globalThis.fetch = vi.fn(async () => ({
+    globalThis.fetch = vi.fn(async (url) => ({
       ok: true,
-      json: async () => ({}),
+      json: async () =>
+        String(url).includes("/api/functional-settings/")
+          ? {
+              functionalSettings: {
+                ...defaultFunctionalSettings(),
+                ...mocks.settingsSections,
+              },
+              revision: 1,
+              settingsMigration: { state: "complete", source: "local" },
+            }
+          : {},
     })) as unknown as typeof fetch;
     (window as any).electron = {
       readFirebaseConfig: vi.fn(async () => ({

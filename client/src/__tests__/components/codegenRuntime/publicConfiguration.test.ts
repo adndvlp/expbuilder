@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultFunctionalSettings } from "../../../lib/functionalSettings";
 import {
   generateAllCodesMock,
   mocks,
@@ -6,30 +7,43 @@ import {
   PublicConfigurationHarness,
 } from "./testHarness";
 
-describe("PublicConfigurationHarness", () => {
+describe("PublicConfiguration with local functional settings", () => {
+  let settings = defaultFunctionalSettings();
   beforeEach(() => {
     vi.clearAllMocks();
+    settings = defaultFunctionalSettings();
     mocks.currentUser = { uid: "user-1" };
     mocks.devMode = {
       isDevMode: false,
-      code:
-        "dev-code;" +
-        "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
+      code: "dev-code;",
       customInitJsPsychParams: { public: {} },
       customPreInitCode: { public: "" },
     };
-    mocks.firestoreDoc.mockReturnValue({ id: "doc-ref" });
-    mocks.firestoreGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({}),
-    });
     generateAllCodesMock.mockResolvedValue([
-      "const Trial_A_procedure = {}; timeline.push(Trial_A_procedure);" +
-        "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
+      "const Trial_A_procedure = {}; timeline.push(Trial_A_procedure);if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
     ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => ({
+        ok: true,
+        json: async () =>
+          String(url).includes("/functional-settings/")
+            ? {
+                functionalSettings: settings,
+                revision: settings.revision,
+                settingsMigration: { state: "complete", source: "local" },
+              }
+            : {
+                tokens: [{ id: "counter", type: "counter", counterDigits: 3 }],
+                separator: "-",
+              },
+      })),
+    );
   });
-
-  function createPublicConfigurationHarness(experimentID?: string) {
+  function harness(
+    experimentID: string | undefined = "local-design",
+    progressBar = false,
+  ) {
     return PublicConfigurationHarness({
       experimentID,
       evaluateCondition: "function evaluateCondition() { return true; }",
@@ -41,252 +55,129 @@ describe("PublicConfigurationHarness", () => {
       getTrial: vi.fn(),
       getLoopTimeline: vi.fn(),
       getLoop: vi.fn(),
+      appearance: { backgroundColor: "#fff", fullScreen: false, progressBar },
     });
   }
-
-  it("falls back to default public settings when Firestore config loading fails", async () => {
-    const consoleWarn = vi
-      .spyOn(console, "warn")
-      .mockImplementation(() => {});
-    mocks.firestoreGetDoc.mockRejectedValueOnce(new Error("load failed"));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-    const { generateExperiment } = createPublicConfigurationHarness(
-      "experiment-firestore-error",
-    );
-
-    const code = normalize(await generateExperiment());
-
-    expect(consoleWarn).toHaveBeenCalledWith(
-      "Error loading batch config; using defaults:",
-      expect.any(Error),
-    );
-    expect(code).toContain("jsPsych.run(timeline);");
-  });
-
-  it("uses fallback values when remote config sections are empty", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({
-        batchConfig: {},
-        recruitmentConfig: {},
-        captchaConfig: {},
-      }),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("experiment-empty");
-    const code = normalize(await generateExperiment());
-
+  it("generates from explicit local defaults with no Firestore read", async () => {
+    const code = normalize(await harness().generateExperiment());
     expect(code).toContain("useIndexedDB: true");
-    expect(code).toContain("size: 0");
     expect(code).toContain("resumeTimeoutMinutes: 30");
-    expect(code).toContain("_showSuccess();");
     expect(code).toContain("const Trial_A_procedure = {};");
+    expect(mocks.firestoreGetDoc).not.toHaveBeenCalled();
   });
-
-  it("generates mturk, captcha and user-added public params from remote config", async () => {
+  it.each(["needs_remote_read", "needs_review"])(
+    "refuses incomplete %s settings without generating or reading Firestore",
+    async (state) => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          functionalSettings: null,
+          revision: 0,
+          settingsMigration: { state, source: "local" },
+        }),
+      } as Response);
+      await expect(harness().generateExperiment()).rejects.toThrow(
+        /Review and save/,
+      );
+      expect(generateAllCodesMock).not.toHaveBeenCalled();
+      expect(mocks.firestoreGetDoc).not.toHaveBeenCalled();
+    },
+  );
+  it("propagates local read failures instead of substituting defaults", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("local API unavailable"));
+    await expect(harness().generateExperiment()).rejects.toThrow(
+      "local API unavailable",
+    );
+    expect(generateAllCodesMock).not.toHaveBeenCalled();
+  });
+  it("rejects malformed saved settings", async () => {
+    settings.batchConfig.batchSize = -1;
+    await expect(harness().generateExperiment()).rejects.toThrow(/Batch size/);
+  });
+  it("generates MTurk and CAPTCHA using local values and public hooks", async () => {
+    settings.batchConfig = {
+      useIndexedDB: false,
+      batchSize: 7,
+      resumeTimeoutMinutes: 45,
+    };
+    settings.recruitmentConfig.platform = "mturk";
+    settings.captchaConfig = {
+      enabled: true,
+      provider: "recaptcha",
+      siteKey: "site-key",
+    };
     mocks.devMode.customInitJsPsychParams.public = {
       on_trial_finish: "console.log('trial finish');",
       display_element: "'jspsych-container'",
     };
     mocks.devMode.customPreInitCode.public = "window.beforePublic = true;";
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({
-        batchConfig: {
-          useIndexedDB: false,
-          batchSize: 7,
-          resumeTimeoutMinutes: 45,
-        },
-        recruitmentConfig: {
-          platform: "mturk",
-        },
-        captchaConfig: {
-          enabled: true,
-          provider: "recaptcha",
-          siteKey: "site-key",
-        },
-      }),
+    const code = normalize(await harness().generateExperiment("cloud"));
+    for (const fragment of [
+      "useIndexedDB: false",
+      "size: 7",
+      "resumeTimeoutMinutes: 45",
+      "Accept the HIT to start the experiment",
+      "Submitting to MTurk",
+      "window.beforePublic = true;",
+      "on_trial_finish: function(data)",
+      "display_element: 'jspsych-container'",
+      'storage: "cloud"',
+    ])
+      expect(code).toContain(fragment);
+  });
+  it("requires an experiment id before reading or generating", async () => {
+    const generator = PublicConfigurationHarness({
+      experimentID: undefined,
+      evaluateCondition: "",
+      fetchExtensions: vi.fn(),
+      branchingEvaluation: "",
+      uploadedFiles: [],
+      experimentName: "",
+      storage: "local",
+      getTrial: vi.fn(),
+      getLoopTimeline: vi.fn(),
+      getLoop: vi.fn(),
     });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: vi.fn(async () => ({
-          tokens: [{ id: "participant", type: "uuid" }],
-          separator: "-",
-        })),
-      })),
+    await expect(generator.generateExperiment()).rejects.toThrow(
+      /Select an experiment/,
     );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("experiment-mturk");
-    const code = normalize(await generateExperiment("cloud"));
-
-    expect(code).toContain("useIndexedDB: false");
-    expect(code).toContain("size: 7");
-    expect(code).toContain("resumeTimeoutMinutes: 45");
-    expect(code).toContain("Accept the HIT to start the experiment");
-    expect(code).toContain("Submitting to MTurk");
-    expect(code).toContain("jsPsych.data.addProperties");
-    expect(code).toContain("window.beforePublic = true;");
-    expect(code).toContain("on_trial_finish: function(data)");
-    expect(code).toContain("display_element: 'jspsych-container'");
-    expect(code).toContain('storage: "cloud"');
+    expect(fetch).not.toHaveBeenCalled();
   });
-
-  it("skips remote config without experiment id and can emit dev-mode base code", async () => {
-    mocks.currentUser = null;
-    mocks.devMode.isDevMode = true;
-    mocks.devMode.code =
-      "timeline.push({ type: jsPsychHtmlKeyboardResponse });" +
-      "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("should not fetch session config");
-      }),
-    );
-
-    const { generateExperiment } = createPublicConfigurationHarness(undefined);
-    const code = normalize(await generateExperiment());
-
-    expect(mocks.firestoreDoc).not.toHaveBeenCalled();
-    expect(globalThis.fetch).not.toHaveBeenCalled();
-    expect(generateAllCodesMock).not.toHaveBeenCalled();
-    expect(code).toContain(
-      "timeline.push({ type: jsPsychHtmlKeyboardResponse });",
-    );
-    expect(code).toContain('const Uid = "";');
-  });
-
-  it("keeps defaults when the Firestore document does not exist", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => false,
-      data: () => {
-        throw new Error("data should not be read");
-      },
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("missing-doc");
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).toContain("_showSuccess();");
-  });
-
-  it("keeps defaults when the Firestore document has no config sections", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({}),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("empty-doc");
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).not.toContain("platform IDs");
-    expect(code).toContain("_showSuccess();");
-  });
-
-  it("generates prolific, progress bar and builder hook user code", async () => {
+  it("uses the supplied validated snapshot even when a newer draft exists", async () => {
+    const snapshot = defaultFunctionalSettings();
+    snapshot.recruitmentConfig = {
+      platform: "prolific",
+      prolificCompletionCode: "DONE",
+    };
     mocks.devMode.customInitJsPsychParams.public = {
       on_trial_start: "startHook();",
       on_data_update: "updateHook();",
       on_finish: "finishHook();",
     };
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({
-        recruitmentConfig: {
-          platform: "prolific",
-          prolificCompletionCode: "DONE",
-        },
-      }),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
+    const code = normalize(
+      await harness("local", true).generateExperiment("cloud", snapshot),
     );
-
-    const { generateExperiment } = PublicConfigurationHarness({
-      experimentID: "experiment-prolific",
-      evaluateCondition: "function evaluateCondition() { return true; }",
-      fetchExtensions: vi.fn(async () => ""),
-      branchingEvaluation: "// branch eval",
-      uploadedFiles: [],
-      experimentName: "Runtime Experiment",
-      storage: "local",
-      getTrial: vi.fn(),
-      getLoopTimeline: vi.fn(),
-      getLoop: vi.fn(),
-      appearance: {        backgroundColor: "#fff",
-        fullScreen: false,
-        progressBar: true,
-      },
-    });
-
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("show_progress_bar: true");
-    expect(code).toContain("startHook();");
-    expect(code).toContain("updateHook();");
-    expect(code).toContain("finishHook();");
-    expect(code).toContain("Redirecting to Prolific");
-    expect(code).toContain("cc=DONE");
-    expect(code).toContain("jsPsych.data.addProperties");
+    for (const fragment of [
+      "show_progress_bar: true",
+      "startHook();",
+      "updateHook();",
+      "finishHook();",
+      "Redirecting to Prolific",
+      "cc=DONE",
+    ])
+      expect(code).toContain(fragment);
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) =>
+          String(url).includes("/functional-settings/"),
+        ),
+    ).toBe(false);
   });
-
-  it("[TG-09] emits parseable code while keeping the backend session id stable", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: vi.fn(async () => ({
-          tokens: [{ id: "counter", type: "counter", counterDigits: 3 }],
-          separator: "-",
-        })),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("experiment-counter");
-    const code = normalize(await generateExperiment());
+  it("[TG-09] keeps parseable runtime and stable backend session identity", async () => {
+    const code = normalize(await harness().generateExperiment());
     expect(code).toContain("_updateSessionName(trialSessionId, _finalName)");
     expect(code).not.toContain("trialSessionId = _finalName");
-    expect(code).not.toContain("window.JSPSYCH_SESSION_ID = trialSessionId; // update global");
     expect(code).toContain("throw new Error('Batch upload failed:");
     expect(() => new Function(code)).not.toThrow();
   });

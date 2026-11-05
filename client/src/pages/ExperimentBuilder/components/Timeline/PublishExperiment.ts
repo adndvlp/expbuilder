@@ -1,6 +1,10 @@
 import { Dispatch, SetStateAction } from "react";
 import { auth } from "../../../../lib/firebase";
 import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
+import {
+  requireFunctionalSettings,
+  type FunctionalSettings,
+} from "../../../../lib/functionalSettings";
 const API_URL = getApiBaseUrl();
 
 type PublishErrorFile = {
@@ -70,7 +74,10 @@ type Props = {
   setAvailableStorages: Dispatch<SetStateAction<string[]>>;
   setShowStorageModal: Dispatch<SetStateAction<boolean>>;
   setIsPublishing: Dispatch<SetStateAction<boolean>>;
-  generateExperiment: (storage?: string) => Promise<string>; // Función para generar código público
+  generateExperiment: (
+    storage?: string,
+    settingsSnapshot?: FunctionalSettings,
+  ) => Promise<string>;
 };
 
 export default function PublishExperiment({
@@ -138,9 +145,13 @@ export default function PublishExperiment({
         throw new Error("User not logged in");
       }
       const idToken = await firebaseUser.getIdToken();
+      const functionalSettings = await requireFunctionalSettings(experimentID);
 
       // Generar código público para GitHub Pages con el storage seleccionado
-      const generatedPublicCode = await generateExperiment(selectedStorage);
+      const generatedPublicCode = await generateExperiment(
+        selectedStorage,
+        functionalSettings,
+      );
 
       if (!generatedPublicCode) {
         throw new Error("Failed to generate public experiment code");
@@ -160,6 +171,7 @@ export default function PublishExperiment({
             uid,
             storage: selectedStorage,
             generatedPublicCode, // Enviar el código público generado
+            functionalSettings,
           }),
           credentials: "include",
           mode: "cors",

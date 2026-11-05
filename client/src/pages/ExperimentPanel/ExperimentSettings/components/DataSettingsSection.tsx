@@ -41,8 +41,7 @@ export function DataSettingsSection({
           opacity: 0.8,
         }}
       >
-        Data configuration options are available after the experiment is
-        published.
+        Load the local experiment configuration to edit these options.
       </div>
     );
   }

@@ -1,3 +1,4 @@
+import { defaultFunctionalSettings } from "../../../lib/functionalSettings";
 import { afterEach, beforeEach, vi } from "vitest";
 
 const firestoreMocks = vi.hoisted(() => ({
@@ -77,14 +78,33 @@ function missingExperiment() {
   };
 }
 
+const sessionFetch = vi.fn();
+const localSettingsFetch = vi.fn();
+function localSettings(sections = {}) {
+  return {
+    functionalSettings: { ...defaultFunctionalSettings(), ...sections },
+    revision: 1,
+    settingsMigration: { state: "complete", source: "local" },
+  };
+}
 function fetchMock() {
-  return vi.mocked(globalThis.fetch);
+  return sessionFetch;
 }
 
 function registerExperimentsettingsHooks() {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+    sessionFetch
+      .mockReset()
+      .mockResolvedValue(okJson({ tokens: [], separator: "_" }));
+    localSettingsFetch.mockReset().mockResolvedValue(okJson(localSettings()));
+    globalThis.fetch = vi.fn((url, init) =>
+      String(url).includes("/functional-settings/")
+        ? localSettingsFetch(url, init)
+        : init === undefined
+          ? sessionFetch(url)
+          : sessionFetch(url, init),
+    ) as typeof fetch;
     firestoreMocks.doc.mockImplementation((...segments: unknown[]) =>
       segments.slice(1).join("/"),
     );
@@ -99,6 +119,8 @@ function registerExperimentsettingsHooks() {
 }
 
 export {
+  localSettings,
+  localSettingsFetch,
   existingExperiment,
   failedResponse,
   fetchMock,

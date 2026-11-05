@@ -30,12 +30,11 @@ service cloud.firestore {
       allow read: if isOwner();
       // Creation and deletion go through the backend's ownership/provisioning policy.
       allow create, delete: if false;
-      // Transitional client writes until M02 migrates functional settings locally.
+      // Functional settings are local drafts; only publication writes their remote snapshot.
       // Operational switches remain editable without allowing counters or identity changes.
       allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'active', 'title', 'useValidation', 'allowJSON', 'allowCSV', 'requiredFields',
-        'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions',
-        'batchConfig', 'recruitmentConfig', 'captchaConfig'
+        'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions'
       ]) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['active']) ||
         ( (!('provisioningState' in resource.data) || resource.data.provisioningState == 'ready') &&
           (!('initialPublicationPending' in resource.data) || resource.data.initialPublicationPending == false)));

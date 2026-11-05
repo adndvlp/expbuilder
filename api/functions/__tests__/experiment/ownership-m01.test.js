@@ -431,3 +431,40 @@ test("the HTTP response is sent only after releasing the mutation permission", a
   expect(res.statusCode).toBe(200);
   expect(observed).toEqual([null]);
 });
+
+test("publishing records the supplied local settings only after successful upload", async () => {
+  const functionalSettings = {
+    schemaVersion: 1,
+    revision: 3,
+    batchConfig: {
+      useIndexedDB: false,
+      batchSize: 8,
+      resumeTimeoutMinutes: 60,
+    },
+    recruitmentConfig: {
+      platform: "prolific",
+      prolificCompletionCode: "LOCAL",
+    },
+    captchaConfig: { enabled: true, provider: "hcaptcha", siteKey: "public" },
+  };
+  store.seed("experiments/study", {
+    owner: "owner",
+    active: false,
+    sessions: 12,
+    storageProvider: "googledrive",
+    driveFolderId: "folder",
+    batchConfig: { batchSize: 1 },
+  });
+  upload.mockResolvedValueOnce({ success: false, errorText: "failed" });
+  await publishExperiment(publish({ functionalSettings }), makeRes());
+  expect(store.read("experiments/study").batchConfig).toEqual({ batchSize: 1 });
+  const res = makeRes();
+  await publishExperiment(publish({ functionalSettings }), res);
+  expect(res.jsonBody.success).toBe(true);
+  expect(store.read("experiments/study")).toMatchObject({
+    active: false,
+    sessions: 12,
+    publishedSettings: functionalSettings,
+    batchConfig: functionalSettings.batchConfig,
+  });
+});
