@@ -690,6 +690,14 @@ node node_modules/vite/bin/vite.js build --outDir /private/tmp/expbuilder-m02-cl
 
 Siguiente etapa: M03, medios por identidad y paquetes v2 con copia/restauración explícitas. La base local del usuario y sus archivos previos se conservaron como cambios ajenos a esta implementación.
 
+### Corrección de CI posterior a M02 — 2026-11-05
+
+El CI completo detectó siete fallos en `server/__tests__/routes/experiment-background.test.js`, una suite que quedó fuera de la regresión dirigida de M02. Su fixture creaba el experimento directamente sin configuración funcional completa y publicaba sin la instantánea de ajustes. El `422 SETTINGS_REVIEW_REQUIRED` era el rechazo previsto del contrato nuevo; las pruebas de apariencia necesitaban representar un diseño ya configurado.
+
+Se reprodujeron los siete fallos antes del cambio. La fixture ahora guarda los valores explícitos de un diseño nuevo y envía esos mismos ajustes al publicar. Se añadió un caso que comprueba que guardar apariencia no permite omitir la revisión funcional ni contactar proveedores. La verificación dirigida pasó sus 25 casos de apariencia y ajustes; después se ejecutó el runner completo de raíz usado por CI: **673 pruebas correctas en 68 suites, cero fallos y cinco casos omitidos en las dos suites cloud opcionales**. Comando: `npm test -- --runInBand`; ejecución local con Node compatible, Chromium disponible y una raíz de datos temporal aislada.
+
+Los mensajes `ENOTDIR`, `EISDIR`, JSON inválido y errores OAuth de las suites `main.*` corresponden a casos negativos deliberados que comprobaron sus respuestas de error y pasaron. Esta corrección modifica pruebas y documentación; mantiene las validaciones de producción de M02.
+
 ## 20. Referencias técnicas
 
 - [Firestore: reglas y acceso del servidor](https://firebase.google.com/docs/firestore/security/get-started). Sustenta la separación entre reglas del cliente y autorización del Admin SDK.

@@ -7,6 +7,7 @@ import { load } from "cheerio";
 import { beforeEach, afterEach, test, expect, jest } from "@jest/globals";
 
 let app, db, directory, originalRoot, originalPath, originalFetch, originalFirebase;
+let functionalSettings;
 beforeEach(async () => {
   originalRoot = process.env.DB_ROOT;
   originalPath = process.env.DB_PATH;
@@ -22,6 +23,15 @@ beforeEach(async () => {
   db.data = {};
   database.ensureDbData();
   db.data.experiments.push({ experimentID: "E1", name: "Background" });
+  const { defaultFunctionalSettings } = await import(
+    "../../utils/functionalSettings.js"
+  );
+  functionalSettings = defaultFunctionalSettings();
+  db.data.configs.push({
+    experimentID: "E1",
+    functionalSettings,
+    settingsMigration: { state: "complete", source: "new" },
+  });
   await db.write();
   global.fetch = jest.fn(async () => ({ json: async () => ({ success: true }) }));
   app = express();
@@ -39,13 +49,28 @@ afterEach(() => {
 
 async function build(mode, extra = {}) {
   const endpoint = mode === "run" ? "run-experiment" : mode === "preview" ? "trials-preview" : "publish-experiment";
-  const body = mode === "publish" ? { uid: "test-user", generatedPublicCode: "const generated = true;" } : { generatedCode: "const generated = true;" };
+  const body = mode === "publish"
+    ? { uid: "test-user", generatedPublicCode: "const generated = true;", functionalSettings }
+    : { generatedCode: "const generated = true;" };
   return request(app).post(`/api/${endpoint}/E1`).send({ ...body, ...extra });
 }
 function htmlFor(mode) {
   if (mode === "publish") return JSON.parse(global.fetch.mock.calls.at(-1)[1].body).htmlContent;
   return fs.readFileSync(path.join(directory, mode === "run" ? "experiments_html" : "trials_previews_html", "E1.html"), "utf8");
 }
+
+test("saved appearance does not bypass pending functional settings review", async () => {
+  db.data.experiments[0].appearanceSettings = { backgroundColor: "#123456" };
+  db.data.configs = [];
+  await db.write();
+
+  const response = await build("publish");
+  expect(response.status).toBe(422);
+  expect(response.body.code).toBe("SETTINGS_REVIEW_REQUIRED");
+  expect(global.fetch).not.toHaveBeenCalled();
+  await db.read();
+  expect(db.data.experiments[0].appearanceSettings).toEqual({ backgroundColor: "#123456" });
+});
 
 test.each([undefined, {}, { fullScreen: false }, { backgroundColor: "", progressBar: true }])(
   "uses the same default for GET, run, preview and publication: %j", async settings => {
