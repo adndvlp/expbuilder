@@ -13,14 +13,12 @@ interface SessionNameSectionProps {
   tokens: SessionNameToken[];
   separator: string;
   preview: string;
-  saving: boolean;
   message: StatusMessage | null;
   onAddToken: (type: SessionNameTokenType) => void;
   onRemoveToken: (id: string) => void;
   onReorderToken: (from: number, to: number) => void;
   onUpdateToken: (id: string, patch: Partial<SessionNameToken>) => void;
   onSeparatorChange: (separator: string) => void;
-  onSave: () => void;
 }
 
 export function SessionNameSection(props: SessionNameSectionProps) {
@@ -122,37 +120,11 @@ export function SessionNameSection(props: SessionNameSectionProps) {
           sea única.
         </div>
       )}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          marginTop: 16,
-        }}
-      >
-        <button
-          onClick={props.onSave}
-          disabled={props.saving}
-          className="gradient-btn"
-          style={{
-            opacity: props.saving ? 0.6 : 1,
-            cursor: props.saving ? "not-allowed" : "pointer",
-          }}
-        >
-          {props.saving ? "Saving..." : "Save Session Name"}
-        </button>
-        {props.message && (
-          <p
-            style={{
-              color: props.message.type === "success" ? "#4caf50" : "#f44336",
-              fontWeight: "600",
-              fontSize: 14,
-            }}
-          >
-            {props.message.text}
-          </p>
-        )}
-      </div>
+      {props.message && (
+        <p role="alert" style={{ color: "#f44336" }}>
+          {props.message.text}
+        </p>
+      )}
     </div>
   );
 }

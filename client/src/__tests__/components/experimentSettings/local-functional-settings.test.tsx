@@ -82,5 +82,6 @@ test("a revision conflict keeps the unsaved edits and offers reload", async () =
   } as Response);
   await act(async () => result.current.handleSave());
   expect(result.current.config.batchSize).toBe(55);
-  expect(result.current.message?.text).toMatch(/Reload/i);
+  expect(result.current.hasConflict).toBe(true);
+  expect(result.current.message?.text).toMatch(/saved version/i);
 });

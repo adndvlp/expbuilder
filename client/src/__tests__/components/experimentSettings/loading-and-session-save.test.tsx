@@ -1,4 +1,5 @@
 import {
+  localSettings,
   localSettingsFetch,
   failedResponse,
   fetchMock,
@@ -18,10 +19,13 @@ describe("ExperimentSettings", () => {
   it("skips remote loading and session saves when no experiment id is provided", () => {
     render(<ExperimentSettings experimentID={undefined} />);
 
+    expect(
+      screen.getByRole("button", { name: "Save Configuration" }),
+    ).toBeDisabled();
     expect(fetchMock()).not.toHaveBeenCalled();
     expect(firestoreMocks.getDoc).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText("Save Session Name"));
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     expect(fetchMock()).not.toHaveBeenCalled();
   });
@@ -34,7 +38,7 @@ describe("ExperimentSettings", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Local API unavailable",
     );
-    fireEvent.click(screen.getByText("Reload saved settings"));
+    fireEvent.click(screen.getByText("Retry"));
     expect(
       await screen.findByLabelText("Use IndexedDB (Client-side persistence)"),
     ).toBeInTheDocument();
@@ -83,7 +87,10 @@ describe("ExperimentSettings", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("Date")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Save Session Name"));
+    fireEvent.change(screen.getByLabelText("Batch Size"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     expect(
       screen.getAllByText(/Debes incluir al menos/).length,
@@ -91,44 +98,48 @@ describe("ExperimentSettings", () => {
     expect(fetchMock()).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText("+ Random ID"));
-    fireEvent.click(screen.getByText("Save Session Name"));
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     await waitFor(() => {
-      expect(fetchMock()).toHaveBeenCalledTimes(2);
+      expect(localSettingsFetch).toHaveBeenCalledTimes(2);
     });
 
-    const [url, options] = fetchMock().mock.calls[1];
-    expect(url).toBe("http://localhost:3000/api/session-name-config/exp-123");
+    const [url, options] = localSettingsFetch.mock.calls[1];
+    expect(url).toBe("http://localhost:3000/api/functional-settings/exp-123");
     const body = JSON.parse((options as RequestInit).body as string);
-    expect(body.separator).toBe("-");
-    expect(body.tokens.map((item: SessionToken) => item.type)).toEqual([
-      "date",
-      "randomAlpha",
-    ]);
+    expect(body.sessionNameConfig.separator).toBe("-");
     expect(
-      await screen.findByText("Session name configuration saved!"),
+      body.sessionNameConfig.tokens.map((item: SessionToken) => item.type),
+    ).toEqual(["date", "randomAlpha"]);
+    expect(
+      await screen.findByText("Configuration saved on this device."),
     ).toBeInTheDocument();
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
   });
 
-  it("surfaces errors when saving only the session naming configuration fails", async () => {
-    fetchMock()
-      .mockResolvedValueOnce(
-        okJson({
-          tokens: [token({ id: "counter-token", type: "counter" })],
-          separator: "_",
-        }),
-      )
+  it("surfaces errors when the unified configuration save fails", async () => {
+    fetchMock().mockResolvedValueOnce(
+      okJson({
+        tokens: [token({ id: "counter-token", type: "counter" })],
+        separator: "_",
+      }),
+    );
+    localSettingsFetch
+      .mockResolvedValueOnce(okJson(localSettings()))
       .mockResolvedValueOnce(failedResponse());
 
     render(<ExperimentSettings experimentID="exp-session-fail" />);
 
     await screen.findByText("Participant Number");
-    fireEvent.click(screen.getByText("Save Session Name"));
+    fireEvent.change(screen.getByLabelText("Batch Size"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     expect(
-      await screen.findByText("Error saving session name configuration"),
+      await screen.findByText(/Could not access the saved configuration/),
     ).toBeInTheDocument();
-    expect(fetchMock()).toHaveBeenCalledTimes(2);
+    expect(localSettingsFetch).toHaveBeenCalledTimes(2);
+    expect(fetchMock()).toHaveBeenCalledTimes(1);
   });
 });

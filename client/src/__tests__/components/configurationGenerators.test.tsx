@@ -43,14 +43,6 @@ vi.mock("../../pages/ExperimentBuilder/hooks/useDevMode", () => ({
   default: () => mocks.devMode,
 }));
 
-vi.mock("firebase/firestore", () => ({
-  doc: vi.fn(() => ({ id: "exp-1" })),
-  getDoc: vi.fn(async () => ({
-    exists: () => Boolean(mocks.settingsSections),
-    data: () => mocks.settingsSections,
-  })),
-}));
-
 vi.mock("../../lib/firebase", () => ({
   auth: { currentUser: { uid: "uid-123" } },
   db: { name: "test-db" },

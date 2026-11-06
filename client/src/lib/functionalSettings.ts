@@ -18,6 +18,17 @@ export type LocalSettings = {
   settingsMigration: SettingsMigration;
 };
 
+export class SettingsRequestError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public status?: number,
+  ) {
+    super(message);
+    this.name = "SettingsRequestError";
+  }
+}
+
 async function requestSettings(
   experimentID: string,
   init?: RequestInit,
@@ -29,9 +40,11 @@ async function requestSettings(
   );
   const body = await response.json();
   if (!response.ok)
-    throw new Error(
+    throw new SettingsRequestError(
       body.message ||
         "Could not access the saved configuration. Retry loading settings.",
+      body.code,
+      response.status,
     );
   if (
     !Number.isSafeInteger(body.revision) ||

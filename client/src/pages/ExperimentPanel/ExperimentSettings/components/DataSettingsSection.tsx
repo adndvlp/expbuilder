@@ -1,13 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { BatchConfig, StatusMessage } from "../types";
+import type { BatchConfig } from "../types";
 
 interface DataSettingsSectionProps {
   experimentExists: boolean;
   config: BatchConfig;
   setConfig: Dispatch<SetStateAction<BatchConfig>>;
-  onSave?: () => void;
-  saving?: boolean;
-  message?: StatusMessage | null;
 }
 
 const fieldStyle = {
@@ -24,9 +21,6 @@ export function DataSettingsSection({
   experimentExists,
   config,
   setConfig,
-  onSave,
-  saving = false,
-  message = null,
 }: DataSettingsSectionProps) {
   if (!experimentExists) {
     return (
@@ -181,40 +175,6 @@ export function DataSettingsSection({
           )}
         </ul>
       </div>
-
-      {onSave && (
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            marginBottom: 32,
-          }}
-        >
-          <button
-            onClick={onSave}
-            disabled={saving}
-            className="gradient-btn"
-            style={{
-              opacity: saving ? 0.6 : 1,
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
-          >
-            {saving ? "Saving..." : "Save Configuration"}
-          </button>
-          {message && (
-            <p
-              style={{
-                color: message.type === "success" ? "#4caf50" : "#f44336",
-                fontWeight: "600",
-                fontSize: 14,
-              }}
-            >
-              {message.text}
-            </p>
-          )}
-        </div>
-      )}
     </>
   );
 }

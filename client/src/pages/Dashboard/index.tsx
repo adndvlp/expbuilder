@@ -2,7 +2,7 @@ import "./index.css";
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { PromptModal } from "./PromptModal";
-import { auth } from "../../lib/firebase";
+import { auth, subscribeToAuth } from "../../lib/firebase";
 import { experimentAuthoringClient } from "../ExperimentBuilder/modules/experiment-authoring";
 import { getApiBaseUrl } from "../../lib/apiBaseUrl";
 const VITE_API = getApiBaseUrl();
@@ -19,6 +19,7 @@ function Dashboard() {
   const [deleteError, setDeleteError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPromptModal, setShowPromptModal] = useState(false);
+  const [signedIn, setSignedIn] = useState(Boolean(auth?.currentUser));
 
   const navigate = useNavigate();
 
@@ -31,6 +32,7 @@ function Dashboard() {
   // Load experiments on mount.
   useEffect(() => {
     loadExperiments();
+    return subscribeToAuth((user) => setSignedIn(Boolean(user)));
   }, []);
 
   // Create experiment
@@ -55,9 +57,14 @@ function Dashboard() {
     }
   };
 
-  const handleDelete = async (id: string, localOnly = false) => {
+  const handleDelete = async (id: string, scope: "local" | "remote") => {
     const user = auth?.currentUser;
-    const scope = localOnly || !user ? "local" : "remote";
+    if (scope === "remote" && !user) {
+      setDeleteError(
+        "Sign in to delete published resources. The local experiment was preserved.",
+      );
+      return;
+    }
     const confirmed = window.confirm(
       scope === "remote"
         ? "Delete this experiment? This will permanently delete the associated GitHub repository and data storage folder if published, as well as the local experiment."
@@ -70,8 +77,13 @@ function Dashboard() {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (scope === "remote" && user)
+      if (scope === "remote" && user) {
         headers.Authorization = `Bearer ${await user.getIdToken()}`;
+        if (auth?.currentUser?.uid !== user.uid)
+          throw new Error(
+            "Your account changed. Sign in again before deleting published resources.",
+          );
+      }
       const res = await fetch(`${VITE_API}/api/delete-experiment/${id}`, {
         method: "DELETE",
         headers,
@@ -152,6 +164,9 @@ function Dashboard() {
         </button>
       </div>
       {deleteError && <p role="alert">{deleteError}</p>}
+      {!signedIn && (
+        <p id="remote-delete-sign-in">Sign in to delete published resources.</p>
+      )}
       <div className="dashboard-list">
         {experiments.map((exp) => (
           <div
@@ -161,15 +176,22 @@ function Dashboard() {
           >
             {exp.name}
             <button
+              type="button"
               className="gradient-btn right"
-              style={{ float: "right", marginLeft: 16 }}
+              style={{
+                float: "right",
+                marginLeft: 16,
+                opacity: loading || !signedIn ? 0.6 : 1,
+                cursor: loading || !signedIn ? "not-allowed" : "pointer",
+              }}
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete(exp.experimentID);
+                void handleDelete(exp.experimentID, "remote");
               }}
-              disabled={loading}
+              disabled={loading || !signedIn}
+              aria-describedby={!signedIn ? "remote-delete-sign-in" : undefined}
             >
-              Delete
+              Delete experiment and published resources…
             </button>
             <button
               type="button"
@@ -178,10 +200,10 @@ function Dashboard() {
               disabled={loading}
               onClick={(event) => {
                 event.stopPropagation();
-                void handleDelete(exp.experimentID, true);
+                void handleDelete(exp.experimentID, "local");
               }}
             >
-              Delete local copy
+              Delete from this device
             </button>
           </div>
         ))}

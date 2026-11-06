@@ -1,127 +1,134 @@
 import { useEffect, useRef, useState } from "react";
 import { auth } from "../../../../lib/firebase";
 import {
-  defaultFunctionalSettings,
   loadFunctionalSettings,
   saveFunctionalSettings,
   migrateFunctionalSettings,
-  type LocalSettings,
+  SettingsRequestError,
   type SettingsMigration,
 } from "../../../../lib/functionalSettings";
-import type {
-  BatchConfig,
-  CaptchaConfig,
-  RecruitmentConfig,
-  SessionNameToken,
-  SessionNameTokenType,
-  StatusMessage,
-} from "../types";
+import type { StatusMessage } from "../types";
 import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
-import {
-  getSessionNameUniquenessError,
-  makeSessionToken,
-  MAX_SESSION_TOKENS,
-  previewToken,
-} from "../utils/sessionName";
-
-const API_URL = getApiBaseUrl() ?? "";
+import { getSessionNameUniquenessError } from "../utils/sessionName";
+import { createSettingsDraft, useSettingsDraft } from "./useSettingsDraft";
 
 export function useExperimentSettings(experimentID: string | undefined) {
-  const [config, setConfig] = useState<BatchConfig>({
-    useIndexedDB: true,
-    batchSize: 0,
-    resumeTimeoutMinutes: 30,
-  });
-  const [recruitmentConfig, setRecruitmentConfig] = useState<RecruitmentConfig>(
-    {
-      platform: "none",
-      prolificCompletionCode: "",
-    },
-  );
-  const [captchaConfig, setCaptchaConfig] = useState<CaptchaConfig>({
-    enabled: false,
-    provider: "hcaptcha",
-    siteKey: "",
-  });
+  const editor = useSettingsDraft();
   const [experimentExists, setExperimentExists] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<StatusMessage | null>(null);
-  const [sessionNameMessage, setSessionNameMessage] =
-    useState<StatusMessage | null>(null);
-  const [sessionNameTokens, setSessionNameTokens] = useState<
-    SessionNameToken[]
-  >([]);
-  const [sessionNameSeparator, setSessionNameSeparator] = useState("_");
-
   const [settingsMigration, setSettingsMigration] =
     useState<SettingsMigration | null>(null);
   const [revision, setRevision] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [sessionNameMessage, setSessionNameMessage] =
+    useState<StatusMessage | null>(null);
+  const [hasConflict, setHasConflict] = useState(false);
   const [reload, setReload] = useState(0);
   const currentID = useRef(experimentID);
   currentID.current = experimentID;
   const generation = useRef(0);
-
-  const applySettings = (saved: LocalSettings) => {
-    const values = saved.functionalSettings ?? defaultFunctionalSettings();
-    setConfig(values.batchConfig);
-    setRecruitmentConfig(values.recruitmentConfig);
-    setCaptchaConfig(values.captchaConfig);
-    setRevision(saved.revision);
-    setSettingsMigration(saved.settingsMigration);
-    setExperimentExists(true);
-  };
+  const needsReview =
+    settingsMigration !== null && settingsMigration.state !== "complete";
 
   useEffect(() => {
     const requestGeneration = ++generation.current;
+    const valid = () =>
+      currentID.current === experimentID &&
+      generation.current === requestGeneration;
     setExperimentExists(false);
     setSettingsMigration(null);
     setLoadError("");
     setMessage(null);
     setSessionNameMessage(null);
     setSaving(false);
+    setHasConflict(false);
     setRevision(0);
-    const defaults = defaultFunctionalSettings();
-    setConfig(defaults.batchConfig);
-    setRecruitmentConfig(defaults.recruitmentConfig);
-    setCaptchaConfig(defaults.captchaConfig);
-    setSessionNameTokens([]);
-    setSessionNameSeparator("_");
+    editor.reset(createSettingsDraft(), false);
     if (!experimentID) return;
-    let cancelled = false;
-    const valid = () => !cancelled && generation.current === requestGeneration;
-    const sessionName = fetch(
-      `${API_URL}/api/session-name-config/${experimentID}`,
-    )
-      .then((response) => (response.ok ? response.json() : null))
-      .catch(() => null);
-    Promise.all([loadFunctionalSettings(experimentID), sessionName])
-      .then(([saved, session]) => {
+    const session = fetch(
+      `${getApiBaseUrl()}/api/session-name-config/${encodeURIComponent(experimentID)}`,
+    ).then((response) => {
+      if (!response.ok)
+        throw new Error(
+          "Could not load session name settings. Retry before saving.",
+        );
+      return response.json();
+    });
+    Promise.all([loadFunctionalSettings(experimentID), session])
+      .then(([saved, sessionName]) => {
         if (!valid()) return;
-        applySettings(saved);
-        if (session) {
-          setSessionNameTokens(session.tokens ?? []);
-          setSessionNameSeparator(session.separator ?? "_");
-        }
+        editor.reset(
+          createSettingsDraft(saved.functionalSettings, sessionName),
+        );
+        setRevision(saved.revision);
+        setSettingsMigration(saved.settingsMigration);
+        setExperimentExists(true);
       })
       .catch((error) => {
         if (valid())
           setLoadError(
             error instanceof Error
               ? error.message
-              : "Could not load the local configuration.",
+              : "Could not load local settings.",
           );
       });
     return () => {
-      cancelled = true;
+      generation.current++;
     };
   }, [experimentID, reload]);
 
-  const handleReload = () => setReload((previous) => previous + 1);
+  const handleReload = () => {
+    if (saving) return;
+    if (
+      editor.hasChanges &&
+      !window.confirm(
+        "Discard unsaved changes and load the saved configuration?",
+      )
+    )
+      return;
+    setReload((previous) => previous + 1);
+  };
+  const reportError = (error: unknown) => {
+    if (
+      error instanceof SettingsRequestError &&
+      ["SETTINGS_REVISION_CONFLICT", "SETTINGS_ALREADY_COMPLETE"].includes(
+        error.code ?? "",
+      )
+    ) {
+      setHasConflict(true);
+      setMessage({
+        type: "error",
+        text: "A newer configuration was saved. Your changes are still here. Load the saved version before saving again.",
+      });
+      return;
+    }
+    setMessage({
+      type: "error",
+      text:
+        error instanceof Error
+          ? error.message
+          : "Could not save the configuration.",
+    });
+  };
   const handleMigrate = async () => {
-    if (!experimentID || !experimentExists || saving) return;
-    const id = experimentID;
-    const requestGeneration = generation.current;
+    if (
+      !experimentID ||
+      !experimentExists ||
+      saving ||
+      hasConflict ||
+      !needsReview
+    )
+      return;
+    if (
+      editor.functionalChanges &&
+      !window.confirm(
+        "Recover published settings and replace unsaved changes to batching, recruitment and CAPTCHA?",
+      )
+    )
+      return;
+    const id = experimentID,
+      requestGeneration = generation.current;
     const valid = () =>
       currentID.current === id && generation.current === requestGeneration;
     setSaving(true);
@@ -137,11 +144,13 @@ export function useExperimentSettings(experimentID: string | undefined) {
         revision,
         await user.getIdToken(),
       );
-      if (valid()) {
-        applySettings(saved);
+      if (valid() && saved.functionalSettings) {
+        editor.applyRecovered(saved.functionalSettings);
+        setRevision(saved.revision);
+        setSettingsMigration(saved.settingsMigration);
         setMessage({
           type: "success",
-          text: "Published settings recovered and saved locally.",
+          text: "Published settings recovered and saved on this device.",
         });
       }
     } catch (error) {
@@ -149,94 +158,22 @@ export function useExperimentSettings(experimentID: string | undefined) {
         setSettingsMigration(
           (previous) => previous && { ...previous, state: "needs_review" },
         );
-        setMessage({
-          type: "error",
-          text:
-            error instanceof Error
-              ? error.message
-              : "Could not recover settings. Review and save them locally.",
-        });
+        reportError(error);
       }
     } finally {
       if (valid()) setSaving(false);
     }
   };
-
-  const addSessionToken = (type: SessionNameTokenType) => {
-    setSessionNameTokens((previous) =>
-      /* v8 ignore next -- maxed buttons are disabled; this guards stale queued clicks. */
-      previous.length >= MAX_SESSION_TOKENS
-        ? previous
-        : [...previous, makeSessionToken(type)],
-    );
-  };
-  const removeSessionToken = (id: string) => {
-    setSessionNameTokens((previous) =>
-      previous.filter((token) => token.id !== id),
-    );
-  };
-  const reorderSessionToken = (from: number, to: number) => {
-    if (from === to) return;
-    setSessionNameTokens((previous) => {
-      const next = [...previous];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
-  };
-  const updateSessionToken = (id: string, patch: Partial<SessionNameToken>) => {
-    setSessionNameTokens((previous) =>
-      previous.map((token) =>
-        token.id === id ? { ...token, ...patch } : token,
-      ),
-    );
-  };
-
-  const handleSaveSessionName = async () => {
-    if (!experimentID || saving) return;
-    const id = experimentID;
-    const requestGeneration = generation.current;
-    const valid = () =>
-      currentID.current === id && generation.current === requestGeneration;
-    const uniquenessError = getSessionNameUniquenessError(sessionNameTokens);
-    if (uniquenessError) {
-      setSessionNameMessage({ type: "error", text: uniquenessError });
-      return;
-    }
-    setSaving(true);
-    setSessionNameMessage(null);
-    try {
-      const response = await fetch(
-        `${API_URL}/api/session-name-config/${experimentID}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tokens: sessionNameTokens,
-            separator: sessionNameSeparator,
-          }),
-        },
-      );
-      if (!response.ok) throw new Error("Failed to save");
-      if (valid())
-        setSessionNameMessage({
-          type: "success",
-          text: "Session name configuration saved!",
-        });
-    } catch {
-      if (valid())
-        setSessionNameMessage({
-          type: "error",
-          text: "Error saving session name configuration",
-        });
-    } finally {
-      if (valid()) setSaving(false);
-    }
-  };
-
+  const canSave =
+    experimentExists &&
+    !saving &&
+    !hasConflict &&
+    (editor.hasChanges || needsReview);
   const handleSave = async () => {
-    if (!experimentID || !experimentExists || saving) return;
-    const uniquenessError = getSessionNameUniquenessError(sessionNameTokens);
+    if (!experimentID || !canSave) return;
+    const uniquenessError = getSessionNameUniquenessError(
+      editor.sessionNameTokens,
+    );
     if (uniquenessError) {
       setSessionNameMessage({ type: "error", text: uniquenessError });
       setMessage({
@@ -245,67 +182,50 @@ export function useExperimentSettings(experimentID: string | undefined) {
       });
       return;
     }
-    const id = experimentID;
-    const requestGeneration = generation.current;
+    const id = experimentID,
+      requestGeneration = generation.current,
+      snapshot = editor.draft;
     const valid = () =>
       currentID.current === id && generation.current === requestGeneration;
     setSaving(true);
     setMessage(null);
+    setSessionNameMessage(null);
     try {
+      const { sessionNameConfig, ...sections } = snapshot;
       const saved = await saveFunctionalSettings(
         id,
         revision,
-        { batchConfig: config, recruitmentConfig, captchaConfig },
-        { tokens: sessionNameTokens, separator: sessionNameSeparator },
+        sections,
+        sessionNameConfig,
       );
       if (valid()) {
+        editor.markSaved(snapshot);
         setRevision(saved.revision);
         setSettingsMigration(saved.settingsMigration);
         setMessage({
           type: "success",
-          text: "Configuration saved locally. Changes apply on the next publication.",
+          text: "Configuration saved on this device.",
         });
       }
     } catch (error) {
-      if (valid())
-        setMessage({
-          type: "error",
-          text:
-            error instanceof Error
-              ? error.message
-              : "Error saving configuration",
-        });
+      if (valid()) reportError(error);
     } finally {
       if (valid()) setSaving(false);
     }
   };
-
   return {
-    settingsMigration,
-    loadError,
-    handleReload,
-    handleMigrate,
-    config,
-    setConfig,
-    recruitmentConfig,
-    setRecruitmentConfig,
-    captchaConfig,
-    setCaptchaConfig,
+    ...editor,
     experimentExists,
+    settingsMigration,
+    needsReview,
+    canSave,
+    hasConflict,
     saving,
     message,
     sessionNameMessage,
-    sessionNameTokens,
-    sessionNameSeparator,
-    setSessionNameSeparator,
-    sessionNamePreview: sessionNameTokens
-      .map((token) => previewToken(token))
-      .join(sessionNameSeparator),
-    addSessionToken,
-    removeSessionToken,
-    reorderSessionToken,
-    updateSessionToken,
-    handleSaveSessionName,
+    loadError,
+    handleReload,
+    handleMigrate,
     handleSave,
   };
 }

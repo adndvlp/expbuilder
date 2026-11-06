@@ -68,8 +68,11 @@ describe("ExperimentSettings", () => {
 
     render(<ExperimentSettings experimentID="exp-published" />);
 
-    await screen.findAllByText("Save Configuration");
-    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
+    await screen.findByLabelText("Batch Size");
+    fireEvent.change(screen.getByLabelText("Batch Size"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     expect(
       await screen.findByText("Session name configuration is invalid."),
@@ -91,8 +94,11 @@ describe("ExperimentSettings", () => {
 
     render(<ExperimentSettings experimentID="exp-published" />);
 
-    await screen.findAllByText("Save Configuration");
-    fireEvent.click(screen.getAllByText("Save Configuration")[0]);
+    await screen.findByLabelText("Batch Size");
+    fireEvent.change(screen.getByLabelText("Batch Size"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Configuration" }));
 
     expect(
       await screen.findByText(/Could not access the saved configuration/),

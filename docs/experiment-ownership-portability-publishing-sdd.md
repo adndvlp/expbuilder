@@ -216,6 +216,16 @@ Para diseños locales legados que aún no tienen `cloudBinding`, la migración p
 
 La revisión de despliegue conserva los valores visibles y pide comprobarlos; no desactiva CAPTCHA ni cambia la plataforma silenciosamente. El código fuente personalizado de DevMode se conserva como fuente. Si contiene referencias explícitas al backend o al ID anterior, se marca para revisión; no se reemplazan globalmente cadenas dentro de JavaScript, HTML o CSV.
 
+### 7.4 Interfaz de configuración y recuperación
+
+El editor presenta una sola acción `Save Configuration` para batching, reclutamiento, CAPTCHA y nombres de sesión. Los campos de apariencia y dominio conservan sus acciones independientes. El guardado se habilita cuando hay cambios respecto de la última lectura completa o una revisión pendiente; en este último caso se llama `Confirm and Save Configuration`, también cuando el usuario acepta los valores predeterminados sin modificarlos. Guardar actualiza la referencia local de comparación después de la respuesta correcta. Una indicación breve explica que los cambios se aplican en la próxima publicación.
+
+El aviso de revisión y `Recover Published Settings` aparecen únicamente cuando falta configuración local completa. La recuperación es explícita, exige autorización del propietario y no se ofrece para copias marcadas con procedencia `package`. Si existen cambios funcionales sin guardar, se confirma su reemplazo antes de recuperar. Los nombres de sesión modificados se conservan como cambios pendientes, porque la recuperación remota abarca solo los tres apartados funcionales.
+
+Las acciones de recarga se presentan según el contexto: `Retry` ante un fallo de lectura; `Discard Changes` cuando hay modificaciones; `Load Saved Version` ante un conflicto de revisión. Descartar o cargar otra versión requiere confirmar si se perderán cambios sin guardar. Cancelar conserva tanto los valores como la revisión actual y no emite otra lectura. Un conflicto conserva los cambios visibles y bloquea el guardado hasta cargar la versión más reciente. La carga conjunta de ajustes y nombres de sesión debe completarse antes de permitir editar o guardar; una respuesta tardía de otro experimento no sustituye el formulario actual.
+
+En el Dashboard, `Delete from this device` siempre solicita eliminación local, incluso con sesión iniciada. `Delete experiment and published resources…` siempre solicita eliminación remota y queda deshabilitado sin sesión, con una explicación visible. La confirmación de esta última identifica el repositorio GitHub, la carpeta de datos y el experimento local. Perder la sesión o cambiar de cuenta al obtener el token detiene la operación; nunca la convierte en una eliminación local. El backend conserva sus comprobaciones de propiedad antes de los efectos.
+
 ## 8. Paquetes, copia y restauración
 
 ### 8.1 Formato versionado
@@ -588,6 +598,13 @@ Las pruebas verifican resultados y efectos observables. Los proveedores se simul
 | A34 | Respuestas 401, 403, 409, 413, 426 y no JSON del proveedor/plataforma | Proxy e interfaz conservan significado y no reducen todo a `400` |
 | A35 | Cliente administrador antiguo y página de participante antigua | Cliente recibe actualización cuando corresponda; captura publicada mantiene contrato |
 | A36 | Caso Tep → Armando completo | Original intacto; copia con ajustes equivalentes, propietario/destinos nuevos y Pages confirmado |
+| A37 | Guardar ajustes y nombres de sesión desde el panel | Una acción conjunta; habilitada solo con cambios o revisión explícita pendiente |
+| A38 | Recuperar ajustes con modificaciones locales | Confirmar reemplazo funcional; conservar cambios pendientes en nombres de sesión y autorización del propietario |
+| A39 | Descartar cambios o cargar una versión más reciente | Confirmación si hay cambios; cancelar conserva valores y no dispara lectura |
+| A40 | Fallar la carga de ajustes o nombres de sesión | Mostrar reintento; bloquear edición y guardado hasta completar la lectura conjunta |
+| A41 | Otra ventana guarda antes del usuario | Conservar cambios visibles, explicar el conflicto y exigir cargar la versión guardada |
+| A42 | Eliminar con y sin sesión o perderla mientras se obtiene el token | Acciones de alcance fijo; eliminación remota sin autenticación no se transforma en local |
+| A43 | Navegar mientras una recuperación sigue pendiente | La respuesta anterior no modifica los ajustes, avisos ni estado de guardado del experimento actual |
 
 Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos que toca. La matriz global se completa en M08; no es necesario repetir toda la suite por cambios documentales ni ampliar pruebas sin una dependencia o riesgo concreto.
 
@@ -595,8 +612,8 @@ Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos 
 
 | Etapa | Estado | Evidencia / siguiente paso |
 |---|---|---|
-| M01 | Implementado y verificado localmente | Política común, reserva transaccional inactiva, preparación, exclusión de mutaciones, captura compatible, reglas y eliminación local/remota verificadas. Despliegue pendiente. |
-| M02 | Implementado y verificado localmente | Ajustes locales con revisiones, migración autorizada, revisión visible, generación sin Firestore y conservación de campos. Despliegue pendiente. |
+| M01 | Implementado y verificado localmente | Política común, reserva transaccional inactiva, preparación, exclusión de mutaciones, captura compatible, reglas y eliminación local/remota con acciones de alcance fijo verificadas. Despliegue pendiente. |
+| M02 | Implementado y verificado localmente | Ajustes locales con revisiones, migración autorizada, guardado único, recuperación contextual, generación sin Firestore y conservación de campos. Despliegue pendiente. |
 | M03 | Pendiente | Depende de M02; resolver medios por ID antes de habilitar copias |
 | M04 | Pendiente | Verificar asociaciones legadas; retirar cambio implícito de proveedor |
 | M05 | Pendiente | Congelar artefacto y definir protocolo 2 completo |
@@ -697,6 +714,39 @@ El CI completo detectó siete fallos en `server/__tests__/routes/experiment-back
 Se reprodujeron los siete fallos antes del cambio. La fixture ahora guarda los valores explícitos de un diseño nuevo y envía esos mismos ajustes al publicar. Se añadió un caso que comprueba que guardar apariencia no permite omitir la revisión funcional ni contactar proveedores. La verificación dirigida pasó sus 25 casos de apariencia y ajustes; después se ejecutó el runner completo de raíz usado por CI: **673 pruebas correctas en 68 suites, cero fallos y cinco casos omitidos en las dos suites cloud opcionales**. Comando: `npm test -- --runInBand`; ejecución local con Node compatible, Chromium disponible y una raíz de datos temporal aislada.
 
 Los mensajes `ENOTDIR`, `EISDIR`, JSON inválido y errores OAuth de las suites `main.*` corresponden a casos negativos deliberados que comprobaron sus respuestas de error y pasaron. Esta corrección modifica pruebas y documentación; mantiene las validaciones de producción de M02.
+
+### Ajuste de interfaz M01/M02 — 2026-11-05
+
+Se implementó la interfaz descrita en la sección 7.4 y se agregaron los criterios A37–A43. El editor usa un único guardado para los tres apartados funcionales y nombres de sesión. Compara el formulario con la última versión cargada o guardada para habilitar la acción; una configuración incompleta requiere confirmación explícita aun sin modificaciones. Apariencia y dominio mantienen sus controles independientes.
+
+Las acciones de reintento, descarte y carga de versión aparecen según el estado del formulario. Descartar cambios requiere confirmación; un conflicto conserva los valores del usuario y bloquea nuevas escrituras hasta recargar. La lectura inicial incluye nombres de sesión y ajustes funcionales antes de permitir editar, evitando que un fallo de lectura del nombre se convierta en un guardado con valores vacíos. La recuperación de ajustes conserva los nombres de sesión editados y sigue exigiendo la autorización del backend. Una respuesta de una navegación anterior se ignora.
+
+El Dashboard distingue las dos eliminaciones con nombres fijos. La eliminación de recursos publicados se deshabilita sin sesión; el handler comprueba nuevamente la cuenta después de obtener el token. Eliminar únicamente de este equipo funciona con o sin sesión y no solicita un token. Los errores siguen conservando el experimento local cuando se rechaza la operación remota.
+
+Se separó `useSettingsDraft.ts` para manejar la comparación con el estado guardado y la edición de nombres de sesión. Los errores de configuración conservan el código HTTP y el código de aplicación para distinguir un conflicto de otros fallos. Las pruebas del modal y la eliminación del Dashboard se distribuyeron en archivos propios con un arnés compartido. El endpoint de guardado independiente de nombres de sesión permanece para compatibilidad; el editor actualizado utiliza la operación conjunta.
+
+| Verificación | Resultado |
+|---|---|
+| Casos iniciales de interfaz contra la versión anterior | 8 fallos esperados y 10 casos anteriores correctos |
+| Suite completa del cliente | 1,781 pruebas correctas en 429 archivos |
+| Regresión dirigida después de los ajustes finales | 39 pruebas correctas en 10 archivos |
+| TypeScript del cliente | `tsc -b` correcto |
+| Compilación de producción | Vite correcto, con salida temporal |
+| Tamaño de archivos mantenidos | Todos con un máximo de 300 líneas |
+| Registro de escenarios de runtime | 30 etiquetas verificadas en 13 archivos; comprobación de declaraciones |
+| Revisión en Chromium con API y autenticación simuladas | Cuatro capturas de configuración y Dashboard; escritorio y móvil de 390 px, cero errores de página, cancelación de descarte correcta y ausencia de desbordamiento horizontal |
+| Diff | `git diff --check` correcto |
+
+Comandos reproducibles desde la raíz:
+
+```sh
+npm --prefix client run test:unit -- --maxWorkers=2
+node client/node_modules/typescript/bin/tsc -b client/tsconfig.json --pretty false
+node client/scripts/check-max-lines.mjs
+node client/runtime-e2e/coverage/checkCoverage.mjs
+```
+
+Las pruebas de interfaz y la vista temporal usaron datos simulados; los experimentos y archivos locales previos del usuario se conservaron. La siguiente etapa continúa siendo M03.
 
 ## 20. Referencias técnicas
 

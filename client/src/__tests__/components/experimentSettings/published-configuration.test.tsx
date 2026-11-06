@@ -111,7 +111,7 @@ describe("ExperimentSettings", () => {
       },
     });
     expect(
-      await screen.findByText(/Configuration saved locally/),
+      await screen.findByText(/Configuration saved on this device/),
     ).toBeInTheDocument();
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
   });
@@ -131,7 +131,9 @@ describe("ExperimentSettings", () => {
 
     await screen.findAllByText("Save Configuration");
     rerender(<ExperimentSettings experimentID={undefined} />);
-    expect(screen.queryByText("Save Configuration")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save Configuration" }),
+    ).toBeDisabled();
 
     expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
     expect(fetchMock()).toHaveBeenCalledTimes(1);
