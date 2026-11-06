@@ -7,6 +7,7 @@ import { db, dbDir, userDataRoot } from "../../utils/db.js";
 import { ALLOWED_MEDIA_TYPES } from "./zip.js";
 import { assertExperimentNavigation } from "../timeline/branchContract.js";
 import { migrateLegacyNavigation } from "./legacy/migrateLegacyNavigation.js";
+import { normalizeImportedExperiment } from "../../utils/dynamicConfigModel.js";
 
 const router = Router();
 const importZipUpload = multer({ dest: dbDir });
@@ -85,9 +86,11 @@ router.post(
 
         if (!data.experiment?.experimentID) continue;
         if (data.trials) {
+          // TEMPORARY tester ZIP migration: retirement in docs/temporary-migrations.md.
           data.trials = migrateLegacyNavigation(data.trials);
-          assertExperimentNavigation(data.trials);
         }
+        data = normalizeImportedExperiment(data);
+        if (data.trials) assertExperimentNavigation(data.trials);
         imports.push({ folderName, data });
       }
 

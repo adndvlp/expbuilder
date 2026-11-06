@@ -5,29 +5,26 @@ import { useDesignerComponents } from "../../pages/ExperimentBuilder/components/
 import { useDesignerClipboard } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/hooks/useDesignerClipboard";
 import useConfigComponents from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/useConfigFromComponents";
 import type { TrialComponent } from "../../pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialDesigner/types";
+import { DESIGN_SIZE } from "../../../../shared/dynamic-layout/scene";
 import { relativeCoordinates } from "../../../../shared/dynamic-layout/geometry";
 
-it("exports mobile geometry and fonts relatively, and undoes across preview sizes", () => {
+it("keeps design geometry across preview sizes and undoes actual edits", () => {
   const autoSave = vi.fn();
   const { result, rerender } = renderHook(
     ({ width, height }) => {
-      const previewViewport = {
-        width,
-        height,
-      };
-      const model = useDesignerComponents(previewViewport);
+      const previewViewport = { width, height };
+      const model = useDesignerComponents();
       const componentsRef = useRef<TrialComponent[]>([]);
       componentsRef.current = model.components;
       const toJsPsychCoords = (x: number, y: number) =>
-        relativeCoordinates(x, y, previewViewport);
+        relativeCoordinates(x, y, DESIGN_SIZE);
       const serialize = useConfigComponents({
         toJsPsychCoords,
-        previewViewport,
         columnMapping: {},
       });
       const clipboard = useDesignerClipboard({
-        canvasWidth: width,
-        canvasHeight: height,
+        canvasWidth: DESIGN_SIZE.width,
+        canvasHeight: DESIGN_SIZE.height,
         componentsRef,
         isOpen: true,
         selectedIds: ["text"],
@@ -39,6 +36,7 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
       });
       return {
         ...model,
+        previewViewport,
         ...clipboard,
         export: () => serialize(model.components),
       };
@@ -50,11 +48,11 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
       {
         id: "text",
         type: "TextComponent",
-        x: 550,
-        y: 280,
-        width: 250,
-        height: 100,
-        textFontSize: 20,
+        x: 1408,
+        y: 580,
+        width: 640,
+        height: 256,
+        textFontSize: 51.2,
         config: { text: { source: "typed", value: "Hello" } },
       },
     ]),
@@ -62,10 +60,10 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
   const baseline = result.current.export();
   rerender({ width: 375, height: 725 });
   expect(result.current.components[0]).toMatchObject({
-    x: expect.closeTo(206.25),
-    y: 290,
-    width: 93.75,
-    textFontSize: 7.5,
+    x: 1408,
+    y: 580,
+    width: 640,
+    textFontSize: 51.2,
   });
   expect(result.current.export()).toEqual(baseline);
   expect(autoSave).not.toHaveBeenCalled();
@@ -74,11 +72,11 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
     result.current.setComponentsWithHistoryAndAutoSave((components) =>
       components.map((component) => ({
         ...component,
-        x: 281.25,
-        y: 507.5,
-        width: 112.5,
-        height: 30,
-        textFontSize: 15,
+        x: 1920,
+        y: 1015,
+        width: 768,
+        height: 204.8,
+        textFontSize: 102.4,
       })),
     ),
   );
@@ -89,16 +87,15 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
     height: 8,
     _font_size_runtime_vw: { source: "typed", value: 4 },
   });
-  expect(edited.__canvasStyles).toBeUndefined();
   expect(edited.components.value[0].font_size).toBeUndefined();
   rerender({ width: 1920, height: 1080 });
   expect(result.current.export()).toEqual(edited);
   expect(result.current.components[0]).toMatchObject({
-    x: 1440,
-    y: 756,
-    width: 576,
-    height: 153.6,
-    textFontSize: 76.8,
+    x: 1920,
+    y: expect.closeTo(1015, 9),
+    width: 768,
+    height: 204.8,
+    textFontSize: 102.4,
   });
   expect(result.current.historyCount).toBe(1);
   expect(autoSave).toHaveBeenCalledTimes(1);
@@ -106,6 +103,6 @@ it("exports mobile geometry and fonts relatively, and undoes across preview size
     result.current.undoLastChange();
   });
   expect(result.current.export()).toEqual(baseline);
-  expect(result.current.components[0].width).toBe(480);
+  expect(result.current.components[0].width).toBe(640);
   expect(result.current.historyCount).toBe(0);
 });

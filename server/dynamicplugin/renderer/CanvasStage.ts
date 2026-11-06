@@ -3,6 +3,8 @@ export type RenderBackendRequest = "webgl-strict";
 type CanvasStageOptions = {
   width: number;
   height: number;
+  dpr?: number;
+  rasterScale?: number;
   backgroundColor?: string;
   zIndex?: number;
   backend?: RenderBackendRequest;
@@ -132,8 +134,9 @@ function parseCssColor(color: string): RgbaColor {
 function createVisibleCanvas(
   parent: HTMLElement,
   options: CanvasStageOptions,
-): { canvas: HTMLCanvasElement; dpr: number } {
-  const dpr = window.devicePixelRatio || 1;
+): { canvas: HTMLCanvasElement; dpr: number; rasterScale: number } {
+  const dpr = options.dpr ?? (window.devicePixelRatio || 1);
+  const rasterScale = options.rasterScale ?? dpr;
   const canvas = document.createElement("canvas");
   canvas.id = "jspsych-dynamic-webgl-stage";
   canvas.className = "dynamic-canvas-stage";
@@ -145,15 +148,16 @@ function createVisibleCanvas(
   canvas.style.display = "block";
   canvas.style.pointerEvents = "none";
   canvas.style.zIndex = String(options.zIndex ?? 0);
-  canvas.width = Math.round(options.width * dpr);
-  canvas.height = Math.round(options.height * dpr);
+  canvas.width = Math.max(1, Math.round(options.width * rasterScale));
+  canvas.height = Math.max(1, Math.round(options.height * rasterScale));
   parent.appendChild(canvas);
-  return { canvas, dpr };
+  return { canvas, dpr, rasterScale };
 }
 
 abstract class BaseStage {
   canvas: HTMLCanvasElement;
   dpr: number;
+  rasterScale: number;
   width: number;
   height: number;
   backgroundColor: string;
@@ -173,6 +177,7 @@ abstract class BaseStage {
     const visible = createVisibleCanvas(parent, options);
     this.canvas = visible.canvas;
     this.dpr = visible.dpr;
+    this.rasterScale = visible.rasterScale;
     this.width = options.width;
     this.height = options.height;
     this.backgroundColor = options.backgroundColor || "transparent";
@@ -188,15 +193,16 @@ abstract class BaseStage {
     this.canvas.style.zIndex = String(zIndex);
   }
 
-  resize(width: number, height: number, dpr = window.devicePixelRatio || 1) {
-    if (this.width === width && this.height === height && this.dpr === dpr) return;
+  resize(width: number, height: number, dpr = window.devicePixelRatio || 1, rasterScale = dpr) {
+    if (this.width === width && this.height === height && this.dpr === dpr && this.rasterScale === rasterScale) return;
     this.width = width;
     this.height = height;
     this.dpr = dpr;
+    this.rasterScale = rasterScale;
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
-    this.canvas.width = Math.round(width * dpr);
-    this.canvas.height = Math.round(height * dpr);
+    this.canvas.width = Math.max(1, Math.round(width * rasterScale));
+    this.canvas.height = Math.max(1, Math.round(height * rasterScale));
     this.markDirty();
   }
 
@@ -778,7 +784,7 @@ export function getCanvasStage(
   const key = "webgl-strict";
   const existing = registry.get(key);
   if (existing) {
-    existing.resize(options.width, options.height);
+    existing.resize(options.width, options.height, options.dpr, options.rasterScale);
     if (options.zIndex !== undefined) {
       existing.setZIndex(
         Math.max(Number(existing.canvas.style.zIndex) || 0, options.zIndex),

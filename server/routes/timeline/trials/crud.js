@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../../../utils/db.js";
+import { normalizeDynamicTrial } from "../../../utils/dynamicConfigModel.js";
 import {
   getExperimentDoc,
   pruneDanglingBranches,
@@ -19,7 +20,7 @@ const router = Router();
 router.post("/api/trial/:experimentID", async (req, res) => {
   try {
     const { experimentID } = req.params;
-    let trialData = req.body;
+    let trialData = normalizeDynamicTrial(req.body);
     const targetScopeId = normalizeScopeId(trialData.parentLoopId);
     let experimentDoc = await getExperimentDoc(experimentID);
     const parentLoop =
@@ -155,12 +156,12 @@ router.patch("/api/trial/:experimentID/:id", async (req, res) => {
       ...updates,
     });
 
-    experimentDoc.trials[trialIndex] = {
+    experimentDoc.trials[trialIndex] = normalizeDynamicTrial({
       ...experimentDoc.trials[trialIndex],
       ...updates,
       id: trialId,
       updatedAt: new Date().toISOString(),
-    };
+    });
 
     if (Object.hasOwn(updates, "parentLoopId")) {
       // Moving a trial into a deleted (or never existing) loop must fail

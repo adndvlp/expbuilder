@@ -2,9 +2,8 @@ export const typed = (value: unknown) => ({ source: "typed", value });
 export const image =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJ1sAAAAASUVORK5CYII=";
 
-export function responsiveScene(legacySize?: unknown) {
+export function responsiveScene() {
   return {
-    ...(legacySize == null ? {} : { __canvasStyles: typed(legacySize) }),
     components: typed([
       {
         type: "HtmlComponent",

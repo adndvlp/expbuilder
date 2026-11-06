@@ -1,5 +1,4 @@
 import {
-  previewViewport,
   describe,
   expect,
   it,
@@ -10,7 +9,7 @@ import {
 import type { TrialComponent } from "./testHarness";
 
 describe("useConfigFromComponents", () => {
-  it("serializes raw geometry without canvas styles and makes HTML portable", () => {
+  it("serializes design geometry using the common basis and makes HTML portable", () => {
     const imageComponent = {
       id: "image-1",
       type: "ImageComponent",
@@ -37,22 +36,21 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        previewViewport: undefined,
       }),
     );
 
     const config = result.current([imageComponent, htmlComponent]);
     const [image, html] = config.components.value;
 
-    expect(image).toEqual(expect.objectContaining({ width: 240, height: 120 }));
+    expect(image).toEqual(
+      expect.objectContaining({ width: 9.375, height: 4.6875 }),
+    );
     // HtmlComponent now exports its manual box size so the runtime can honor
     // a resized HTML box instead of letting content overflow the canvas.
-    // (previewViewport is undefined here, so sizes stay in raw pixels)
-    expect(html.width).toBe(400);
-    expect(html.height).toBe(200);
+    expect(html.width).toBe(15.625);
+    expect(html.height).toBe(7.8125);
     expect(html.stimulus.value).toContain("&#9733;");
     expect(html.stimulus.value).not.toContain("fa-star");
-    expect(config.__canvasStyles).toBeUndefined();
   });
 
   it("uses runtime font and input-size fallbacks", () => {
@@ -100,35 +98,34 @@ describe("useConfigFromComponents", () => {
       useConfigComponents({
         toJsPsychCoords,
         columnMapping: {},
-        previewViewport,
       }),
     );
 
     const config = result.current(components);
     expect(config.components.value[0]._font_size_runtime_vw.value).toBeCloseTo(
-      1.6,
+      0.625,
     );
     expect(
       config.response_components.value[0]._button_font_size_runtime_vw.value,
-    ).toBeCloseTo(1.4);
+    ).toBeCloseTo(0.546875);
     expect(config.response_components.value[1]).toEqual(
       expect.objectContaining({
         _input_font_size_runtime_vw: expect.objectContaining({
           source: "typed",
-          value: expect.closeTo(1.8),
+          value: expect.closeTo(0.703125),
         }),
-        width: expect.closeTo(9.9),
-        height: expect.closeTo(2.7),
+        width: expect.closeTo(3.8671875),
+        height: expect.closeTo(1.0546875),
       }),
     );
     expect(config.response_components.value[2]).toEqual(
       expect.objectContaining({
         _input_font_size_runtime_vw: expect.objectContaining({
           source: "typed",
-          value: expect.closeTo(1.6),
+          value: expect.closeTo(0.625),
         }),
-        width: expect.closeTo(8.8),
-        height: expect.closeTo(2.4),
+        width: expect.closeTo(3.4375),
+        height: expect.closeTo(0.9375),
       }),
     );
   });

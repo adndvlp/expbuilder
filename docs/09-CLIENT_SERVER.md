@@ -22,7 +22,7 @@ Database (JSON file)
 <UrlProvider>         ← Provides experimentID via URL params
   <PluginsProvider>   ← Loads plugin metadata list
     <DevModeProvider> ← Manages DevMode/SaveMode state
-      <CanvasStylesProvider> ← Canvas dimension defaults
+      <ExperimentAppearanceProvider> ← Saved experiment appearance
         <TrialsProvider>     ← ALL trial/loop CRUD + timeline state
           <ExperimentBuilder> ← UI components
 ```

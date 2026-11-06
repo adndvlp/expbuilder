@@ -57,15 +57,14 @@ export function getLoopCircuitPoints({
 }: LoopCircuitPointInput): Point[] {
   const rightX = routeX ?? Math.max(sourceX, targetX) + 44;
   const topY = routeTopY ?? Math.min(sourceY, targetY) - 44;
-  const bottomY =
-    routeBottomY ?? Math.max(sourceY, targetY) + 44;
+  const bottomY = routeBottomY ?? Math.max(sourceY, targetY) + 44;
   return [
-    { x: targetX, y: targetY },
-    { x: targetX, y: topY },
-    { x: rightX, y: topY },
-    { x: rightX, y: bottomY },
-    { x: sourceX, y: bottomY },
     { x: sourceX, y: sourceY },
+    { x: sourceX, y: bottomY },
+    { x: rightX, y: bottomY },
+    { x: rightX, y: topY },
+    { x: targetX, y: topY },
+    { x: targetX, y: targetY },
   ];
 }
 

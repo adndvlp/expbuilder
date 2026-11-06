@@ -183,7 +183,8 @@ class ClickResponseComponent {
       this.overlayElement.style.minHeight = "40px";
     }
 
-    display_element.appendChild(this.overlayElement);
+    const host = trial.__layoutContext?.getHostElement?.() ?? display_element;
+    (trial.capture_full_screen !== false ? host : display_element).appendChild(this.overlayElement);
 
     // Determine the actual listen target
     if (trial.capture_full_screen === false && trial.target_selector) {
@@ -201,6 +202,7 @@ class ClickResponseComponent {
     ) {
       this.unregisterResponseTiming =
         trial.__responseTiming.registerPointerTarget({
+          captureHost: trial.capture_full_screen !== false,
           componentId: trial.__componentId ?? null,
           componentName: trial.name ?? null,
           label: "click",

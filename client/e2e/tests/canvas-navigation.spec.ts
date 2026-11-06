@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/test.fixture";
 import { fulfillGraph, graph } from "../helpers/loopBranchGraph";
+import { waitForCanvasViewport } from "../helpers/layoutAssertions";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 
 type Viewport = {
@@ -33,6 +34,9 @@ test("supports pinch zoom but ignores double-click zoom", async ({ page }) => {
   const pane = canvas.locator(".react-flow__pane");
   const viewport = canvas.locator(".react-flow__viewport");
   await expect(canvas.getByText("Third", { exact: true })).toBeVisible();
+
+  // Gestures must be measured after the initial animated fit has settled.
+  await waitForCanvasViewport(canvas);
 
   const paneBox = await pane.boundingBox();
   expect(paneBox).not.toBeNull();

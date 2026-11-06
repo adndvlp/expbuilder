@@ -1,12 +1,6 @@
-import { blockedRequirements } from "./blockedRequirements.mjs";
-import { coveredRequirements } from "./coveredRequirements.mjs";
-
-export const acceptanceCoverage = {
-  ...coveredRequirements,
-  ...blockedRequirements,
-};
-
-export const verticalCapabilities = {
+// Each tag must belong to a test declaration in the named scenario file.
+// This registry is incremental; it does not claim exhaustive behavior coverage.
+export const runtimeScenarios = {
   "RUNTIME-RESPONSIVE-VIEWPORT": "responsive-viewport-runtime.spec.ts",
   "RUNTIME-LOOP-SIBLING-ENTRY": "loop-trial-routing-runtime.spec.ts",
   "RUNTIME-LOOP-CSV-REPETITIONS": "loop-iteration-runtime.spec.ts",

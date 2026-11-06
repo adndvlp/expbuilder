@@ -34,7 +34,6 @@ function fixtureCode(persistent: boolean) {
     }});
     const trial = (id, name) => ({
       type: DynamicPlugin,
-      __canvasStyles: {backgroundColor: '#ff0000'},
       response_timing_enabled: false,
       prefetch_next_trials: false,
       data: {builder_id: id},
@@ -91,7 +90,6 @@ async function verifyBackground(page: Page, mode: string, color?: string, persis
   const root = page.locator("#jspsych-dynamic-plugin-container");
   await expect(root).toBeVisible();
   await expectPixel(page, color ?? "#ffffff");
-  expect(await page.evaluate(() => Object.hasOwn((window as any).DynamicPlugin.info.parameters, "__canvasStyles"))).toBe(false);
   if (!persistent) await page.getByRole("button", { name: "Source", exact: true }).click();
   await page.waitForFunction(() => (window as any).backgroundSavePending === true);
   await expect(root).toHaveCount(0);

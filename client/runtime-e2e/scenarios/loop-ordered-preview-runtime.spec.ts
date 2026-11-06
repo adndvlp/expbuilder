@@ -29,7 +29,6 @@ test(`an ordered dynamic loop runs ${scenario.rowCount} rows ${scenario.name}`, 
     columnMapping: {
       ...trial.columnMapping,
       trial_duration: { source: "typed", value: 1 },
-      __canvasStyles: { source: "typed", value: { width: 1440, height: 900 } },
     },
   });
   await author.client.updateLoop(author.experimentId, author.id("ordered-loop"), {

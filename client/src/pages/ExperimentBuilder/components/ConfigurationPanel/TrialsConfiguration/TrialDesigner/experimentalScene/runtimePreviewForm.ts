@@ -166,7 +166,9 @@ export function renderPreviewSurveyContainer(
 ) {
   const surveyContainer = document.createElement("div");
   surveyContainer.id = "jspsych-survey-surveyjs-container";
-  surveyContainer.style.maxHeight = "90vh";
+  surveyContainer.style.maxHeight = context.previewViewport
+    ? `${context.previewViewport.height * 0.9}px`
+    : "90cqh";
   surveyContainer.style.overflowY = "auto";
   surveyContainer.style.overflowX = "hidden";
   applyPreviewPosition(surveyContainer, config, context);
@@ -176,7 +178,7 @@ export function renderPreviewSurveyContainer(
   innerContainer.style.textAlign = "initial";
   innerContainer.style.minWidth = resolvePreviewParam(
     config.min_width,
-    "min(100vw, 800px)",
+    "min(100cqw, 800px)",
   );
   innerContainer.style.overflowY = "auto";
   innerContainer.style.overflowX = "auto";

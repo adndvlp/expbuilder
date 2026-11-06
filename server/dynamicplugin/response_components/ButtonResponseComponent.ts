@@ -712,13 +712,13 @@ class ButtonResponseComponent {
 
   private renderLayoutTexture(layout: ButtonLayout, state: ButtonVisualState) {
     const bounds = this.getRotatedGroupBounds(layout);
-    const dpr = window.devicePixelRatio || 1;
+    const rasterScale = getViewport(this.layoutConfig).rasterScale;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.ceil(bounds.width * dpr));
-    canvas.height = Math.max(1, Math.ceil(bounds.height * dpr));
+    canvas.width = Math.max(1, Math.ceil(bounds.width * rasterScale));
+    canvas.height = Math.max(1, Math.ceil(bounds.height * rasterScale));
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return null;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(rasterScale, 0, 0, rasterScale, 0, 0);
     ctx.clearRect(0, 0, bounds.width, bounds.height);
     ctx.translate(-bounds.left, -bounds.top);
     this.drawLayout(ctx, layout, {
@@ -784,6 +784,8 @@ class ButtonResponseComponent {
     this.stage = getCanvasStage(displayElement, {
       width: canvasWidth,
       height: canvasHeight,
+      dpr: getViewport(trial).dpr,
+      rasterScale: getViewport(trial).rasterScale,
       backgroundColor: "transparent",
       zIndex,
       backend: this.resolveParam(trial.__renderBackend, "webgl-strict"),
@@ -1088,8 +1090,8 @@ class ButtonResponseComponent {
     }
     return this.layout
       ? {
-          width: this.layout.width,
-          height: this.layout.height,
+          width: this.layout.width * getViewport(this.layoutConfig).scale,
+          height: this.layout.height * getViewport(this.layoutConfig).scale,
         }
       : null;
   }

@@ -13,8 +13,6 @@ export function renderExpandedItem(
   context: ScopeRenderContext,
   scopeId: string,
   item: LayoutTimelineItem,
-  x: number,
-  y: number,
 ): RenderedBlock {
   const nodeId = getScopedNodeId(scopeId, item.type, item.id);
   const cached = context.renderedBlocks.get(nodeId);
@@ -30,36 +28,19 @@ export function renderExpandedItem(
     !context.visitedScopeIds.has(expandedScope.id);
 
   if (!canExpand || !expandedScope) {
-    createExpandedItemNode(context.nodes, scopeId, item, x, y, false);
-    const block = { entryId: nodeId, exitIds: [nodeId], maxY: y };
+    createExpandedItemNode(context.nodes, scopeId, item, false);
+    const block = { entryId: nodeId, exitIds: [nodeId] };
     context.renderedBlocks.set(nodeId, block);
     return block;
   }
 
   context.visitedScopeIds.add(expandedScope.id);
-  const innerNodeStart = context.nodes.length;
-  const inner = context.renderScope(
-    expandedScope.id,
-    expandedScope.timeline,
-    x,
-    y,
-  );
+  const inner = context.renderScope(expandedScope.id, expandedScope.timeline);
   context.visitedScopeIds.delete(expandedScope.id);
-  const innerMinX = Math.min(
-    x,
-    ...context.nodes.slice(innerNodeStart).map((node) => node.position.x),
-  );
-  const markerId = createExpandedItemNode(
-    context.nodes,
-    scopeId,
-    item,
-    innerMinX - context.markerOffset,
-    inner.entryId ? (y + inner.maxY) / 2 : y,
-    true,
-  );
+  const markerId = createExpandedItemNode(context.nodes, scopeId, item, true);
 
   if (!inner.entryId) {
-    const block = { entryId: markerId, exitIds: [markerId], maxY: y };
+    const block = { entryId: markerId, exitIds: [markerId] };
     context.renderedBlocks.set(nodeId, block);
     return block;
   }
@@ -103,8 +84,9 @@ export function renderExpandedItem(
   const block = {
     entryId: inner.entryId,
     exitIds: inner.exitIds,
-    maxY: inner.maxY,
   };
+  if (item.nextItemId !== undefined)
+    block.exitIds.forEach((id) => context.explicitSourceNodes.add(id));
   context.renderedBlocks.set(nodeId, block);
   return block;
 }

@@ -41,7 +41,6 @@ describe("useLoadComponents", () => {
               height: 12,
             },
           },
-          __canvasStyles: { source: "typed", value: {} },
         },
         fromJsPsychCoords,
         CANVAS_WIDTH: 1000,

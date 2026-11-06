@@ -14,14 +14,14 @@ import {
   isPublishableMediaFile,
 } from "./media.js";
 import { applyGeneratedArtifact } from "./artifact.js";
-import { assertNoAppearanceOverride, resolveExperimentAppearance } from "./appearanceSettings.js";
+import { resolveExperimentAppearance } from "./appearanceSettings.js";
 import { buildExperimentGraph } from "../timeline/graph/buildExperimentGraph.js";
 
 const router = Router();
 
 function getDynamicPluginCdn() {
   let dynamicName = "jspsych-expbuilder-plugin-dynamic";
-  let dynamicVersion = "1.0.8";
+  let dynamicVersion = "1.1.0";
   try {
     const dynamicPkgPath = path.resolve(
       __dirname,
@@ -144,7 +144,6 @@ async function publishToGithub(payload, authorization) {
 /* istanbul ignore next -- publish filesystem/Firebase permutations are covered by route integration tests. */
 router.post("/api/publish-experiment/:experimentID", async (req, res) => {
   try {
-    assertNoAppearanceOverride(req.body);
     const { experimentID } = req.params;
     const { uid, storage, generatedPublicCode } = req.body;
 

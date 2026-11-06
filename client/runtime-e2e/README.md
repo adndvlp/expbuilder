@@ -51,11 +51,27 @@ npm run test:runtime -- -g "authors a branching"
 The runner allocates a free local port and an isolated temporary database. The
 suite uses one worker so scenarios never share authoring or session state.
 
+`npm run check:runtime-coverage` validates the scenario registry before the
+normal runtime command starts Playwright. The registry lives in
+`coverage/coverageRegistry.mjs`: each registered `[RUNTIME-...]` identifier must
+appear in a `test(...)` title in its named `.spec.ts` file. Duplicate identifiers,
+unregistered identifiers, missing files and missing test declarations fail the
+check. Literal titles and template titles with an identifier before interpolation
+are supported. Comments, suite titles and statically skipped tests do not count.
+The registry is incremental; this check neither runs tests nor measures code
+coverage. It has no dependency on specification documents or decision lists.
+
+An additional local server replaces the external publication backend. The real
+publication route sends it the generated HTML; publication scenarios execute
+that artifact while intercepting CDN resources with the locally built plugin.
+These checks never publish to GitHub/Firebase and do not establish that a new
+package version is already available on the CDN.
+
 ## Continuous integration
 
-`.github/workflows/builder-contracts.yml` runs the complete contract on every
-relevant pull request and push to `main`: server tests, shared UI/authoring unit
-tests, maintained-file limits, acceptance coverage, the production build and
+`.github/workflows/builder-contracts.yml` runs the complete contract on relevant
+pull requests and pushes: server tests, shared UI/authoring unit tests,
+maintained-file limits, the runtime scenario registry, the production build and
 the generated experiments in Chromium. A failed runtime execution uploads its
 trace, screenshots, video and HTML report as a CI artifact.
 

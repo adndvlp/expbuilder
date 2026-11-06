@@ -133,9 +133,9 @@ function resolveComponentConfig(
 }
 
 function resolveEditorViewportLength(value: any, canvasWidth: number) {
-  const raw = String(value || "min(100vw, 800px)");
+  const raw = String(value || "min(100cqw, 800px)");
   return raw.replace(
-    /(-?\d+(?:\.\d+)?)vw\b/gi,
+    /(-?\d+(?:\.\d+)?)(?:vw|cqw)\b/gi,
     (_match, amount) => `${(Number(amount) / 100) * canvasWidth}px`,
   );
 }
@@ -221,7 +221,11 @@ export function renderRuntimeCopy(
   previewViewport: PreviewViewport,
   resolveAsset: AssetResolver = (value) => value,
 ): RuntimeCopy {
-  const config = resolveComponentConfig(component, previewViewport, resolveAsset);
+  const config = resolveComponentConfig(
+    component,
+    previewViewport,
+    resolveAsset,
+  );
   const context: RenderContext = { coordinateMode: "none", previewViewport };
 
   if (component.type === "SurveyComponent") {

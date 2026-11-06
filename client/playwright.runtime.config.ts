@@ -2,7 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = process.env.RUNTIME_SERVER_PORT;
 const dbRoot = process.env.RUNTIME_DB_ROOT;
-if (!port || !dbRoot) {
+const publishPort = process.env.RUNTIME_PUBLISH_PORT;
+if (!port || !dbRoot || !publishPort) {
   throw new Error("Runtime tests must be started through runtime-e2e/run.mjs");
 }
 const serverUrl = `http://127.0.0.1:${port}`;
@@ -32,15 +33,24 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "node ../server/api.js",
-    url: `${serverUrl}/api/load-experiments`,
-    reuseExistingServer: false,
-    timeout: 30_000,
-    env: {
-      DB_ROOT: dbRoot,
-      PORT: port,
-      ORIGIN: serverUrl,
+  webServer: [
+    {
+      command: "node runtime-e2e/publishServer.mjs",
+      url: `http://127.0.0.1:${publishPort}`,
+      reuseExistingServer: false,
+      env: { RUNTIME_PUBLISH_PORT: publishPort },
     },
-  },
+    {
+      command: "node ../server/api.js",
+      url: `${serverUrl}/api/load-experiments`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+      env: {
+        DB_ROOT: dbRoot,
+        PORT: port,
+        ORIGIN: serverUrl,
+        FIREBASE_URL: `http://127.0.0.1:${publishPort}`,
+      },
+    },
+  ],
 });

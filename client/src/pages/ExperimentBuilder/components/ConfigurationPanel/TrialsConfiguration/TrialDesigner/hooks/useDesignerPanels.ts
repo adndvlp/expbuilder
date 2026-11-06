@@ -1,4 +1,8 @@
 import { relativeCenter } from "../../../../../../../../../shared/dynamic-layout/geometry";
+import {
+  DESIGN_SIZE,
+  fitScene,
+} from "../../../../../../../../../shared/dynamic-layout/scene";
 import { useEffect, useRef, useState } from "react";
 import useHandleResize from "../useHandleResize";
 import type { PreviewViewport } from "../types";
@@ -45,10 +49,10 @@ export function useDesignerPanels(
     return () => observer.disconnect();
   }, [isOpen, previewViewport.width, previewViewport.height]);
 
-  const stageScale = viewportFit;
+  const stageScale = viewportFit * (fitScene(previewViewport)?.scale ?? 0);
 
   const fromJsPsychCoords = (coords: { x: number; y: number }) =>
-    relativeCenter(coords, previewViewport);
+    relativeCenter(coords, DESIGN_SIZE);
 
   return {
     canvasContainerRef,

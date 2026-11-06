@@ -262,12 +262,12 @@ class TextComponent {
     this.layout = layout;
     this.updateTrackingElement(layout, resolveTimingMs(config.zIndex, 0) ?? 0);
     const canvas = document.createElement("canvas");
-    const dpr = getViewport(config).dpr;
-    canvas.width = Math.round(layout.canvasWidth * dpr);
-    canvas.height = Math.round(layout.canvasHeight * dpr);
+    const rasterScale = getViewport(config).rasterScale;
+    canvas.width = Math.max(1, Math.round(layout.canvasWidth * rasterScale));
+    canvas.height = Math.max(1, Math.round(layout.canvasHeight * rasterScale));
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(rasterScale, 0, 0, rasterScale, 0, 0);
     this.drawLayout(ctx, layout);
     this.stage.preloadTexture(this.drawableId, canvas);
     this.stage.updateDrawable(this.drawableId, { x: 0, y: 0, width: layout.canvasWidth, height: layout.canvasHeight });
@@ -543,12 +543,12 @@ class TextComponent {
     this.updateTrackingElement(layout, zIndex);
     this.removeDrawable?.();
     const textureCanvas = document.createElement("canvas");
-    const dpr = window.devicePixelRatio || 1;
-    textureCanvas.width = Math.round(layout.canvasWidth * dpr);
-    textureCanvas.height = Math.round(layout.canvasHeight * dpr);
+    const rasterScale = getViewport(config).rasterScale;
+    textureCanvas.width = Math.max(1, Math.round(layout.canvasWidth * rasterScale));
+    textureCanvas.height = Math.max(1, Math.round(layout.canvasHeight * rasterScale));
     const textureCtx = textureCanvas.getContext("2d", { alpha: true });
     if (!textureCtx) return false;
-    textureCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    textureCtx.setTransform(rasterScale, 0, 0, rasterScale, 0, 0);
     textureCtx.clearRect(0, 0, layout.canvasWidth, layout.canvasHeight);
     this.drawLayout(textureCtx, layout);
     this.stage.preloadTexture(this.drawableId, textureCanvas);
@@ -583,6 +583,8 @@ class TextComponent {
     this.stage = getCanvasStage(container, {
       width: canvasWidth,
       height: canvasHeight,
+      dpr: getViewport(config).dpr,
+      rasterScale: getViewport(config).rasterScale,
       backgroundColor: "transparent",
       zIndex,
       backend: this.resolveParam(config.__renderBackend, "webgl-strict"),

@@ -500,8 +500,9 @@ class SketchpadComponent {
     if (!this.canvas || !this.ctx) return;
 
     this.is_drawing = true;
-    const x = Math.round(e.clientX - this.canvas.getBoundingClientRect().left);
-    const y = Math.round(e.clientY - this.canvas.getBoundingClientRect().top);
+    const rect = this.canvas.getBoundingClientRect();
+    const x = Math.round((e.clientX - rect.left) * this.canvas.width / rect.width);
+    const y = Math.round((e.clientY - rect.top) * this.canvas.height / rect.height);
     this.undo_history = [];
     this.set_redo_btn_state(false, config);
     this.ctx.beginPath();
@@ -523,10 +524,9 @@ class SketchpadComponent {
     if (!this.canvas || !this.ctx) return;
 
     if (this.is_drawing) {
-      const x = Math.round(
-        e.clientX - this.canvas.getBoundingClientRect().left,
-      );
-      const y = Math.round(e.clientY - this.canvas.getBoundingClientRect().top);
+      const rect = this.canvas.getBoundingClientRect();
+      const x = Math.round((e.clientX - rect.left) * this.canvas.width / rect.width);
+      const y = Math.round((e.clientY - rect.top) * this.canvas.height / rect.height);
       this.ctx.lineTo(x, y);
       this.ctx.stroke();
       this.stroke.push({

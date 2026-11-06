@@ -47,9 +47,8 @@ type ComponentConfig = {
   name?: string;         // Auto-assigned: "Type_N" (e.g., "ImageComponent_1")
   coordinates?: { x: number; y: number };  // Position (-100 to 100)
   zIndex?: number;       // Layer order
-  width?: number;        // Width in pixels
-  height?: number;       // Height in pixels
-  screenLayouts?: Record<string, ScreenLayout>;  // Per-screen-size layouts
+  width?: number;        // Percentage of the internal scene width
+  height?: number;       // Same percentage-of-width unit
   // ... component-specific params
 };
 ```
@@ -284,7 +283,7 @@ await fetch(`/api/trial/${experimentID}/${trialId}`, {
           type: { source: "typed", value: "SurveyComponent" },
           survey_json: { source: "typed", value: { /* survey JSON here */ } },
           coordinates: { source: "typed", value: { x: 0, y: 0 } },
-          min_width: { source: "typed", value: "min(100vw, 800px)" },
+          min_width: { source: "typed", value: "min(100cqw, 800px)" },
           zIndex: { source: "typed", value: 0 }
         }]
       },
@@ -309,12 +308,12 @@ File upload. Parameters: `accept` (file types), `max_file_size`, `multiple`, `bu
 
 ```
 1. Create container (#jspsych-dynamic-plugin-container)
-2. Size transparent surfaces to the current runtime viewport
-3. ResizeObserver for responsive scaling
+2. Measure the real jsPsych host and fit the internal scene proportionally
+3. Observe host/scroll/fullscreen/DPR changes without restarting presentation
 4. Instantiate all components (via COMPONENT_MAP / RESPONSE_COMPONENT_MAP)
 5. Auto-name components: "Type_1", "Type_2"...
 6. Sort ALL components by zIndex
-7. Resolve screen layouts for current viewport
+7. Resolve component geometry in the shared internal scene
 8. Render all components in order
     ↓
 9. Wait for response (or trial_duration timeout)
@@ -365,12 +364,17 @@ Unlike nested data, the DynamicPlugin outputs a **flat** data object:
 
 ---
 
-## Screen Layout Resolution
+## Proportional Scaling
 
-The `resolveScreenLayout()` function handles responsive design:
-- Each component can have `screenLayouts: { "1024x768": {...}, "1920x1080": {...} }`
-- At runtime, the layout closest to current viewport width (200px threshold) is selected
-- Falls back to default `coordinates`, `width`, `height` if no match
+The editor and DynamicPlugin use the internal 2560 × 1450 scene from `shared/dynamic-layout/scene.ts`. Relative coordinates are resolved against that scene; both relative width and height use its width. A single scale fits the entire composition inside the measured jsPsych host, including `experiment_width` and space reserved for progress. It also enlarges the scene on larger displays.
+
+The scene is centered with unused space around it when aspect ratios differ. The base dimensions are never saved in trials or components. Selecting another preview device changes its presentation without changing the editable geometry or triggering autosave.
+
+The WebGL canvas retains internal drawing coordinates but allocates its buffer at the displayed size times DPR. Text/button textures use the same raster density from creation. DOM controls share the scene transform. Resizing preserves answers, video, drawing and trial timing.
+
+Canvas hit testing converts pointer positions into scene coordinates. Exported component positions and `response_canvas_x/y` remain CSS pixels relative to the real host, including scene offsets. Full-host click capture remains an explicit option. Custom CSS/JavaScript that directly uses browser viewport units retains its own viewport semantics; it is not rewritten.
+
+Implementation and acceptance details: [proportional scaling SDD](dynamic-plugin-proportional-scaling-sdd.md).
 
 ---
 

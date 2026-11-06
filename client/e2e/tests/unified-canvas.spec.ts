@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/test.fixture";
+import { readCanvasNodeGeometry } from "../helpers/layoutAssertions";
 import {
   branchEdge,
   graph,
@@ -278,20 +279,20 @@ test("balances two branch roots when one subtree is wider", async ({
         id,
       )}"]`,
     );
-  const parentBox = await node("parent").boundingBox();
-  const continuationBox = await node("continuation").boundingBox();
-  const sideBox = await node("side").boundingBox();
-
-  expect(parentBox).not.toBeNull();
-  expect(continuationBox).not.toBeNull();
-  expect(sideBox).not.toBeNull();
-  const center = (box: NonNullable<typeof parentBox>) => box.x + box.width / 2;
-  expect(center(continuationBox!)).toBeLessThan(center(parentBox!));
-  expect(center(sideBox!)).toBeGreaterThan(center(parentBox!));
-  expect((center(continuationBox!) + center(sideBox!)) / 2).toBeCloseTo(
-    center(parentBox!),
-    1,
-  );
+  await expect(node("parent")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const [parent, continuation, side] = await readCanvasNodeGeometry(
+        canvas,
+        ["parent", "continuation", "side"].map((id) =>
+          getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", id),
+        ),
+      );
+      expect(continuation.centerX).toBeLessThan(parent.centerX);
+      expect(side.centerX).toBeGreaterThan(parent.centerX);
+      return (continuation.centerX + side.centerX) / 2 - parent.centerX;
+    })
+    .toBeCloseTo(0, 1);
   await canvas.screenshot({
     path: "test-results/unified-canvas-balanced-branches.png",
   });

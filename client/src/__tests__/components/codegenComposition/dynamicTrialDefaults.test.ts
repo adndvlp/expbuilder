@@ -80,13 +80,11 @@ describe("useTrialCode composition", () => {
       pluginName: "DynamicPlugin",
       parameters: [
         { key: "trial_duration", type: "number" },
-        { key: "__canvasStyles", type: "complex" },
       ],
       data: [{ key: "rt" }],
       getColumnValue,
       columnMapping: {
         trial_duration: { source: "typed", value: 500 },
-        __canvasStyles: { source: "typed", value: { color: "red" } },
       },
       uploadedFiles: [],
       csvJson: [],
@@ -110,7 +108,6 @@ describe("useTrialCode composition", () => {
     expect(code).toContain(
       'trial_duration: jsPsych.timelineVariable("trial_duration")',
     );
-    expect(code).not.toContain("__canvasStyles");
     expect(code).toContain('rt: "rt"');
     expect(code).toContain("branches: []");
   });

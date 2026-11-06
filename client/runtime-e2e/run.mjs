@@ -104,11 +104,16 @@ try {
     exitCode = installExitCode || 1;
   } else {
     const port = String(await allocatePort());
+    let publishPort;
+    do {
+      publishPort = String(await allocatePort());
+    } while (publishPort === port);
     exitCode = await runPlaywright(
       ["test", "-c", "playwright.runtime.config.ts", ...testArguments],
       {
         ...testEnvironment,
         RUNTIME_SERVER_PORT: port,
+        RUNTIME_PUBLISH_PORT: publishPort,
         RUNTIME_SERVER_URL: `http://127.0.0.1:${port}`,
         RUNTIME_DB_ROOT: dbRoot,
       },

@@ -35,6 +35,7 @@ type PointerTarget = {
   canvasY?: number;
   width?: number;
   height?: number;
+  captureHost?: boolean;
   hitTest?: (point: {
     clientX: number;
     clientY: number;
@@ -120,6 +121,7 @@ export class ResponseTimingManager {
   private timing: any;
   private container: HTMLElement;
   private getViewport: () => { width: number; height: number };
+  private toLayoutPoint?: (point: { x: number; y: number }) => { x: number; y: number } | null;
   private onFinish?: (
     timestamp?: number | null,
     options?: { force: boolean },
@@ -141,6 +143,7 @@ export class ResponseTimingManager {
     canvasWidth?: number;
     canvasHeight?: number;
     getViewport?: () => { width: number; height: number };
+    toLayoutPoint?: (point: { x: number; y: number }) => { x: number; y: number } | null;
     onFinish?: (
       timestamp?: number | null,
       options?: { force: boolean },
@@ -153,6 +156,7 @@ export class ResponseTimingManager {
       width: this.container.clientWidth, height: this.container.clientHeight,
     }));
     this.onFinish = options.onFinish;
+    this.toLayoutPoint = options.toLayoutPoint;
     this.enabled = resolveRawValue(this.trial.response_timing_enabled) !== false;
     this.data = this.createInitialData();
   }
@@ -316,11 +320,14 @@ export class ResponseTimingManager {
     if (!this.enabled || this.responseRecorded) return;
 
     const coordinates = this.computePointerCoordinates(event.clientX, event.clientY);
+    const hostPoint = typeof coordinates.canvasX === "number" && typeof coordinates.canvasY === "number"
+      ? { x: coordinates.canvasX, y: coordinates.canvasY } : null;
+    const layoutPoint = hostPoint && (this.toLayoutPoint ? this.toLayoutPoint(hostPoint) : hostPoint);
     const target = this.findPointerTarget(
       event.clientX,
       event.clientY,
-      coordinates.canvasX,
-      coordinates.canvasY,
+      layoutPoint?.x ?? null,
+      layoutPoint?.y ?? null,
     );
     if (!target) return;
 
@@ -559,6 +566,7 @@ export class ResponseTimingManager {
   ) {
     for (let index = this.pointerTargets.length - 1; index >= 0; index -= 1) {
       const target = this.pointerTargets[index];
+      if (this.toLayoutPoint && (canvasX === null || canvasY === null) && !target.captureHost) continue;
       if (target.hitTest?.({ clientX, clientY, canvasX, canvasY })) {
         return target;
       }

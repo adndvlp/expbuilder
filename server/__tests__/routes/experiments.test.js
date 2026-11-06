@@ -312,7 +312,7 @@ describe('POST /api/run-experiment/:experimentID', () => {
     db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
       trials: [
-        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { __canvasStyles: { value: { backgroundColor: '#000000', fullScreen: true } } } },
+        { defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { } },
       ],
       loops: [],
       timeline: [],
@@ -329,19 +329,6 @@ describe('POST /api/run-experiment/:experimentID', () => {
     expect(html).toContain('const generated = true;')
     expect(html).toContain('background-color: #abcdef')
     expect(html).toContain('<base id="experiment-base" href="/E1/">')
-  })
-
-  test('rejects request canvas styles when experiment appearance is absent', async () => {
-    const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'StyledRun', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-    await db.write()
-
-    await request(app)
-      .post('/api/run-experiment/E1')
-      .send({ generatedCode: 'const generated = true;', canvasStyles: { backgroundColor: '#112233' } })
-      .expect(400)
-
-    expect(fs.existsSync(path.join(tmpDir, 'experiments_html', 'E1.html'))).toBe(false)
   })
 })
 
@@ -412,7 +399,7 @@ describe('POST /api/trials-preview/:experimentID', () => {
     })
     db.data.trials.push({ entryItemId: null,
       experimentID: 'E1',
-      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { __canvasStyles: { value: { width: 800, height: 600 } } } }],
+      trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 1, columnMapping: { } }],
       loops: [],
       timeline: [],
     })
