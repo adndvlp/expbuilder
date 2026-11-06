@@ -25,20 +25,4 @@ export default tseslint.config(
       ],
     },
   },
-  {
-    files: [
-      "src/pages/ExperimentBuilder/components/Canvas/workspace/**/*.{js,jsx}",
-    ],
-    extends: [js.configs.recommended],
-    languageOptions: {
-      ecmaVersion: "latest",
-      globals: globals.browser,
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
-    plugins: { "react-hooks": reactHooks },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      "no-unused-vars": ["error", { varsIgnorePattern: "^[A-Z]" }],
-    },
-  },
 );

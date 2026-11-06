@@ -4,7 +4,7 @@ import {
   deriveConnections,
   convertWorkspace,
   normalizeNavigation,
-} from "./navigation.js";
+} from "./dist/navigation.js";
 
 const make = () => ({
   experimentID: "fixture",

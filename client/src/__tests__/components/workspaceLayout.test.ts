@@ -3,7 +3,7 @@ import {
   layout,
   insertionEndpoints,
 } from "../../pages/ExperimentBuilder/components/Canvas/workspace/layout";
-import { workspaceModel } from "../../../../shared/experiment-workspace/modelServices.js";
+import { workspaceModel } from "../../../../shared/experiment-workspace/dist/modelServices.js";
 
 describe("workspace production layout", () => {
   it("moves a detached convergence without moving active nodes", () => {

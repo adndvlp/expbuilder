@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import express from "express";
 import JSZip from "jszip";
-import { applyWorkspaceCommand } from "../../../shared/experiment-workspace/commands.js";
+import { applyWorkspaceCommand } from "../../../shared/experiment-workspace/dist/commands.js";
 test("real ZIP backup and import preserve disconnected records and their saved positions", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "workspace-backup-"));
   process.env.DB_ROOT = dir;

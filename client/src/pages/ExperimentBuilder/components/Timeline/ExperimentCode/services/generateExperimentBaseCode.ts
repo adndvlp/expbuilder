@@ -1,6 +1,6 @@
-import { runtimeResources } from "../../../../../../../../shared/experiment-workspace/runtimeResources.js";
-import { projectExecutionGraph } from "../../../../../../../../shared/experiment-workspace/projection.js";
-import { executionRevision } from "../../../../../../../../shared/experiment-workspace/executionRevision.js";
+import { runtimeResources } from "../../../../modules/experiment-workspace/runtimeResources";
+import { projectExecutionGraph } from "../../../../../../../../shared/experiment-workspace/dist/projection.js";
+import { executionRevision } from "../../../../../../../../shared/experiment-workspace/dist/executionRevision.js";
 import type { ExperimentAppearance } from "../../../../appearance";
 import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
 import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";

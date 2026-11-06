@@ -7,6 +7,9 @@ on:
     paths:
       - "client/**"
       - "server/**"
+      - "shared/**"
+      - "scripts/**"
+      - "eslint.config.js"
       - "api/functions/**"
       - "docs/loop-branching-spec/**"
       - "package.json"
@@ -16,6 +19,9 @@ on:
     paths:
       - "client/**"
       - "server/**"
+      - "shared/**"
+      - "scripts/**"
+      - "eslint.config.js"
       - "api/functions/**"
       - "docs/loop-branching-spec/**"
       - "package.json"
@@ -75,6 +81,12 @@ jobs:
       - name: Install Chromium for browser-backed tests
         working-directory: client
         run: npx playwright install --with-deps chromium
+
+      - name: Check shared workspace and canvas types
+        run: npm run check:workspace
+
+      - name: Lint shared workspace and canvas
+        run: npm run lint:workspace && npm run lint:workspace --prefix client
 
       - name: Test server contracts
         env:

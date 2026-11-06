@@ -31,6 +31,12 @@ test("[RUNTIME-LOOP-PARALLEL-LEVEL] [TA-01] keeps two same-level exits parallel 
     "parallel-default",
     "parallel-selected",
   ]);
+  // Keep the intended fallback explicit when replacing the conditional routes.
+  await author.client.updateTrial(
+    author.experimentId,
+    author.id("parallel-source"),
+    { defaultNextTrialId: author.id("parallel-default") },
+  );
   await author.configureBranchConditions("parallel-source", [
     {
       id: 71,

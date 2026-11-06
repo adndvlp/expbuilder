@@ -1,5 +1,7 @@
+import { buildWorkspace } from "./workspaceBuild.mjs";
 import { readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+await buildWorkspace();
 const files = [
   "shared/experiment-workspace",
   "server/__tests__/workspace",
@@ -8,6 +10,7 @@ const files = [
     .filter((name) => name.endsWith(".test.mjs"))
     .map((name) => dir + "/" + name),
 );
+files.push("scripts/workspaceBuild.test.mjs");
 const result = spawnSync(process.execPath, ["--test", ...files], {
   stdio: "inherit",
 });

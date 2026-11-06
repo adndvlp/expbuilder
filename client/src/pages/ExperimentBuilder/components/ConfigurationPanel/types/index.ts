@@ -1,1 +1,1 @@
-export type * from "../../../../../../../shared/experiment-workspace/records";
+export type * from "../../../../../../../shared/experiment-workspace/dist/records.js";

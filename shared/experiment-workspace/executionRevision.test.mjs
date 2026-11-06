@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { executionRevision } from "./executionRevision.js";
+import { executionRevision } from "./dist/executionRevision.js";
 const t = (id, next = null) => ({
   id,
   defaultNextTrialId: next,

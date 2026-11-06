@@ -45,7 +45,7 @@ export type BranchCondition = {
     fieldType?: string;
     componentIdx?: string;
   }>;
-  nextTrialId: number | string;
+  nextTrialId: number | string | null;
   customParameters?: Record<string, ColumnMappingEntry>;
 };
 
@@ -87,7 +87,7 @@ export type Trial = {
   destinationOrder?: Array<string | number>;
   detached?: boolean;
   defaultNextTrialId: string | number | null;
-  id: number;
+  id: string | number;
   type: string;
   name: string;
   plugin?: string;

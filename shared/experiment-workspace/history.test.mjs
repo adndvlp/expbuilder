@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createDelta, applyDelta } from "./history.js";
+import { createDelta, applyDelta } from "./dist/history.js";
 
 test("undo changes only edited fields and preserves configuration saved afterwards", () => {
   const a = {

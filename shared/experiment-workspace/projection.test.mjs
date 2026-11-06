@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { projectExecutable } from "./projection.js";
+import { projectExecutable } from "./dist/projection.js";
 const t = (id, next = null, parent = null) => ({
   id,
   name: "T" + id,

@@ -1,4 +1,4 @@
-import { projectExecutable } from "../../../../shared/experiment-workspace/projection.js";
+import { projectExecutable } from "../../../../shared/experiment-workspace/dist/projection.js";
 import { Router } from "express";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { getExperimentDoc } from "./state.js";

@@ -1,4 +1,4 @@
-import { projectExecutionGraph } from "../../../../../shared/experiment-workspace/projection.js";
+import { projectExecutionGraph } from "../../../../../shared/experiment-workspace/dist/projection.js";
 import { Loop, Trial } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
 import type { ExperimentGraphSnapshot } from "../modules/experiment-graph/types";

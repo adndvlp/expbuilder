@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyWorkspaceCommand, copyWorkspaceItems } from "./commands.js";
+import { applyWorkspaceCommand, copyWorkspaceItems } from "./dist/commands.js";
 
 const fixture = () => ({
   experimentID: "fixture",

@@ -1,11 +1,11 @@
 import { migrateLegacyNavigation } from "../db/legacy/migrateLegacyNavigation.js";
 import { findWorkspaceDocument } from "./document.js";
-import { applyWorkspaceCommand } from "../../../shared/experiment-workspace/commands.js";
+import { applyWorkspaceCommand } from "../../../shared/experiment-workspace/dist/commands.js";
 import {
   createDelta,
   applyDelta,
-} from "../../../shared/experiment-workspace/history.js";
-import { stableStringify } from "../../../shared/experiment-workspace/serialization.js";
+} from "../../../shared/experiment-workspace/dist/history.js";
+import { stableStringify } from "../../../shared/experiment-workspace/dist/serialization.js";
 import { assertExperimentNavigation } from "../timeline/branchContract.js";
 import { allocateTrialId, allocateLoopId } from "../timeline/graph/itemIds.js";
 import { revisionOf, workspaceSnapshot } from "./snapshot.js";

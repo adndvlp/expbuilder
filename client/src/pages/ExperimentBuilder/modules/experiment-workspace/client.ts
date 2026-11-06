@@ -1,3 +1,7 @@
+import type {
+  CommandArgs,
+  CommandKind,
+} from "../../../../../../shared/experiment-workspace/dist/commandTypes.js";
 import type { JsonTransport } from "../experiment-authoring/http";
 import type { WorkspaceResponse, Delta } from "./types";
 
@@ -22,7 +26,7 @@ export function createWorkspaceClient(transport: JsonTransport) {
     return sessions.get(id)!;
   };
   const route = (id: string) => "/api/workspace/" + encodeURIComponent(id);
-  const adopt = (id: string, response: WorkspaceResponse) => {
+  const adopt = <T extends WorkspaceResponse>(id: string, response: T): T => {
     const previous = session(id).snapshot;
     const decimal = (value: string) =>
       /^\d+$/.test(value) ? BigInt(value) : null;
@@ -47,12 +51,25 @@ export function createWorkspaceClient(transport: JsonTransport) {
     session(id).snapshot = response;
     return response;
   };
-  const perform = async (
+  type HistoryArgs = { changes: Delta[]; direction: "undo" | "redo" };
+  function perform<K extends CommandKind>(
     id: string,
-    kind: string,
-    args: Record<string, unknown>,
+    kind: K,
+    args: CommandArgs[K],
     expectedRevision?: string,
-  ) => {
+  ): Promise<import("./types").WorkspaceCommandResponse<K>>;
+  function perform(
+    id: string,
+    kind: "applyHistory",
+    args: HistoryArgs,
+    expectedRevision?: string,
+  ): Promise<WorkspaceResponse>;
+  async function perform(
+    id: string,
+    kind: CommandKind | "applyHistory",
+    args: CommandArgs[CommandKind] | HistoryArgs,
+    expectedRevision?: string,
+  ): Promise<WorkspaceResponse> {
     const state = session(id),
       key = crypto.randomUUID();
     const request: RequestInit = {
@@ -82,7 +99,7 @@ export function createWorkspaceClient(transport: JsonTransport) {
       );
     }
     return adopt(id, result);
-  };
+  }
   const load = async (
     id: string,
     force = false,
@@ -118,10 +135,10 @@ export function createWorkspaceClient(transport: JsonTransport) {
       .catch(() => undefined);
     return result;
   };
-  const command = (
+  const command = <K extends CommandKind>(
     id: string,
-    kind: string,
-    args: Record<string, unknown> = {},
+    kind: K,
+    args: CommandArgs[K],
     expectedRevision?: string,
     options: { recordHistory?: boolean } = {},
   ) =>

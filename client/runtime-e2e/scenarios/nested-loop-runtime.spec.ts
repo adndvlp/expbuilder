@@ -154,6 +154,12 @@ test("[RUNTIME-NESTED-ROOT-EXIT] [TR-04] authors exits at two nested-loop levels
     "outer-scope-exit",
     "root-scope-exit",
   ]);
+  // Preserve the ancestor exit as the fallback when replacing conditional routes.
+  await author.client.updateTrial(
+    author.experimentId,
+    author.id("nested-source"),
+    { defaultNextTrialId: author.id("outer-scope-exit") },
+  );
   await author.configureBranchConditions("nested-source", [
     {
       id: 61,

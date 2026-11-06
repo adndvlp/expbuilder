@@ -1,4 +1,4 @@
-import { isRegenerableTrialCode } from "../../../../../../shared/experiment-workspace/codeCache.js";
+import { isRegenerableTrialCode } from "../../../../../../shared/experiment-workspace/dist/codeCache.js";
 import { generateWebgazerCode } from "./generateWebgazerCode";
 import { useTrialCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/useTrialCode";
 import { generateOnFinishCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
@@ -14,7 +14,7 @@ export async function generateTrialCode(
   _experimentID: string,
   getTrial: GetTrialFn,
   isInLoop: boolean = false,
-  loopCsvJson?: Record<string, any>[],
+  loopCsvJson?: Record<string, unknown>[],
   isMergePointInScope: boolean = false,
   codegenOptions: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<GeneratedTrialResult> {

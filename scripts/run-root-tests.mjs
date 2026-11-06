@@ -1,9 +1,11 @@
+import { buildWorkspace } from "./workspaceBuild.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+await buildWorkspace();
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(repositoryRoot, "client");
 const jestPath = join(repositoryRoot, "node_modules", "jest", "bin", "jest.js");

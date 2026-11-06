@@ -1,4 +1,4 @@
-import { projectExecutionGraph } from "../../../../../../shared/experiment-workspace/projection.js";
+import { projectExecutionGraph } from "../../../../../../shared/experiment-workspace/dist/projection.js";
 import type { ExperimentGraphSnapshot } from "../experiment-graph/types";
 import type { ExecutionAddress } from "./executionAddress";
 

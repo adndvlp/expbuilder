@@ -46,7 +46,7 @@ export type GraphDiagnostic = {
 };
 
 export type ExperimentGraphSnapshot = {
-  workspace?: import("../../../../../../shared/experiment-workspace/types").WorkspaceDocument;
+  workspace?: import("../../../../../../shared/experiment-workspace/dist/types.js").WorkspaceDocument;
   revision: string;
   root: GraphScopeView;
   scopes: Record<string, GraphScopeView>;

@@ -1,3 +1,4 @@
+import { buildWorkspace } from "../../../scripts/workspaceBuild.mjs";
 import { runPanel } from "./panel.mjs";
 import { runAdvanced } from "./advanced.mjs";
 import { runCases } from "./cases.mjs";
@@ -8,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createRequire } from "node:module";
 import express from "express";
+await buildWorkspace();
 const require = createRequire(new URL("../../package.json", import.meta.url)),
   { build } = require("esbuild"),
   { chromium, expect } = require("@playwright/test");
@@ -47,7 +49,7 @@ const seed = {
 };
 await writeFile(process.env.DB_PATH, JSON.stringify(seed));
 const bundle = await build({
-  entryPoints: [root + "client/e2e/workspace/fixture.jsx"],
+  entryPoints: [root + "client/e2e/workspace/fixture.tsx"],
   bundle: true,
   write: false,
   jsx: "automatic",

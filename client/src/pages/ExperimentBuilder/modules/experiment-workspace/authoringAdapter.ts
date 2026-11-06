@@ -1,4 +1,8 @@
-import { isRegenerableTrialCode } from "../../../../../../shared/experiment-workspace/codeCache.js";
+import type {
+  CommandKind,
+  CommandArgs,
+} from "../../../../../../shared/experiment-workspace/dist/commandTypes.js";
+import { isRegenerableTrialCode } from "../../../../../../shared/experiment-workspace/dist/codeCache.js";
 import type { ExperimentAuthoringClient } from "../experiment-authoring/types";
 import type { createWorkspaceClient } from "./client";
 import type { Trial, Loop } from "../../components/ConfigurationPanel/types";
@@ -9,10 +13,10 @@ export function adaptWorkspaceAuthoring(
 ): ExperimentAuthoringClient {
   const active = (id: string | undefined) =>
     !!id && workspace.peek(id)?.document.workspaceSchemaVersion === 2;
-  const run = (
+  const run = <K extends CommandKind>(
     id: string | undefined,
-    kind: string,
-    args: Record<string, unknown>,
+    kind: K,
+    args: CommandArgs[K],
     recordHistory = true,
   ) => {
     if (!id) throw Error("Experiment ID is required");

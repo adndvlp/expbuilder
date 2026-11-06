@@ -3,7 +3,7 @@ import { generateAllCodes } from "../../pages/ExperimentBuilder/utils/generateTr
 import { buildExecutionAddressManifest } from "../../pages/ExperimentBuilder/modules/experiment-runtime/executionAddressManifest";
 import { generateTrialCode } from "../../pages/ExperimentBuilder/utils/codegen/generateTrialCode";
 import { buildExperimentGraph } from "../../../../server/routes/timeline/graph/buildExperimentGraph.js";
-import { applyWorkspaceCommand } from "../../../../shared/experiment-workspace/commands.js";
+import { applyWorkspaceCommand } from "../../../../shared/experiment-workspace/dist/commands.js";
 import { trial } from "../helpers/trialFactories";
 const fetchMetadata = vi.fn(
   async () =>
@@ -84,7 +84,7 @@ describe("workspace generation uses one executable projection", () => {
       ],
     };
     const { copyWorkspaceItems } = await import(
-      "../../../../shared/experiment-workspace/commands.js"
+      "../../../../shared/experiment-workspace/dist/commands.js"
     );
     const result = applyWorkspaceCommand(source, {
         kind: "pasteItems",

@@ -1,1 +1,1 @@
-export { createUniqueItemName } from "../../../shared/experiment-workspace/names.js";
+export { createUniqueItemName } from "../../../shared/experiment-workspace/dist/names.js";
