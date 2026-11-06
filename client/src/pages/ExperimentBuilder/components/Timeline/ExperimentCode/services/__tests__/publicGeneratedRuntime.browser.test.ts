@@ -45,7 +45,8 @@ describe("generated public runtime with real jsPsych", () => {
       target.__started = []; target.__complete = false; target.__updates = [];
       const database = Object.assign(() => ({ ref: () => ({ set: async () => {},
         update: async (value: unknown) => (target.__updates as unknown[]).push(value),
-        onDisconnect: () => ({ update: async () => {}, cancel: async () => {} }) }) }), { ServerValue: { TIMESTAMP: 1 } });
+        on: (_event: string, callback: (value: { val(): boolean }) => void) => callback({ val: () => true }),
+        onDisconnect: () => ({ set: async () => {}, update: async () => {}, cancel: async () => {} }) }) }), { ServerValue: { TIMESTAMP: 1 } });
       target.firebase = { apps: [{}], database };
     });
     return { context, page };
@@ -61,8 +62,10 @@ describe("generated public runtime with real jsPsych", () => {
       const uploads: Upload[] = [];
       await page.route("**/apiData", async route => {
         const body = route.request().postDataJSON() as Upload;
-        if (!body.action) {
-          await route.fulfill({ json: { success: true, participantNumber: 0, receivedEvents: [], resumeCheckpoint: null } }); return;
+        if (['createSession', 'resumeSession', 'activateConnection'].includes(body.action || '')) {
+          await route.fulfill({ json: { success: true, decision: 'resume_allowed', sessionProtocolVersion: 3,
+            participantNumber: 0, receivedEvents: [], resumeCheckpoint: null, lifecycle: 'active',
+            connection: { id: 'C1', generation: 1, phase: body.action === 'activateConnection' ? 'active' : 'connecting' } } }); return;
         }
         uploads.push(body);
         if (uploads.length === 1) { arrived(); await blocked; }
@@ -90,10 +93,10 @@ describe("generated public runtime with real jsPsych", () => {
       const eventsHash = createHash('sha256').update(JSON.stringify(receivedEvents.map(({ eventId, payloadHash, sequence }) => ({ eventId, payloadHash, sequence })))).digest('hex');
       await page.route("**/apiData", async route => {
         const body = route.request().postDataJSON() as Upload; uploads.push(body);
-        await route.fulfill({ json: body.action ? { success: true, experimentID: body.experimentID, sessionId: body.sessionId,
+        await route.fulfill({ json: !['createSession', 'resumeSession'].includes(body.action || '') ? { success: true, experimentID: body.experimentID, sessionId: body.sessionId,
           export: { status: 'confirmed', confirmed: true, revision: 1, requestedRevision: 1, confirmedRevision: 1, eventCount: 2, eventsHash },
         } : {
-          success: true, participantNumber: 23, receivedEvents, resumeCheckpoint: null, lifecycle: "completed",
+          success: true, decision: 'session_completed', sessionProtocolVersion: 3, participantNumber: 23, receivedEvents, resumeCheckpoint: null, lifecycle: "completed",
         } });
       });
       await page.addScriptTag({ content: code(false, true) });
@@ -103,4 +106,62 @@ describe("generated public runtime with real jsPsych", () => {
       expect(uploads.some(body => body.action === 'completeSession')).toBe(false);
     } finally { await context.close(); }
   });
+  it("expires during a blocked response, recovers it into the old session and requires a choice before starting another", async () => {
+    const { context, page } = await fixture(); let release!: () => void;
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    try {
+      const uploads: Upload[] = []; let sessionId = '', received: Upload['data']['events'] = [];
+      await page.route('**/apiData', async route => {
+        const body = route.request().postDataJSON() as Upload; uploads.push(body); sessionId ||= body.sessionId;
+        if (['createSession', 'activateConnection'].includes(body.action || '')) {
+          await route.fulfill({ json: { success: true, sessionProtocolVersion: 3, decision: 'resume_allowed', lifecycle: 'active', participantNumber: 0,
+            receivedEvents: [], connection: { id: 'C1', generation: 1, phase: body.action === 'activateConnection' ? 'active' : 'connecting' } } }); return;
+        }
+        if (body.action === 'appendEvents') {
+          await route.fulfill({ status: 409, json: { success: false, lifecycle: 'expired', decision: 'session_expired' } }); return;
+        }
+        if (body.action === 'recoverEvents') { received = body.data.events; await route.fulfill({ json: receipt(body) }); return; }
+        await blocked;
+        const eventsHash = createHash('sha256').update(JSON.stringify(received!.map(({ eventId, payloadHash, sequence }) => ({ eventId, payloadHash, sequence })))).digest('hex');
+        await route.fulfill({ json: { success: true, experimentID: body.experimentID, sessionId: body.sessionId, lifecycle: 'expired',
+          export: { confirmed: true, status: 'confirmed', eventCount: 1, eventsHash, requestedRevision: 1, confirmedRevision: 1 } } });
+      });
+      await page.addScriptTag({ content: code(false) });
+      await page.locator('#expbuilder-expired-session').waitFor();
+      expect(await page.getByRole('button', { name: 'Start a new participation' }).count()).toBe(1);
+      await page.locator('[data-new-session]:not([disabled])').waitFor();
+      expect(await page.evaluate(() => (window as unknown as { __started: number[] }).__started)).toEqual([1]);
+      expect(uploads.filter(body => body.action === 'createSession')).toHaveLength(1);
+      expect(uploads.filter(body => body.action === 'recoverEvents')).toHaveLength(1);
+      expect(uploads.every(body => body.sessionId === sessionId)).toBe(true);
+      expect(uploads.some(body => body.action === 'completeSession')).toBe(false);
+      release();
+    } finally { release?.(); await context.close(); }
+  });
+
+  it('offers a new participation after expiry while the earlier storage export is still pending', async () => {
+    const { context, page } = await fixture(); let release!: () => void;
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    try {
+      const receivedEvents = [{ eventId: 'old-0', sequence: 0, payloadHash: 'a'.repeat(64) }];
+      const eventsHash = createHash('sha256').update(JSON.stringify(receivedEvents.map(({ eventId, payloadHash, sequence }) => ({ eventId, payloadHash, sequence })))).digest('hex');
+      await page.route('**/apiData', async route => {
+        const body = route.request().postDataJSON() as Upload;
+        if (body.action === 'createSession') {
+          await route.fulfill({ json: { success: true, decision: 'session_expired', sessionProtocolVersion: 3, lifecycle: 'expired', participantNumber: 0, receivedEvents } }); return;
+        }
+        await blocked;
+        await route.fulfill({ json: { success: true, experimentID: body.experimentID, sessionId: body.sessionId, lifecycle: 'expired',
+          export: { confirmed: true, status: 'confirmed', eventCount: 1, eventsHash, requestedRevision: 1, confirmedRevision: 1 } } });
+      });
+      await page.addScriptTag({ content: code(false, true) });
+      const choice = page.getByRole('button', { name: 'Start a new participation' });
+      await choice.waitFor(); expect(await choice.isEnabled()).toBe(true);
+      expect(await page.evaluate(() => (window as unknown as { __started: number[] }).__started)).toEqual([]);
+      release();
+      await page.getByText('This session has ended. The available responses have been saved.').waitFor();
+      expect(await page.getByRole('button', { name: 'Start a new participation' }).count()).toBe(1);
+    } finally { release?.(); await context.close(); }
+  });
+
 });

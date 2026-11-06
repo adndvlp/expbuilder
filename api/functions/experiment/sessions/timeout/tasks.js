@@ -1,3 +1,4 @@
+import { refreshLifecycle } from "../lifecycle/state.js";
 import { getDatabase } from "firebase-admin/database";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
 import { db, app } from "../../../app.js";
@@ -52,6 +53,10 @@ function buildExpiredRtdbUpdate(extra = {}) {
 export async function handleSessionTimeoutTask(data) {
   const { experimentID, sessionId, expiresAt } =
     validateSessionTimeoutTaskPayload(data);
+  if (data.connectionId && data.connectionGeneration) {
+    const session = await refreshLifecycle(experimentID, sessionId, data);
+    return { status: session?.lifecycle || 'missing_session' };
+  }
   const sessionRef = getDatabase(app).ref(`sessions/${experimentID}/${sessionId}`);
   const sessionSnapshot = await sessionRef.once("value");
   const currentData = sessionSnapshot.val();
@@ -77,7 +82,8 @@ export async function handleSessionTimeoutTask(data) {
   }
 
   const durable = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
-  if (durable?.exists && (durable.data().sessionProtocolVersion === 2 || durable.data().exportProtocolVersion === 1)) {
+  if (durable?.data?.()?.sessionProtocolVersion === 3) return { status: 'stale_task' };
+  if (durable?.exists && (durable.data().sessionProtocolVersion >= 2 || durable.data().exportProtocolVersion === 1)) {
     if (durable.data().lifecycle === 'completed') return { status: 'already_closed' };
     let result;
     try {

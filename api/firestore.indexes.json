@@ -1,10 +1,65 @@
 {
-  "indexes": [{
-    "collectionGroup": "export_jobs", "queryScope": "COLLECTION_GROUP",
-    "fields": [{ "fieldPath": "dispatchDue", "order": "ASCENDING" }, { "fieldPath": "nextDispatchAt", "order": "ASCENDING" }]
-  }, {
-    "collectionGroup": "export_jobs", "queryScope": "COLLECTION_GROUP",
-    "fields": [{ "fieldPath": "experimentID", "order": "ASCENDING" }, { "fieldPath": "phase", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }]
-  }],
+  "indexes": [
+    {
+      "collectionGroup": "export_jobs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "dispatchDue",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextDispatchAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "export_jobs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "experimentID",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phase",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "timeoutPending",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timeoutNextDispatchAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "presenceCheckPending",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "presenceCheckAt",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

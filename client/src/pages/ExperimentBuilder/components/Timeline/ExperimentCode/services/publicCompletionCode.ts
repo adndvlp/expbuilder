@@ -17,9 +17,13 @@ export function publicCompletionCode({ DATA_API_URL, experimentID }: PublicExper
       if (publicRecoveryMode) return _waitForPublicExport(await _publicExportStatus(), expected, true);
       const response = await fetch(${JSON.stringify(DATA_API_URL)}, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'completeSession', experimentID: ${JSON.stringify(experimentID)}, sessionId: trialSessionId, ...expected })
+        body: JSON.stringify({ action: 'completeSession', experimentID: ${JSON.stringify(experimentID)}, sessionId: trialSessionId, ...(typeof _publicWriterPermission === 'function' ? _publicWriterPermission() : {}), ...expected })
       });
-      if (!response.ok) throw new Error('Completion was not confirmed: ' + await response.text());
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
+        if (typeof _adoptPublicClosure === 'function') _adoptPublicClosure(failure);
+        throw new Error(failure.message || 'Completion was not confirmed');
+      }
       const receipt = await _waitForPublicExport(await response.json(), expected);
       if (publicResponses.length !== generation) throw new Error('New responses arrived during completion');
       return receipt;

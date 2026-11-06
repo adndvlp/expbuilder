@@ -1,3 +1,4 @@
+import { handleSessionHandshake } from "../lifecycle/handshake.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../../app.js";
@@ -52,6 +53,8 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     }
   }
 
+  if (["resumeSession", "activateConnection"].includes(action) || (req.body.sessionProtocolVersion === 3 && (!action || action === "createSession"))) return await handleSessionHandshake(req, res);
+
   // Manejar diferentes acciones según el parámetro 'action'
   if (action === "list" && experimentID) {
     return await handleListSessions(req, res, experimentID);
@@ -72,7 +75,7 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
   if (action === "finish" && experimentID && sessionId) {
     try {
       const session = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
-      if (session?.data?.()?.sessionProtocolVersion === 2) {
+      if (session?.data?.()?.sessionProtocolVersion >= 2) {
         res.status(409).json({ success: false, message: 'Versioned sessions require completeSession with their expected event set' }); return;
       }
       const result = await finalizeSession(experimentID, sessionId);
@@ -171,6 +174,10 @@ async function handlePostFile(req, res, experimentID, data, filename) {
   }
 
   const exp_data = exp_doc.data();
+  if (exp_data.activePublicationId) {
+    res.status(409).json({ success: false, message: 'This publication requires stable events and verified completion' });
+    return;
+  }
   if (!exp_data.active) {
     res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
     return;

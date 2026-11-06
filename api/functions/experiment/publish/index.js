@@ -1,3 +1,4 @@
+import { readPublicationConfiguration, publishImmutableArtifact } from "./immutable.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { db } from "../../app.js";
 import { uploadFileGithub } from "../hosting/services.js";
@@ -21,7 +22,7 @@ import { ensureExperimentStorage } from "./ensure-storage.js";
  * - description: Descripción del repositorio (opcional)
  * - mediaFiles: Array de archivos multimedia (opcional)
  */
-export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
+export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, maxInstances: 5 }, async (req, res) => {
   // T-10: CORS headers handled by onRequest({cors:true}).
   if (req.method === "OPTIONS") {
     res.status(204).send("");
@@ -62,6 +63,8 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
           "Invalid repoName: must be 1-100 chars, only letters/digits/._-, not starting with . or -",
       });
     }
+
+    const publicationConfiguration = readPublicationConfiguration(htmlContent);
 
     console.log(
       "Publishing experiment to GitHub for user:",
@@ -167,9 +170,13 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
     }
     const repoExists = provision.repoExists;
 
+    let immutablePublication = null;
+    if (publicationConfiguration) {
+      immutablePublication = await publishImmutableArtifact({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles });
+    }
     // Subir/actualizar el archivo HTML
     console.log("Uploading/updating index.html...");
-    const uploadHtmlResult = await uploadFileGithub(
+    const uploadHtmlResult = immutablePublication ? { success: true } : await uploadFileGithub(
       accessToken,
       owner,
       repoName,
@@ -188,7 +195,7 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
 
     console.log("HTML file uploaded successfully");
 
-    const mediaUploadResults = await uploadMediaFiles(
+    const mediaUploadResults = immutablePublication?.mediaUploadResults || await uploadMediaFiles(
       accessToken,
       owner,
       repoName,
@@ -215,13 +222,14 @@ export const publishExperiment = onRequest({ cors: true }, async (req, res) => {
       owner: owner,
       repoName: repoName,
       mediaUploads: mediaUploadStats,
+      ...(immutablePublication && { publicationId: immutablePublication.publicationId, executionRevision: immutablePublication.executionRevision }),
     });
   } catch (error) {
     console.error("Error in publishExperiment:", error);
     // T-11: don't leak internal error.message to clients.
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       success: false,
-      message: "Internal server error",
+      message: error.status ? error.message : "Internal server error",
     });
   }
 });

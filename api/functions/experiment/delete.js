@@ -59,7 +59,7 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
   }
 
   const experimentData = experimentDoc.data();
-  if (experimentData.sessionExportProtocolVersion === 1) await prepareExperimentExportDeletion(experimentRef);
+  if (experimentData.sessionExportProtocolVersion === 1 || experimentData.activePublicationId || experimentData.publicationLeaseUntil > Date.now()) await prepareExperimentExportDeletion(experimentRef);
   const storageProvider = experimentData.storageProvider || "googledrive";
 
   // Obtener el identificador de carpeta según el proveedor
@@ -181,6 +181,7 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
       ? ['trials', 'event_receipts', { name: 'export_jobs', children: ['chunks'] }] : ['trials'],
   });
 
+  if (experimentData.sessionExportProtocolVersion === 1 || experimentData.activePublicationId) await paginatedDelete(experimentRef.collection('publications'));
   await experimentRef.delete();
 
   // Limpiar Realtime Database — sino el trigger finalizeDisconnectedSessions
@@ -189,6 +190,10 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
   let rtdbError = null;
   try {
     await getDatabase(app).ref(`sessions/${experimentID}`).remove();
+    if (experimentData.sessionExportProtocolVersion === 1 || experimentData.activePublicationId) {
+      await getDatabase(app).ref(`session_connections/${experimentID}`).remove();
+      await getDatabase(app).ref(`session_connection_leases/${experimentID}`).remove();
+    }
     rtdbCleared = true;
   } catch (error) {
     rtdbError = error.message;

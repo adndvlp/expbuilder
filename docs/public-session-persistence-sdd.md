@@ -1,6 +1,6 @@
 # SDD: persistencia y recuperación de sesiones públicas
 
-Estado: puntos 1–3 implementados y verificados localmente mediante TDD. Puntos 4 y 5 pendientes. Evidencia y límites en las secciones 16–18.
+Estado: puntos 1–4 implementados y verificados localmente mediante TDD. Punto 5 pendiente. Evidencia y límites en las secciones 16–19.
 
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
@@ -10,7 +10,7 @@ Conseguir que las respuestas de un experimento publicado lleguen a su proveedor 
 
 El diseño cubre IndexedDB activado y desactivado; lotes `0`, `1` y `N`; Google Drive, Dropbox y OSF; finalización normal; desconexión; retoma; expiración; recuperación posterior y republicación. Incluye los ocho escenarios del [informe de investigación](investigaciones/indexeddb-2026-11-05.md).
 
-Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1–3 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
+Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1–4 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
 
 El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su servidor no se sustituyen incidentalmente. Una extracción compartida debe conservar sus garantías y pruebas. La lógica de trials, loops, condiciones y branching se integra con la persistencia; no se redefine su significado.
 
@@ -516,3 +516,52 @@ Una escritura incierta no autoriza repetirla contra un recurso que pudo cambiar.
 Las sesiones anteriores sin trabajo/recibo verificable, y los CSV antiguos sin identidad de evento, requieren la transición y conciliación del punto 5; no se reconstruyen hashes de payload a partir de CSV ni se certifican por igualdad de nombre. La herramienta de recuperación de la sesión reportada sigue pendiente. No se tocaron sus datos.
 
 Quedan para el punto 4 la unificación del timeout, deadline y generaciones de conexión, la configuración/artefactos fijos por publicación, la conservación local completa y la UI para iniciar otra participación después de expirar. El punto 5 mantiene el recorrido con emuladores y proveedores cloud, el plan de despliegue y la recuperación de datos anteriores. Se detiene aquí la ejecución del punto 3; no se desplegó ni republicó nada.
+
+
+## 19. Entrega del punto 4: timeout y publicación
+
+Estado: implementado y verificado localmente. La ejecución se detiene antes del punto 5, conforme a la instrucción del usuario. No se desplegó, republicó ni recuperó información de producción.
+
+### Comportamiento implementado
+
+- Protocolo de sesión 3: creación idempotente y handshake explícito de retoma/activación. Conserva participante, condición, publicación, revisión de ejecución, configuración de lote/timeout, validación, proveedor y destino.
+- Resolver común para retoma, activación, recepción, cierre, estado, presencia y timeout. Consulta la conexión vigente aunque su trigger no se haya ejecutado. El plazo parte del timestamp de desconexión del servidor. `now >= deadline` cierra como `expired` y solicita la exportación en la misma transacción, sin esperar a Drive, Dropbox u OSF.
+- El mismo timeout aplica con IndexedDB activado o desactivado. La compatibilidad con publicaciones antiguas también deja de solicitar el guardado inmediato de Drive/Dropbox al desconectar.
+- Presencia y permiso por conexión/generación. `onDisconnect` se registra antes de publicar presencia; el backend confirma la activación antes de permitir ensayos. Una segunda pestaña recibe `session_in_use`; mensajes/tareas de generaciones anteriores no afectan al propietario vigente. Los recibos idénticos siguen siendo reconocibles después del cierre.
+- Reconexión de red sin recargar: pausa, renovación de handshake/presencia, conciliación y reintento. Una denegación del permiso también bloquea el avance. El permiso se comprueba de nuevo tras preparar recursos/CAPTCHA, que ya no consume una reserva sin presencia registrada.
+- Intención de timeout duradera, dispatcher y reconciliador por minuto. Repara fallos de enqueue y también desconexiones cuyo trigger RTDB se perdió. Esto último se añadió al comprobar que el SDK instalado no codifica `retry:true` para ese trigger. La fecha de cierre sigue siendo el deadline original, aunque la exportación se solicite más tarde.
+- Publicaciones con HTML y multimedia inmutables en `publications/{publicationId}/`, más manifiesto de configuración. Una sesión activa con otra revisión vuelve a su artefacto; si no existe un manifiesto compatible, se bloquea con un error visible y conserva pendientes. Las recuperaciones cerradas no ejecutan el grafo anterior. Los enlaces de retoma y nueva participación conservan el origen actual, incluidos dominios propios, para mantener accesibles IndexedDB y las referencias locales.
+- Publicación serializada mediante lease: los artefactos deben estar listos antes de sustituir la entrada actual y se impiden carreras entre publicaciones o con la eliminación del experimento. Cambiar de proveedor conserva la carpeta anterior que todavía necesitan sus sesiones.
+- Se retiran el TTL de tres días y el `clear()` global de ensayos. La limpieza local afecta a la sesión/IDs correspondientes. El aviso y el botón de nueva participación se muestran sin esperar la exportación anterior. El botón requiere una acción explícita, otro ID y respaldo de cualquier respuesta en memoria; conserva referencias de recuperación separadas y reintenta esos pendientes con su sesión original en visitas posteriores.
+- UI: lote visible solo con IndexedDB, validación de enteros y timeout 1–1440, ayuda común para proveedores/modos y limitación explícita del lote 0. El servidor valida también la configuración al publicar.
+- Registro de funciones, índices, reglas RTDB y limpieza de los recursos nuevos al eliminar. Se actualizaron las instrucciones operativas en [SESSION_TIMEOUT_CLOUD_TASKS.md](../api/SESSION_TIMEOUT_CLOUD_TASKS.md).
+
+### Regresiones observadas mediante TDD
+
+| Caso | RED observado | GREEN verificado |
+|---|---|---|
+| Retoma/append/cierre/estado exactamente al vencer, sin trigger ni worker | La sesión seguía activa o se completaba normalmente. | Expiración con `closedAt` exacto; ningún ensayo nuevo; exportación solicitada. |
+| Retoma antes de vencer y llegada de la tarea/presencia anterior | Faltaban decisión de retoma, generación y permiso de escritura. | Misma identidad; conexión nueva vigente; mensajes obsoletos sin efecto. |
+| Configuración tras republicar ON → OFF → ON | Se devolvía protocolo 2 sin configuración/revisión fijadas. | Snapshot de sesión y artefactos anteriores conservados. |
+| Recuperación y validación tras cambiar ajustes publicados | Se rechazaba por los campos obligatorios de la publicación nueva. | Se valida con la configuración original y no se reabre la sesión. |
+| Limpieza local tras diez días y cambio de sesión | Se perdía el pendiente anterior. | El pendiente sobrevive y la limpieza de otra sesión no lo elimina. |
+| Cambio de proveedor al republicar | Se llamaba a `deleteFolder` del proveedor anterior. | Se conserva esa carpeta. |
+| Publicaciones simultáneas/eliminación durante publicación | La segunda publicación o eliminación avanzaban. | Lease y conflicto explícito; entrada y manifiesto coherentes. |
+| Inicio con CAPTCHA | El CAPTCHA se esperaba antes de registrar presencia. | Presencia armada/publicada primero y permiso revisado antes de ejecutar. |
+| Reconexión fallida o permiso revocado | No existía reintento de handshake o el permiso seguía habilitando avance. | Reintento explícito y pausa hasta renovar permiso. |
+| Trigger RTDB perdido, en ambos modos | El reconciliador dejaba la sesión activa indefinidamente. | Detecta la desconexión, aplica el deadline original y solicita exportación. |
+| Cierre legacy sobre una sesión nueva | `apiDataComplete` podía alcanzar su ruta anterior. | Rechazo 409 antes de enviar datos al proveedor; se bloquean también la carga legacy de archivos completos y el timeout sin generación frente al protocolo 3. |
+| Ayuda/validación de timeout | Mostraba guardado inmediato y aceptaba valores inválidos. | Regla común y rechazo de 0, fracciones o más de 1440 minutos. |
+
+Además, el navegador ejecuta el HTML generado con jsPsych real: una respuesta cuyo envío descubre la expiración se recupera para su sesión original, no ejecuta el ensayo siguiente, no solicita cierre normal y solo ofrece una participación nueva mediante el botón.
+
+### Verificación y límites
+
+- API: 130 suites, 655 tests aprobados, incluidos los contratos y regresiones de puntos anteriores.
+- Cliente: 16 archivos y 65 tests seleccionados de generación, presencia, recuperación, checkpoint, configuración y runtime.
+- Chromium: 5 archivos, 37 tests con IndexedDB y jsPsych reales; peticiones HTTP/proveedores simulados. Se repitió el archivo del runtime generado tras los ajustes de arranque y aviso de expiración: 5/5 aprobados.
+- Branching nativo: 4 escenarios aprobados. La primera ejecución tuvo un timeout al abrir una página de Chrome (3/4); la repetición con 30 segundos para preparar cada página pasó 4/4.
+- TypeScript, compilación de producción, lint de los archivos modificados y límite de 300 líneas de los archivos mantenidos del cliente aprobados. `git diff --check` sin errores. La compilación conserva la advertencia de tamaño de chunks de Vite.
+- Se inspeccionaron los metadatos generados por el SDK instalado para las funciones nuevas y se alineó el manifiesto. Las pruebas de reglas evalúan sus expresiones con snapshots simulados; no sustituyen una prueba contra el emulador de RTDB.
+
+La ejecución local usa Node 26; Functions declara Node 20. La matriz completa con emuladores, los adaptadores externos, el despliegue/publicación coordinados y la herramienta para datos históricos siguen en el punto 5. Un HTML antiguo o una sesión anterior sin artefacto compatible no adquieren estas garantías al actualizar solo el backend: se conservan sus datos y se requiere la transición correspondiente. No se afirmó que la sesión de la captura se haya exportado ni reparado.

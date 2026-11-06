@@ -153,6 +153,12 @@ export function useExperimentSettings(experimentID: string | undefined) {
 
   const handleSave = async () => {
     if (!experimentID) return;
+    if (!Number.isSafeInteger(config.resumeTimeoutMinutes) || config.resumeTimeoutMinutes < 1 || config.resumeTimeoutMinutes > 1440) {
+      setMessage({ type: 'error', text: 'Resume Timeout must be an integer from 1 to 1440 minutes.' }); return;
+    }
+    if (!Number.isSafeInteger(config.batchSize) || config.batchSize < 0) {
+      setMessage({ type: 'error', text: 'Batch Size must be a nonnegative integer.' }); return;
+    }
     const uniquenessError = getSessionNameUniquenessError(sessionNameTokens);
     if (uniquenessError) {
       setSessionNameMessage({ type: "error", text: uniquenessError });

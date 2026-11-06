@@ -1,3 +1,5 @@
+import { onSessionConnectionWritten } from './experiment/sessions/lifecycle/presence.js';
+import { enqueueSessionTimeout, reconcilePendingSessionTimeouts } from './experiment/sessions/timeout/functions.js';
 import {
   apiData,
   apiDataComplete,
@@ -29,6 +31,7 @@ export {
   apiCondition,
   finalizeDisconnectedSessions,
   processSessionTimeout,
+  onSessionConnectionWritten, enqueueSessionTimeout, reconcilePendingSessionTimeouts,
   enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports,
   dropboxOAuthCallback,
   githubOAuthCallback,

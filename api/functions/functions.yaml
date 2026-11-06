@@ -59,6 +59,40 @@ endpoints:
       rateLimits:
         maxConcurrentDispatches: 20
         maxDispatchesPerSecond: 20
+  onSessionConnectionWritten:
+    platform: gcfv2
+    entryPoint: onSessionConnectionWritten
+    region: [us-central1]
+    maxInstances: 5
+    eventTrigger:
+      eventType: google.firebase.database.ref.v1.written
+      eventFilters: {}
+      eventFilterPathPatterns:
+        ref: session_connections/{experimentID}/{sessionId}/{connectionId}
+        instance: "*"
+      retry: false
+  enqueueSessionTimeout:
+    platform: gcfv2
+    entryPoint: enqueueSessionTimeout
+    region: [us-central1]
+    maxInstances: 5
+    eventTrigger:
+      eventType: google.cloud.firestore.document.v1.written
+      eventFilters:
+        database: "(default)"
+        namespace: "(default)"
+      eventFilterPathPatterns:
+        document: experiments/{experimentID}/sessions/{sessionId}
+      retry: true
+  reconcilePendingSessionTimeouts:
+    platform: gcfv2
+    entryPoint: reconcilePendingSessionTimeouts
+    region: [us-central1]
+    maxInstances: 5
+    timeoutSeconds: 120
+    scheduleTrigger:
+      schedule: every 1 minutes
+      timeZone: UTC
   enqueueSessionExport:
     platform: gcfv2
     entryPoint: enqueueSessionExport
@@ -114,6 +148,7 @@ endpoints:
     entryPoint: publishExperiment
     region: [us-central1]
     maxInstances: 5
+    timeoutSeconds: 300
     httpsTrigger: {}
   googleDriveOAuthCallback:
     platform: gcfv2

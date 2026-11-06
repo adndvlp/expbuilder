@@ -53,6 +53,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         }
         publicClosing = true;
         _showLoading('Saving your data\u2026');
+        if (typeof _showPublicExpiredNotice === 'function') _showPublicExpiredNotice();
         await new Promise(resolve => setTimeout(resolve, 0));
         try {
           await _completePublicSession();
@@ -70,7 +71,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         _setLoadingMsg('Finishing up\u2026');
         
         try {
-          await sessionRef.update({
+          if (_publicSessionState.sessionProtocolVersion !== 3) await sessionRef.update({
             connected: false,
             finished: true,
             needsFinalization: false,
@@ -81,7 +82,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
           // Cancel only after the durable completed state was confirmed.
-          await sessionRef.onDisconnect().cancel();
+          await sessionRef?.onDisconnect().cancel();
         } catch (error) {
           _publicPersistenceError(error);
           return;
@@ -179,12 +180,24 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         : ""
     }
 
+    if (typeof _recoverOlderPublicSessions === 'function') _recoverOlderPublicSessions().catch(error => {
+      console.error('Earlier responses retained for recovery:', error);
+      const notice = document.createElement('p'); notice.textContent = 'Earlier session responses are still pending recovery. Keep this browser data and contact the study team if this persists.';
+      document.body.append(notice);
+    });
+    if (_publicSessionState.sessionProtocolVersion === 3 && !['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
+      await _connectPublicSession();
+      _observePublicConnection();
+    }
     if (['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
       await publicFinishHandler();
     } else {
       ${baseCode}
     }
 
-})();
+})().catch(error => {
+  console.error('Public session could not start:', error);
+  _showLoading('This session cannot start: ' + error.message + '. Pending responses are preserved.');
+});
 `;
 }

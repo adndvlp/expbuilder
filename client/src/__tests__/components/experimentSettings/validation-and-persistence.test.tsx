@@ -41,9 +41,10 @@ describe("ExperimentSettings", () => {
       "Use IndexedDB (Client-side persistence)",
     );
     expect(indexedDb).not.toBeChecked();
-    expect(
-      screen.getByText(/Trials sent individually to Firestore/),
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Batch Size')).not.toBeInTheDocument();
+    expect(screen.getByText(/The same resume deadline applies to every storage provider/)).toBeInTheDocument();
+    expect(screen.queryByText(/Partial save on disconnect/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Trials sent individually to Firestore/)).toBeInTheDocument();
     expect(
       screen.getByText(/assignmentId=ASSIGNMENT_ID_NOT_AVAILABLE/),
     ).toBeInTheDocument();
@@ -52,6 +53,7 @@ describe("ExperimentSettings", () => {
 
     expect(indexedDb).toBeChecked();
     expect(screen.getByText(/Trials cached locally/)).toBeInTheDocument();
+    expect(screen.getByText(/the timeout cannot save responses that have never reached the server/)).toBeInTheDocument();
   });
 
   it("blocks combined save when session naming tokens are not unique", async () => {
@@ -97,4 +99,15 @@ describe("ExperimentSettings", () => {
     ).toBeInTheDocument();
     expect(firestoreMocks.setDoc).toHaveBeenCalledTimes(1);
   });
+  it.each(['0', '1.5', '1441'])('rejects an invalid resume timeout %s before saving', async value => {
+    firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
+    fetchMock().mockResolvedValueOnce(okJson({ tokens: [token({ id: 'counter-token', type: 'counter' })], separator: '_' }));
+    render(<ExperimentSettings experimentID="invalid-timeout" />);
+    const input = await screen.findByLabelText('Resume Timeout (minutes)');
+    fireEvent.change(input, { target: { value } });
+    fireEvent.click(screen.getAllByText('Save Configuration')[0]);
+    expect(await screen.findByText(/Resume Timeout must be an integer from 1 to 1440/)).toBeInTheDocument();
+    expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
+  });
+
 });

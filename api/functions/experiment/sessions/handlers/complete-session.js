@@ -1,3 +1,4 @@
+import { resolveLifecycle, lifecycleRejection } from "../lifecycle/state.js";
 import { sessionReference } from "../export/references.js";
 import { db } from "../../../app.js";
 import { planSessionExport } from "../export/request.js";
@@ -11,14 +12,20 @@ export async function handleCompleteSession(req, res) {
     if (!Number.isSafeInteger(expectedEventCount) || expectedEventCount < 0 || !Number.isSafeInteger(expectedLastSequence)
         || expectedLastSequence < -1 || !/^[a-f0-9]{64}$/.test(eventsHash ?? "")) throw exportError("Invalid expected event set", { status: 400 });
     const ref = sessionReference(experimentID, sessionId);
-    await db.runTransaction(async transaction => {
+    const rejected = await db.runTransaction(async transaction => {
       const session = await transaction.get(ref);
       const experiment = await transaction.get(db.collection("experiments").doc(experimentID));
       const received = await transaction.get(ref.collection("event_receipts"));
       const trials = await transaction.get(ref.collection("trials"));
       if (!session.exists || !experiment.exists) throw exportError("Session not found", { status: 404 });
-      const data = session.data(), receipts = received.docs.map(doc => doc.data());
+      const resolution = await resolveLifecycle(transaction, ref, session.data(), experiment.data());
+      const data = resolution.data, receipts = received.docs.map(doc => doc.data());
       if (data.deleting || experiment.data().deleting) throw exportError('Session is being deleted', { status: 410 });
+      if (data.sessionProtocolVersion === 3 && !data.completion) {
+        const rejection = lifecycleRejection(data, req.body);
+        if (rejection) { resolution.commit(); return rejection; }
+      }
+      resolution.commit();
       const target = summarizeEvents(receipts), byId = new Map(receipts.map(item => [item.eventId, item]));
       const pending = new Set(trials.docs.map(doc => doc.id));
       if (expectedLastSequence !== expectedEventCount - 1 || target.eventCount !== expectedEventCount || target.eventsHash !== eventsHash
@@ -34,10 +41,11 @@ export async function handleCompleteSession(req, res) {
       }
       if (data.completion?.revision) return;
       const revision = (data.exportRequestedRevision || 0) + 1;
-      planSessionExport(transaction, ref, data, receipts, experiment.data(), { lifecycle: 'completed',
+      planSessionExport(transaction, ref, data, receipts, experiment.data(), { lifecycle: 'completed', presenceCheckPending: false, timeoutPending: false,
         closedAt: data.closedAt || new Date().toISOString(), closeReason: 'completed',
         completion: { ...expected, revision, confirmed: false, status: 'pending' } });
     });
+    if (rejected) { res.status(409).json({ success: false, ...rejected }); return; }
     const result = await readSessionExportStatus(experimentID, sessionId);
     res.status(result.completion?.confirmed ? 200 : 202).json(result);
   } catch (error) {

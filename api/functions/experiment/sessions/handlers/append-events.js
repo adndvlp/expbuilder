@@ -2,16 +2,27 @@ import { db } from "../../../app.js";
 import { validatePublicEvents } from "../validation/event-contract.js";
 import { planSessionExport } from "../export/request.js";
 
-export async function handleAppendEvents({ res, experimentID, sessionId, data, experiment, sanitize, recovering = false }) {
+import { resolveLifecycle, lifecycleRejection } from "../lifecycle/state.js";
+
+export async function handleAppendEvents({ res, experimentID, sessionId, data, experiment, sanitize, recovering = false, body = {} }) {
   try {
-    const events = validatePublicEvents(data, experiment);
+    let events;
     const session = db.collection("experiments").doc(experimentID).collection("sessions").doc(sessionId);
     const outcome = await db.runTransaction(async transaction => {
       const sessionSnapshot = await transaction.get(session);
+      const resolution = await resolveLifecycle(transaction, session, sessionSnapshot.exists ? sessionSnapshot.data() : {}, experiment);
+      const previous = resolution.data;
+      events = validatePublicEvents(data, previous.configuration?.validation || experiment);
       const receipts = await Promise.all(events.map(event => transaction.get(session.collection("event_receipts").doc(event.eventId))));
-      const previous = sessionSnapshot.exists ? sessionSnapshot.data() : {};
       if (previous.deleting || experiment.deleting) throw Object.assign(new Error('Session is being deleted'), { status: 410 });
       const allReceipts = recovering ? await transaction.get(session.collection('event_receipts')) : null;
+      if (receipts.every((receipt, index) => receipt.exists && receipt.data().sequence === events[index].sequence && receipt.data().payloadHash === events[index].payloadHash)) {
+        resolution.commit(); return 0;
+      }
+      if (!recovering && previous.sessionProtocolVersion === 3) {
+        const rejection = lifecycleRejection(previous, body);
+        if (rejection) { resolution.commit(); return rejection; }
+      }
       const fresh = events.filter((_event, index) => !receipts[index].exists).sort((a, b) => a.sequence - b.sequence);
       if (recovering && (!sessionSnapshot.exists || !['expired', 'completed'].includes(previous.lifecycle))) {
         throw Object.assign(new Error('Recovery requires an existing closed session'), { status: 409 });
@@ -23,9 +34,10 @@ export async function handleAppendEvents({ res, experimentID, sessionId, data, e
         throw Object.assign(new Error("Session is already closed"), { status: 409 });
       }
       const receivedCount = previous.receivedEventCount ?? previous.trialCount ?? 0;
-      if (!recovering && previous.sessionProtocolVersion === 2 && fresh.some((event, index) => event.sequence !== receivedCount + index)) {
+      if (!recovering && previous.sessionProtocolVersion >= 2 && fresh.some((event, index) => event.sequence !== receivedCount + index)) {
         throw Object.assign(new Error("An earlier event is still missing"), { status: 409 });
       }
+      if (!recovering || !fresh.length) resolution.commit();
       let inserted = 0;
       const receiptRevision = (previous.receiptRevision || 0) + 1;
       for (const [index, event] of events.entries()) {
@@ -49,6 +61,7 @@ export async function handleAppendEvents({ res, experimentID, sessionId, data, e
       if (inserted) {
         const checkpointEvent = fresh.filter(event => event.checkpoint != null).at(-1);
         const update = {
+          ...(recovering && resolution.patch),
           ...(!sessionSnapshot.exists && { createdAt: new Date().toISOString(), experimentID, sessionId }),
           eventProtocolVersion: 1,
           trialCount: (previous.trialCount ?? 0) + inserted,
@@ -63,6 +76,7 @@ export async function handleAppendEvents({ res, experimentID, sessionId, data, e
       }
       return inserted;
     });
+    if (typeof outcome === 'object') { res.status(409).json({ success: false, ...outcome }); return; }
     res.status(outcome ? 201 : 200).json({
       success: true, experimentID, sessionId,
       acknowledged: events.map(({ eventId, sequence, payloadHash }) => ({ eventId, sequence, payloadHash })),

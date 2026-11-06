@@ -40,9 +40,11 @@ export function publicExportStatusCode({ DATA_API_URL, experimentID }: PublicExp
     }
     function _showPublicRecoveryComplete() {
       _hideLoading?.();
+      document.getElementById('expbuilder-expired-session')?.remove();
       const panel = document.createElement('div');
       panel.style.cssText = 'padding:40px;text-align:center;font-family:sans-serif';
       panel.textContent = 'This session has ended. The available responses have been saved.';
+      if (typeof _offerNewPublicSession === 'function') _offerNewPublicSession(panel);
       (document.getElementById('jspsych-container') || document.body).replaceChildren(panel);
     }
 `;

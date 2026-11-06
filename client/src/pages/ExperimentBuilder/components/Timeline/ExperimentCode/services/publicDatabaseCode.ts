@@ -51,14 +51,13 @@ export function publicDatabaseCode(
 
 ${publicEventStorageCode()}
 
-  // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
+  // --- IndexedDB: unacknowledged events have no age-based expiry ---
   const TrialDB = {
     dbName: ${JSON.stringify(storageKeys.trialDatabase)},
     storeName: 'trials',
     counterName: 'session-sequences',
     manifestName: 'event-manifest',
     db: null,
-    TTL_DAYS: 3,
 
     async init() {
       return new Promise((resolve, reject) => {
@@ -67,8 +66,6 @@ ${publicEventStorageCode()}
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           this.db = request.result;
-          // Limpiar datos vencidos al iniciar
-          this.cleanExpiredData().catch(err => console.error('Error cleaning expired data:', err));
           resolve(this.db);
         };
         
@@ -95,50 +92,14 @@ ${publicEventStorageCode()}
       });
     },
 
-    async cleanExpiredData() {
-      if (!this.db) await this.init();
-      const now = Date.now();
-      const expirationTime = this.TTL_DAYS * 24 * 60 * 60 * 1000; // 3 días en ms
-      
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const index = store.index('createdAt');
-        const request = index.openCursor();
-        
-        let deletedCount = 0;
-        
-        request.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            const trial = cursor.value;
-            const age = now - (trial.createdAt || now);
-            
-            if (age > expirationTime) {
-              cursor.delete();
-              deletedCount++;
-            }
-            cursor.continue();
-          } else {
-            if (deletedCount > 0) {
-              console.log(\`Cleaned \${deletedCount} expired trials from IndexedDB\`);
-            }
-            resolve(deletedCount);
-          }
-        };
-        
-        request.onerror = () => reject(request.error);
-      });
-    },
-
 ${publicEventStorageMethods()}
 
-    async getAll() {
+    async getAll(sessionId = trialSessionId) {
       if (!this.db) await this.init();
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.index('sessionId').getAll(trialSessionId);
+        const request = store.index('sessionId').getAll(sessionId);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -186,15 +147,8 @@ ${publicEventStorageMethods()}
     },
 
     async clear() {
-      if (!this.db) await this.init();
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const request = store.clear();
-        
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-      });
+      const rows = await this.getAll();
+      return this.deleteIds(rows.map(row => row.id));
     }
   };
 `;

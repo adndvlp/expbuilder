@@ -20,7 +20,8 @@ beforeEach(() => {
   store.records.set(base + '/export_jobs/1', { status: 'pending', dispatchDue: true });
   store.records.set(base + '/export_jobs/1/chunks/0', { data: 'snapshot' });
 });
-test('deleting a versioned session stops its jobs and removes new child resources', async () => {
+test.each([2, 3])('deleting a protocol %s session stops its jobs and removes new child resources', async version => {
+  store.records.set(base, { ...store.records.get(base), sessionProtocolVersion: version });
   const res = makeRes(); await handleDeleteSession(makeReq(), res, 'EID', 'S1');
   expect(res.statusCode).toBe(200);
   expect([...store.records.keys()].filter(key => key.startsWith(base))).toEqual([]);
@@ -34,7 +35,8 @@ test('deleting a session with an active or uncertain writer preserves both copie
   expect(removeFile).not.toHaveBeenCalled();
   expect(store.records.has(base + '/trials/A')).toBe(true);
 });
-test('experiment deletion includes receipts, jobs and each job snapshot', async () => {
+test('experiment deletion includes receipts, jobs, publication manifests and each job snapshot', async () => {
+  store.records.set('experiments/EID/publications/pub-A', { status: 'ready' });
   store.records.set('experiments/EID', { ...store.records.get('experiments/EID'), sessionExportProtocolVersion: 1 });
   const { deleteExperiment } = await import('../../../experiment/delete.js');
   await deleteExperiment('EID', null);
@@ -46,4 +48,10 @@ test('experiment deletion waits for uncertain writes instead of removing their o
   const { deleteExperiment } = await import('../../../experiment/delete.js');
   await expect(deleteExperiment('EID', null)).rejects.toMatchObject({ status: 409 });
   expect(store.records.has(base + '/trials/A')).toBe(true);
+});
+test('experiment deletion waits for an in-flight publication so it cannot resurrect deleted manifests', async () => {
+  store.records.set('experiments/EID', { ...store.records.get('experiments/EID'), publicationLeaseUntil: Date.now() + 60000 });
+  const { deleteExperiment } = await import('../../../experiment/delete.js');
+  await expect(deleteExperiment('EID', null)).rejects.toMatchObject({ status: 409 });
+  expect(store.records.has('experiments/EID')).toBe(true);
 });

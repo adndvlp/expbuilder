@@ -79,10 +79,10 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
 
     if (req.body?.action === "appendEvents" || req.body?.action === "recoverEvents") {
       return await handleAppendEvents({ res, experimentID, sessionId, data: parsedData,
-        experiment: exp_data, sanitize: sanitizeForFirestore, recovering: req.body.action === "recoverEvents" });
+        experiment: exp_data, sanitize: sanitizeForFirestore, recovering: req.body.action === "recoverEvents", body: req.body });
     }
     const registered = await exp_doc_ref.collection('sessions').doc(sessionId).get();
-    if (registered?.data?.()?.sessionProtocolVersion === 2 || registered?.data?.()?.exportProtocolVersion === 1) {
+    if (registered?.data?.()?.sessionProtocolVersion >= 2 || registered?.data?.()?.exportProtocolVersion === 1) {
       res.status(409).json({ success: false, message: 'Update this publication to send stable events with appendEvents' }); return;
     }
 

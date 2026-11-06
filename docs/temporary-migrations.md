@@ -11,8 +11,9 @@ Las migraciones activas de este registro deben retirarse al cerrar la transició
 | Limpieza de parámetros internos de DynamicPlugin al arrancar | Activa y temporal | `normalizeDynamicDatabase` en [dynamicConfigModel.js](../server/utils/dynamicConfigModel.js), llamada desde [api.js](../server/api.js). |
 | Importación al antiguo branching con destinos solo a trials, añadida en `0044fc3` | Ya retirada en `cd3dd10` | `migrateLegacyBranching.js` ya no existe y no tiene llamadas activas. |
 | Importación a navegación unificada, añadida en `560a3ba` | Activa y temporal | [migrateLegacyNavigation.js](../server/routes/db/legacy/migrateLegacyNavigation.js), llamada desde [db/import.js](../server/routes/db/import.js). |
+| Compatibilidad de publicaciones públicas anteriores al protocolo 3 | Activa y temporal; transición pendiente del punto 5 | Rutas legacy en `apiData`/`apiDataComplete`, `handleCreateSession`, `handleAppendResult` y `finalizeDisconnectedSessions`; [SDD](public-session-persistence-sdd.md), secciones 14 y 19. |
 
-Las dos migraciones anteriores aparecen en el historial, pero solo la de navegación unificada continúa en el código actual. No hay dos convertidores de navegación activos que deban eliminarse por separado.
+Las dos conversiones de navegación aparecen en el historial, pero solo la de navegación unificada continúa en el código actual. No hay dos convertidores de navegación activos que deban eliminarse por separado.
 
 ## Retirada de la limpieza de DynamicPlugin al arrancar
 
@@ -39,3 +40,10 @@ Después de retirar el convertidor, un ZIP con navegación antigua se somete a l
 `0044fc3` añadió `server/routes/db/legacy/migrateLegacyBranching.js`; `cd3dd10` eliminó ese archivo y su conexión con la importación. `560a3ba` introdujo después el convertidor de navegación que sigue activo.
 
 El archivo de pruebas `db-legacy-import.test.js` fue reutilizado para el convertidor actual. Su existencia no significa que el primero siga funcionando; se retira junto con la conversión de navegación descrita arriba.
+
+
+## Compatibilidad de publicaciones públicas anteriores al protocolo 3
+
+El punto 4 conserva temporalmente la recepción/finalización anterior para HTML ya publicado. El trigger legacy usa ahora el mismo timeout para todos los proveedores y modos. No convierte automáticamente sus respuestas a IDs estables ni inventa una revisión de ejecución. El runtime nuevo se bloquea ante una sesión antigua sin artefacto compatible, conservando sus pendientes.
+
+La retirada se coordinará con el punto 5: inventariar publicaciones y resultados anteriores, completar la transición/republicación de testers y después retirar exclusivamente las rutas legacy y sus pruebas exclusivas. Se conservan el protocolo 3, el exportador por revisiones, la validación de recibos y los tests de conservación de pendientes. No se ejecutó una migración ni recuperación histórica en el punto 4.

@@ -36,7 +36,7 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
 
     const exp_data = exp_doc.data();
     const registeredSession = await exp_doc_ref.collection('sessions').doc(sessionId).get();
-    if (registeredSession?.data?.()?.sessionProtocolVersion === 2) {
+    if (registeredSession?.data?.()?.sessionProtocolVersion >= 2) {
       res.status(409).json({ success: false, message: 'Update this publication to use appendEvents and verified completion' }); return;
     }
     if (!exp_data.active) {

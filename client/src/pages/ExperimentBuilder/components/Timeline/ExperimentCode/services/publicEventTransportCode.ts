@@ -10,9 +10,13 @@ export function publicEventTransportCode({ DATA_API_URL, experimentID }: PublicE
         const response = await fetch(${JSON.stringify(DATA_API_URL)}, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: publicRecoveryMode ? 'recoverEvents' : 'appendEvents', experimentID: ${JSON.stringify(experimentID)},
-            sessionId: trialSessionId, data: { protocolVersion: 1, events }, batchNumber })
+            sessionId: trialSessionId, ...(typeof _publicWriterPermission === 'function' ? _publicWriterPermission() : {}), data: { protocolVersion: 1, events }, batchNumber })
         });
-        if (!response.ok) throw new Error('Batch upload failed: ' + await response.text());
+        if (!response.ok) {
+          const failure = await response.json().catch(() => ({}));
+          if (typeof _adoptPublicClosure === 'function') _adoptPublicClosure(failure);
+          throw new Error(failure.message || 'Batch upload was not confirmed');
+        }
         const result = await response.json();
         const expected = new Map(events.map(event => [event.eventId, event]));
         if (result?.success !== true || result.experimentID !== ${JSON.stringify(experimentID)}

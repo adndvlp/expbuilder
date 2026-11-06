@@ -33,7 +33,7 @@ export async function finalizeSession(experimentID, sessionId) {
   const expData = expDoc.data();
   const candidateRef = expDocRef.collection('sessions').doc(sessionId);
   const candidate = await candidateRef.get();
-  if (candidate?.exists && (candidate.data().sessionProtocolVersion === 2 || candidate.data().exportProtocolVersion === 1)) {
+  if (candidate?.exists && (candidate.data().sessionProtocolVersion >= 2 || candidate.data().exportProtocolVersion === 1)) {
     const result = await requestSessionExport(experimentID, sessionId);
     return result;
   }

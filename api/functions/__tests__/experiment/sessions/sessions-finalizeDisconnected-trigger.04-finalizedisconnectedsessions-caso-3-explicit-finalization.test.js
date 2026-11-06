@@ -202,7 +202,7 @@ describe("finalizeDisconnectedSessions — CASO 3 (explicit finalization)", () =
       data: () => ({ storageProvider: "osf", owner: "u1", osfUploadLink: "x" }),
     });
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
-    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValueOnce({
+    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValue({
       exists: false,
     });
 

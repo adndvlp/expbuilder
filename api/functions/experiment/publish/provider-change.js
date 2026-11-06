@@ -1,5 +1,4 @@
 import { db } from "../../app.js";
-import { deleteFolder } from "../sessions/services/folder.js";
 import { getValidToken } from "../../oauth/index.js";
 import fetch from "../../utils/fetch-with-timeout.js";
 import { PROVIDER_ENDPOINTS as endpoints } from "../../utils/provider-endpoints.js";
@@ -190,46 +189,9 @@ export async function handleProviderChange(
     );
     console.log(`[PROVIDER CHANGE] Firestore updated successfully`);
 
-    // E-8: new provider folder is live — delete the old provider's
-    // folder so it doesn't linger as orphaned data. Done AFTER the
-    // new folder is confirmed so we never lose both. Best-effort:
-    // if the old provider's token is gone, skip and warn.
-    let oldFolderIdentifier = null;
-    if (currentProvider === "googledrive") {
-      oldFolderIdentifier = currentData.driveFolderId;
-    } else if (currentProvider === "dropbox") {
-      oldFolderIdentifier = currentData.dropboxFolder;
-    } else if (currentProvider === "osf") {
-      oldFolderIdentifier = currentData.osfComponentId;
-    }
-
-    try {
-      if (oldFolderIdentifier) {
-        const oldTokenResult = await getValidToken(currentProvider, uid);
-        if (oldTokenResult.success) {
-          const delResult = await deleteFolder(
-            currentProvider,
-            oldTokenResult.access_token,
-            oldFolderIdentifier,
-          );
-          console.log(
-            `[PROVIDER CHANGE] Old ${currentProvider} folder cleanup: ${delResult.success ? "ok" : delResult.errorText}`,
-          );
-        } else {
-          console.warn(
-            `[PROVIDER CHANGE] Skipping old folder cleanup — no valid ${currentProvider} token`,
-          );
-        }
-      }
-    } catch (cleanupErr) {
-      console.warn(
-        `[PROVIDER CHANGE] Old folder cleanup failed (non-fatal):`,
-        cleanupErr.message,
-      );
-    }
-
-    // Clear stale provider-specific fields from Firestore even when
-    // best-effort remote cleanup fails.
+    // Existing sessions and immutable publications still own their original
+    // destination. Provider changes must never delete those files/folders.
+    // These fields describe only the current provider; sessions retain a snapshot.
     const clearFields = {};
     if (currentProvider === "googledrive" && newProvider !== "googledrive") {
       clearFields.driveFolderPath = null;

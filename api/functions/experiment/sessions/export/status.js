@@ -1,9 +1,11 @@
+import { refreshLifecycle } from "../lifecycle/state.js";
 import { sessionReference } from './references.js';
 import { db } from '../../../app.js';
 import { exportError, validateExportIdentity } from './contract.js';
 
 export async function readSessionExportStatus(experimentID, sessionId) {
   validateExportIdentity({ experimentID, sessionId });
+  await refreshLifecycle(experimentID, sessionId);
   const ref = sessionReference(experimentID, sessionId), snapshot = await ref.get();
   if (!snapshot.exists) throw exportError('Session not found', { status: 404 });
   const data = snapshot.data();

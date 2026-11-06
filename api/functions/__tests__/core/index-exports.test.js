@@ -1,5 +1,8 @@
 import { jest } from "@jest/globals";
 
+const onSessionConnectionWritten = jest.fn(), enqueueSessionTimeout = jest.fn(), reconcilePendingSessionTimeouts = jest.fn();
+jest.unstable_mockModule('../../experiment/sessions/lifecycle/presence.js', () => ({ onSessionConnectionWritten }));
+jest.unstable_mockModule('../../experiment/sessions/timeout/functions.js', () => ({ enqueueSessionTimeout, reconcilePendingSessionTimeouts }));
 const apiData = jest.fn();
 const apiDataComplete = jest.fn();
 const finalizeDisconnectedSessions = jest.fn();
@@ -87,6 +90,7 @@ describe("functions/index.js", () => {
       apiCondition,
       finalizeDisconnectedSessions,
       processSessionTimeout,
+      onSessionConnectionWritten, enqueueSessionTimeout, reconcilePendingSessionTimeouts,
       enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports,
       dropboxOAuthCallback,
       githubOAuthCallback,
@@ -106,6 +110,7 @@ describe("functions/index.js", () => {
         "apiCondition",
         "finalizeDisconnectedSessions",
         "processSessionTimeout",
+        "onSessionConnectionWritten", "enqueueSessionTimeout", "reconcilePendingSessionTimeouts",
         'enqueueSessionExport', 'processSessionExportTask', 'reconcilePendingSessionExports',
         "dropboxOAuthCallback",
         "githubOAuthCallback",

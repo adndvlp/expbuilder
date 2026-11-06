@@ -25,23 +25,16 @@ export function validateSessionTimeoutTaskPayload(data) {
     throw new Error("INVALID_SESSION_TIMEOUT_TASK_PAYLOAD");
   }
 
-  return { experimentID, sessionId, expiresAt };
+  const extra = data.connectionId ? { connectionId: data.connectionId, connectionGeneration: data.connectionGeneration, ...(data.kind && { kind: data.kind }) } : {};
+  if (data.connectionId && (!/^[\w-]{1,128}$/.test(data.connectionId) || !Number.isSafeInteger(data.connectionGeneration) || data.connectionGeneration < 1)) throw new Error('INVALID_SESSION_TIMEOUT_TASK_PAYLOAD');
+  return { experimentID, sessionId, expiresAt, ...extra };
 }
 
-export async function scheduleSessionTimeoutTask({
-  experimentID,
-  sessionId,
-  expiresAt,
-}) {
-  const payload = validateSessionTimeoutTaskPayload({
-    experimentID,
-    sessionId,
-    expiresAt,
-  });
+export async function scheduleSessionTimeoutTask(data) {
+  const payload = validateSessionTimeoutTaskPayload(data);
   const queue = getFunctions(app).taskQueue(SESSION_TIMEOUT_TASK_QUEUE);
-
   await queue.enqueue(payload, {
-    scheduleTime: new Date(expiresAt),
+    scheduleTime: new Date(Math.max(Date.now(), payload.expiresAt)),
     dispatchDeadlineSeconds: SESSION_TIMEOUT_TASK_DISPATCH_DEADLINE_SECONDS,
   });
 }

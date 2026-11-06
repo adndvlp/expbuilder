@@ -1,3 +1,5 @@
+import { publicRecoveryCode } from "./publicRecoveryCode";
+import { publicPresenceCode } from "./publicPresenceCode";
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
 import {
   activateResumeRouteDecisionCode,
@@ -49,52 +51,43 @@ export function publicBootstrapCode(
   const storageKeys = getPublicRuntimeStorageKeys(experimentID);
   return `
   (async () => {
-    // --- CAPTCHA gate (hCaptcha / reCAPTCHA) ---
-    if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
-      const _loadingEl = document.getElementById('jspsych-loading-overlay');
-      if (_loadingEl) _loadingEl.style.display = 'none';
-      await _showCaptchaGate("${captchaConfig.siteKey}", "${captchaConfig.provider}");
-      sessionStorage.setItem(_publicStorageKeys.captchaPassed, '1');
-      if (_loadingEl) _loadingEl.style.display = 'flex';
-      _setLoadingMsg('Creating session\u2026');
-    }
-
-    
-    // --- Configuración de Batching (cargada desde Firestore) ---
-    const BATCH_CONFIG = {
-      size: ${batchConfig.batchSize},
-      currentBatchNumber: 0,
-      resumeTimeoutMinutes: ${batchConfig.resumeTimeoutMinutes},
-      useIndexedDB: ${batchConfig.useIndexedDB}
-    };
-
-    // Inicializar IndexedDB solo si está habilitado
-    if (BATCH_CONFIG.useIndexedDB) {
-      await TrialDB.init();
-    }
-    
-    // Verificar si hay una sesión pendiente (para retoma)
-    let resumedSession = false;
-    
-    if (BATCH_CONFIG.useIndexedDB) {
-      const existingTrials = await TrialDB.getAll();
-      
-      if (existingTrials.length > 0) {
-        const lastTrial = existingTrials[existingTrials.length - 1];
-        
-        if (lastTrial.sessionId === trialSessionId) {
-          BATCH_CONFIG.currentBatchNumber = Math.floor(existingTrials.length / (BATCH_CONFIG.size || 1));
-          resumedSession = true;
-        } else {
-          await TrialDB.clear();
-        }
-      }
-    }
-    
-    // SIEMPRE llamar a createSession (para crear documento en Firestore)
-    // El backend maneja sesiones duplicadas (409) y las retorna correctamente
     _setLoadingMsg('Creating session…');
-    const _publicSessionState = await createSession();
+    let _publicSessionState = await createSession();
+    if (_publicSessionState.decision === 'revision_mismatch') {
+      if (!_publicSessionState.artifactUrl) throw new Error('The original publication is unavailable. Your pending responses are preserved.');
+      const destination = _publicArtifactLocation(_publicSessionState);
+      destination.search = window.location.search; destination.hash = window.location.hash;
+      window.location.replace(destination.href); return;
+    }
+    if (_publicSessionState.decision && !['resume_allowed', 'session_expired', 'session_completed'].includes(_publicSessionState.decision)) {
+      throw new Error('Session cannot resume: ' + _publicSessionState.decision + '. Your pending responses are preserved.');
+    }
+    const effectiveBatch = _publicSessionState.configuration?.batchConfig || ${JSON.stringify(batchConfig)};
+    const BATCH_CONFIG = { size: effectiveBatch.batchSize, useIndexedDB: effectiveBatch.useIndexedDB,
+      resumeTimeoutMinutes: effectiveBatch.resumeTimeoutMinutes, currentBatchNumber: 0 };
+    // Esperar e inicializar Firebase
+    _setLoadingMsg('Loading resources…');
+    await waitForFirebase();
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(firebaseConfig);
+    }
+    const db = window.firebase.database();
+
+${publicRecoveryCode(options)}
+${publicPresenceCode(options)}
+    if (_publicSessionState.sessionProtocolVersion === 3) await _connectPublicSession();
+
+
+    const effectiveCaptcha = _publicSessionState.configuration?.captchaConfig || ${JSON.stringify(captchaConfig)};
+    if (!['completed', 'expired'].includes(_publicSessionState.lifecycle) && effectiveCaptcha.enabled && effectiveCaptcha.siteKey
+        && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
+      const loading = document.getElementById('jspsych-loading-overlay');
+      if (loading) loading.style.display = 'none';
+      await _showCaptchaGate(effectiveCaptcha.siteKey, effectiveCaptcha.provider);
+      sessionStorage.setItem(_publicStorageKeys.captchaPassed, '1');
+      if (loading) loading.style.display = 'flex';
+    }
+    if (BATCH_CONFIG.useIndexedDB) await TrialDB.init();
     participantNumber = _publicSessionState.participantNumber;
     if (typeof participantNumber !== 'number' || !Number.isFinite(participantNumber)) {
       throw new Error('participantNumber not assigned');
@@ -133,40 +126,6 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
       throw new Error("participantNumber not assigned");
     }
     
-    // Esperar e inicializar Firebase
-    _setLoadingMsg('Loading resources…');
-    await waitForFirebase();
-    if (!window.firebase.apps.length) {
-      window.firebase.initializeApp(firebaseConfig);
-    }
-    const db = window.firebase.database();
-
-    // --- Configurar onDisconnect para finalizar sesión automáticamente ---
-    const sessionRef = db.ref('sessions/${experimentID}/' + trialSessionId);
-    if (!['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
-    await sessionRef.set({
-      connected: true,
-      experimentID: '${experimentID}',
-      sessionId: trialSessionId,
-      participantNumber: participantNumber,
-      startedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${useStorage}',
-      storageProvider: '${useStorage}',
-      state: resumedSession ? 'resumed' : 'initiated',
-      lastUpdate: window.firebase.database.ServerValue.TIMESTAMP,
-      metadata: metadata,
-      resumeTimeoutMinutes: BATCH_CONFIG.resumeTimeoutMinutes,
-      useIndexedDB: BATCH_CONFIG.useIndexedDB
-    });
-    
-    sessionRef.onDisconnect().update({
-      connected: false,
-      state: 'disconnected',
-      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${useStorage}'
-    });
-    }
-
     ${evaluateCondition}
 ${activateResumeRouteDecisionCode()}
 

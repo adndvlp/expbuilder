@@ -5,6 +5,7 @@ export type PublicRuntimeStorageKeys = NavigationStorageKeys & {
   participant: string;
   captchaPassed: string;
   trialDatabase: string;
+  recoverySessions: string;
 };
 
 export function getPublicRuntimeStorageKeys(
@@ -17,6 +18,7 @@ export function getPublicRuntimeStorageKeys(
     participant: `${namespace}participant-number`,
     captchaPassed: `${namespace}captcha-passed`,
     resumeTrial: `${namespace}resume-trial`,
+    recoverySessions: `${namespace}recovery-sessions`,
     trialDatabase: `${namespace}trials-v1`,
   };
 }

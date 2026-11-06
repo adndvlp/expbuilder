@@ -72,7 +72,7 @@ export function publicInitCode(options: PublicExperimentCodeOptions): string {
           data.experimentID = "${experimentID}";
           const checkpoint = data.builder_id !== undefined && data.builder_id !== null
             ? _createResumeCheckpoint(data) : null;
-          if (data.trial_index === 0) {
+          if (data.trial_index === 0 && _publicSessionState.sessionProtocolVersion !== 3) {
             sessionRef.update({ state: 'in-progress', lastUpdate: window.firebase.database.ServerValue.TIMESTAMP })
               .catch(error => console.error('Error updating state:', error));
           }

@@ -51,7 +51,7 @@ describe("public session persistence code", () => {
     const secondKeys = getPublicRuntimeStorageKeys("experiment-b");
     const secondValues = new Set(Object.values(secondKeys));
 
-    expect(Object.values(firstKeys)).toHaveLength(5);
+    expect(Object.values(firstKeys)).toHaveLength(6);
     expect(
       Object.values(firstKeys).every((key) =>
         key.startsWith("expbuilder:public:experiment-a:"),

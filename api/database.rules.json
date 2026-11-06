@@ -4,10 +4,25 @@
       "$experimentID": {
         "$sessionId": {
           ".read": false,
-          ".write": "!data.child('finished').exists() || data.child('finished').val() == false",
+          ".write": "!root.child('session_connection_leases').child($experimentID).child($sessionId).exists() && (!data.child('finished').exists() || data.child('finished').val() == false)",
           ".validate": "newData.hasChildren(['connected', 'experimentID', 'sessionId'])"
         }
       }
+    },
+    "session_connections": {
+      "$experimentID": {
+        "$sessionId": {
+          "$connectionId": {
+            ".read": false,
+            ".write": "newData.exists() && root.child('session_connection_leases').child($experimentID).child($sessionId).child($connectionId).child('active').val() == true && root.child('session_connection_leases').child($experimentID).child($sessionId).child($connectionId).child('generation').val() == newData.child('generation').val() && root.child('session_connection_leases').child($experimentID).child($sessionId).child($connectionId).child('token').val() == newData.child('token').val() && (!data.exists() || newData.child('generation').val() > data.child('generation').val() || (newData.child('generation').val() == data.child('generation').val() && data.child('connected').val() == true && newData.child('connected').val() == false))",
+            ".validate": "newData.hasChildren(['connected', 'generation', 'token', 'changedAt']) && newData.child('connected').isBoolean() && newData.child('generation').isNumber() && newData.child('token').isString() && newData.child('changedAt').val() == now"
+          }
+        }
+      }
+    },
+    "session_connection_leases": {
+      ".read": false,
+      ".write": false
     }
   }
 }

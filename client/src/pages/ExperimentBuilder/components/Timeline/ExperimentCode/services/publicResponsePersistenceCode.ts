@@ -9,7 +9,7 @@ export function publicResponsePersistenceCode(): string {
     let publicExportRetryRequested = false;
     let publicFinishInFlight = null;
     let publicFinished = false;
-    const publicRecoveryMode = ['completed', 'expired'].includes(_publicSessionState.lifecycle);
+    let publicRecoveryMode = ['completed', 'expired'].includes(_publicSessionState.lifecycle);
     const publicManifest = new Map((_publicSessionState.receivedEvents || []).map(event => [event.sequence, event]));
     let publicDirectSequence = Math.max(-1, ...publicManifest.keys()) + 1;
     const publicPersistenceReady = BATCH_CONFIG.useIndexedDB
@@ -30,7 +30,11 @@ export function publicResponsePersistenceCode(): string {
       console.error('Error saving trial data:', error);
       window.ExpBuilderRuntime?.reportError(error, { source: 'public-persistence' });
       _setLoadingMsg('Data could not be confirmed. Keep this page open and retry saving.');
-      if (document.getElementById('expbuilder-retry-save')) return;
+      const existingPanel = document.getElementById('expbuilder-retry-save');
+      if (existingPanel) {
+        if (typeof _showPublicExpiredNotice === 'function') _showPublicExpiredNotice();
+        return;
+      }
       const panel = document.createElement('div');
       panel.id = 'expbuilder-retry-save';
       panel.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;z-index:2147483647;padding:16px;background:white;color:#222;box-shadow:0 2px 12px #888;font-family:sans-serif';
@@ -39,13 +43,16 @@ export function publicResponsePersistenceCode(): string {
       button.onclick = async () => {
         button.disabled = true;
         try {
+          if (typeof _publicConnected !== 'undefined' && !_publicConnected && !publicClosing) await _retryPublicPresence();
           await _drainPublicResponses();
           if (publicClosing) { publicExportRetryRequested = true; await publicFinishHandler(); }
           else { panel.remove(); _resumePublicAfterBackup(); }
         } catch (failure) { console.error('Retry failed:', failure); }
         finally { button.disabled = false; }
       };
-      panel.append(button); document.body.append(panel);
+      panel.append(button);
+      if (typeof _showPublicExpiredNotice === 'function') _showPublicExpiredNotice();
+      document.body.append(panel);
     }
     function _drainPublicResponses() {
       const operation = publicResponseTail.then(async () => {
@@ -67,8 +74,9 @@ export function publicResponsePersistenceCode(): string {
             sequence: envelope.sequence, payloadHash: envelope.payloadHash });
           item.persisted = true;
           _mirrorPublicCheckpoint(item.record.checkpoint);
-          window.ExpBuilderNavigation.onTrialPersisted(item.data);
+          if (!publicRecoveryMode) window.ExpBuilderNavigation.onTrialPersisted(item.data);
           item.data = null; item.record = null;
+          if (typeof _showPublicExpiredNotice === 'function') _showPublicExpiredNotice();
         }
       });
       publicResponseTail = operation.catch(() => {});

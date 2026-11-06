@@ -1,3 +1,4 @@
+import { db } from "../../../app.js";
 import { onValueWritten } from "firebase-functions/v2/database";
 import { finalizeSession } from "./finalize.js";
 import { scheduleResumeExpiration } from "./resume-expiration.js";
@@ -32,127 +33,29 @@ export const finalizeDisconnectedSessions = onValueWritten(
 
     const experimentID = event.params.experimentID;
     const sessionId = event.params.sessionId;
+    const durable = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
+    if (durable?.data?.()?.sessionProtocolVersion === 3) return null;
     const wasConnected = beforeData?.connected === true;
     const isNowDisconnected = afterData.connected === false;
     const wasDisconnected = beforeData?.connected === false;
     const isNowConnected = afterData.connected === true;
-    const useIndexedDB = afterData.useIndexedDB !== false; // Por defecto true
 
-    // RECONEXIÓN: si la sesión vuelve a conectarse, cancelar el timeout pendiente
-    // y marcar el estado como "resumed". Solo aplica donde existe un timeout
-    // pendiente que cancelar:
-    //   - CASO 1 (!useIndexedDB): solo OSF; Drive/Dropbox patchearon al instante
-    //   - CASO 2 (useIndexedDB): cualquier provider
+    // Compatibility for older publications: both modes use the same timeout.
     if (wasDisconnected && isNowConnected) {
-      const storageProvider = afterData.storageProvider || "googledrive";
-      if (useIndexedDB || storageProvider === "osf") {
-        console.log(`Session ${sessionId} reconnected. Invalidating timeout.`);
-        await event.data.after.ref.update({
-          state: "resumed",
-          resumedAt: Date.now(),
-          resumeExpiresAt: null,
-          resumeTimeoutStarted: null,
-          resumeTimeoutTaskStatus: "cancelled",
-          resumeTimeoutCancelledAt: Date.now(),
-        });
-        return null;
-      }
+      await event.data.after.ref.update({ state: 'resumed', resumedAt: Date.now(), resumeExpiresAt: null,
+        resumeTimeoutStarted: null, resumeTimeoutTaskStatus: 'cancelled', resumeTimeoutCancelledAt: Date.now() });
+      return null;
     }
-
-    // CASO 1: Sesión SIN IndexedDB - manejar según storage provider (SIEMPRE con retoma)
-    if (isNowDisconnected && wasConnected && !useIndexedDB) {
+    if (isNowDisconnected && wasConnected && afterData.needsFinalization !== true) {
       const state = afterData.state;
-      const storageProvider = afterData.storageProvider || "googledrive";
-
-      // Si se desconectó pero NO finalizó
-      if (state === "disconnected" && !afterData.finished) {
-        console.log(
-          `Session ${sessionId} disconnected without IndexedDB. Provider: ${storageProvider}`,
-        );
-
-        if (storageProvider === "osf") {
-          // OSF: Iniciar contador de timeout
-          console.log(
-            `OSF provider: Starting timeout for session ${sessionId}...`,
-          );
-
-          const timeoutMinutes = afterData.resumeTimeoutMinutes || 30;
-          const timeoutMs = timeoutMinutes * 60 * 1000;
-          const expiresAt = Date.now() + timeoutMs;
-
-          await scheduleResumeExpiration({
-            ref: event.data.after.ref,
-            experimentID,
-            sessionId,
-            expiresAt,
-          });
-        } else {
-          // Drive/Dropbox: PATCH inmediato al desconectar
-          console.log(
-            `${storageProvider} provider: Sending PATCH immediately for session ${sessionId}...`,
-          );
-
-          try {
-            // Enviar lo acumulado hasta ahora (PATCH o CREATE si no existe)
-            // finalizeSession ya limpia Firestore automáticamente
-            const requested = await finalizeSession(experimentID, sessionId);
-            if (requested.pending) {
-              await event.data.after.ref.update({ exportStatus: requested.exportStatus, exportRevision: requested.revision, finalizationProcessed: false });
-              return null;
-            }
-
-            await event.data.after.ref.update({
-              state: "partially_saved",
-              lastPatchAt: Date.now(),
-              finalizationProcessed: false, // Permitir otro envío si retoma
-            });
-
-            console.log(
-              `Session ${sessionId} data sent to ${storageProvider} and Firestore cleaned`,
-            );
-          } catch (err) {
-            console.error(`Error sending PATCH for ${sessionId}:`, err);
-
-            // Marcar error pero no bloquear retoma
-            await event.data.after.ref.update({
-              lastPatchError: err.message,
-              lastPatchErrorAt: Date.now(),
-            });
-          }
-        }
-
+      if (state === 'disconnected' && !afterData.finished) {
+        const minutes = durable?.data?.()?.configuration?.batchConfig?.resumeTimeoutMinutes ?? afterData.resumeTimeoutMinutes ?? 30;
+        const disconnectedAt = Number.isFinite(afterData.disconnectedAt) ? afterData.disconnectedAt : Date.now();
+        await scheduleResumeExpiration({ ref: event.data.after.ref, experimentID, sessionId, expiresAt: disconnectedAt + minutes * 60000 });
         return null;
       }
-    }
-
-    // CASO 2: Sesión CON IndexedDB - manejar timeout (SIEMPRE con retoma)
-    if (isNowDisconnected && wasConnected && useIndexedDB && afterData.needsFinalization !== true) {
-      const state = afterData.state;
-
-      // Si se desconectó pero NO finalizó, iniciar contador de timeout
-      if (state === "disconnected" && !afterData.finished) {
-        console.log(
-          `Session ${sessionId} disconnected with resume enabled (IndexedDB). Starting timeout...`,
-        );
-
-        // Calcular tiempo de expiración
-        const timeoutMinutes = afterData.resumeTimeoutMinutes || 30;
-        const timeoutMs = timeoutMinutes * 60 * 1000;
-        const expiresAt = Date.now() + timeoutMs;
-
-        // Actualizar con tiempo de expiración
-        await scheduleResumeExpiration({
-          ref: event.data.after.ref,
-          experimentID,
-          sessionId,
-          expiresAt,
-        });
-
-        return null;
-      }
-
       // Si la sesión ya está completada o abandonada (IndexedDB/Drive guardó los datos directamente)
-      if (state === "completed" || state === "abandoned") {
+      if ((state === "completed" || state === "abandoned") && afterData.useIndexedDB !== false) {
         const fileUrl = await lookupSessionFileUrl(experimentID, sessionId);
         await saveIndexedDbSessionMetadata({
           experimentID,

@@ -2,8 +2,7 @@
  * Tests for sessions/index.js::finalizeDisconnectedSessions (RTDB trigger).
  *
  * Three CASOs in the trigger:
- *   - CASO 1: !useIndexedDB → server is source of truth, immediate PATCH for
- *     Drive/Dropbox; OSF schedules timeout (T-7 unresolved).
+ *   - CASO 1: both IndexedDB modes and every provider schedule the same timeout.
  *   - CASO 2: useIndexedDB=true → schedule timeout cleanup; on completed/abandoned
  *     lookup fileUrl and write session_metadata.
  *   - CASO 3: needsFinalization=true → call finalizeSession and mark RTDB processed.
@@ -171,7 +170,7 @@ describe("finalizeDisconnectedSessions — CASO 1 (server source of truth)", () 
     expect(mockWriteLog).not.toHaveBeenCalled();
   });
 
-  test("Drive disconnect → finalizeSession runs immediately, throws EXPERIMENT_NOT_FOUND, ref logs lastPatchError", async () => {
+  test("Drive disconnect → starts the same durable timeout as OSF", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({ exists: false });
 
     const ev = makeEvent({
@@ -187,12 +186,9 @@ describe("finalizeDisconnectedSessions — CASO 1 (server source of truth)", () 
 
     await finalizeDisconnectedSessions(ev);
 
-    expect(mockWriteLog).toHaveBeenCalledWith("EID", "finishSession");
-    // Error branch: lastPatchError + lastPatchErrorAt
-    expect(ev.data.after.ref.update).toHaveBeenCalledTimes(1);
-    const arg = ev.data.after.ref.update.mock.calls[0][0];
-    expect(arg.lastPatchError).toBe("EXPERIMENT_NOT_FOUND");
-    expect(arg).toHaveProperty("lastPatchErrorAt");
+    expect(mockWriteLog).not.toHaveBeenCalled();
+    expect(mockTaskEnqueue).toHaveBeenCalledTimes(1);
+    expect(ev.data.after.ref.update).toHaveBeenCalledWith(expect.objectContaining({ resumeTimeoutTaskStatus: 'pending' }));
   });
 
   test("OSF reconnect (!useIndexedDB) → writes state=resumed and clears timeout fields", async () => {
@@ -217,7 +213,7 @@ describe("finalizeDisconnectedSessions — CASO 1 (server source of truth)", () 
     expect(arg).toHaveProperty("resumedAt");
   });
 
-  test("Drive/Dropbox reconnect (!useIndexedDB) → no-op (no timeout to cancel; patch was immediate)", async () => {
+  test("Drive/Dropbox reconnect without IndexedDB cancels the timeout", async () => {
     const ev = makeEvent({
       before: { connected: false },
       after: {
@@ -228,6 +224,6 @@ describe("finalizeDisconnectedSessions — CASO 1 (server source of truth)", () 
     });
     const r = await finalizeDisconnectedSessions(ev);
     expect(r).toBeNull();
-    expect(ev.data.after.ref.update).not.toHaveBeenCalled();
+    expect(ev.data.after.ref.update).toHaveBeenCalledWith(expect.objectContaining({ resumeExpiresAt: null, resumeTimeoutTaskStatus: "cancelled" }));
   });
 });

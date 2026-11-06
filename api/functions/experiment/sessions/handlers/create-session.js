@@ -28,6 +28,9 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
     }
     const closed = existing?.exists && ['completed', 'expired'].includes(existing.data().lifecycle);
     if (!initial.data().active && !closed) { res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE); return; }
+    if (existing?.data?.()?.sessionProtocolVersion === 3) {
+      res.status(409).json({ success: false, message: 'This session requires the current publication and connection handshake' }); return;
+    }
     if (existing?.exists) {
       res.status(200).json(await registrationResponse(session, existing.data(), experimentID, sessionId));
       return;
