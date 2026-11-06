@@ -1,4 +1,4 @@
-import { bearerToken, parseForm, parseJson, parseMultipart, readBody, send, sendJson } from "../http-utils.mjs";
+import { bearerToken, parseForm, parseJson, parseMultipart, sendJson } from "../http-utils.mjs";
 import { nextId, store } from "../store.mjs";
 
 export async function handleGoogleDrive(req, res, url, body, contentType) {
@@ -38,13 +38,16 @@ export async function handleGoogleDrive(req, res, url, body, contentType) {
     return;
   }
 
+  if (pathname === '/drive/v3/files/generateIds' && req.method === 'GET') {
+    sendJson(res, 200, { ids: [nextId('reserved')] }); return;
+  }
   if (pathname === "/drive/v3/files" && req.method === "GET") {
     const q = url.searchParams.get("q") ?? "";
     const files = [...store.drive.files.values()].filter((file) => {
       if (!q) return true;
       if (q.includes("name=")) {
         const wanted = q.match(/name\s*=\s*'([^']+)'/)?.[1];
-        if (wanted) return file.name.includes(wanted);
+        if (wanted) return file.name === wanted && (!q.includes('in parents') || q.includes("'" + file.parents?.[0] + "' in parents"));
       }
       return true;
     });
@@ -76,11 +79,14 @@ export async function handleGoogleDrive(req, res, url, body, contentType) {
     const metadata = metadataPart ? parseJson(metadataPart.content) : null;
     const name = metadata?.name ?? mediaPart?.filename ?? "uploaded.csv";
     const file = {
-      id: nextId("file"),
+      id: metadata?.id || nextId("file"),
+      parents: metadata?.parents || [],
+      version: 1,
       name,
       mimeType: metadata?.mimeType ?? "application/octet-stream",
       webViewLink: "https://drive.google.com/file/d/mock/view",
     };
+    if (store.drive.files.has(file.id)) { sendJson(res, 409, { error: { message: 'ID already exists' } }); return; }
     store.drive.files.set(file.id, {
       ...file,
       content: mediaPart ? Buffer.from(mediaPart.content) : Buffer.alloc(0),
@@ -89,7 +95,7 @@ export async function handleGoogleDrive(req, res, url, body, contentType) {
     return;
   }
 
-  const mediaMatch = pathname.match(/^\/upload\/drive\/v3\/files\/([^/]+)\?uploadType=media$/);
+  const mediaMatch = pathname.match(/^\/upload\/drive\/v3\/files\/([^/]+)$/);
   if (mediaMatch && req.method === "PATCH") {
     const fileId = mediaMatch[1];
     const existing = store.drive.files.get(fileId);
@@ -97,7 +103,8 @@ export async function handleGoogleDrive(req, res, url, body, contentType) {
       sendJson(res, 404, { error: { code: 404, message: "File not found" } });
       return;
     }
-    existing.content = body;
+    if (req.headers['if-match'] && req.headers['if-match'] !== '"' + existing.version + '"') { sendJson(res, 412, {}); return; }
+    existing.content = body; existing.version++;
     sendJson(res, 200, existing);
     return;
   }
@@ -120,6 +127,7 @@ export async function handleGoogleDrive(req, res, url, body, contentType) {
         sendJson(res, 404, { error: { code: 404, message: "File not found" } });
         return;
       }
+      res.setHeader('ETag', '"' + (existing.version || 1) + '"');
       sendJson(res, 200, existing);
       return;
     }

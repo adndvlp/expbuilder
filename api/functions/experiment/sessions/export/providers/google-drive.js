@@ -8,6 +8,13 @@ export function googleDriveExportAdapter(destination, token) {
   const fileUrl = id => `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`;
   const escape = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   return {
+    async inspect() {
+      const query = new URLSearchParams({ q: `name='${escape(destination.name)}' and '${escape(destination.folder)}' in parents and trashed=false`, fields: 'files(id),nextPageToken' });
+      const found = await (await checkedFetch(`${root}/drive/v3/files?${query}`, { method: 'GET', headers: headers(token) })).json();
+      requireResource(Array.isArray(found.files) && !found.nextPageToken && found.files.length <= 1, 'Ambiguous or incomplete Drive lookup');
+      if (!found.files.length) return { exists: false };
+      return this.read({ provider: 'googledrive', id: found.files[0].id, folder: destination.folder, name: destination.name, fileUrl: fileUrl(found.files[0].id) });
+    },
     conditional: false,
     // Reserved IDs make repeated creates safe. Do not infer a guaranteed v3
     // media-update CAS from an ETag alone; reconcile uncertain updates by read.

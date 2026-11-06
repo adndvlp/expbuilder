@@ -1,0 +1,71 @@
+name: Public session persistence
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'client/src/pages/ExperimentBuilder/**'
+      - 'client/package*.json'
+      - 'server/jspsych-bundler/**'
+      - 'scripts/*persistence*'
+      - 'package*.json'
+      - '.github/workflows/public-persistence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-persistence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  functions:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: api/functions/package-lock.json
+      - run: npm ci --prefix api/functions
+      - run: npm test --prefix api/functions -- --runInBand
+
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            api/functions/package-lock.json
+            server/jspsych-bundler/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/firebase/emulators
+            ${{ runner.temp }}/firebase-sdk-9.23.0
+          key: persistence-emulators-firebase-sdk-9.23.0-${{ runner.os }}
+      - run: npm ci
+      - run: npm ci --prefix client
+      - run: npm ci --prefix api/functions
+      - run: npm ci --prefix server/jspsych-bundler
+      - run: npm run build --prefix server/jspsych-bundler
+      - run: npx --prefix client playwright install --with-deps chromium
+      - run: npm run test:e2e:persistence

@@ -1,6 +1,6 @@
 # SDD: persistencia y recuperación de sesiones públicas
 
-Estado: puntos 1–4 implementados y verificados localmente mediante TDD. Punto 5 pendiente. Evidencia y límites en las secciones 16–19.
+Estado: puntos 1–5 implementados y verificados localmente mediante TDD. El despliegue, la republicación y la recuperación de datos reales no se han ejecutado. Evidencia y límites en las secciones 16–20.
 
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
@@ -565,3 +565,22 @@ Además, el navegador ejecuta el HTML generado con jsPsych real: una respuesta c
 - Se inspeccionaron los metadatos generados por el SDK instalado para las funciones nuevas y se alineó el manifiesto. Las pruebas de reglas evalúan sus expresiones con snapshots simulados; no sustituyen una prueba contra el emulador de RTDB.
 
 La ejecución local usa Node 26; Functions declara Node 20. La matriz completa con emuladores, los adaptadores externos, el despliegue/publicación coordinados y la herramienta para datos históricos siguen en el punto 5. Un HTML antiguo o una sesión anterior sin artefacto compatible no adquieren estas garantías al actualizar solo el backend: se conservan sus datos y se requiere la transición correspondiente. No se afirmó que la sesión de la captura se haya exportado ni reparado.
+
+
+## 20. Entrega del punto 5: integración y transición
+
+Implementado y verificado localmente mediante TDD. La ejecución se detiene al completar este punto. No se desplegó, republicó ni recuperó información de producción.
+
+Se añadió `npm run test:e2e:persistence`: siete contratos HTTP y una matriz de 51 casos contra Firestore/RTDB reales en emuladores, con handlers, transacciones, reglas, navegación jsPsych y exportador reales. Los proveedores externos y la entrega de Cloud Tasks se controlan localmente. El proyecto siempre es `demo-public-persistence`, los puertos son temporales y no se importan datos existentes. Los SDK Firebase 9.23.0 publicados se descargan desde la fuente oficial y se verifican por SHA-256; pueden suministrarse desde una caché local.
+
+La matriz contiene 18 combinaciones normales de proveedor/modo/lote, 30 escenarios de retoma, expiración, recuperación, republicación, fallos y concurrencia, y tres recuperaciones históricas de 151 eventos. Comprueba el CSV descargado, identidades, secuencias, cantidades y payloads pendientes. Incluye lote cero con 105 eventos y fragmentos acotados.
+
+La herramienta `api/functions/experiment/sessions/recovery/cli.js` inspecciona por defecto sin escribir en Firebase/proveedor ni renovar credenciales. Crea un plan privado y exige proyecto/plan explícitos para aplicar. Verifica fuentes y digest, conserva originales, usa IDs por procedencia y un journal reanudable, mantiene participante/condición/contadores y solicita el exportador común. Archivos sin recibos verificables, batches corruptos, identidad desconocida, payloads ausentes o recibos ya existentes requieren conciliación; no se inventan datos ni se deduplican respuestas por contenido. La eliminación explícita incluye backups y journals.
+
+Los contratos detectaron y corrigieron un fallo adicional de Dropbox: una ruta ocupada por otro ID deja de aceptarse como el archivo original. Se actualizaron los simuladores para IDs reservados, revisiones estrictas y URLs OSF absolutas. Se preparó el workflow `public-persistence.yml`, con unidades en Node 20/22 y la matriz en Node 22/JDK 21; no se ha ejecutado en GitHub durante esta tarea.
+
+Verificación final: 133 suites y 673 tests de la API aprobados; 13 archivos y 59 tests seleccionados del cliente aprobados; siete suites y 27 regresiones del servidor local aprobadas; cuatro tests existentes de simuladores aprobados; siete contratos HTTP y los 51 casos de integración aprobados, sin omisiones. La ejecución integral usa la versión publicada de Firebase 9.23.0. Lint de los archivos modificados, sintaxis, YAML del workflow, límite de líneas del cliente y `git diff --check` aprobados.
+
+Los intentos previos se interrumpieron por ENOSPC. Después de que el usuario liberara espacio, la ejecución integral terminó con código 0 y cerró sus emuladores. No queda pendiente esa revisión.
+
+El [plan de publicación y recuperación](public-session-release-plan.md) contiene la trazabilidad AC01–AC28, los comandos de inspección/aplicación, los límites y el orden de despliegue coordinado. Los proveedores simulados y la entrega local de tareas no certifican credenciales, IAM ni configuración de colas de producción. El workflow queda preparado para ejecutarse en GitHub. La sesión de la captura permanece sin intervención.

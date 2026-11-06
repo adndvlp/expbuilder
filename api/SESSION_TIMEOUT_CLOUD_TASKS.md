@@ -1,8 +1,12 @@
 # Public session timeout and export queues
 
-Implementation status: persistence SDD points 1–4 are verified locally. The
-coordinated deployment, emulator/provider matrix and historical-data transition
-belong to point 5. No production deployment or recovery was performed.
+Implementation status: persistence SDD points 1–5 are verified locally. Seven
+provider HTTP contracts and all 51 browser/emulator cases passed using the
+published Firebase 9.23.0 SDK. Provider services and Cloud Tasks delivery are
+controlled locally; production IAM, scheduler and queue configuration still
+require deployment verification. The [coordinated release and historical recovery
+plan](../docs/public-session-release-plan.md) includes the prepared recovery tool.
+No production deployment, republication or recovery was performed.
 
 ## Protocol 3 lifecycle
 

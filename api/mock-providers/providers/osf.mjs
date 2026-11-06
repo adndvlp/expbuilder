@@ -1,4 +1,4 @@
-import { bearerToken, parseForm, parseJson, parseMultipart, readBody, send, sendJson } from "../http-utils.mjs";
+import { bearerToken, parseForm, parseJson, parseMultipart, sendJson } from "../http-utils.mjs";
 import { nextId, store } from "../store.mjs";
 
 function nodeJson(node, withRelationships = true) {
@@ -24,7 +24,7 @@ function listJson(items) {
   };
 }
 
-function fileJson(nodeId, file) {
+function fileJson(nodeId, file, origin = '') {
   return {
     data: {
       id: file.id,
@@ -37,13 +37,13 @@ function fileJson(nodeId, file) {
         provider: "osfstorage",
         date_created: file.createdAt,
         date_modified: file.createdAt,
-        current_version: 1,
+        current_version: file.version || 1,
       },
       links: {
-        download: `/v2/files/${file.id}/`,
-        upload: `/v2/nodes/${nodeId}/files/osfstorage/`,
-        info: `/v2/files/${file.id}/`,
-        delete: `/v2/files/${file.id}/`,
+        download: `${origin}/v2/files/${file.id}/`,
+        upload: `${origin}/v2/files/${file.id}/`,
+        info: `${origin}/v2/files/${file.id}/`,
+        delete: `${origin}/v2/files/${file.id}/`,
       },
     },
   };
@@ -192,23 +192,36 @@ export async function handleOsf(req, res, url, body, contentType) {
     const name = url.searchParams.get("name") ?? filePart?.filename ?? "upload.csv";
     const file = {
       id: nextId("file"),
+      nodeId,
       name,
       content: filePart ? Buffer.from(filePart.content) : Buffer.alloc(0),
       createdAt: new Date().toISOString(),
     };
     store.osf.files.set(file.id, file);
-    sendJson(res, 201, fileJson(nodeId, file));
+    sendJson(res, 201, fileJson(nodeId, file, url.origin));
     return;
   }
 
+  if (storageMatch && req.method === 'PUT') {
+    const nodeId = storageMatch[1], name = url.searchParams.get('name');
+    const existing = [...store.osf.files.values()].find(file => file.nodeId === nodeId && file.name === name);
+    const file = { id: existing?.id || nextId('file'), nodeId, name, content: Buffer.from(body), createdAt: new Date().toISOString(), version: (existing?.version || 0) + 1 };
+    store.osf.files.set(file.id, file); sendJson(res, 201, fileJson(nodeId, file, url.origin)); return;
+  }
   if (storageMatch && req.method === "GET") {
     const nodeId = storageMatch[1];
-    const files = [...store.osf.files.values()];
-    sendJson(res, 200, listJson(files.map((f) => fileJson(nodeId, f))));
+    const files = [...store.osf.files.values()].filter(file => !file.nodeId || file.nodeId === nodeId);
+    sendJson(res, 200, listJson(files.map((f) => fileJson(nodeId, f, url.origin))));
     return;
   }
 
   const fileMatch = pathname.match(/^\/v2\/files\/([^/]+)\/?$/);
+  if (fileMatch && req.method === 'PUT') {
+    const file = store.osf.files.get(fileMatch[1]);
+    if (!file) { sendJson(res, 404, {}); return; }
+    file.content = Buffer.from(body); file.version = (file.version || 1) + 1;
+    sendJson(res, 200, fileJson(file.nodeId, file, url.origin)); return;
+  }
   if (fileMatch && req.method === "GET") {
     const file = store.osf.files.get(fileMatch[1]);
     if (!file) {

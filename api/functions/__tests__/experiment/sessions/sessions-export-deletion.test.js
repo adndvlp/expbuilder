@@ -19,6 +19,8 @@ beforeEach(() => {
   store.records.set(base + '/trials/A', { response: 'A' });
   store.records.set(base + '/export_jobs/1', { status: 'pending', dispatchDue: true });
   store.records.set(base + '/export_jobs/1/chunks/0', { data: 'snapshot' });
+  store.records.set(base + '/recovery_sources/original', { data: 'original backup' });
+  store.records.set(base + '/recovery_plans/plan', { status: 'export_requested' });
 });
 test.each([2, 3])('deleting a protocol %s session stops its jobs and removes new child resources', async version => {
   store.records.set(base, { ...store.records.get(base), sessionProtocolVersion: version });

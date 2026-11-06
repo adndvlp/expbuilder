@@ -178,7 +178,7 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
   });
   await paginatedDelete(experimentRef.collection("sessions"), {
     deleteSubcollections: experimentData.sessionExportProtocolVersion === 1
-      ? ['trials', 'event_receipts', { name: 'export_jobs', children: ['chunks'] }] : ['trials'],
+      ? ['trials', 'event_receipts', 'recovery_sources', 'recovery_plans', { name: 'export_jobs', children: ['chunks'] }] : ['trials'],
   });
 
   if (experimentData.sessionExportProtocolVersion === 1 || experimentData.activePublicationId) await paginatedDelete(experimentRef.collection('publications'));

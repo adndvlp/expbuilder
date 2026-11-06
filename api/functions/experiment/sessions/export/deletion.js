@@ -38,6 +38,7 @@ export async function purgeSessionExportData(ref) {
   const [, experimentID, , sessionId] = ref.path.split('/');
   await getDatabase(app).ref(`session_connection_leases/${experimentID}/${sessionId}`).remove();
   await getDatabase(app).ref(`session_connections/${experimentID}/${sessionId}`).remove();
+  await drain(ref.collection('recovery_sources')); await drain(ref.collection('recovery_plans'));
   await drain(ref.collection('event_receipts')); await drain(ref.collection('trials')); await ref.delete();
 }
 export async function prepareExperimentExportDeletion(experimentRef) {

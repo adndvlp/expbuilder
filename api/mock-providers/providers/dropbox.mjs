@@ -1,4 +1,4 @@
-import { bearerToken, parseForm, parseJson, readBody, send, sendJson } from "../http-utils.mjs";
+import { bearerToken, parseForm, parseJson, sendJson } from "../http-utils.mjs";
 import { nextId, store } from "../store.mjs";
 
 function entryMeta(pathValue, kind, id, extra = {}) {
@@ -78,8 +78,14 @@ export async function handleDropbox(req, res, url, body) {
 
   if (pathname === "/2/files/upload" && req.method === "POST") {
     const pathValue = normalizePath(apiArg?.path ?? "/upload.csv");
-    const id = `id:${nextId("file")}`;
+    const previous = store.dropbox.entries.get(pathValue);
+    if ((apiArg?.mode === 'add' && previous && apiArg?.strict_conflict)
+        || (apiArg?.mode?.['.tag'] === 'update' && (!previous || previous.rev !== apiArg.mode.update))) {
+      sendJson(res, 409, { error_summary: 'path/conflict/file/' }); return;
+    }
+    const id = previous?.id || `id:${nextId("file")}`;
     const metadata = entryMeta(pathValue, "file", id, {
+      rev: nextId('rev'),
       size: body.length,
       server_modified: new Date().toISOString(),
     });
@@ -98,7 +104,7 @@ export async function handleDropbox(req, res, url, body) {
     }
     res.writeHead(200, {
       "Content-Type": "application/octet-stream",
-      "Dropbox-Api-Result": JSON.stringify({ name: pathValue.split("/").pop() }),
+      "Dropbox-Api-Result": JSON.stringify(store.dropbox.entries.get(pathValue)),
     });
     res.end(content);
     return;

@@ -5,6 +5,7 @@ import { exportError } from '../contract.js';
 export function dropboxExportAdapter(destination, token) {
   const root = PROVIDER_ENDPOINTS.dropbox.contentBase;
   return {
+    async inspect() { return this.read(await this.reserve()); },
     conditional: true,
     async reserve() {
       const path = '/' + `${destination.folder}/${destination.name}`.replace(/^\/+/, '').replace(/\/+/g, '/');
@@ -22,6 +23,7 @@ export function dropboxExportAdapter(destination, token) {
       let metadata;
       try { metadata = JSON.parse(response.headers.get('dropbox-api-result')); } catch { /* Validated below. */ }
       requireResource(metadata?.id && metadata?.rev, 'Dropbox download lacks a revision receipt');
+      requireResource(!resource.id || resource.id === resource.path || resource.id === metadata.id, 'Dropbox path now points to a different file');
       return { exists: true, csv: await response.text(), resource: { ...resource, id: metadata.id, revision: metadata.rev }, version: metadata.rev };
     },
     async write(resource, csv, base) {
@@ -32,6 +34,7 @@ export function dropboxExportAdapter(destination, token) {
         }) }), body: csv,
       });
       const metadata = await response.json(); requireResource(metadata.id && metadata.rev, 'Dropbox upload lacks a revision receipt');
+      if (base.exists) requireResource(metadata.id === base.resource.id, 'Dropbox update changed the file identity');
       return { ...resource, id: metadata.id, revision: metadata.rev };
     },
   };

@@ -28,7 +28,7 @@ function onRequest(handler) {
     void (async () => {
       try {
         const body = await readBody(req);
-        const url = new URL(req.url, "http://localhost");
+        const url = new URL(req.url, `http://${req.headers.host}`);
         await handler(req, res, url, body, req.headers["content-type"]);
       } catch (error) {
         console.error(`[mock-provider] ${error.stack}`);

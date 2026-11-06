@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals'
 
 const basePort = 42000 + Math.floor(Math.random() * 1000)
 process.env.MOCK_PROVIDERS_BASE_PORT = String(basePort)
@@ -190,9 +189,9 @@ describe('mock providers', () => {
     const osfFile = list.data.find((file) => file.attributes.name === 'results.csv')
     expect(osfFile).toBeTruthy()
 
-    const download = await (await expectStatus(await fetch(`${urls.OSF_API_BASE}${osfFile.links.download}`, { headers: auth }), 200)).text()
+    const download = await (await expectStatus(await fetch(new URL(osfFile.links.download, urls.OSF_API_BASE), { headers: auth }), 200)).text()
     expect(download).toBe('m,n\n5,6\n')
 
-    await expectStatus(await fetch(`${urls.OSF_API_BASE}${osfFile.links.delete}`, { method: 'DELETE', headers: auth }), 204)
+    await expectStatus(await fetch(new URL(osfFile.links.delete, urls.OSF_API_BASE), { method: 'DELETE', headers: auth }), 204)
   })
 })

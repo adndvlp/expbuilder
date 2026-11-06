@@ -7,6 +7,7 @@ function resourceFrom(entity, previous) {
 }
 export function osfExportAdapter(destination, token) {
   return {
+    async inspect() { return this.read(await this.reserve()); },
     // WaterButler documents versioned PUT, but no conditional update contract.
     // An uncertain update is read and reconciled; it is never blindly repeated.
     conditional: false,
