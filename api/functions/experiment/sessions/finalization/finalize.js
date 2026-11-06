@@ -13,6 +13,7 @@ import {
   resolveFolderIdentifier,
 } from "./storage-file.js";
 import { cleanupTemporarySession } from "./cleanup.js";
+import { requestSessionExport } from '../export/request.js';
 
 /**
  * Función auxiliar INTERNA para finalizar sesión (lógica pura sin req/res).
@@ -30,6 +31,12 @@ export async function finalizeSession(experimentID, sessionId) {
   }
 
   const expData = expDoc.data();
+  const candidateRef = expDocRef.collection('sessions').doc(sessionId);
+  const candidate = await candidateRef.get();
+  if (candidate?.exists && (candidate.data().sessionProtocolVersion === 2 || candidate.data().exportProtocolVersion === 1)) {
+    const result = await requestSessionExport(experimentID, sessionId);
+    return result;
+  }
   const storageProvider = expData.storageProvider || "googledrive";
   const tokenResult = await getValidToken(storageProvider, expData.owner);
 
@@ -54,7 +61,7 @@ export async function finalizeSession(experimentID, sessionId) {
     .doc(experimentID)
     .collection("sessions")
     .doc(sessionId);
-  const sessionDoc = await sessionRef.get();
+  const sessionDoc = candidate ?? await sessionRef.get();
 
   if (!sessionDoc.exists) {
     console.error(

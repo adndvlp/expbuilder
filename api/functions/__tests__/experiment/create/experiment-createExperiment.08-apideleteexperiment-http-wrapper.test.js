@@ -64,7 +64,7 @@ jest.unstable_mockModule("../../../oauth/providers/github/token.js", () => ({
   getGithubOwner: jest.fn(),
 }));
 
-const { createExperiment, apiDeleteExperiment } = await import(
+const { apiDeleteExperiment } = await import(
   "../../../experiment/index.js"
 );
 
@@ -120,6 +120,13 @@ describe("apiDeleteExperiment — HTTP wrapper", () => {
     expect(res.statusCode).toBe(500);
     expect(res.jsonBody.message).toMatch(/Internal server error/);
     errSpy.mockRestore();
+  });
+  test('409 explains an active export conflict without treating it as an internal failure', async () => {
+    fs.getRef('experiments/EID').get.mockRejectedValueOnce(Object.assign(new Error('Reconcile active exports before deleting'), { status: 409 }));
+    const res = makeRes();
+    await apiDeleteExperiment(makeReq({ body: { experimentID: 'EID', uid: 'u1' } }), res);
+    expect(res.statusCode).toBe(409);
+    expect(res.jsonBody.message).toBe('Reconcile active exports before deleting');
   });
 
   test("200 happy path returns deleteExperiment result body", async () => {

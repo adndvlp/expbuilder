@@ -41,6 +41,9 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
   ];
   return `
       on_finish: publicFinishHandler = async function() {
+        if (publicFinished) return;
+        if (publicFinishInFlight) return publicFinishInFlight;
+        publicFinishInFlight = (async () => {
         if (window.ExpBuilderNavigation.isTransitionPending()) {
           window.ExpBuilderRuntime?.emit(
             'experiment-finish-suppressed',
@@ -58,6 +61,12 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           return;
         }
 
+        if (_publicSessionState.lifecycle === 'expired') {
+          document.getElementById('expbuilder-retry-save')?.remove();
+          window.ExpBuilderNavigation.clearTransientState();
+          _showPublicRecoveryComplete(); publicFinished = true;
+          return;
+        }
         _setLoadingMsg('Finishing up\u2026');
         
         try {
@@ -85,6 +94,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         localStorage.removeItem(_publicStorageKeys.participant);
         sessionStorage.removeItem(_publicStorageKeys.captchaPassed);
 
+        publicFinished = true;
         // --- Recruitment platform redirect ---
         ${
           recruitmentConfig.platform === "prolific"
@@ -118,6 +128,8 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
             : ""
         }
         ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
+        })();
+        try { await publicFinishInFlight; } finally { publicFinishInFlight = null; }
       }${(() => {
         const BUILDER_PARAMS = [
           "on_trial_start",
@@ -167,7 +179,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         : ""
     }
 
-    if (_publicSessionState.lifecycle === 'completed') {
+    if (['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
       await publicFinishHandler();
     } else {
       ${baseCode}

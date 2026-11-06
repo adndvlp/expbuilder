@@ -108,7 +108,7 @@ export function publicBootstrapCode(
     try { _cachedCheckpoint = JSON.parse(localStorage.getItem(_publicStorageKeys.resumeTrial) || 'null'); } catch (_) {}
     const _canKeepStartCursor = _backedCheckpoint && _cachedCheckpoint
       && _canonicalPublicEvent(_cachedCheckpoint.completed) === _canonicalPublicEvent(_backedCheckpoint.completed);
-    if (_publicSessionState.lifecycle === 'completed' || !_backedCheckpoint) {
+    if (['completed', 'expired'].includes(_publicSessionState.lifecycle) || !_backedCheckpoint) {
       localStorage.removeItem(_publicStorageKeys.resumeTrial);
     } else if (!_canKeepStartCursor) {
       localStorage.setItem(_publicStorageKeys.resumeTrial, JSON.stringify(_backedCheckpoint));
@@ -143,7 +143,7 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
 
     // --- Configurar onDisconnect para finalizar sesión automáticamente ---
     const sessionRef = db.ref('sessions/${experimentID}/' + trialSessionId);
-    if (_publicSessionState.lifecycle !== 'completed') {
+    if (!['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
     await sessionRef.set({
       connected: true,
       experimentID: '${experimentID}',

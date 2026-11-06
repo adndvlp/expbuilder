@@ -6,6 +6,10 @@ export function publicResponsePersistenceCode(): string {
     let publicFinishHandler;
     let publicOwnsPause = false;
     let publicPreparationError = null;
+    let publicExportRetryRequested = false;
+    let publicFinishInFlight = null;
+    let publicFinished = false;
+    const publicRecoveryMode = ['completed', 'expired'].includes(_publicSessionState.lifecycle);
     const publicManifest = new Map((_publicSessionState.receivedEvents || []).map(event => [event.sequence, event]));
     let publicDirectSequence = Math.max(-1, ...publicManifest.keys()) + 1;
     const publicPersistenceReady = BATCH_CONFIG.useIndexedDB
@@ -30,13 +34,13 @@ export function publicResponsePersistenceCode(): string {
       const panel = document.createElement('div');
       panel.id = 'expbuilder-retry-save';
       panel.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;z-index:2147483647;padding:16px;background:white;color:#222;box-shadow:0 2px 12px #888;font-family:sans-serif';
-      panel.append('Data could not be confirmed. Keep this page open. ');
+      panel.append('Data could not be confirmed. Keep this page open. Retry saving or contact the study team. ');
       const button = document.createElement('button'); button.textContent = 'Retry saving';
       button.onclick = async () => {
         button.disabled = true;
         try {
           await _drainPublicResponses();
-          if (publicClosing) await publicFinishHandler();
+          if (publicClosing) { publicExportRetryRequested = true; await publicFinishHandler(); }
           else { panel.remove(); _resumePublicAfterBackup(); }
         } catch (failure) { console.error('Retry failed:', failure); }
         finally { button.disabled = false; }

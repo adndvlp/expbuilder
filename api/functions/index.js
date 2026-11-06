@@ -4,6 +4,7 @@ import {
   finalizeDisconnectedSessions,
 } from "./experiment/sessions/index.js";
 import { processSessionTimeout } from "./experiment/sessions/timeout/tasks.js";
+import { enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports } from './experiment/sessions/export/functions.js';
 import { publishExperiment } from "./experiment/index.js";
 import { apiDeleteExperiment } from "./experiment/index.js";
 import { apiCondition } from "./experiment/api/condition.js";
@@ -28,6 +29,7 @@ export {
   apiCondition,
   finalizeDisconnectedSessions,
   processSessionTimeout,
+  enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports,
   dropboxOAuthCallback,
   githubOAuthCallback,
   publishExperiment,

@@ -58,7 +58,7 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
     }
 
     const exp_data = exp_doc.data();
-    if (!exp_data.active) {
+    if (!exp_data.active && req.body.action !== "recoverEvents") {
       res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
       return;
     }
@@ -68,7 +68,7 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
     if (typeof data === "string") {
       try {
         parsedData = JSON.parse(data);
-      } catch (err) {
+      } catch {
         res.status(400).json({
           success: false,
           message: "Invalid JSON in data parameter",
@@ -77,9 +77,13 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
       }
     }
 
-    if (req.body?.action === "appendEvents") {
+    if (req.body?.action === "appendEvents" || req.body?.action === "recoverEvents") {
       return await handleAppendEvents({ res, experimentID, sessionId, data: parsedData,
-        experiment: exp_data, sanitize: sanitizeForFirestore });
+        experiment: exp_data, sanitize: sanitizeForFirestore, recovering: req.body.action === "recoverEvents" });
+    }
+    const registered = await exp_doc_ref.collection('sessions').doc(sessionId).get();
+    if (registered?.data?.()?.sessionProtocolVersion === 2 || registered?.data?.()?.exportProtocolVersion === 1) {
+      res.status(409).json({ success: false, message: 'Update this publication to send stable events with appendEvents' }); return;
     }
 
     // Detectar si es un batch concatenado (tiene trialsData como string JSON).
@@ -193,7 +197,7 @@ export async function handleAppendResult(req, res, experimentID, sessionId, data
       .collection("sessions")
       .doc(sessionId);
 
-    const session_doc = await session_ref.get();
+    const session_doc = registered ?? await session_ref.get();
     if (!session_doc.exists) {
       // H-3 fix: usar ISO string igual que handleCreateSession para que
       // finalizeSession (que lee createdAt como string) no genere "Invalid Date".

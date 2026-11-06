@@ -1,7 +1,8 @@
 import { db } from "../../../app.js";
 import { validatePublicEvents } from "../validation/event-contract.js";
+import { planSessionExport } from "../export/request.js";
 
-export async function handleAppendEvents({ res, experimentID, sessionId, data, experiment, sanitize }) {
+export async function handleAppendEvents({ res, experimentID, sessionId, data, experiment, sanitize, recovering = false }) {
   try {
     const events = validatePublicEvents(data, experiment);
     const session = db.collection("experiments").doc(experimentID).collection("sessions").doc(sessionId);
@@ -9,15 +10,24 @@ export async function handleAppendEvents({ res, experimentID, sessionId, data, e
       const sessionSnapshot = await transaction.get(session);
       const receipts = await Promise.all(events.map(event => transaction.get(session.collection("event_receipts").doc(event.eventId))));
       const previous = sessionSnapshot.exists ? sessionSnapshot.data() : {};
+      if (previous.deleting || experiment.deleting) throw Object.assign(new Error('Session is being deleted'), { status: 410 });
+      const allReceipts = recovering ? await transaction.get(session.collection('event_receipts')) : null;
       const fresh = events.filter((_event, index) => !receipts[index].exists).sort((a, b) => a.sequence - b.sequence);
-      if (fresh.length && previous.lifecycle === "completed") {
+      if (recovering && (!sessionSnapshot.exists || !['expired', 'completed'].includes(previous.lifecycle))) {
+        throw Object.assign(new Error('Recovery requires an existing closed session'), { status: 409 });
+      }
+      if (recovering && fresh.some(event => allReceipts.docs.some(doc => doc.data().sequence === event.sequence && doc.id !== event.eventId))) {
+        throw Object.assign(new Error('An event sequence is already occupied'), { status: 409 });
+      }
+      if (!recovering && fresh.length && ['completed', 'expired'].includes(previous.lifecycle)) {
         throw Object.assign(new Error("Session is already closed"), { status: 409 });
       }
       const receivedCount = previous.receivedEventCount ?? previous.trialCount ?? 0;
-      if (previous.sessionProtocolVersion === 2 && fresh.some((event, index) => event.sequence !== receivedCount + index)) {
+      if (!recovering && previous.sessionProtocolVersion === 2 && fresh.some((event, index) => event.sequence !== receivedCount + index)) {
         throw Object.assign(new Error("An earlier event is still missing"), { status: 409 });
       }
       let inserted = 0;
+      const receiptRevision = (previous.receiptRevision || 0) + 1;
       for (const [index, event] of events.entries()) {
         const existing = receipts[index];
         if (existing.exists && (existing.data().payloadHash !== event.payloadHash || existing.data().sequence !== event.sequence)) {
@@ -31,19 +41,25 @@ export async function handleAppendEvents({ res, experimentID, sessionId, data, e
         });
         transaction.set(session.collection("event_receipts").doc(event.eventId), {
           eventId: event.eventId, sequence: event.sequence, payloadHash: event.payloadHash,
+          receiptRevision,
           receivedAt: new Date().toISOString(),
         });
         inserted++;
       }
       if (inserted) {
         const checkpointEvent = fresh.filter(event => event.checkpoint != null).at(-1);
-        transaction.set(session, {
+        const update = {
           ...(!sessionSnapshot.exists && { createdAt: new Date().toISOString(), experimentID, sessionId }),
           eventProtocolVersion: 1,
           trialCount: (previous.trialCount ?? 0) + inserted,
           receivedEventCount: receivedCount + inserted,
-          ...(checkpointEvent && { resumeCheckpoint: sanitize(checkpointEvent.checkpoint), resumeCheckpointSequence: checkpointEvent.sequence }),
-        }, { merge: true });
+          receiptRevision,
+          ...(!recovering && checkpointEvent && { resumeCheckpoint: sanitize(checkpointEvent.checkpoint), resumeCheckpointSequence: checkpointEvent.sequence }),
+        };
+        if (recovering) {
+          const combined = [...allReceipts.docs.map(doc => doc.data()), ...fresh.map(({ eventId, sequence, payloadHash }) => ({ eventId, sequence, payloadHash, receiptRevision }))];
+          planSessionExport(transaction, session, previous, combined, experiment, update);
+        } else transaction.set(session, update, { merge: true });
       }
       return inserted;
     });

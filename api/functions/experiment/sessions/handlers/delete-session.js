@@ -3,6 +3,7 @@ import writeLog from "../logging/write-log.js";
 import MESSAGES from "../../api/messages.js";
 import { getValidToken } from "../../../oauth/index.js";
 import { deleteSession } from "../storage.js";
+import { prepareSessionExportDeletion, purgeSessionExportData } from '../export/deletion.js';
 import {
   getInvalidTokenMessage,
   getSessionFolderIdentifier,
@@ -24,16 +25,17 @@ export async function handleDeleteSession(req, res, experimentID, sessionId) {
     }
 
     const exp_data = exp_doc.data();
-    const storageProvider = exp_data.storageProvider || "googledrive";
+    const registered = await prepareSessionExportDeletion(experimentID, sessionId);
+    const storageProvider = registered?.exportDestination?.provider || exp_data.storageProvider || "googledrive";
 
-    const tokenResult = await getValidToken(storageProvider, exp_data.owner);
+    const tokenResult = await getValidToken(storageProvider, registered?.exportDestination?.owner || exp_data.owner);
 
     if (!tokenResult.success) {
       res.status(400).json(getInvalidTokenMessage(storageProvider));
       return;
     }
 
-    const folderIdentifier = getSessionFolderIdentifier(exp_data);
+    const folderIdentifier = registered?.exportDestination?.folder || getSessionFolderIdentifier(exp_data);
 
     console.log(`Deleting session from ${storageProvider}:`, {
       folderIdentifier,
@@ -58,6 +60,7 @@ export async function handleDeleteSession(req, res, experimentID, sessionId) {
       });
       return;
     }
+    if (registered) await purgeSessionExportData(db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId));
 
     // H-5: floor the decrement at 0 so deleting an "uncounted" session (e.g.
     // imported test data, or a duplicate delete) doesn't drive the counter
@@ -85,9 +88,9 @@ export async function handleDeleteSession(req, res, experimentID, sessionId) {
     });
   } catch (error) {
     console.error("Error in handleDeleteSession:", error);
-    res.status(500).json({
+    res.status(error.status || 500).json({
       success: false,
-      message: "Internal server error",
+      message: error.status ? error.message : "Internal server error",
     });
   }
 }

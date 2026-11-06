@@ -1,5 +1,6 @@
 import { chromium, type Browser } from "@playwright/test";
 import path from "node:path";
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildPublicExperimentCode } from "../buildPublicExperimentCode";
 import type { PublicExperimentCodeOptions } from "../publicCodeTypes";
@@ -85,17 +86,21 @@ describe("generated public runtime with real jsPsych", () => {
     const { context, page } = await fixture();
     try {
       const uploads: Upload[] = [];
+      const receivedEvents = [0, 1].map(sequence => ({ eventId: 'saved-' + sequence, sequence, payloadHash: String(sequence).repeat(64) }));
+      const eventsHash = createHash('sha256').update(JSON.stringify(receivedEvents.map(({ eventId, payloadHash, sequence }) => ({ eventId, payloadHash, sequence })))).digest('hex');
       await page.route("**/apiData", async route => {
         const body = route.request().postDataJSON() as Upload; uploads.push(body);
-        await route.fulfill({ json: body.action ? receipt(body) : {
-          success: true, participantNumber: 23, receivedEvents: [0, 1].map(sequence => ({ eventId: 'saved-' + sequence,
-            sequence, payloadHash: String(sequence).repeat(64) })), resumeCheckpoint: null, lifecycle: "completed",
+        await route.fulfill({ json: body.action ? { success: true, experimentID: body.experimentID, sessionId: body.sessionId,
+          export: { status: 'confirmed', confirmed: true, revision: 1, requestedRevision: 1, confirmedRevision: 1, eventCount: 2, eventsHash },
+        } : {
+          success: true, participantNumber: 23, receivedEvents, resumeCheckpoint: null, lifecycle: "completed",
         } });
       });
       await page.addScriptTag({ content: code(false, true) });
       await page.waitForFunction(() => (window as unknown as { __complete: boolean }).__complete);
       expect(await page.evaluate(() => (window as unknown as { __started: number[] }).__started)).toEqual([]);
-      expect(uploads.at(-1)).toMatchObject({ action: "completeSession", expectedEventCount: 2 });
+      expect(uploads.at(-1)).toMatchObject({ action: 'sessionStatus' });
+      expect(uploads.some(body => body.action === 'completeSession')).toBe(false);
     } finally { await context.close(); }
   });
 });

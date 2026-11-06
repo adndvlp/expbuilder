@@ -8,6 +8,7 @@ import validateJSON from "../validation/validate-json.js";
 import { getValidToken } from "../../../oauth/index.js";
 import { finalizeSession } from "../finalization/finalize.js";
 import { postFile } from "../storage.js";
+import { handleExportStatus } from "../export/status.js";
 import { handleCompleteSession } from "../handlers/complete-session.js";
 import {
   handleCreateSession,
@@ -64,10 +65,16 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     return await handleDeleteSession(req, res, experimentID, sessionId);
   }
 
+  if (action === "sessionStatus" || action === "retryExport") return await handleExportStatus(req, res, action === "retryExport");
+
   if (action === "completeSession") return await handleCompleteSession(req, res);
 
   if (action === "finish" && experimentID && sessionId) {
     try {
+      const session = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
+      if (session?.data?.()?.sessionProtocolVersion === 2) {
+        res.status(409).json({ success: false, message: 'Versioned sessions require completeSession with their expected event set' }); return;
+      }
       const result = await finalizeSession(experimentID, sessionId);
       res.status(200).json(result);
     } catch (error) {
@@ -122,7 +129,7 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
   }
 
   // Explicit event ingestion must never fall through to session creation.
-  if (action === "appendEvents") {
+  if ((action === "appendEvents" || action === "recoverEvents")) {
     if (!experimentID || !sessionId || !data) {
       res.status(400).json({ success: false, message: "Event reception requires experimentID, sessionId and data" });
       return;

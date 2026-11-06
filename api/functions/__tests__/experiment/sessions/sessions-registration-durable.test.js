@@ -59,4 +59,12 @@ describe("durable session registration", () => {
     expect(store.records.get(experiment)).toMatchObject({ currentCondition: 0, sessions: 0 });
     expect((await create("S1", 1)).jsonBody.participantNumber).toBe(0);
   });
+  test('can recover an existing closed identity after the experiment stops accepting new participants', async () => {
+    await create('S1', 1);
+    store.records.set(session, { ...store.records.get(session), lifecycle: 'expired' });
+    store.records.set(experiment, { ...store.records.get(experiment), active: false });
+    expect((await create('S1', 1)).statusCode).toBe(200);
+    expect((await create('S2', 1)).statusCode).toBe(400);
+    expect(store.records.get(experiment).sessions).toBe(1);
+  });
 });

@@ -1,4 +1,10 @@
 {
-  "indexes": [],
+  "indexes": [{
+    "collectionGroup": "export_jobs", "queryScope": "COLLECTION_GROUP",
+    "fields": [{ "fieldPath": "dispatchDue", "order": "ASCENDING" }, { "fieldPath": "nextDispatchAt", "order": "ASCENDING" }]
+  }, {
+    "collectionGroup": "export_jobs", "queryScope": "COLLECTION_GROUP",
+    "fields": [{ "fieldPath": "experimentID", "order": "ASCENDING" }, { "fieldPath": "phase", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }]
+  }],
   "fieldOverrides": []
 }

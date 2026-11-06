@@ -95,7 +95,11 @@ export const finalizeDisconnectedSessions = onValueWritten(
           try {
             // Enviar lo acumulado hasta ahora (PATCH o CREATE si no existe)
             // finalizeSession ya limpia Firestore automáticamente
-            await finalizeSession(experimentID, sessionId);
+            const requested = await finalizeSession(experimentID, sessionId);
+            if (requested.pending) {
+              await event.data.after.ref.update({ exportStatus: requested.exportStatus, exportRevision: requested.revision, finalizationProcessed: false });
+              return null;
+            }
 
             await event.data.after.ref.update({
               state: "partially_saved",
@@ -188,6 +192,11 @@ export const finalizeDisconnectedSessions = onValueWritten(
     try {
       // Usar la función unificada que determina el storage provider automáticamente
       const result = await finalizeSession(experimentID, sessionId);
+      if (result.pending) {
+        await event.data.after.ref.update({ exportStatus: result.exportStatus, exportRevision: result.revision,
+          needsFinalization: false, finalizationProcessed: false });
+        return null;
+      }
 
       // Marcar como procesado en Realtime Database
       await event.data.after.ref.update({

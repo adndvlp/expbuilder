@@ -6,6 +6,7 @@ import { getValidToken } from "../oauth/index.js";
 import { deleteRepositoryGithub } from "./hosting/services.js";
 import fetch from "../utils/fetch-with-timeout.js";
 import { PROVIDER_ENDPOINTS as endpoints } from "../utils/provider-endpoints.js";
+import { prepareExperimentExportDeletion } from './sessions/export/deletion.js';
 
 /**
  * Stream-delete a collection in page-sized chunks. Optionally drains named
@@ -27,7 +28,8 @@ async function paginatedDelete(colRef, options = {}) {
 
     for (const doc of snap.docs) {
       for (const sub of subcols) {
-        await paginatedDelete(doc.ref.collection(sub), { pageSize });
+        const name = typeof sub === 'string' ? sub : sub.name;
+        await paginatedDelete(doc.ref.collection(name), { pageSize, deleteSubcollections: typeof sub === 'string' ? [] : sub.children });
       }
     }
 
@@ -57,6 +59,7 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
   }
 
   const experimentData = experimentDoc.data();
+  if (experimentData.sessionExportProtocolVersion === 1) await prepareExperimentExportDeletion(experimentRef);
   const storageProvider = experimentData.storageProvider || "googledrive";
 
   // Obtener el identificador de carpeta según el proveedor
@@ -174,7 +177,8 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
     deleteSubcollections: ["participant_files", "trials"],
   });
   await paginatedDelete(experimentRef.collection("sessions"), {
-    deleteSubcollections: ["trials"],
+    deleteSubcollections: experimentData.sessionExportProtocolVersion === 1
+      ? ['trials', 'event_receipts', { name: 'export_jobs', children: ['chunks'] }] : ['trials'],
   });
 
   await experimentRef.delete();

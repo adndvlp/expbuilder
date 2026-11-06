@@ -21,10 +21,14 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
     const experiment = db.collection("experiments").doc(experimentID);
     const initial = await experiment.get();
     if (!initial.exists) { res.status(400).json(MESSAGES.EXPERIMENT_NOT_FOUND); return; }
-    if (!initial.data().active) { res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE); return; }
     const session = experiment.collection("sessions").doc(sessionId);
     const existing = await session.get();
-    if (existing.exists) {
+    if (initial.data().deleting || existing?.data?.()?.deleting) {
+      res.status(410).json({ success: false, message: 'Session or experiment is being deleted' }); return;
+    }
+    const closed = existing?.exists && ['completed', 'expired'].includes(existing.data().lifecycle);
+    if (!initial.data().active && !closed) { res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE); return; }
+    if (existing?.exists) {
       res.status(200).json(await registrationResponse(session, existing.data(), experimentID, sessionId));
       return;
     }

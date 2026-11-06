@@ -2,6 +2,7 @@ import { getDatabase } from "firebase-admin/database";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
 import { db, app } from "../../../app.js";
 import { finalizeSession } from "../finalization/finalize.js";
+import { requestSessionExport } from '../export/request.js';
 import {
   scheduleSessionTimeoutTask,
   SESSION_TIMEOUT_TASK_REGION,
@@ -73,6 +74,19 @@ export async function handleSessionTimeoutTask(data) {
 
   if (Date.now() < expiresAt) {
     throw new Error("SESSION_TIMEOUT_NOT_EXPIRED");
+  }
+
+  const durable = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
+  if (durable?.exists && (durable.data().sessionProtocolVersion === 2 || durable.data().exportProtocolVersion === 1)) {
+    if (durable.data().lifecycle === 'completed') return { status: 'already_closed' };
+    let result;
+    try {
+      result = await requestSessionExport(experimentID, sessionId, { lifecycle: 'expired', closeReason: 'timeout',
+        closedAt: durable.data().closedAt || new Date().toISOString() });
+    } catch (error) { if (error.code === 'SESSION_ALREADY_CLOSED') return { status: 'already_closed' }; throw error; }
+    await sessionRef.update({ state: 'expired', expiredAt: Date.now(), resumeTimeoutTaskStatus: 'processed',
+      needsFinalization: false, finalizationProcessed: !result.pending, exportStatus: result.exportStatus, exportRevision: result.revision });
+    return { status: result.pending ? 'export_pending' : 'expired_empty_or_confirmed', revision: result.revision };
   }
 
   // The participant never reconnected: save whatever was collected so far to

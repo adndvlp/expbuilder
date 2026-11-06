@@ -1,6 +1,6 @@
 # SDD: persistencia y recuperación de sesiones públicas
 
-Estado: puntos 1 y 2 implementados y verificados localmente mediante TDD. Puntos 3–5 pendientes. Evidencia y límites en las secciones 16 y 17.
+Estado: puntos 1–3 implementados y verificados localmente mediante TDD. Puntos 4 y 5 pendientes. Evidencia y límites en las secciones 16–18.
 
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
@@ -10,7 +10,7 @@ Conseguir que las respuestas de un experimento publicado lleguen a su proveedor 
 
 El diseño cubre IndexedDB activado y desactivado; lotes `0`, `1` y `N`; Google Drive, Dropbox y OSF; finalización normal; desconexión; retoma; expiración; recuperación posterior y republicación. Incluye los ocho escenarios del [informe de investigación](investigaciones/indexeddb-2026-11-05.md).
 
-Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1 y 2 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
+Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1–3 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
 
 El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su servidor no se sustituyen incidentalmente. Una extracción compartida debe conservar sus garantías y pruebas. La lógica de trials, loops, condiciones y branching se integra con la persistencia; no se redefine su significado.
 
@@ -457,3 +457,62 @@ El cierre HTTP usa el finalizador actual. Todavía no existen trabajos de export
 Cuando una sesión tiene respuestas ya exportadas y limpiadas, y otras respuestas nuevas pendientes, el cierre se rechaza conservando las copias disponibles: actualizar ese archivo con garantías requiere el conciliador del punto 3. Esto evita, entre otros casos, sobrescribir en OSF un archivo anterior con solo las respuestas nuevas. Si todo el conjunto ya cuenta con recibos de exportación confirmada, puede reconocerse sin reenviarlo. Los datos antiguos sin recibos verificables requieren la transición posterior; no se certifican por inferencia.
 
 Siguen pendientes las reglas comunes de timeout, la expiración y recuperación, la configuración fija entre publicaciones, la política completa de conservación local, el recorrido con emuladores/proveedores cloud y la herramienta de recuperación anterior. No se desplegó el backend, no se republicó ningún experimento y no se modificaron los datos de la sesión reportada.
+
+## 18. Entrega del punto 3: exportador duradero y recuperación
+
+Estado de esta entrega: punto 3 terminado mediante TDD; ejecución detenida antes del punto 4. Las secciones 16 y 17 conservan la evidencia histórica de las entregas anteriores.
+
+### Ciclos RED → GREEN observados
+
+| Caso | RED comprobado | GREEN comprobado |
+|---|---|---|
+| Cierre normal y trabajo persistente | El cierre no producía un trabajo recuperable por revisión. | Cierre y solicitud se confirman en una transacción; HTTP 202 permanece pendiente hasta verificar el proveedor. |
+| Archivo parcial A–C y recuperación D–E | No existía `recoverEvents`; el cierre de sesiones mixtas quedaba bloqueado en el punto 2. | Las revisiones producen A–E una sola vez en el mismo recurso, preservando participante y estado expirado. |
+| H07: escritura completada con respuesta HTTP perdida | Faltaban snapshot e intención duraderos para resolver ese resultado incierto. | Se leen los bytes del recurso reservado y se reconoce el mismo snapshot sin repetir su mutación. |
+| Falla el encolado o desaparece el despachador | No había una bandeja persistente que permitiera redescubrir el trabajo. | El job sigue consultable; un reconciliador periódico vuelve a despachar su identidad. |
+| Worker antiguo y lease vencido | El resultado antiguo podía confundirse con el intento vigente. | Generaciones y comprobaciones transaccionales impiden confirmar desde el worker antiguo. Donde no existe una repetición segura, se conserva el trabajo en atención. |
+| Falla la limpieza después de confirmar | El reintento podía volver a exportar las mismas filas. | Se reanuda únicamente la limpieza del snapshot confirmado. Las confirmaciones de eventos nunca retroceden de revisión. |
+| Recuperación durante una carga | La exportación anterior podía declarar incluidos o borrar eventos nuevos. | Cada recepción tiene una revisión; el snapshot anterior no incluye ni limpia los eventos posteriores. |
+| Descarga fallida, archivo modificado o desaparecido | No se comprobaban identidad y bytes contra el recibo anterior antes de combinar. | Se conserva el error y los payloads; no se crea otro recurso ni se reemplaza el archivo con un fragmento. |
+| Endpoint antiguo sobre sesión versionada | `finish`, la carga raw y el append antiguo podían evitar la verificación del conjunto. | Devuelven un conflicto explícito que exige el protocolo publicado nuevo. No se certifican filas sin recibos. |
+| Timeout o trigger solicitando exportación | Podían marcarse procesados aunque la exportación siguiera pendiente. | Las sesiones versionadas solicitan el trabajo común y mantienen pendiente la confirmación del archivo. Un cierre completado no cambia a expirado por presencia antigua. |
+| Retoma de una sesión cerrada con pendientes | El navegador intentaba completar otra vez o ejecutar el flujo normal. | Envía `recoverEvents`, espera el recibo de exportación y conserva el estado de ejecución cerrado. |
+| Eliminación con jobs y snapshots | Quedaban recursos nuevos sin limpiar o escritores capaces de actuar después. | Se impiden escrituras nuevas, se limpian recibos/jobs/chunks y se rechaza eliminar mientras exista un envío activo o incierto. |
+
+### Implementación incluida
+
+- Jobs bajo `sessions/{sessionId}/export_jobs/{revision}` con conjunto objetivo, hash, revisión de recepción, destino y metadata. El objetivo se fija al solicitar el trabajo; las recepciones posteriores generan otra revisión.
+- Snapshot CSV determinista por secuencia, con columnas ordenadas y metadata de la sesión. Se persiste en chunks de hasta 250 KB antes de la mutación externa para conservarlo tras una caída sin superar el tamaño de un documento.
+- Lease de seis minutos para una función y un despacho de hasta cinco minutos; peticiones externas limitadas por el wrapper existente. Cada modificación y confirmación comprueba la generación del propietario.
+- `enqueueSessionExport`, `processSessionExportTask` y `reconcilePendingSessionExports`, este último cada minuto. El job se confirma antes de solicitar a Cloud Tasks; una falla entre ambos pasos queda recuperable. La versión instalada de Admin SDK no admite IDs físicos de tarea personalizados: las entregas pueden repetirse y la identidad lógica estable es sesión + revisión.
+- Hasta ocho intentos automáticos, espera creciente y estado `needs_attention` sin descartar respuestas al agotarse. `retryExport` reactiva el trabajo que bloquea la secuencia, aunque ya existan revisiones posteriores.
+- Lectura del recurso confirmado y comprobación de su SHA-256 antes de combinar por `event_id`. Tras cargar se vuelve a leer y verificar el CSV completo; un HTTP exitoso o un enlace compartido no sustituyen esa comprobación.
+- Drive reserva y persiste un ID antes de crear. Dropbox usa path estable y revisiones estrictas, sin autorrenombrado. OSF conserva sus URLs de recurso y actualiza por PUT, sin borrar el archivo anterior. Los enlaces de estos contratos están en la sección 9 y en la documentación operativa.
+- El cierre nuevo, la exportación parcial solicitada por presencia y el timeout de sesiones versionadas pasan por este exportador. La política que decide **cuándo** empieza el timeout o se solicita el parcial sigue pendiente del punto 4; esta entrega no unifica ese plazo.
+- `recoverEvents` acepta pendientes de una identidad cerrada y no cambia su lifecycle, participante, condición ni checkpoint de ejecución. La asignación existente puede consultarse para recuperación aun cuando el experimento deje de admitir participantes nuevos.
+- `sessionStatus` expone el trabajo pendiente o bloqueante. El navegador espera la confirmación antes del éxito o la redirección. Una sesión expirada muestra un aviso de recuperación y no inicia otra participación automáticamente.
+- La confirmación y su proyección de resultados preceden a la limpieza. La limpieza solo afecta al conjunto confirmado y es repetible; también se conserva la identidad de la sesión.
+
+Pruebas principales: [revisiones y fallos](../api/functions/__tests__/experiment/sessions/sessions-export-revisions.test.js), [bandeja y despacho](../api/functions/__tests__/experiment/sessions/sessions-export-dispatch.test.js), [exportador con adaptadores HTTP reales y respuestas simuladas](../api/functions/__tests__/experiment/sessions/sessions-export-provider-flow.test.js), [contratos de proveedor](../api/functions/__tests__/experiment/sessions/storage/storage-export-adapters.test.js), [timeout y presencia](../api/functions/__tests__/experiment/sessions/sessions-export-timeout.test.js), [eliminación](../api/functions/__tests__/experiment/sessions/sessions-export-deletion.test.js) y [espera y recuperación del navegador](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/__tests__/publicAsyncExport.browser.test.ts).
+
+### Verificación local
+
+| Comprobación | Resultado |
+|---|---|
+| API completa | 125 suites, **614 tests aprobados**, incluidos OAuth, creación, eliminación, almacenamiento y sesiones. |
+| Navegador público con IndexedDB y jsPsych reales | 5 archivos, **34 tests aprobados**; servidor y proveedores interceptados. |
+| Generación, navegación y previews | 14 archivos, **74 tests aprobados**. |
+| Branching público con jsPsych real | **4 escenarios aprobados** en ambos modos. |
+| TypeScript y build de producción del cliente | Aprobados; Vite conserva avisos de chunks grandes e importaciones compartidas. |
+| Lint de archivos revisados, límite de 300 líneas y whitespace | Aprobados. |
+| Manifiesto de Functions | Exportaciones comprobadas y metadata de los tres endpoints inspeccionada con el SDK instalado. La inspección en Node 26 necesitó adaptar `SlowBuffer` solo en ese proceso; el runtime configurado sigue siendo Node 20, sin cambiar dependencias. |
+
+Se adaptaron los 14 tests del cierre anterior al contrato asíncrono conservando la comprobación del CSV, el contenido completo y la idempotencia. Las pruebas del proveedor descargan el resultado por el adaptador HTTP real frente a respuestas simuladas; no certifican una operación sobre cuentas cloud reales.
+
+### Límites y siguiente etapa
+
+Una escritura incierta no autoriza repetirla contra un recurso que pudo cambiar. Dropbox dispone de revisión estricta. Para Drive se repite con seguridad una creación con ID reservado; no se presupone que un ETag de v3 garantice un CAS para reemplazo de media. OSF no tiene un contrato documentado de actualización condicional en la referencia consultada. En esos casos se confirma al observar el snapshot exacto; si no puede determinarse un resultado seguro, se conserva `needs_attention` y los datos. El reintento explícito tampoco fuerza una sobrescritura insegura.
+
+Las sesiones anteriores sin trabajo/recibo verificable, y los CSV antiguos sin identidad de evento, requieren la transición y conciliación del punto 5; no se reconstruyen hashes de payload a partir de CSV ni se certifican por igualdad de nombre. La herramienta de recuperación de la sesión reportada sigue pendiente. No se tocaron sus datos.
+
+Quedan para el punto 4 la unificación del timeout, deadline y generaciones de conexión, la configuración/artefactos fijos por publicación, la conservación local completa y la UI para iniciar otra participación después de expirar. El punto 5 mantiene el recorrido con emuladores y proveedores cloud, el plan de despliegue y la recuperación de datos anteriores. Se detiene aquí la ejecución del punto 3; no se desplegó ni republicó nada.

@@ -9,7 +9,7 @@ export function publicEventTransportCode({ DATA_API_URL, experimentID }: PublicE
       const batchPromise = (async () => {
         const response = await fetch(${JSON.stringify(DATA_API_URL)}, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'appendEvents', experimentID: ${JSON.stringify(experimentID)},
+          body: JSON.stringify({ action: publicRecoveryMode ? 'recoverEvents' : 'appendEvents', experimentID: ${JSON.stringify(experimentID)},
             sessionId: trialSessionId, data: { protocolVersion: 1, events }, batchNumber })
         });
         if (!response.ok) throw new Error('Batch upload failed: ' + await response.text());

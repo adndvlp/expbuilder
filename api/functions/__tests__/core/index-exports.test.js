@@ -4,6 +4,8 @@ const apiData = jest.fn();
 const apiDataComplete = jest.fn();
 const finalizeDisconnectedSessions = jest.fn();
 const processSessionTimeout = jest.fn();
+const enqueueSessionExport = jest.fn(), processSessionExportTask = jest.fn(), reconcilePendingSessionExports = jest.fn();
+jest.unstable_mockModule('../../experiment/sessions/export/functions.js', () => ({ enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports }));
 const publishExperiment = jest.fn();
 const apiDeleteExperiment = jest.fn();
 const apiCondition = jest.fn();
@@ -72,7 +74,7 @@ const functionsYamlText = readFileSync(
 const functionsYamlEndpoints = [
   ...functionsYamlText
     .split("endpoints:\n")[1]
-    .matchAll(/^  ([A-Za-z0-9_]+):$/gm),
+    .matchAll(/^ {2}([A-Za-z0-9_]+):$/gm),
 ].map((match) => match[1]);
 
 describe("functions/index.js", () => {
@@ -85,6 +87,7 @@ describe("functions/index.js", () => {
       apiCondition,
       finalizeDisconnectedSessions,
       processSessionTimeout,
+      enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports,
       dropboxOAuthCallback,
       githubOAuthCallback,
       publishExperiment,
@@ -103,6 +106,7 @@ describe("functions/index.js", () => {
         "apiCondition",
         "finalizeDisconnectedSessions",
         "processSessionTimeout",
+        'enqueueSessionExport', 'processSessionExportTask', 'reconcilePendingSessionExports',
         "dropboxOAuthCallback",
         "githubOAuthCallback",
         "publishExperiment",

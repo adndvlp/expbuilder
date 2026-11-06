@@ -19,7 +19,7 @@ type Runtime = {
 };
 declare global { interface Window { publicBatchTest: Runtime } }
 
-export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
+export async function startPublicRuntime(page: Page, size = 1, indexed = true, initialState: Row = { receivedEvents: [] }) {
   const options = {
     DATA_API_URL: "/apiData", FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID: "batch-test", useStorage: "googledrive",
@@ -31,7 +31,7 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
     publicParams: {}, extensions: "", progressBar: false, baseCode: "",
   } as PublicExperimentCodeOptions;
   const callbackCode = (publicInitCode(options) + publicFinishCode(options)).split("// __INIT_JSPSYCH_END__")[0];
-  await page.evaluate(({ databaseCode, batchCode, callbackCode, persistenceCode, size, indexed }) => {
+  await page.evaluate(({ databaseCode, batchCode, callbackCode, persistenceCode, size, indexed, initialState }) => {
     const runtime = { pending: [], errors: [], acknowledged: [], success: false,
       pauses: 0, resumes: 0, updates: [], messages: [] } as unknown as Runtime;
     window.publicBatchTest = runtime;
@@ -39,7 +39,7 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
     runtime.db = new Function("initJsPsych", `
       const trialSessionId = 'S1';
       const BATCH_CONFIG = { useIndexedDB: ${indexed}, size: ${size}, currentBatchNumber: 0 };
-      const metadata = {}, _publicSessionState = { receivedEvents: [] }, _publicStorageKeys = { resumeTrial: 'checkpoint', sessionId: 'session', participant: 'participant' };
+      const metadata = {}, _publicSessionState = ${JSON.stringify(initialState)}, _publicStorageKeys = { resumeTrial: 'checkpoint', sessionId: 'session', participant: 'participant' };
       const _createResumeCheckpoint = data => window.publicBatchTest.checkpoint?.(data) ?? ({ completed: data.builder_id });
       const sessionRef = { update: async value => window.publicBatchTest.updates.push(value), onDisconnect: () => ({ cancel() {} }) };
       window.firebase = { database: { ServerValue: { TIMESTAMP: 1 } } };
@@ -49,6 +49,7 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
       };
       window.ExpBuilderRuntime = { reportError: error => window.publicBatchTest.errors.push(String(error)) };
       function _showLoading() {} function _setLoadingMsg(value) { window.publicBatchTest.messages.push(value); }
+      function _hideLoading() {}
       function _showSuccess() { window.publicBatchTest.success = true; }
       ${persistenceCode}
       ${databaseCode}
@@ -62,7 +63,7 @@ export async function startPublicRuntime(page: Page, size = 1, indexed = true) {
     };
     runtime.finish = () => callbacks.on_finish();
   }, { databaseCode: publicDatabaseCode(options), batchCode: publicBatchCode(options), callbackCode,
-    persistenceCode: getPersistenceCoordinatorRuntimeCode(), size, indexed });
+    persistenceCode: getPersistenceCoordinatorRuntimeCode(), size, indexed, initialState });
 }
 
 export function receipt(body: Upload) {

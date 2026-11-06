@@ -5,6 +5,8 @@ specVersion: v1alpha1
 requiredAPIs:
   - api: cloudtasks.googleapis.com
     reason: Needed for task queue functions
+  - api: cloudscheduler.googleapis.com
+    reason: Redispatch persisted session exports after enqueue or worker failures
 endpoints:
   apiData:
     platform: gcfv2
@@ -57,6 +59,44 @@ endpoints:
       rateLimits:
         maxConcurrentDispatches: 20
         maxDispatchesPerSecond: 20
+  enqueueSessionExport:
+    platform: gcfv2
+    entryPoint: enqueueSessionExport
+    region: [us-central1]
+    maxInstances: 5
+    eventTrigger:
+      eventType: google.cloud.firestore.document.v1.written
+      eventFilters:
+        database: "(default)"
+        namespace: "(default)"
+      eventFilterPathPatterns:
+        document: experiments/{experimentID}/sessions/{sessionId}/export_jobs/{revision}
+      retry: true
+  processSessionExportTask:
+    platform: gcfv2
+    entryPoint: processSessionExportTask
+    region: [us-central1]
+    maxInstances: 5
+    availableMemoryMb: 512
+    timeoutSeconds: 300
+    taskQueueTrigger:
+      retryConfig:
+        maxAttempts: 8
+        minBackoffSeconds: 30
+        maxBackoffSeconds: 900
+        maxDoublings: 5
+      rateLimits:
+        maxConcurrentDispatches: 5
+        maxDispatchesPerSecond: 5
+  reconcilePendingSessionExports:
+    platform: gcfv2
+    entryPoint: reconcilePendingSessionExports
+    region: [us-central1]
+    maxInstances: 5
+    timeoutSeconds: 120
+    scheduleTrigger:
+      schedule: every 1 minutes
+      timeZone: UTC
   dropboxOAuthCallback:
     platform: gcfv2
     entryPoint: dropboxOAuthCallback

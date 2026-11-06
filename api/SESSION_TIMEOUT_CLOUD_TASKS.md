@@ -21,11 +21,19 @@ Official references:
 
 ## Deployed Functions
 
+This is the declared deployment configuration. The persistence work described
+below was verified locally; deployment and republication remain separate steps.
+
 - `finalizeDisconnectedSessions`: Realtime Database trigger on
   `sessions/{experimentID}/{sessionId}`. It detects disconnects and schedules
   durable timeout work when the session is resumable.
 - `processSessionTimeout`: task queue worker. Cloud Tasks dispatches this
   function at `resumeExpiresAt`.
+- `enqueueSessionExport`: Firestore trigger on
+  `experiments/{experimentID}/sessions/{sessionId}/export_jobs/{revision}`.
+- `processSessionExportTask`: worker for one durable export revision.
+- `reconcilePendingSessionExports`: scheduled every minute to rediscover jobs
+  whose enqueue failed or whose previous dispatcher disappeared.
 
 The queue target used by the Admin SDK is:
 
@@ -50,20 +58,63 @@ When a participant disconnects and resume is enabled:
    no-ops unless the session is still disconnected and `resumeExpiresAt`
    matches the task payload.
 
-Provider behavior:
+For versioned sessions (`sessionProtocolVersion: 2` or `exportProtocolVersion: 1`),
+an eligible timeout closes execution as `expired` and atomically requests a
+durable export. RTDB records `exportStatus` and keeps `finalizationProcessed`
+false while storage remains pending. Payloads are removed only after verifying
+the complete CSV in the provider. An empty session closes without creating a
+fake CSV. A stale presence record cannot turn a completed execution into an
+expired one.
 
-- `useIndexedDB=true`: the browser is the source of truth for recovery. If the
-  session remains disconnected until timeout, the worker deletes temporary
-  Firestore data under `experiments/{experimentID}/sessions/{sessionId}`,
-  including `trials` in batches of 500, writes `session_metadata` with
-  `state: "expired"`, and marks RTDB as processed.
-- `useIndexedDB=false` and `storageProvider="osf"`: OSF cannot use the immediate
-  PATCH path. The worker calls `finalizeSession`, writes expired metadata, and
-  marks RTDB as processed. `SESSION_NOT_FOUND` and `NO_RESULTS` are treated as
-  terminal no-data expirations; other errors are rethrown so Cloud Tasks can
-  retry.
-- `useIndexedDB=false` with Google Drive or Dropbox: no delayed task is needed.
-  The trigger still sends the immediate PATCH on disconnect.
+The scheduling policy has not yet been unified: IndexedDB sessions and OSF
+without IndexedDB use the delayed timeout; Drive/Dropbox without IndexedDB still
+request a partial export on disconnect. Both paths now use the same exporter
+for versioned sessions. Unifying the timeout and connection generations belongs
+to point 4 of the persistence SDD. Unversioned sessions retain their legacy
+compatibility path. Batch-zero responses still only in the browser cannot be
+exported by the server.
+
+## Durable Export Flow
+
+The export queue target is:
+
+```text
+locations/us-central1/functions/processSessionExportTask
+```
+
+Closing and requesting a revision commit together. Each revision fixes the
+event set, hash, session metadata and destination. A Firestore trigger enqueues
+it; the scheduler repairs an enqueue gap without requiring the browser to stay
+open. Delivery may repeat: session + revision is the stable logical identity.
+The installed Admin SDK does not support custom physical task IDs.
+
+The worker uses a six-minute lease and generation checks, persists the CSV in
+250 KB chunks before mutation, reads the previous confirmed file, merges by
+`event_id`, and verifies the uploaded bytes by SHA-256. It confirms the receipt
+before cleaning only that revision's payloads. A cleanup failure resumes cleanup
+without uploading again. Recovered responses request another revision of the
+same resource and do not reopen execution or increment participation counters.
+
+Drive reserves an ID before creation; Dropbox uses strict revision updates with
+`autorename: false`; OSF updates its returned resource URL without deleting the
+old file. A failed download is an error, never evidence of an empty file.
+Uncertain writes enter `reconciling`. Exact observed snapshot bytes can confirm
+them without another mutation. Where a safe repeat cannot be established, the
+job retains its snapshots and payloads in `needs_attention`. Drive v3 media
+update CAS is not assumed from an ETag alone; OSF has no documented conditional
+PUT in the referenced contract. Dropbox's strict update revision and Drive's
+reserved-ID creation permit safe repetition in their supported cases.
+
+HTTP `completeSession` can return 202 while the job runs. The participant checks
+`sessionStatus`; only a matching confirmed receipt permits success or recruitment
+redirection. `recoverEvents` uploads closed-session pending events, and
+`retryExport` reactivates the blocking job after attention or exhausted retries.
+Older closed sessions without verifiable jobs/receipts require the later
+transition tool, not an inferred confirmation.
+
+Provider references: [Drive reserved IDs](https://developers.google.com/workspace/drive/api/guides/create-file),
+[Dropbox strict upload revisions](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/upload),
+and [WaterButler upload/update contracts](https://github.com/CenterForOpenScience/waterbutler/blob/develop/docs/api.rst).
 
 ## Retry And Rate Limits
 
@@ -77,12 +128,19 @@ Provider behavior:
 - Max dispatches per second: 20
 - Per-task dispatch deadline: 120 seconds
 
+`processSessionExportTask` uses a 300-second function timeout and dispatch
+deadline, 512 MiB memory, eight attempts, 30–900 second backoff, and at most five
+concurrent dispatches/five dispatches per second. Exhaustion retains the job and
+data for explicit retry. The scheduler and per-job dispatch claim also recover
+an interrupted worker or a task whose delivery retries ended.
+
 ## Deployment Requirements
 
-Deploy the task worker and the RTDB trigger together:
+For the eventual coordinated release, deploy the indexes and all participating
+functions together, and then republish the compatible participant runtime:
 
 ```bash
-firebase deploy --only functions:processSessionTimeout,functions:finalizeDisconnectedSessions
+firebase deploy --only firestore:indexes,functions:apiData,functions:apiDataComplete,functions:processSessionTimeout,functions:finalizeDisconnectedSessions,functions:enqueueSessionExport,functions:processSessionExportTask,functions:reconcilePendingSessionExports
 ```
 
 Deploying all functions is also fine:
@@ -99,9 +157,17 @@ used by the function. It needs permission to create Cloud Tasks tasks
 (`cloudtasks.tasks.create`, commonly via `roles/cloudtasks.enqueuer`) and to
 invoke the task queue function.
 
-No new environment variable is required.
+The checked-in Functions manifest declares Cloud Tasks and Cloud Scheduler as
+required APIs. `firestore.indexes.json` includes collection-group indexes for
+dispatch and deletion guards. Deploying only Functions is insufficient when
+these indexes have not been provisioned. No new environment variable or npm
+dependency is required.
 
 ## Cost Model
+
+The example below counts only the timeout queue. Export queue deliveries,
+Firestore jobs/snapshots and the scheduler add their own operations; they are not
+included in that original estimate.
 
 The task payload is far below 32 KB, so one disconnected resumable session
 normally adds two Cloud Tasks billable operations:
