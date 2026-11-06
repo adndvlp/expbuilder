@@ -89,3 +89,7 @@ export type ComposeExpandedLoopLayoutInput = {
   markerHorizontalOffset?: number;
   entryItemIds?: Readonly<Record<string, LayoutItemId | null>>;
 };
+
+export type CanvasRoutingNode = Omit<ExpandedCanvasNode, "draggable"> & {
+  draggable?: boolean;
+};

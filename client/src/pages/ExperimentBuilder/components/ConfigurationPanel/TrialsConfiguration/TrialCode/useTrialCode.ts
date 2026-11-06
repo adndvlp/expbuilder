@@ -20,30 +20,30 @@ import {
 import { toCodeIdentifier } from "../../../../utils/codegen/codeIdentifier";
 
 type Props = {
-  id: number | undefined;
+  id: string | number | undefined;
   branches: (string | number)[] | undefined;
   branchConditions: BranchCondition[] | undefined;
   defaultNextTrialId?: string | number | null;
   paramsOverride?: ParamsOverrideCondition[];
   pluginName: string;
-  parameters: any[];
-  data: any[];
+  parameters: { key: string; type: string }[];
+  data: { key: string }[];
   getColumnValue: (
     mapping: ColumnMappingEntry | undefined,
-    row?: Record<string, any>,
-    defaultValue?: any,
+    row?: Record<string, unknown>,
+    defaultValue?: unknown,
     key?: string,
-  ) => any;
+  ) => unknown;
   columnMapping: ColumnMapping;
-  uploadedFiles: any[]; // Archivos del Timeline para mapear nombres a URLs
-  csvJson: any[];
+  uploadedFiles: unknown[]; // Archivos del Timeline para mapear nombres a URLs
+  csvJson: unknown[];
   trialName: string;
   includesExtensions: boolean;
   extensions: string;
   orders: boolean;
-  stimuliOrders: any[];
+  stimuliOrders: unknown[];
   categories: boolean;
-  categoryData: any[];
+  categoryData: unknown[];
   isInLoop?: boolean;
   isMergePoint?: boolean;
   parentLoopId?: string | null; // ID del loop padre para generar nombres de variables dinámicos

@@ -7,7 +7,7 @@ interface Options {
   columnMapping: ColumnMapping;
   data: Array<{ key: string }>;
   hasData?: boolean;
-  id?: number;
+  id?: string | number;
   isInLoop?: boolean;
   params: Array<{ key: string }>;
   pluginName: string;

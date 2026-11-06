@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { GraphScopeView } from "../../../pages/ExperimentBuilder/modules/experiment-graph/types";
@@ -65,9 +66,11 @@ describe("TrialsProvider canonical nested-loop creation", () => {
     let caught: unknown;
     await act(async () => {
       try {
-        await view.getContext()?.createLoop(
-          loopDraft({ parentLoopId: "loop-parent", trials: [10] }),
-        );
+        await view
+          .getContext()
+          ?.createLoop(
+            loopDraft({ parentLoopId: "loop-parent", trials: [10] }),
+          );
       } catch (error: unknown) {
         caught = error;
       }

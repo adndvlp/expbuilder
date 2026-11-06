@@ -1,3 +1,5 @@
+import { isRegenerableTrialCode } from "../../../../../../shared/experiment-workspace/dist/codeCache.js";
+import { generateWebgazerCode } from "./generateWebgazerCode";
 import { useTrialCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/useTrialCode";
 import { generateOnFinishCode } from "../../components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator";
 import { Trial } from "../../components/ConfigurationPanel/types";
@@ -12,7 +14,7 @@ export async function generateTrialCode(
   _experimentID: string,
   getTrial: GetTrialFn,
   isInLoop: boolean = false,
-  loopCsvJson?: Record<string, any>[],
+  loopCsvJson?: Record<string, unknown>[],
   isMergePointInScope: boolean = false,
   codegenOptions: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<GeneratedTrialResult> {
@@ -39,7 +41,9 @@ export async function generateTrialCode(
     // WebGazer is complex - use saved code instead of generating it
     // IMPORTANT: Check this BEFORE trying to load plugin parameters
     if (fullTrial.plugin === "webgazer") {
-      const savedCode = fullTrial.trialCode?.trim();
+      const savedCode = isRegenerableTrialCode(fullTrial)
+        ? await generateWebgazerCode(fullTrial, codegenOptions)
+        : fullTrial.trialCode?.trim();
       if (!savedCode) {
         return {
           code: "",

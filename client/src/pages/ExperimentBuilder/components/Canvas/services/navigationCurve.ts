@@ -1,4 +1,5 @@
 import type { CanvasCubic, CanvasPoint } from "./expandedLayoutTypes";
+import { findObstacleCurve } from "./navigationObstacleCurve";
 
 export type CurveObstacle = {
   left: number;
@@ -124,9 +125,8 @@ export function sideCurve(
 
 type CurveLane = { side: "left" | "right"; x: number };
 
-// The same two joined cubics as the approved HTML. Search only their geometric
-// parameters: tangent amplitude and exterior lane. A collision never switches
-// the edge to an orthogonal path.
+// Preserve the approved direct/two-cubic geometry when it clears the nodes.
+// More constrained layouts use a visibility path smoothed into cubic segments.
 export function findNavigationCurve(
   start: CanvasPoint,
   end: CanvasPoint,
@@ -171,5 +171,9 @@ export function findNavigationCurve(
       .sort((a, b) => a.cost - b.cost);
     if (candidates.length) return candidates[0];
   }
+  const curve = findObstacleCurve(start, end, boxes, (candidate) =>
+    curveIsClear(candidate, boxes),
+  );
+  if (curve) return { curve, side: null };
   throw new Error("Canvas curve cannot be routed outside node bounds");
 }

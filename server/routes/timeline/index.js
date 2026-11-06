@@ -10,8 +10,10 @@ import loopBranchingRouter from "./loopBranching/index.js";
 import loopsRouter from "./loops.js";
 import trialsRouter from "./trials.js";
 import validationRouter from "./validation.js";
+import workspaceRouter from "../workspace/index.js";
 
 const router = Router();
+router.use(workspaceRouter);
 
 router.use(trialsRouter);
 router.use(graphRouter);

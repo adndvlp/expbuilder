@@ -1,3 +1,4 @@
+import { projectExecutionGraph } from "../../../../../shared/experiment-workspace/dist/projection.js";
 import { Loop, Trial } from "../components/ConfigurationPanel/types";
 import type { TimelineItem } from "../contexts/TrialsContext";
 import type { ExperimentGraphSnapshot } from "../modules/experiment-graph/types";
@@ -35,8 +36,7 @@ export async function generateAllCodes(
 ): Promise<string[]> {
   try {
     const fetchImpl = options.fetchImpl ?? fetch;
-    const apiBaseUrl =
-      options.apiBaseUrl ?? getApiBaseUrl() ?? "";
+    const apiBaseUrl = options.apiBaseUrl ?? getApiBaseUrl() ?? "";
     let timeline: TimelineItem[] = options.graph?.root.items || [];
     if (!options.graph) {
       const response = await fetchImpl(
@@ -47,6 +47,16 @@ export async function generateAllCodes(
       }
       const data = await response.json();
       timeline = data.timeline || [];
+    }
+    if (options.graph?.workspace?.workspaceSchemaVersion === 2) {
+      const graph = projectExecutionGraph(options.graph);
+      timeline = graph.root.items;
+      const document = graph.workspace!;
+      getTrial = async (id) =>
+        document.trials.find((t) => String(t.id) === String(id)) ?? null;
+      getLoop = async (id) =>
+        document.loops.find((l) => String(l.id) === String(id)) ?? null;
+      getLoopTimeline = async (id) => graph.scopes[String(id)]?.items ?? [];
     }
     const topLevelMergePointIds = getMergePointIds(timeline);
 

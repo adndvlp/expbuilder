@@ -1,3 +1,4 @@
+import { projectExecutable } from "../../../../shared/experiment-workspace/dist/projection.js";
 import { Router } from "express";
 import { buildExperimentGraph } from "../graph/buildExperimentGraph.js";
 import { getExperimentDoc } from "./state.js";
@@ -30,7 +31,7 @@ router.get("/api/trials-extensions/:experimentID", async (req, res) => {
     }
 
     const extensionsSet = new Set();
-    experimentDoc.trials.forEach((trial) => {
+    projectExecutable(experimentDoc).trials.forEach((trial) => {
       if (
         trial.parameters?.includesExtensions &&
         trial.parameters?.extensionType

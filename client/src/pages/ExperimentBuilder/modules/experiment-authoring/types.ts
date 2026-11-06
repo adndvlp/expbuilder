@@ -35,7 +35,10 @@ export interface ExperimentAuthoringClient {
     experimentId: string | undefined,
     trial: Omit<Trial, "id">,
   ): Promise<AuthoringMutation<{ trial: Trial }>>;
-  getTrial(experimentId: string | undefined, trialId: string | number): Promise<Trial>;
+  getTrial(
+    experimentId: string | undefined,
+    trialId: string | number,
+  ): Promise<Trial>;
   updateTrial(
     experimentId: string | undefined,
     trialId: string | number,
@@ -44,13 +47,18 @@ export interface ExperimentAuthoringClient {
   deleteTrial(
     experimentId: string | undefined,
     trialId: string | number,
-  ): Promise<AuthoringMutation<Record<string, never>>>;
-  deleteAllTrials(experimentId: string | undefined): Promise<{ success: true }>;
+  ): Promise<AuthoringMutation<Record<never, never>>>;
+  deleteAllTrials(
+    experimentId: string | undefined,
+  ): Promise<{ success: true; graph?: ExperimentGraphSnapshot }>;
   createLoop(
     experimentId: string | undefined,
     loop: Omit<Loop, "id">,
   ): Promise<AuthoringMutation<{ loop: Loop }>>;
-  getLoop(experimentId: string | undefined, loopId: string | number): Promise<Loop>;
+  getLoop(
+    experimentId: string | undefined,
+    loopId: string | number,
+  ): Promise<Loop>;
   updateLoop(
     experimentId: string | undefined,
     loopId: string | number,
@@ -59,7 +67,7 @@ export interface ExperimentAuthoringClient {
   deleteLoop(
     experimentId: string | undefined,
     loopId: string | number,
-  ): Promise<AuthoringMutation<Record<string, never>>>;
+  ): Promise<AuthoringMutation<Record<never, never>>>;
   updateTimeline(
     experimentId: string | undefined,
     timeline: TimelineItem[],

@@ -60,7 +60,8 @@ export default function useTrialMethods({
           id,
           updates,
         );
-        if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
+        if (data.graph?.workspace || affectsGraph(updates))
+          applyGraphSnapshot(data.graph);
         setSelectedTrial((current) =>
           current && idsMatch(current.id, id) ? data.trial : current,
         );
@@ -88,7 +89,8 @@ export default function useTrialMethods({
           id,
           updates,
         );
-        if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
+        if (data.graph?.workspace || affectsGraph(updates))
+          applyGraphSnapshot(data.graph);
         if (updateSelectedTrial) {
           setSelectedTrial((current) =>
             current && idsMatch(current.id, id) ? data.trial : current,

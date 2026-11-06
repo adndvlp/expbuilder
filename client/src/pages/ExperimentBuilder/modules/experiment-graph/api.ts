@@ -1,9 +1,28 @@
 import type { ExperimentGraphSnapshot } from "./types";
 import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
+import { createWorkspaceClient } from "../experiment-workspace/client";
+import { createJsonTransport } from "../experiment-authoring/http";
+import { workspaceClient } from "../experiment-workspace/browserClient";
 
 const API_URL = getApiBaseUrl() ?? "";
 
 export async function loadExperimentGraph(
+  experimentId: string,
+  options: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
+): Promise<ExperimentGraphSnapshot> {
+  const client =
+    options.fetchImpl || options.apiBaseUrl !== undefined
+      ? createWorkspaceClient(
+          createJsonTransport({
+            baseUrl: options.apiBaseUrl ?? API_URL,
+            fetchImpl: options.fetchImpl,
+          }),
+        )
+      : workspaceClient;
+  return (await client.load(experimentId, true)).graph;
+}
+
+export async function loadLegacyExperimentGraph(
   experimentId: string,
   options: { apiBaseUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<ExperimentGraphSnapshot> {
