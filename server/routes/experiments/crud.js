@@ -10,9 +10,17 @@ import {
   defaultFunctionalSettings,
   ensureSettingsDocument,
 } from "../../utils/functionalSettings.js";
-import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
+import { db, ensureDbData } from "../../utils/db.js";
 import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
+import {
+  canonicalAssetDirectory,
+  assetDirectoryFor,
+  assetFilePath,
+  isAssetDirectoryShared,
+} from "../../modules/experiment-assets/paths.js";
 import { experimentsHtmlDir, trialsPreviewsHtmlDir } from "./paths.js";
+
+import { assertAssetIdle } from "../../modules/experiment-assets/activity.js";
 
 const router = Router();
 
@@ -68,6 +76,7 @@ router.post("/api/create-experiment", async (req, res) => {
     const experimentID = uuidv4();
     const experiment = {
       experimentID,
+      assetDirectory: canonicalAssetDirectory(experimentID),
       name,
       description,
       author,
@@ -111,6 +120,14 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
     const experiment = db.data.experiments.find(
       (e) => e.experimentID === experimentID,
     );
+
+    let assetPath = null;
+    if (experiment) {
+      assetPath = assetDirectoryFor(experiment);
+      assertAssetIdle(experiment.assetDirectory);
+      if (isAssetDirectoryShared(db.data, experiment)) assetPath = null;
+      await db.write();
+    }
 
     // Authorize and complete remote deletion before destroying any local recovery material.
     if (scope === "remote") {
@@ -167,15 +184,15 @@ router.delete("/api/delete-experiment/:experimentID", async (req, res) => {
       if (fs.existsSync(previewHtmlPath)) fs.unlinkSync(previewHtmlPath);
     }
 
-    const experimentName = experiment?.name || experimentID;
-    const experimentUploadsDir = path.join(userDataRoot, experimentName);
-    if (fs.existsSync(experimentUploadsDir)) {
-      fs.rmSync(experimentUploadsDir, { recursive: true, force: true });
+    if (assetPath && fs.existsSync(assetPath)) {
+      fs.rmSync(assetPath, { recursive: true, force: true });
     }
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status || 500)
+      .json({ success: false, code: error.code, error: error.message });
   }
 });
 
@@ -250,19 +267,27 @@ export async function serveUploadedMedia(req, res, next) {
   if (!match) return next();
   try {
     const [, experimentID, type, encodedFilename] = match;
-    const filename = path.basename(decodeURIComponent(encodedFilename));
-    const experimentName = await withDbLock(async () => {
+    const filename = decodeURIComponent(encodedFilename);
+    const filePath = await withDbLock(async () => {
       await db.read();
       ensureDbData();
-      return db.data.experiments.find(
-        (candidate) => candidate.experimentID === experimentID,
-      )?.name;
+      const experiment = db.data.experiments.find(
+        (e) => e.experimentID === experimentID,
+      );
+      if (!experiment) return null;
+      const previous = experiment.assetDirectory;
+      const result = assetFilePath(experiment, type, filename);
+      if (previous !== experiment.assetDirectory) await db.write();
+      return result;
     });
-    if (!experimentName) return next();
-    const filePath = path.join(userDataRoot, experimentName, type, filename);
+    if (!filePath) return next();
     if (!fs.existsSync(filePath)) return next();
     return res.sendFile(filePath);
   } catch (error) {
+    if (error.status)
+      return res
+        .status(error.status)
+        .json({ success: false, code: error.code, error: error.message });
     return next(error);
   }
 }

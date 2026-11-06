@@ -5,6 +5,9 @@ interface BackupSectionProps {
   experiments: Experiment[];
   importInputRef: RefObject<HTMLInputElement | null>;
   isExporting: boolean;
+  isImporting: boolean;
+  exportKind: "backup" | "portable";
+  onExportKindChange: (kind: "backup" | "portable") => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onExportAll: () => void;
   onOpenExportModal: () => void;
@@ -14,6 +17,9 @@ export function BackupSection({
   experiments,
   importInputRef,
   isExporting,
+  isImporting,
+  exportKind,
+  onExportKindChange,
   onImport,
   onExportAll,
   onOpenExportModal,
@@ -35,13 +41,14 @@ export function BackupSection({
           </div>
           <span className="backup-card-label">Import Backup</span>
           <span className="backup-card-desc">
-            Restore experiments from a .zip backup. Existing experiments with
-            the same ID will be updated.
+            Inspect a .zip package, then create independent copies or explicitly
+            restore a backup on this device.
           </span>
           <div className="backup-card-actions">
             <button
               className="backup-btn backup-btn-primary"
               onClick={() => importInputRef.current?.click()}
+              disabled={isImporting}
             >
               <ImportIcon size={15} />
               Choose .zip file
@@ -55,8 +62,8 @@ export function BackupSection({
           </div>
           <span className="backup-card-label">Export Experiments</span>
           <span className="backup-card-desc">
-            Save experiments as a .zip — one folder per experiment with
-            data.json and media files (img/, aud/, vid/).
+            Save a versioned .zip package with the experiment design, settings
+            and media. Backups also include local results.
             {experiments.length > 0 && (
               <>
                 {" "}
@@ -67,6 +74,21 @@ export function BackupSection({
               </>
             )}
           </span>
+          <label className="backup-package-kind">
+            Package type
+            <select
+              value={exportKind}
+              disabled={isExporting}
+              onChange={(event) =>
+                onExportKindChange(event.target.value as "backup" | "portable")
+              }
+            >
+              <option value="backup">Backup — includes local results</option>
+              <option value="portable">
+                Portable — share design and media
+              </option>
+            </select>
+          </label>
           <div className="backup-card-actions">
             <button
               className="backup-btn backup-btn-danger"
@@ -79,7 +101,7 @@ export function BackupSection({
             <button
               className="backup-btn backup-btn-secondary"
               onClick={onOpenExportModal}
-              disabled={experiments.length === 0}
+              disabled={isExporting || experiments.length === 0}
             >
               Export selected...
             </button>

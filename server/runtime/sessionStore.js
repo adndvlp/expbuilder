@@ -1,3 +1,4 @@
+import { assetRelativeDirectory } from "../modules/experiment-assets/paths.js";
 import {
   withDbMutation,
   withDbRead,
@@ -9,7 +10,9 @@ const matchesSession = (session, experimentID, sessionId) =>
 function participantNumber(data, experimentID, sessionId) {
   const sessions = data.sessionResults
     .filter((session) => session.experimentID === experimentID)
-    .sort((left, right) => new Date(left.createdAt) - new Date(right.createdAt));
+    .sort(
+      (left, right) => new Date(left.createdAt) - new Date(right.createdAt),
+    );
   return sessions.findIndex((session) => session.sessionId === sessionId) + 1;
 }
 
@@ -71,7 +74,9 @@ export function listSessions(experimentID) {
     data.sessionResults
       .filter((session) => session.experimentID === experimentID)
       .map(sessionSummary)
-      .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)),
+      .sort(
+        (left, right) => new Date(right.createdAt) - new Date(left.createdAt),
+      ),
   );
 }
 
@@ -159,6 +164,7 @@ export function removeSession(experimentID, sessionId) {
     return {
       found: true,
       experimentName: experiment?.name || experimentID,
+      assetDirectory: experiment ? assetRelativeDirectory(experiment) : null,
       files: files.map((file) => ({ ...file })),
     };
   });
@@ -176,7 +182,10 @@ export function renameSession(experimentID, oldSessionId, newSessionId) {
     if (conflict) return "conflict";
     session.sessionId = newSessionId;
     for (const file of data.participantFiles) {
-      if (file.experimentID === experimentID && file.sessionId === oldSessionId) {
+      if (
+        file.experimentID === experimentID &&
+        file.sessionId === oldSessionId
+      ) {
         file.sessionId = newSessionId;
       }
     }

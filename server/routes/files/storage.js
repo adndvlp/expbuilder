@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
-import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
-import { db, userDataRoot } from "../../utils/db.js";
+import {
+  assertSafePath,
+  assertAssetFilename,
+} from "../../modules/experiment-assets/paths.js";
 import { compressFile } from "./compression.js";
 
 export const GITHUB_FILE_LIMIT_BYTES =
@@ -22,15 +24,7 @@ export function getMediaType(filename) {
   return "others";
 }
 
-export async function getExperimentName(experimentID) {
-  return withDbLock(async () => {
-    await db.read();
-    const experiment = db.data.experiments.find(
-      (candidate) => candidate.experimentID === experimentID,
-    );
-    return experiment?.name || experimentID;
-  });
-}
+export { getExperimentAssetDirectory } from "../../modules/experiment-assets/paths.js";
 
 function getCompressedFilename(originalName, type) {
   const extensionByType = {
@@ -77,7 +71,8 @@ export function isVisibleUploadedFile(filename) {
 }
 
 export function createStoragePlan(file, experimentName, shouldCompress) {
-  const originalName = path.basename(file.originalname);
+  const originalName = file.originalname;
+  assertAssetFilename(originalName);
   const originalSizeBytes = file.size;
   const originalType = getMediaType(originalName);
   const compressible = ["img", "aud", "vid"].includes(originalType);
@@ -86,7 +81,7 @@ export function createStoragePlan(file, experimentName, shouldCompress) {
     compressible &&
     originalSizeBytes > GITHUB_FILE_LIMIT_BYTES;
   const type = originalType;
-  const folder = path.join(userDataRoot, experimentName, type);
+  const folder = assertSafePath(`${experimentName}/${type}`);
   fs.mkdirSync(folder, { recursive: true });
 
   const storedName = getUniqueFilename(

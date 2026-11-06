@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { GITHUB_FILE_LIMIT_BYTES, storeUploadedFile } from "./storage.js";
 
+import { beginAssetWrite } from "../../modules/experiment-assets/activity.js";
+
 const uploadJobs = new Map();
 
 export function serializeUploadJob(job) {
@@ -39,6 +41,7 @@ function updateUploadJob(jobId, updates) {
 
 /* istanbul ignore next -- background media jobs settle asynchronously around external compression. */
 export function startUploadJob(file, experimentName, plan) {
+  const finishWrite = beginAssetWrite(experimentName);
   const jobId = randomUUID();
   const now = new Date().toISOString();
   const job = {
@@ -82,7 +85,8 @@ export function startUploadJob(file, experimentName, plan) {
         status: "failed",
         error: err.message || "Failed to process uploaded file",
       });
-    });
+    })
+    .finally(finishWrite);
 
   return serializeUploadJob(job);
 }

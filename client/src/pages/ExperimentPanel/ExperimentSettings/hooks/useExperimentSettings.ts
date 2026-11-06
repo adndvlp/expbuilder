@@ -6,6 +6,7 @@ import {
   migrateFunctionalSettings,
   SettingsRequestError,
   type SettingsMigration,
+  type LocalSettings,
 } from "../../../../lib/functionalSettings";
 import type { StatusMessage } from "../types";
 import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
@@ -18,6 +19,8 @@ export function useExperimentSettings(experimentID: string | undefined) {
   const [settingsMigration, setSettingsMigration] =
     useState<SettingsMigration | null>(null);
   const [revision, setRevision] = useState(0);
+  const [deploymentReview, setDeploymentReview] =
+    useState<LocalSettings["deploymentReview"]>();
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
@@ -29,7 +32,8 @@ export function useExperimentSettings(experimentID: string | undefined) {
   currentID.current = experimentID;
   const generation = useRef(0);
   const needsReview =
-    settingsMigration !== null && settingsMigration.state !== "complete";
+    (settingsMigration !== null && settingsMigration.state !== "complete") ||
+    Boolean(deploymentReview?.required);
 
   useEffect(() => {
     const requestGeneration = ++generation.current;
@@ -38,6 +42,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
       generation.current === requestGeneration;
     setExperimentExists(false);
     setSettingsMigration(null);
+    setDeploymentReview(undefined);
     setLoadError("");
     setMessage(null);
     setSessionNameMessage(null);
@@ -63,6 +68,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
         );
         setRevision(saved.revision);
         setSettingsMigration(saved.settingsMigration);
+        setDeploymentReview(saved.deploymentReview);
         setExperimentExists(true);
       })
       .catch((error) => {
@@ -117,7 +123,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
       !experimentExists ||
       saving ||
       hasConflict ||
-      !needsReview
+      settingsMigration?.state === "complete"
     )
       return;
     if (
@@ -148,6 +154,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
         editor.applyRecovered(saved.functionalSettings);
         setRevision(saved.revision);
         setSettingsMigration(saved.settingsMigration);
+        setDeploymentReview(saved.deploymentReview);
         setMessage({
           type: "success",
           text: "Published settings recovered and saved on this device.",
@@ -197,11 +204,13 @@ export function useExperimentSettings(experimentID: string | undefined) {
         revision,
         sections,
         sessionNameConfig,
+        deploymentReview?.required === true,
       );
       if (valid()) {
         editor.markSaved(snapshot);
         setRevision(saved.revision);
         setSettingsMigration(saved.settingsMigration);
+        setDeploymentReview(saved.deploymentReview);
         setMessage({
           type: "success",
           text: "Configuration saved on this device.",
@@ -217,6 +226,7 @@ export function useExperimentSettings(experimentID: string | undefined) {
     ...editor,
     experimentExists,
     settingsMigration,
+    deploymentReview,
     needsReview,
     canSave,
     hasConflict,

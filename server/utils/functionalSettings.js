@@ -53,6 +53,9 @@ export function readFunctionalSettings(doc) {
       return {
         functionalSettings: validateFunctionalSettings(doc.functionalSettings),
         revision,
+        ...(doc.deploymentReview
+          ? { deploymentReview: doc.deploymentReview }
+          : {}),
         settingsMigration: doc.settingsMigration,
       };
     } catch {
@@ -61,6 +64,9 @@ export function readFunctionalSettings(doc) {
   }
   return {
     functionalSettings: null,
+    ...(doc?.deploymentReview
+      ? { deploymentReview: doc.deploymentReview }
+      : {}),
     revision,
     settingsMigration: {
       state:

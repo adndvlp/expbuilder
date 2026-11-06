@@ -4,6 +4,7 @@ import ResetAppButton from "./ResetAppButton";
 import { AccountSettings } from "./components/AccountSettings";
 import { BackupSection } from "./components/BackupSection";
 import { ExportExperimentsModal } from "./components/ExportExperimentsModal";
+import { ImportExperimentsModal } from "./components/ImportExperimentsModal";
 import { useExperimentBackup } from "./hooks/useExperimentBackup";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import "./index.css";
@@ -71,9 +72,26 @@ export default function Settings() {
           experiments={experiments}
           selectedExperimentIds={backup.selectedExperimentIds}
           isExporting={backup.isExporting}
+          exportKind={backup.exportKind}
           onSelectionChange={backup.setSelectedExperimentIds}
           onClose={backup.closeExportModal}
           onExport={backup.handleExportSelected}
+        />
+      )}
+
+      {backup.importPreview && (
+        <ImportExperimentsModal
+          preview={backup.importPreview}
+          mode={backup.importMode}
+          replaceExisting={backup.replaceExisting}
+          busy={backup.isImporting}
+          stale={backup.importStale}
+          error={backup.importError}
+          onModeChange={backup.setImportMode}
+          onReplaceChange={backup.setReplaceExisting}
+          onConfirm={backup.confirmImport}
+          onCancel={backup.cancelImport}
+          onInspectAgain={backup.inspectAgain}
         />
       )}
 
@@ -96,6 +114,9 @@ export default function Settings() {
           importInputRef={backup.importInputRef}
           isExporting={backup.isExporting}
           onImport={backup.handleImportZip}
+          isImporting={backup.isImporting}
+          exportKind={backup.exportKind}
+          onExportKindChange={backup.setExportKind}
           onExportAll={backup.handleExportAll}
           onOpenExportModal={backup.openExportModal}
         />

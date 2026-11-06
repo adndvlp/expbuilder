@@ -10,7 +10,7 @@ Las migraciones activas de este registro deben retirarse al cerrar la transició
 |---|---|---|
 | Limpieza de parámetros internos de DynamicPlugin al arrancar | Activa y temporal | `normalizeDynamicDatabase` en [dynamicConfigModel.js](../server/utils/dynamicConfigModel.js), llamada desde [api.js](../server/api.js). |
 | Importación al antiguo branching con destinos solo a trials, añadida en `0044fc3` | Ya retirada en `cd3dd10` | `migrateLegacyBranching.js` ya no existe y no tiene llamadas activas. |
-| Importación a navegación unificada, añadida en `560a3ba` | Activa y temporal | [migrateLegacyNavigation.js](../server/routes/db/legacy/migrateLegacyNavigation.js), llamada desde [db/import.js](../server/routes/db/import.js). |
+| Importación a navegación unificada, añadida en `560a3ba` | Activa y temporal | [migrateLegacyNavigation.js](../server/routes/db/legacy/migrateLegacyNavigation.js), llamada desde el lector de paquetes v1 [read.js](../server/modules/experiment-packages/read.js). |
 
 Las dos migraciones anteriores aparecen en el historial, pero solo la de navegación unificada continúa en el código actual. No hay dos convertidores de navegación activos que deban eliminarse por separado.
 
@@ -26,7 +26,7 @@ La regla vigente de parámetros de DynamicPlugin al crear, editar o importar est
 
 ## Retirada de la conversión de navegación al importar
 
-1. Quitar la importación y la llamada a `migrateLegacyNavigation` en `server/routes/db/import.js`. Mantener `assertExperimentNavigation` y la validación de todos los experimentos antes de escribir registros o restaurar medios.
+1. Quitar la importación y la llamada a `migrateLegacyNavigation` en `server/modules/experiment-packages/read.js`. Mantener `assertExperimentNavigation` y la validación de todos los experimentos antes de escribir registros o restaurar medios.
 2. Eliminar `server/routes/db/legacy/migrateLegacyNavigation.js` y sus pruebas exclusivas en `server/__tests__/routes/db-legacy-import.test.js`.
 3. En `server/__tests__/routes/dynamic-config.test.js`, retirar la variante de navegación antigua y los argumentos auxiliares que solo la construyen. Conservar la cobertura de importación actual, exportación y nueva importación, código manual, sesiones y medios.
 4. Mantener `server/__tests__/routes/db-navigation-import.test.js`, que comprueba el contrato vigente y los rechazos sin escrituras parciales.

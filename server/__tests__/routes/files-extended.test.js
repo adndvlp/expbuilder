@@ -60,8 +60,8 @@ describe('GET /api/participant-files-serve/:experimentID/:filename', () => {
 describe('GET /api/list-files error handling', () => {
   test('handles missing experiment gracefully', async () => {
     const { app } = await freshApp()
-    const res = await request(app).get('/api/list-files/img/NONEXISTENT').expect(200)
-    expect(res.body.files).toEqual([])
+    const res = await request(app).get('/api/list-files/img/NONEXISTENT').expect(404)
+    expect(res.body.error).toContain("not found")
   })
 })
 

@@ -164,3 +164,65 @@
 .backup-modal-export:not(:disabled):hover {
   filter: brightness(1.08);
 }
+
+.import-modal {
+  max-width: 620px;
+  box-sizing: border-box;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+.import-modal .backup-modal-subtitle {
+  color: #555;
+  font-size: 13px;
+}
+.import-modes {
+  border: 0;
+  padding: 0;
+  margin: 12px 0;
+}
+.import-modes legend {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.import-modes label {
+  display: block;
+  margin: 8px 0;
+}
+.import-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+.import-entry-id {
+  overflow-wrap: anywhere;
+  color: #666;
+}
+.import-replace {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 16px;
+}
+.import-error {
+  color: #b42318;
+  font-size: 13px;
+}
+.import-modal .backup-modal-footer {
+  flex-wrap: wrap;
+}
+.backup-package-kind {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  margin: 14px 0 4px;
+}
+.backup-package-kind select {
+  padding: 7px;
+  max-width: 100%;
+}

@@ -1,5 +1,5 @@
 // TEMPORARY: converts tester backups during the current model transition.
-// Retire this module, its db/import.js import/call and migration-only tests
+// Retire this module, its experiment-packages/read.js import/call and migration-only tests
 // before the release for users. See docs/temporary-migrations.md.
 import { assertExperimentNavigation } from "../../timeline/branchContract.js";
 

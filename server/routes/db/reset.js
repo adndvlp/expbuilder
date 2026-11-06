@@ -4,6 +4,13 @@ import { Router } from "express";
 import { db, userDataRoot } from "../../utils/db.js";
 import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 
+import {
+  assetDirectoryFor,
+  assetRelativeDirectory,
+  assertSafePath,
+} from "../../modules/experiment-assets/paths.js";
+import { assertAssetIdle } from "../../modules/experiment-assets/activity.js";
+
 const router = Router();
 
 async function cleanupRemoteExperiment(exp, uid, deleteRepos) {
@@ -52,16 +59,17 @@ function clearFixedRuntimeDirs() {
 }
 
 function removeRuntimeDirs(experiments) {
-  const runtimeDirs = ["uploads"];
+  const directories = new Set([path.join(userDataRoot, "uploads")]);
   for (const exp of experiments) {
-    runtimeDirs.push(exp.name || exp.experimentID);
-  }
-  for (const d of runtimeDirs) {
-    const p = path.join(userDataRoot, d);
-    if (fs.existsSync(p)) {
-      fs.rmSync(p, { recursive: true, force: true });
+    try {
+      directories.add(assetDirectoryFor(exp));
+    } catch {
+      /* Preserve unsafe legacy paths for review. */
     }
   }
+  for (const directory of directories)
+    if (fs.existsSync(directory))
+      fs.rmSync(directory, { recursive: true, force: true });
 }
 
 /* istanbul ignore next -- factory reset includes optional Firebase and filesystem cleanup integrations. */
@@ -71,6 +79,16 @@ router.post("/api/app/reset", async (req, res) => {
 
     await db.read();
     const experiments = db.data.experiments || [];
+    const importsDirectory = assertSafePath(".imports");
+    for (const experiment of experiments) {
+      let relative;
+      try {
+        relative = assetRelativeDirectory(experiment);
+      } catch {
+        continue;
+      }
+      assertAssetIdle(relative);
+    }
 
     if (uid && resolveFirebaseFunctionsUrl()) {
       for (const exp of experiments) {
@@ -85,10 +103,14 @@ router.post("/api/app/reset", async (req, res) => {
     db.data.sessionResults = [];
     db.data.participantFiles = [];
     db.data.sessionCounters = {};
+    db.data.mutationReceipts = [];
+    db.data.importCommits = {};
     await db.write();
 
     clearFixedRuntimeDirs();
     removeRuntimeDirs(experiments);
+    if (fs.existsSync(importsDirectory))
+      fs.rmSync(importsDirectory, { recursive: true, force: true });
 
     res.json({
       success: true,
@@ -96,7 +118,9 @@ router.post("/api/app/reset", async (req, res) => {
     });
   } catch (error) {
     console.error("Error in reset app:", error);
-    res.status(500).json({ success: false, error: error.message });
+    res
+      .status(error.status || 500)
+      .json({ success: false, code: error.code, error: error.message });
   }
 });
 

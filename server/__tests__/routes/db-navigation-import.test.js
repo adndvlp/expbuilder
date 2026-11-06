@@ -4,6 +4,7 @@ import path from "node:path";
 import express from "express";
 import request from "supertest";
 import JSZip from "jszip";
+import { inspectAndRestore } from "../helpers/importPackage.js";
 import { beforeEach, afterEach, test, expect, jest } from "@jest/globals";
 
 let app, db, directory, previousRoot, previousPath;
@@ -20,6 +21,7 @@ beforeEach(async () => {
   database.ensureDbData();
   await db.write();
   app = express();
+  app.use(express.json());
   app.use((await import("../../routes/db/import.js")).default);
 });
 afterEach(() => {
@@ -46,7 +48,7 @@ const backup = (id = "E1") => ({
     loops: [],
     timeline: [{ id: 1, type: "trial", name: "Source" }],
   },
-  config: { experimentID: id, keep: true },
+  config: { experimentID: id, isSaveMode: true },
   sessionCounter: 3,
   sessionResults: [
     { experimentID: id, sessionId: "saved", data: [{ response: "yes" }] },
@@ -58,13 +60,7 @@ async function importBackups(...backups) {
     zip.file(`Experiment-${index}/data.json`, JSON.stringify(value));
     zip.file(`Experiment-${index}/img/stimulus.png`, "image-bytes");
   }
-  return request(app)
-    .post("/api/import-experiments")
-    .attach(
-      "zipfile",
-      await zip.generateAsync({ type: "nodebuffer" }),
-      "backup.zip",
-    );
+  return inspectAndRestore(app, await zip.generateAsync({ type: "nodebuffer" }));
 }
 test("preserves a current experiment, media, configuration, CSV and sessions", async () => {
   const data = backup();
@@ -72,11 +68,11 @@ test("preserves a current experiment, media, configuration, CSV and sessions", a
   expect((await importBackups(data)).status).toBe(200);
   await db.read();
   expect(db.data.trials[0]).toEqual(data.trials);
-  expect(db.data.configs[0]).toEqual(data.config);
+  expect(db.data.configs[0]).toMatchObject(data.config);
   expect(db.data.sessionResults).toEqual(data.sessionResults);
   expect(db.data.sessionCounters.E1).toBe(3);
   expect(
-    fs.readFileSync(path.join(directory, "E1/img/stimulus.png"), "utf8"),
+    fs.readFileSync(path.join(directory, "experiments/E1/media/img/stimulus.png"), "utf8"),
   ).toBe("image-bytes");
 });
 test.each(["default", "entry", "condition", "container", "unsupported"])(
@@ -100,7 +96,7 @@ test.each(["default", "entry", "condition", "container", "unsupported"])(
     expect((await importBackups(data)).status).toBe(400);
     await db.read();
     expect(JSON.stringify(db.data)).toBe(before);
-    expect(fs.existsSync(path.join(directory, "E1/img/stimulus.png"))).toBe(
+    expect(fs.existsSync(path.join(directory, "experiments/E1/media/img/stimulus.png"))).toBe(
       false,
     );
   },
@@ -116,7 +112,7 @@ test("validates all experiments before restoring the first media file", async ()
 test("imports several current experiments without changing their navigation", async () => {
   const first = backup(),
     second = backup("E2");
-  expect((await importBackups(first, second)).body).toEqual({
+  expect((await importBackups(first, second)).body).toMatchObject({
     success: true,
     imported: 2,
   });
@@ -185,7 +181,7 @@ test.each(["cycle", "ambiguous", "dangling"])(
     expect((await importBackups(data)).status).toBe(400);
     await db.read();
     expect(JSON.stringify(db.data)).toBe(before);
-    expect(fs.existsSync(path.join(directory, "E1/img/stimulus.png"))).toBe(
+    expect(fs.existsSync(path.join(directory, "experiments/E1/media/img/stimulus.png"))).toBe(
       false,
     );
   },

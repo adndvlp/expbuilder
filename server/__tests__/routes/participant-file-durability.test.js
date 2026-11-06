@@ -17,6 +17,7 @@ async function createApp() {
   const { db, ensureDbData } = await import("../../utils/db.js");
   db.data = {};
   ensureDbData();
+  db.data.experiments.push({ experimentID: "E1", name: "E1", assetDirectory: "E1" });
   await db.write();
 
   const router = (await import("../../routes/files.js")).default;

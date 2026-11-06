@@ -125,6 +125,7 @@ describe('sanitizeName (helper)', () => {
     db.data.experiments.push({
       experimentID: 'E1',
       name: 'Test/Exp..name!@#',
+      assetDirectory: 'experiments/E1/media',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })

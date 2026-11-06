@@ -1,9 +1,11 @@
 import fs from "fs";
-import path from "path";
 import { Router } from "express";
 import { withDbMutation } from "../../modules/session-persistence/dbQueue.js";
 import { removeSession } from "../../runtime/sessionStore.js";
-import { userDataRoot } from "../../utils/db.js";
+import {
+  assertSafePath,
+  assertAssetFilename,
+} from "../../modules/experiment-assets/paths.js";
 
 const router = Router();
 
@@ -23,22 +25,21 @@ router.delete(
       }
 
       for (const record of result.files) {
-        const filePath = path.join(
-          userDataRoot,
-          result.experimentName,
-          "participant-files",
-          record.filename,
+        if (!result.assetDirectory) continue;
+        assertAssetFilename(record.filename);
+        const filePath = assertSafePath(
+          `${result.assetDirectory}/participant-files/${record.filename}`,
         );
         try {
           if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        /* istanbul ignore next -- individual participant file delete failures are intentionally ignored. */
+          /* istanbul ignore next -- individual participant file delete failures are intentionally ignored. */
         } catch {
           // ignore individual file errors
         }
       }
 
       res.json({ success: true });
-    /* istanbul ignore next -- lowdb write failure path. */
+      /* istanbul ignore next -- lowdb write failure path. */
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -79,7 +80,7 @@ router.patch("/api/rename-session/:experimentID", async (req, res) => {
         .json({ success: false, error: "Session not found" });
     }
     res.json({ success: true, displayName: result, sessionId });
-  /* istanbul ignore next -- lowdb write failure path. */
+    /* istanbul ignore next -- lowdb write failure path. */
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

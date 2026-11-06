@@ -14,6 +14,7 @@ const freshApp = async () => {
   const { db, ensureDbData } = await import('../../utils/db.js')
   db.data = {}
   ensureDbData()
+  db.data.experiments.push({ experimentID: "E1", name: "E1", assetDirectory: "E1" })
   await db.write()
 
   const router = (await import('../../routes/files.js')).default
@@ -87,7 +88,7 @@ describe('GET /api/list-files/:type/:experimentID', () => {
 
   test('uses experiment name when set', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'MyExp' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'MyExp' }]
     await db.write()
     fs.mkdirSync(path.join(tmpDir, 'MyExp', 'img'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'MyExp', 'img', 'photo.jpg'), 'data')
@@ -114,7 +115,7 @@ describe('DELETE /api/delete-file/:type/:filename/:experimentID', () => {
 
   test('uses experiment name and decoded filename when deleting', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'Named Exp' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'Named Exp' }]
     await db.write()
     fs.mkdirSync(path.join(tmpDir, 'Named Exp', 'others'), { recursive: true })
     fs.writeFileSync(path.join(tmpDir, 'Named Exp', 'others', 'data file.csv'), 'data')
@@ -231,7 +232,7 @@ describe('POST /api/participant-files/:experimentID', () => {
 
   test('uses experiment display name for participant file storage', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'Named Uploads' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'Named Uploads' }]
     db.data.sessionResults.push({ experimentID: 'E1', sessionId: 'session-1', data: [] })
     await db.write()
 
@@ -351,7 +352,7 @@ describe('POST /api/upload-files/:experimentID', () => {
 
   test('stores uploaded files under the experiment display name', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'Named Upload Exp' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'Named Upload Exp' }]
     await db.write()
 
     await request(app)
@@ -541,7 +542,7 @@ describe('GET /api/participant-files/:experimentID', () => {
 describe('GET /api/participant-files-serve/:experimentID/:filename', () => {
   test('serves participant files using experiment display name', async () => {
     const { app, db, tmpDir } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'Named Exp' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'Named Exp' }]
     db.data.participantFiles.push({
       id: 'file-1',
       experimentID: 'E1',
@@ -589,7 +590,7 @@ describe('DELETE /api/participant-files/:experimentID/:fileId', () => {
 
   test('deletes record when disk file is already absent and uses experiment name', async () => {
     const { app, db } = await freshApp()
-    db.data.experiments.push({ experimentID: 'E1', name: 'Named Exp' })
+    db.data.experiments = [{ experimentID: 'E1', name: 'Named Exp' }]
     db.data.participantFiles.push({
       id: 'pf1',
       experimentID: 'E1',

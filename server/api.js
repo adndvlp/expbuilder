@@ -5,6 +5,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import { db, dbPath, ensureDbData, userDataRoot } from "./utils/db.js";
+import { recoverPendingImports } from "./modules/experiment-packages/apply.js";
+import { bindExistingAssetDirectories } from "./modules/experiment-assets/paths.js";
 import { normalizeDynamicDatabase } from "./utils/dynamicConfigModel.js";
 import { __dirname } from "./utils/paths.js";
 import {
@@ -32,7 +34,12 @@ dotenv.config({ path: `${__dirname}/.env` });
 
 const app = express();
 const httpServer = createServer(app);
-const DEV_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:4173", "http://localhost:3000"];
+const DEV_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:4173",
+  "http://localhost:3000",
+];
 const socketOrigins = process.env.ORIGIN
   ? [process.env.ORIGIN, ...DEV_ORIGINS]
   : DEV_ORIGINS;
@@ -54,7 +61,11 @@ app.use((req, res, next) =>
       const allowed = process.env.ORIGIN
         ? [process.env.ORIGIN, ...DEV_ORIGINS]
         : DEV_ORIGINS;
-      if (!origin || allowed.includes(origin) || originMatchesRequest(req, origin)) {
+      if (
+        !origin ||
+        allowed.includes(origin) ||
+        originMatchesRequest(req, origin)
+      ) {
         return cb(null, true);
       }
       return cb(new Error(`CORS: ${origin} not allowed`));
@@ -69,15 +80,20 @@ app.use(restrictRemoteAccess);
 await withDbLock(async () => {
   await db.read();
   ensureDbData();
+  await recoverPendingImports();
   // TEMPORARY tester migration: remove this call/import, keeping initialization.
   // Retirement and migration-only tests: docs/temporary-migrations.md.
   db.data = normalizeDynamicDatabase(db.data);
+  bindExistingAssetDirectories(db.data);
   await db.write();
 });
 
 // Serve only the assets required by local experiment HTML.
 app.use("/jspsych-bundle", express.static(`${__dirname}/jspsych-bundle`));
-app.use("/dynamicplugin/dist", express.static(`${__dirname}/dynamicplugin/dist`));
+app.use(
+  "/dynamicplugin/dist",
+  express.static(`${__dirname}/dynamicplugin/dist`),
+);
 app.use("/icon", express.static(`${__dirname}/icon`));
 app.use("/plugins", express.static(`${userDataRoot}/plugins`));
 app.use(serializeDbRequest);
@@ -113,7 +129,10 @@ io.on("connection", (socket) => {
   // Evento para que ResultsList escuche actualizaciones
   socket.on("listen-experiment", (experimentID, acknowledge) => {
     if (!isLocalRequest(socket.request)) {
-      acknowledge?.({ success: false, error: "Listener not available remotely" });
+      acknowledge?.({
+        success: false,
+        error: "Listener not available remotely",
+      });
       return;
     }
     presence.listen(socket, experimentID, acknowledge);

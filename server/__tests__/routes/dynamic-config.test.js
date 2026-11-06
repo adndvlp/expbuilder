@@ -4,6 +4,7 @@ import path from "node:path";
 import express from "express";
 import request from "supertest";
 import JSZip from "jszip";
+import { inspectAndRestore } from "../helpers/importPackage.js";
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
 
 let app, db, directory, previousRoot, previousPath;
@@ -119,9 +120,7 @@ async function importBackup(payload) {
   const zip = new JSZip();
   zip.file("Imported/data.json", JSON.stringify(payload));
   zip.file("Imported/img/stimulus.png", "image-bytes");
-  return request(app).post("/api/import-experiments").attach(
-    "zipfile", await zip.generateAsync({ type: "nodebuffer" }), "backup.zip",
-  );
+  return inspectAndRestore(app, await zip.generateAsync({ type: "nodebuffer" }));
 }
 
 function parseZip(response, done) {
@@ -139,15 +138,15 @@ test.each([true, false])("import cleans current=%s navigation and discards only 
   const config = db.data.configs.find(item => item.experimentID === "E2");
   expect(restored.trials[0].columnMapping).toEqual(publicMapping);
   expect(restored.trials[0].paramsOverride[0].paramsToOverride).toEqual({ trial_duration: typed(800) });
-  expect(config).toEqual({ ...payload.config, data: { ...payload.config.data, generatedCode: "" } });
+  expect(config).toMatchObject({ ...payload.config, data: { ...payload.config.data, generatedCode: "" } });
   expect(restored.trials[0].csvJson).toEqual(payload.trials.trials[0].csvJson);
   expect(db.data.sessionResults).toEqual(payload.sessionResults);
   expect(db.data.sessionCounters.E2).toBe(3);
-  expect(fs.readFileSync(path.join(directory, "Imported/img/stimulus.png"), "utf8")).toBe("image-bytes");
+  expect(fs.readFileSync(path.join(directory, "experiments/E2/media/img/stimulus.png"), "utf8")).toBe("image-bytes");
 
   const response = await request(app).get("/api/export-experiment/E2").buffer(true).parse(parseZip).expect(200);
   const exported = await JSZip.loadAsync(response.body);
-  const roundTrip = JSON.parse(await exported.file("Imported/data.json").async("string"));
+  const roundTrip = JSON.parse(await exported.file("experiments/E2/data.json").async("string"));
   expect(roundTrip.trials).toEqual(restored);
   expect((await importBackup(roundTrip)).status).toBe(200);
   await db.read();
@@ -158,7 +157,7 @@ test("import preserves a manual program and its settings exactly", async () => {
   const payload = backup(true, true);
   expect((await importBackup(payload)).status).toBe(200);
   await db.read();
-  expect(db.data.configs[0]).toEqual(payload.config);
+  expect(db.data.configs[0]).toMatchObject(payload.config);
   expect(db.data.trials.find(doc => doc.experimentID === "E2").trials[0].columnMapping).toEqual(publicMapping);
 });
 

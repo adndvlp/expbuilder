@@ -253,7 +253,7 @@ test("recovered settings and provenance survive export in the current ZIP format
     await buildExperimentsZip(db.data.experiments),
   );
   const exported = JSON.parse(
-    await zip.file("Legacy/data.json").async("string"),
+    await zip.file("experiments/legacy/data.json").async("string"),
   );
   expect(exported.config.functionalSettings).toEqual(settings());
   expect(exported.config.settingsMigration).toEqual({

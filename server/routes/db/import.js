@@ -1,146 +1,70 @@
-import fs from "fs";
-import path from "path";
-import { Router } from "express";
+import fs from "node:fs";
 import multer from "multer";
-import JSZip from "jszip";
-import { db, dbDir, userDataRoot } from "../../utils/db.js";
-import { ALLOWED_MEDIA_TYPES } from "./zip.js";
-import { assertExperimentNavigation } from "../timeline/branchContract.js";
-import { migrateLegacyNavigation } from "./legacy/migrateLegacyNavigation.js";
-import { normalizeImportedExperiment } from "../../utils/dynamicConfigModel.js";
+import { Router } from "express";
+import { dbDir } from "../../utils/db.js";
+import { MAX_ARCHIVE_BYTES } from "../../modules/experiment-packages/format.js";
+import { inspectImport } from "../../modules/experiment-packages/inspect.js";
+import {
+  applyImport,
+  cancelImport,
+} from "../../modules/experiment-packages/apply.js";
 
 const router = Router();
-const importZipUpload = multer({ dest: dbDir });
-
-function mergeRecord(collection, key, incoming) {
-  const idx = collection.findIndex((item) => item.experimentID === key);
-  if (idx !== -1) collection[idx] = incoming;
-  else collection.push(incoming);
-}
-
-async function restoreMediaFiles(zip, folderName, experimentName) {
-  const resolvedBase = path.resolve(userDataRoot);
-
-  for (const [zipPath, zipFile] of Object.entries(zip.files)) {
-    if (zipFile.dir) continue;
-    if (!zipPath.startsWith(`${folderName}/`)) continue;
-
-    const subPath = zipPath.slice(folderName.length + 1);
-    if (subPath === "data.json") continue;
-
-    const parts = subPath.split("/");
-    if (parts.length !== 2) continue;
-    const [type, rawFilename] = parts;
-    if (!ALLOWED_MEDIA_TYPES.has(type)) continue;
-
-    const safeFilename = path.basename(rawFilename);
-    if (!safeFilename || safeFilename.startsWith(".")) continue;
-
-    const targetDir = path.join(userDataRoot, experimentName, type);
-    const targetPath = path.join(targetDir, safeFilename);
-    if (!path.resolve(targetPath).startsWith(resolvedBase + path.sep)) {
-      continue;
-    }
-
-    fs.mkdirSync(targetDir, { recursive: true });
-    fs.writeFileSync(targetPath, await zipFile.async("nodebuffer"));
+const upload = multer({
+  dest: dbDir,
+  limits: { fileSize: MAX_ARCHIVE_BYTES, files: 1 },
+});
+const errorResponse = (res, error) =>
+  res.status(error.status || 500).json({
+    success: false,
+    code: error.code || "IMPORT_FAILED",
+    error: error.message,
+  });
+const receive = (req, res, next) =>
+  upload.single("zipfile")(req, res, (error) => {
+    if (error)
+      return errorResponse(
+        res,
+        Object.assign(error, {
+          status: error.code === "LIMIT_FILE_SIZE" ? 413 : 400,
+        }),
+      );
+    next();
+  });
+router.post("/api/import-experiments/inspect", receive, async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, error: "No file uploaded" });
+  try {
+    res.json(await inspectImport(fs.readFileSync(req.file.path)));
+  } catch (error) {
+    errorResponse(res, error);
+  } finally {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
   }
-}
-
-/* istanbul ignore next -- malformed ZIP cleanup and traversal guards are covered by focused import tests, not every filesystem edge. */
-router.post(
-  "/api/import-experiments",
-  importZipUpload.single("zipfile"),
-  async (req, res) => {
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, error: "No file uploaded" });
-    }
-    const uploadedPath = req.file.path;
-    try {
-      const zipBuffer = fs.readFileSync(uploadedPath);
-      fs.unlinkSync(uploadedPath);
-
-      const zip = await JSZip.loadAsync(zipBuffer);
-
-      await db.read();
-
-      const experimentFolders = new Set();
-      zip.forEach((relativePath) => {
-        const firstSegment = relativePath.split("/")[0];
-        if (firstSegment) experimentFolders.add(firstSegment);
-      });
-
-      const imports = [];
-      for (const folderName of experimentFolders) {
-        const dataFile = zip.file(`${folderName}/data.json`);
-        if (!dataFile) continue;
-
-        let data;
-        try {
-          data = JSON.parse(await dataFile.async("string"));
-        } catch {
-          continue;
-        }
-
-        if (!data.experiment?.experimentID) continue;
-        if (data.trials) {
-          // TEMPORARY tester ZIP migration: retirement in docs/temporary-migrations.md.
-          data.trials = migrateLegacyNavigation(data.trials);
-        }
-        data = normalizeImportedExperiment(data);
-        if (data.trials) assertExperimentNavigation(data.trials);
-        imports.push({ folderName, data });
-      }
-
-      // Validate every experiment before changing the database or media files.
-      let importedCount = 0;
-      for (const { folderName, data } of imports) {
-        const { experiment, trials, config, sessionResults, sessionCounter } =
-          data;
-        mergeRecord(db.data.experiments, experiment.experimentID, experiment);
-        if (trials)
-          mergeRecord(db.data.trials, experiment.experimentID, trials);
-        if (config)
-          mergeRecord(db.data.configs, experiment.experimentID, config);
-
-        if (Array.isArray(sessionResults) && sessionResults.length > 0) {
-          db.data.sessionResults = db.data.sessionResults.filter(
-            (s) => s.experimentID !== experiment.experimentID,
-          );
-          db.data.sessionResults.push(...sessionResults);
-        }
-        if (Number.isInteger(sessionCounter) && sessionCounter >= 0) {
-          db.data.sessionCounters ||= {};
-          db.data.sessionCounters[experiment.experimentID] = sessionCounter;
-        }
-
-        await restoreMediaFiles(
-          zip,
-          folderName,
-          experiment.name || experiment.experimentID,
-        );
-        importedCount++;
-      }
-
-      await db.write();
-      res.json({ success: true, imported: importedCount });
-    } catch (err) {
-      if (fs.existsSync(uploadedPath)) {
-        try {
-          fs.unlinkSync(uploadedPath);
-        } catch {
-          // Best-effort cleanup; the original import error is returned below.
-        }
-      }
-      res.status(err.status || 500).json({
-        success: false,
-        error: err.message,
-        ...(err.code ? { code: err.code } : {}),
-      });
-    }
-  },
-);
-
+});
+router.post("/api/import-experiments/:importID/apply", async (req, res) => {
+  try {
+    res.json(await applyImport(req.params.importID, req.body));
+  } catch (error) {
+    errorResponse(res, error);
+  }
+});
+router.delete("/api/import-experiments/:importID", async (req, res) => {
+  try {
+    res.json(await cancelImport(req.params.importID));
+  } catch (error) {
+    errorResponse(res, error);
+  }
+});
+router.post("/api/import-experiments", receive, (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, error: "No file uploaded" });
+  if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+  res.status(426).json({
+    success: false,
+    code: "IMPORT_PREVIEW_REQUIRED",
+    error:
+      "Update the app to inspect this package and choose copy or restore before importing.",
+  });
+});
 export default router;

@@ -1,6 +1,7 @@
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import type { Experiment, SettingsNotification } from "../types";
 import { getApiBaseUrl } from "../../../lib/apiBaseUrl";
+import { useExperimentImport } from "./useExperimentImport";
 
 const API_URL = getApiBaseUrl();
 
@@ -22,7 +23,9 @@ export function useExperimentBackup({
   experiments,
   setNotification,
 }: BackupOptions) {
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const importer = useExperimentImport(setNotification);
+  const [exportKind, setExportKind] = useState<"backup" | "portable">("backup");
+  const kindQuery = exportKind === "portable" ? "?kind=portable" : "";
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedExperimentIds, setSelectedExperimentIds] = useState<
     Set<string>
@@ -48,7 +51,9 @@ export function useExperimentBackup({
   const handleExportAll = async () => {
     setIsExporting(true);
     try {
-      const response = await fetch(`${API_URL}/api/export-all-experiments`);
+      const response = await fetch(
+        `${API_URL}/api/export-all-experiments${kindQuery}`,
+      );
       if (!response.ok) {
         const error = (await response.json().catch(() => ({}))) as {
           error?: string;
@@ -58,7 +63,7 @@ export function useExperimentBackup({
       const date = new Date().toISOString().slice(0, 10);
       const result = await saveZipFromResponse(
         response,
-        `experiments-backup-${date}.zip`,
+        `experiments-${exportKind}-${date}.zip`,
       );
       if (result.success) {
         setNotification({
@@ -93,7 +98,7 @@ export function useExperimentBackup({
           (item) => item.experimentID === experimentId,
         );
         const response = await fetch(
-          `${API_URL}/api/export-experiment/${experimentId}`,
+          `${API_URL}/api/export-experiment/${experimentId}${kindQuery}`,
         );
         if (!response.ok) throw new Error("Export failed");
         const safeName = (experiment?.name || experimentId).replace(
@@ -102,7 +107,7 @@ export function useExperimentBackup({
         );
         const result = await saveZipFromResponse(
           response,
-          `${safeName}-backup.zip`,
+          `${safeName}-${exportKind}.zip`,
         );
         if (result.success) {
           setNotification({
@@ -118,13 +123,13 @@ export function useExperimentBackup({
       } else {
         const ids = [...selectedExperimentIds].join(",");
         const response = await fetch(
-          `${API_URL}/api/export-all-experiments?ids=${encodeURIComponent(ids)}`,
+          `${API_URL}/api/export-all-experiments?ids=${encodeURIComponent(ids)}${exportKind === "portable" ? "&kind=portable" : ""}`,
         );
         if (!response.ok) throw new Error("Export failed");
         const date = new Date().toISOString().slice(0, 10);
         const result = await saveZipFromResponse(
           response,
-          `experiments-backup-${date}.zip`,
+          `experiments-${exportKind}-${date}.zip`,
         );
         if (result.success) {
           setNotification({
@@ -150,46 +155,16 @@ export function useExperimentBackup({
     }
   };
 
-  const handleImportZip = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("zipfile", file);
-    try {
-      const response = await fetch(`${API_URL}/api/import-experiments`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.success) {
-        setNotification({
-          type: "success",
-          message: `${data.imported} experiment(s) imported successfully!`,
-        });
-        setTimeout(() => window.location.reload(), 1500);
-      } else {
-        setNotification({
-          type: "error",
-          message: data.error || "Failed to import",
-        });
-      }
-    } catch {
-      setNotification({ type: "error", message: "Failed to import" });
-    }
-    event.target.value = "";
-  };
-
   return {
-    importInputRef,
+    ...importer,
+    exportKind,
+    setExportKind,
     showExportModal,
     selectedExperimentIds,
     setSelectedExperimentIds,
     isExporting,
     handleExportAll,
     handleExportSelected,
-    handleImportZip,
     openExportModal: () => {
       setSelectedExperimentIds(new Set());
       setShowExportModal(true);

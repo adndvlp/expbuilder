@@ -55,6 +55,15 @@ router.put("/api/functional-settings/:experimentID", async (req, res) => {
       requireLocalExperiment(data, req.params.experimentID);
       const existing = settingsDocument(data, req.params.experimentID);
       assertSettingsRevision(existing, expectedRevision);
+      if (
+        existing?.deploymentReview?.required &&
+        req.body.confirmDeploymentReview !== true
+      )
+        throw settingsError(
+          "DEPLOYMENT_REVIEW_REQUIRED",
+          422,
+          "Review the imported deployment settings and custom code, then confirm and save the configuration.",
+        );
       const complete =
         readFunctionalSettings(existing).settingsMigration.state === "complete";
       const doc = ensureSettingsDocument(data, req.params.experimentID);
@@ -77,6 +86,12 @@ router.put("/api/functional-settings/:experimentID", async (req, res) => {
       if (sessionNameConfig !== undefined)
         doc.sessionNameConfig = sessionNameConfig;
       doc.updatedAt = new Date().toISOString();
+      if (doc.deploymentReview?.required)
+        doc.deploymentReview = {
+          ...doc.deploymentReview,
+          required: false,
+          reviewedAt: doc.updatedAt,
+        };
       return readFunctionalSettings(doc);
     });
     res.json({ success: true, ...result });

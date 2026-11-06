@@ -35,18 +35,26 @@ function ExperimentSettings({ experimentID }: ExperimentSettingsProps) {
       {settings.needsReview && (
         <div role="status" style={{ marginBottom: 20 }}>
           <p>
-            Review this experiment's configuration before publishing. Recover
-            your published settings or check the values below and confirm them.
+            Review this experiment's configuration before publishing. Check the
+            values below and confirm them.
           </p>
-          {settings.settingsMigration?.source !== "package" && (
-            <button
-              type="button"
-              disabled={settings.saving || settings.hasConflict}
-              onClick={() => void settings.handleMigrate()}
-            >
-              Recover Published Settings
-            </button>
+          {settings.deploymentReview?.required && (
+            <ul>
+              {settings.deploymentReview.reasons.map((reason, index) => (
+                <li key={index}>{reason}</li>
+              ))}
+            </ul>
           )}
+          {settings.settingsMigration?.state !== "complete" &&
+            settings.settingsMigration?.source !== "package" && (
+              <button
+                type="button"
+                disabled={settings.saving || settings.hasConflict}
+                onClick={() => void settings.handleMigrate()}
+              >
+                Recover Published Settings
+              </button>
+            )}
         </div>
       )}
       <fieldset

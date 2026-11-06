@@ -16,6 +16,7 @@ export type LocalSettings = {
   functionalSettings: FunctionalSettings | null;
   revision: number;
   settingsMigration: SettingsMigration;
+  deploymentReview?: { required: boolean; reasons: string[] };
 };
 
 export class SettingsRequestError extends Error {
@@ -64,6 +65,7 @@ async function requestSettings(
         : null,
     revision: body.revision,
     settingsMigration: body.settingsMigration,
+    ...(body.deploymentReview && { deploymentReview: body.deploymentReview }),
   };
 }
 
@@ -74,6 +76,11 @@ export async function requireFunctionalSettings(
   if (!id)
     throw new Error("Select an experiment before generating public code.");
   const saved = await loadFunctionalSettings(id);
+  if (saved.deploymentReview?.required) {
+    throw new Error(
+      "Review and confirm the imported deployment settings and custom code before publishing.",
+    );
+  }
   if (
     !saved.functionalSettings ||
     saved.settingsMigration.state !== "complete"
@@ -89,11 +96,17 @@ export function saveFunctionalSettings(
   expectedRevision: number,
   settings: SettingsSections,
   sessionNameConfig: unknown,
+  confirmDeploymentReview = false,
 ) {
   return requestSettings(id, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ expectedRevision, settings, sessionNameConfig }),
+    body: JSON.stringify({
+      expectedRevision,
+      settings,
+      sessionNameConfig,
+      ...(confirmDeploymentReview && { confirmDeploymentReview: true }),
+    }),
   });
 }
 export function migrateFunctionalSettings(

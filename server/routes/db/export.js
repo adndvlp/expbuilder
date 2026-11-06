@@ -23,7 +23,9 @@ router.get("/api/export-all-experiments", async (req, res) => {
         return res.status(404).json({ error: "No matching experiments found" });
       }
     }
-    const buffer = await buildExperimentsZip(experiments);
+    const buffer = await buildExperimentsZip(experiments, {
+      kind: req.query.kind || "backup",
+    });
     const date = new Date().toISOString().slice(0, 10);
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
@@ -32,7 +34,7 @@ router.get("/api/export-all-experiments", async (req, res) => {
     );
     res.send(buffer);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ code: err.code, error: err.message });
   }
 });
 
@@ -46,7 +48,9 @@ router.get("/api/export-experiment/:experimentID", async (req, res) => {
     if (!experiment) {
       return res.status(404).json({ error: "Experiment not found" });
     }
-    const buffer = await buildExperimentsZip([experiment]);
+    const buffer = await buildExperimentsZip([experiment], {
+      kind: req.query.kind || "backup",
+    });
     const safeName = sanitizeName(experiment.name || experiment.experimentID);
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
@@ -55,7 +59,7 @@ router.get("/api/export-experiment/:experimentID", async (req, res) => {
     );
     res.send(buffer);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ code: err.code, error: err.message });
   }
 });
 

@@ -17,9 +17,25 @@ describe("Settings shell", () => {
       if (url === "http://localhost:3000/api/load-experiments") {
         return okJson({ experiments: [] });
       }
-      if (url === "http://localhost:3000/api/import-experiments") {
-        return okJson({ success: true, imported: 2 });
+      if (url === "http://localhost:3000/api/import-experiments/inspect") {
+        return okJson({
+          success: true,
+          importID: "preview",
+          kind: "backup",
+          modes: ["copy", "restore"],
+          entries: [
+            {
+              entryId: "one",
+              name: "Incoming",
+              experimentID: "E1",
+              collision: false,
+              warnings: [],
+              mediaCount: 0,
+            },
+          ],
+        });
       }
+      if (url.endsWith("/apply")) return okJson({ success: true, imported: 2 });
       return okJson({ success: true });
     });
 
@@ -35,11 +51,14 @@ describe("Settings shell", () => {
       await Promise.resolve();
     });
 
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Create copies" }));
+    });
     expect(
-      screen.getByText("2 experiment(s) imported successfully!"),
+      screen.getByText("2 experiment(s) imported as independent copies!"),
     ).toBeInTheDocument();
     expect(fetchMock()).toHaveBeenCalledWith(
-      "http://localhost:3000/api/import-experiments",
+      "http://localhost:3000/api/import-experiments/inspect",
       expect.objectContaining({
         method: "POST",
         body: expect.any(FormData),
@@ -66,7 +85,7 @@ describe("Settings shell", () => {
 
     fireEvent.change(input, { target: { files: [] } });
     expect(fetchMock()).not.toHaveBeenCalledWith(
-      "http://localhost:3000/api/import-experiments",
+      "http://localhost:3000/api/import-experiments/inspect",
       expect.anything(),
     );
 
@@ -74,7 +93,7 @@ describe("Settings shell", () => {
       if (url === "http://localhost:3000/api/load-experiments") {
         return okJson({ experiments: [] });
       }
-      if (url === "http://localhost:3000/api/import-experiments") {
+      if (url === "http://localhost:3000/api/import-experiments/inspect") {
         return okJson({ success: false, error: "bad zip" });
       }
       return okJson({ success: true });
@@ -92,7 +111,7 @@ describe("Settings shell", () => {
       if (url === "http://localhost:3000/api/load-experiments") {
         return okJson({ experiments: [] });
       }
-      if (url === "http://localhost:3000/api/import-experiments") {
+      if (url === "http://localhost:3000/api/import-experiments/inspect") {
         return okJson({ success: false });
       }
       return okJson({ success: true });
@@ -112,7 +131,7 @@ describe("Settings shell", () => {
       if (url === "http://localhost:3000/api/load-experiments") {
         return okJson({ experiments: [] });
       }
-      if (url === "http://localhost:3000/api/import-experiments") {
+      if (url === "http://localhost:3000/api/import-experiments/inspect") {
         throw new Error("network down");
       }
       return okJson({ success: true });
@@ -124,6 +143,6 @@ describe("Settings shell", () => {
       },
     });
 
-    expect(await screen.findByText("Failed to import")).toBeInTheDocument();
+    expect(await screen.findByText("network down")).toBeInTheDocument();
   });
 });

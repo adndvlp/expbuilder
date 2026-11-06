@@ -3,7 +3,7 @@ import path from "path";
 import * as cheerio from "cheerio";
 import { Router } from "express";
 import { __dirname } from "../../utils/paths.js";
-import { db, userDataRoot } from "../../utils/db.js";
+import { db } from "../../utils/db.js";
 import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { getPluginScriptsFromTrials } from "../../utils/plugin-scripts.js";
@@ -22,6 +22,11 @@ import {
   validateFunctionalSettings,
   settingsError,
 } from "../../utils/functionalSettings.js";
+
+import {
+  assetDirectoryFor,
+  assetFilePath,
+} from "../../modules/experiment-assets/paths.js";
 
 const router = Router();
 
@@ -79,10 +84,19 @@ function injectPublicAssets($, experiment, experimentID) {
 }
 
 function readPublishHtml(experiment) {
-  const experimentHtmlPath = path.join(
+  let experimentHtmlPath = path.join(
     experimentsHtmlDir,
-    `${experiment.name}.html`,
+    `${experiment.experimentID}.html`,
   );
+  if (
+    !fs.existsSync(experimentHtmlPath) &&
+    typeof experiment.name === "string" &&
+    !/[\\/]/.test(experiment.name)
+  )
+    experimentHtmlPath = path.join(
+      experimentsHtmlDir,
+      `${experiment.name}.html`,
+    );
   if (fs.existsSync(experimentHtmlPath)) {
     return fs.readFileSync(experimentHtmlPath, "utf8");
   }
@@ -90,8 +104,8 @@ function readPublishHtml(experiment) {
   return fs.readFileSync(templatePath, "utf8");
 }
 
-function collectMediaFiles(experimentName) {
-  const uploadsBase = path.join(userDataRoot, experimentName);
+function collectMediaFiles(experiment) {
+  const uploadsBase = assetDirectoryFor(experiment);
   const mediaTypes = ["img", "vid", "aud"];
   let mediaFiles = [];
   const oversizedFiles = [];
@@ -101,7 +115,7 @@ function collectMediaFiles(experimentName) {
     if (fs.existsSync(typeDir)) {
       const files = fs.readdirSync(typeDir).filter(isPublishableMediaFile);
       for (const filename of files) {
-        const filePath = path.join(typeDir, filename);
+        const filePath = assetFilePath(experiment, type, filename);
         try {
           const sizeBytes = fs.statSync(filePath).size;
           if (sizeBytes > GITHUB_FILE_LIMIT_BYTES) {
@@ -121,7 +135,7 @@ function collectMediaFiles(experimentName) {
             content: fileBuffer.toString("base64"),
           });
         } catch (err) {
-          console.warn(`Error reading file ${filePath}:`, err.message);
+          throw err;
         }
       }
     }
@@ -209,6 +223,12 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     const localSettings = readFunctionalSettings(
       settingsDocument(db.data, experimentID),
     );
+    if (localSettings.deploymentReview?.required)
+      throw settingsError(
+        "DEPLOYMENT_REVIEW_REQUIRED",
+        422,
+        "Review and confirm the imported deployment settings and custom code before publishing.",
+      );
     if (!localSettings.functionalSettings) {
       throw settingsError(
         "SETTINGS_REVIEW_REQUIRED",
@@ -247,7 +267,8 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
 
     injectPublicAssets($, experiment, experimentID);
 
-    const { mediaFiles, oversizedFiles } = collectMediaFiles(experiment.name);
+    const { mediaFiles, oversizedFiles } = collectMediaFiles(experiment);
+    await db.write();
     if (oversizedFiles.length > 0) {
       const message = buildOversizedMediaMessage(oversizedFiles);
       return res.status(413).json({
@@ -322,13 +343,11 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
     }
   } catch (error) {
     console.error(`Error publishing experiment: ${error.message}`);
-    res
-      .status(error.status || 500)
-      .json({
-        success: false,
-        ...(error.code && { code: error.code }),
-        error: error.message,
-      });
+    res.status(error.status || 500).json({
+      success: false,
+      ...(error.code && { code: error.code }),
+      error: error.message,
+    });
   }
 });
 

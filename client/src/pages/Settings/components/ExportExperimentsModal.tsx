@@ -5,6 +5,7 @@ interface ExportExperimentsModalProps {
   experiments: Experiment[];
   selectedExperimentIds: Set<string>;
   isExporting: boolean;
+  exportKind: "backup" | "portable";
   onSelectionChange: Dispatch<SetStateAction<Set<string>>>;
   onClose: () => void;
   onExport: () => void;
@@ -14,6 +15,7 @@ export function ExportExperimentsModal({
   experiments,
   selectedExperimentIds,
   isExporting,
+  exportKind,
   onSelectionChange,
   onClose,
   onExport,
@@ -26,7 +28,9 @@ export function ExportExperimentsModal({
       >
         <p className="backup-modal-title">Export experiments</p>
         <p className="backup-modal-subtitle">
-          Each experiment exports as a folder with data.json + media files
+          {exportKind === "portable"
+            ? "Portable package: design, settings and media for sharing."
+            : "Backup package: design, settings, media and local results."}
         </p>
         <div className="backup-modal-list">
           <label className="backup-modal-select-all">

@@ -6,6 +6,7 @@ import path from "node:path";
 import express from "express";
 import request from "supertest";
 import JSZip from "jszip";
+import { inspectAndRestore } from "../helpers/importPackage.js";
 import { beforeEach, afterEach, test, expect, jest } from "@jest/globals";
 
 let app, db, directory, previousRoot, previousPath;
@@ -22,6 +23,7 @@ beforeEach(async () => {
   database.ensureDbData();
   await db.write();
   app = express();
+  app.use(express.json());
   app.use((await import("../../routes/db/import.js")).default);
 });
 afterEach(() => {
@@ -42,7 +44,7 @@ const backup = (trials, loops = [], timeline) => ({
     loops,
     timeline: timeline ?? trials.map(({ id, name }) => ({ id, name, type: "trial" })),
   },
-  config: { experimentID: "legacy", keep: true },
+  config: { experimentID: "legacy", isSaveMode: true },
   sessionCounter: 9,
   sessionResults: [{ experimentID: "legacy", sessionId: "saved", data: [{ rt: 42 }] }],
 });
@@ -52,13 +54,11 @@ async function importBackups(...backups) {
     zip.file(`${index}/data.json`, JSON.stringify(data));
     zip.file(`${index}/img/stimulus.png`, "image-bytes");
   });
-  return request(app).post("/api/import-experiments").attach(
-    "zipfile", await zip.generateAsync({ type: "nodebuffer" }), "backup.zip",
-  );
+  return inspectAndRestore(app, await zip.generateAsync({ type: "nodebuffer" }));
 }
 async function imported(data) {
   const response = await importBackups(data);
-  expect(response.body).toEqual({ success: true, imported: 1 });
+  expect(response.body).toMatchObject({ success: true, imported: 1 });
   await db.read();
   return db.data.trials[0];
 }
@@ -94,10 +94,10 @@ test("converts navigation conditions in their original priority and keeps experi
   );
   expect(JSON.stringify(doc)).not.toMatch(/repeatConditions|jumpToTrialId/);
   expect(doc.updatedAt).not.toBe("old-revision");
-  expect(db.data.configs).toEqual([data.config]);
+  expect(db.data.configs).toEqual([expect.objectContaining(data.config)]);
   expect(db.data.sessionResults).toEqual(data.sessionResults);
   expect(db.data.sessionCounters.legacy).toBe(9);
-  expect(fs.readFileSync(path.join(directory, "Legacy/img/stimulus.png"), "utf8")).toBe("image-bytes");
+  expect(fs.readFileSync(path.join(directory, "experiments/legacy/media/img/stimulus.png"), "utf8")).toBe("image-bytes");
   // The converted export needs no migration on the following import.
   expect(await imported({ ...data, trials: doc })).toEqual(doc);
 });
@@ -209,6 +209,8 @@ test.each(["loop-navigation", "loop-summary", "empty-target", "missing-target", 
     const valid = backup([trial(1)]);
     valid.experiment = { experimentID: "first", name: "First" };
     valid.trials.experimentID = "first";
+    valid.config.experimentID = "first";
+    valid.sessionResults.forEach(session => { session.experimentID = "first"; });
     const response = await importBackups(valid, data);
     expect(response.status).toBe(400);
     expect(response.body.code).toBe("LEGACY_IMPORT_NOT_MIGRATABLE");

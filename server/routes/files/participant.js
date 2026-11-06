@@ -3,8 +3,13 @@ import fs from "fs";
 import path from "path";
 import { Router } from "express";
 import { withDbLock } from "../../modules/session-persistence/dbQueue.js";
-import { db, ensureDbData, userDataRoot } from "../../utils/db.js";
-import { getExperimentName } from "./storage.js";
+import { db, ensureDbData } from "../../utils/db.js";
+import { getExperimentAssetDirectory } from "./storage.js";
+import {
+  assetRelativeDirectory,
+  assertSafePath,
+  assertAssetFilename,
+} from "../../modules/experiment-assets/paths.js";
 
 const router = Router();
 
@@ -53,8 +58,10 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    const experimentName = await getExperimentName(experimentID);
-    const folder = path.join(userDataRoot, experimentName, "participant-files");
+    const experimentName = await getExperimentAssetDirectory(experimentID, {
+      write: true,
+    });
+    const folder = assertSafePath(`${experimentName}/participant-files`);
     fs.mkdirSync(folder, { recursive: true });
 
     const uploadedAt = new Date().toISOString();
@@ -106,7 +113,9 @@ router.post("/api/participant-files/:experimentID", async (req, res) => {
     }
     removeFiles(writtenPaths);
     console.error("Error saving participant file:", err);
-    res.status(500).json({ error: err.message || "Error saving file" });
+    res
+      .status(err.status || 500)
+      .json({ code: err.code, error: err.message || "Error saving file" });
   }
 });
 
@@ -133,7 +142,7 @@ router.get("/api/participant-files/:experimentID", async (req, res) => {
 
     res.json(withUrls);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ code: err.code, error: err.message });
   }
 });
 
@@ -141,8 +150,9 @@ router.get(
   "/api/participant-files-serve/:experimentID/:filename",
   async (req, res) => {
     try {
-      const experimentID = decodeURIComponent(req.params.experimentID);
-      const filename = decodeURIComponent(req.params.filename);
+      const experimentID = req.params.experimentID;
+      const filename = req.params.filename;
+      assertAssetFilename(filename);
       const experimentName = await withDbLock(async () => {
         await db.read();
         ensureDbData();
@@ -155,16 +165,17 @@ router.get(
         const experiment = db.data.experiments.find(
           (candidate) => candidate.experimentID === experimentID,
         );
-        return experiment?.name || experimentID;
+        if (!experiment) return null;
+        const previous = experiment.assetDirectory;
+        const relative = assetRelativeDirectory(experiment);
+        if (previous !== relative) await db.write();
+        return relative;
       });
       if (!experimentName) {
         return res.status(404).json({ error: "File not found" });
       }
-      const filePath = path.join(
-        userDataRoot,
-        experimentName,
-        "participant-files",
-        filename,
+      const filePath = assertSafePath(
+        `${experimentName}/participant-files/${filename}`,
       );
 
       if (!fs.existsSync(filePath)) {
@@ -173,7 +184,9 @@ router.get(
 
       res.sendFile(filePath);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res
+        .status(err.status || 500)
+        .json({ code: err.code, error: err.message });
     }
   },
 );
@@ -196,12 +209,12 @@ router.delete(
       }
 
       const record = db.data.participantFiles[idx];
-      const experimentName = await getExperimentName(experimentID);
-      const filePath = path.join(
-        userDataRoot,
-        experimentName,
-        "participant-files",
-        record.filename,
+      const experimentName = await getExperimentAssetDirectory(experimentID, {
+        write: true,
+      });
+      assertAssetFilename(record.filename);
+      const filePath = assertSafePath(
+        `${experimentName}/participant-files/${record.filename}`,
       );
       db.data.participantFiles.splice(idx, 1);
       await db.write();
@@ -209,7 +222,9 @@ router.delete(
 
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res
+        .status(err.status || 500)
+        .json({ code: err.code, error: err.message });
     }
   },
 );

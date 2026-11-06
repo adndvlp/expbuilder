@@ -151,14 +151,31 @@ Loops reject `branches` and `branchConditions`, including empty arrays. Trial mu
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/export-all-experiments` | Export all as ZIP. Query: `?ids=id1,id2` |
-| GET | `/api/export-experiment/:experimentID` | Export single experiment as ZIP |
-| POST | `/api/import-experiments` | Import experiments from ZIP (multipart, field: `zipfile`) |
+| GET | `/api/export-all-experiments` | Export a v2 ZIP. Query: `?ids=id1,id2&kind=backup` or `kind=portable`; defaults to backup |
+| GET | `/api/export-experiment/:experimentID` | Export one experiment as a v2 ZIP; same `kind` options |
+| POST | `/api/import-experiments/inspect` | Validate and stage a ZIP (multipart field `zipfile`); return `importID`, entries, collisions, settings state, warnings and allowed modes |
+| POST | `/api/import-experiments/:importID/apply` | Apply a staged package. Body: `{mode: "copy" | "restore", replaceExisting: boolean}` |
+| DELETE | `/api/import-experiments/:importID` | Cancel an inspection and remove its staging |
+| POST | `/api/import-experiments` | Legacy automatic import is disabled; returns `426 IMPORT_PREVIEW_REQUIRED` |
 | POST | `/api/app/reset` | Factory reset. Body: `{ uid?, deleteRepos? }` |
 
-Each exported experiment keeps its existing `data.json` and includes the current
-`sessionCounter`. Import restores that counter when valid so future participant
-numbers continue without reuse.
+Packages contain `manifest.json` plus `experiments/<entryId>/data.json` and media
+under `experiments/<entryId>/media/`. File sizes and SHA-256 hashes are validated.
+Portable packages include design, functional settings and media. Backups also
+include local sessions, counters and available participant files. Managed OAuth
+credentials and active remote associations are excluded.
+
+Copy allocates new experiment IDs and independent media directories, without
+historical results or counters. Restore preserves IDs and replaces local records,
+including empty histories. A collision requires explicit replacement confirmation;
+changes since inspection return `409 IMPORT_PREVIEW_STALE`. Applying a committed
+import again with the same ID and mode returns its original result.
+
+Inspect supports legacy v1 ZIPs and v2 packages. Previews expire after 24 hours.
+Limits: 256 MiB compressed, 512 MiB uncompressed, 256 MiB per media file, 32 MiB
+per data document, 2 MiB manifest, 10,000 archive entries and 1,000 experiments.
+Oversized packages return 413. A rolled-back apply returns `IMPORT_ROLLED_BACK`
+and requires inspection again. Imports never restore remote resources or counters.
 
 ---
 

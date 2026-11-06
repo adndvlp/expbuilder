@@ -5,6 +5,7 @@ import express from 'express'
 import request from 'supertest'
 import { jest } from '@jest/globals'
 import JSZip from 'jszip'
+import { inspectAndRestore } from '../helpers/importPackage.js'
 
 const freshApp = async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-db2-'))
@@ -71,7 +72,7 @@ describe('GET /api/export-all-experiments edge cases', () => {
     expect(res.headers['content-type']).toBe('application/zip')
     const zip = await JSZip.loadAsync(res.body)
     const exported = JSON.parse(
-      await zip.file('ExportExp/data.json').async('string'),
+      await zip.file('experiments/E1/data.json').async('string'),
     )
     expect(exported.sessionCounter).toBe(9)
   })
@@ -189,27 +190,24 @@ describe('POST /api/import-experiments structured ZIP', () => {
     folder.folder('img').file('stimulus.png', 'image-bytes')
     folder.folder('aud').file('.hidden.wav', 'ignored')
     folder.folder('badtype').file('ignored.txt', 'ignored')
-    folder.file('../escape.txt', 'ignored')
 
     const buffer = await zip.generateAsync({ type: 'nodebuffer' })
-    const res = await request(app)
-      .post('/api/import-experiments')
-      .attach('zipfile', buffer, 'backup.zip')
-      .expect(200)
+    const res = await inspectAndRestore(app, buffer)
+    expect(res.status).toBe(200)
 
-    expect(res.body).toEqual({ success: true, imported: 1 })
+    expect(res.body).toMatchObject({ success: true, imported: 1 })
     await db.read()
     expect(db.data.experiments[0].experimentID).toBe('E1')
     expect(db.data.trials[0].trials[0].name).toBe('T1')
     expect(db.data.configs[0].isDevMode).toBe(true)
     expect(db.data.sessionResults[0].sessionId).toBe('s1')
     expect(db.data.sessionCounters.E1).toBe(7)
-    expect(fs.readFileSync(path.join(tmpDir, 'Imported Exp', 'img', 'stimulus.png'), 'utf8')).toBe('image-bytes')
-    expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'aud', '.hidden.wav'))).toBe(false)
-    expect(fs.existsSync(path.join(tmpDir, 'Imported Exp', 'badtype'))).toBe(false)
+    expect(fs.readFileSync(path.join(tmpDir, 'experiments', 'E1', 'media', 'img', 'stimulus.png'), 'utf8')).toBe('image-bytes')
+    expect(fs.existsSync(path.join(tmpDir, 'experiments', 'E1', 'media', 'aud', '.hidden.wav'))).toBe(false)
+    expect(fs.existsSync(path.join(tmpDir, 'experiments', 'E1', 'media', 'badtype'))).toBe(false)
   })
 
-  test('overwrites existing experiment docs and skips malformed folders', async () => {
+  test('rejects malformed packages atomically before explicitly restoring valid replacements', async () => {
     const { app, db } = await freshApp()
     db.data.experiments.push({
       experimentID: 'E1',
@@ -242,7 +240,7 @@ describe('POST /api/import-experiments structured ZIP', () => {
         updatedAt: '2024-01-01T00:00:00.000Z',
       },
       trials: { entryItemId: 2, experimentID: 'E1', trials: [{ defaultNextTrialId: null, branchConditions: [], branches: [], id: 2, name: 'New Trial' }], loops: [], timeline: [{ id: 2, type: 'trial' }] },
-      config: { experimentID: 'E1', data: { ok: true }, isDevMode: false },
+      config: { experimentID: 'E1', data: { customCode: 'preserved();' }, isDevMode: false },
       sessionResults: [
         {
           experimentID: 'E1',
@@ -257,16 +255,19 @@ describe('POST /api/import-experiments structured ZIP', () => {
     }))
 
     const buffer = await zip.generateAsync({ type: 'nodebuffer' })
-    await request(app)
-      .post('/api/import-experiments')
-      .attach('zipfile', buffer, 'backup.zip')
-      .expect(200)
+    const before = JSON.stringify(db.data)
+    expect((await inspectAndRestore(app, buffer)).status).toBe(400)
+    await db.read()
+    expect(JSON.stringify(db.data)).toBe(before)
+    zip.remove('BadJson')
+    zip.remove('NoId')
+    expect((await inspectAndRestore(app, await zip.generateAsync({ type: 'nodebuffer' }))).status).toBe(200)
 
     await db.read()
     expect(db.data.experiments).toHaveLength(1)
     expect(db.data.experiments[0].name).toBe('New Name')
     expect(db.data.trials[0].trials[0].name).toBe('New Trial')
-    expect(db.data.configs[0].data).toEqual({ ok: true })
+    expect(db.data.configs[0].data).toEqual({ customCode: 'preserved();', generatedCode: '' })
     expect(db.data.sessionResults).toHaveLength(1)
     expect(db.data.sessionResults[0].sessionId).toBe('new')
   })

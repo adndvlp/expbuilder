@@ -1,6 +1,6 @@
 # SDD: propiedad, portabilidad y publicación de experimentos
 
-Estado: M01 implementado y verificado localmente; M02–M08 pendientes. Sin despliegue de estos cambios.
+Estado: M01–M03 implementados y verificados localmente; M04–M08 pendientes. Sin despliegue de estos cambios.
 
 Fecha: 2026-11-05. Base de revisión: `2ba2913` y archivos locales observados. Los cambios previos de la base local, respaldos y archivos del tester son ajenos a esta SDD.
 
@@ -114,6 +114,8 @@ Los documentos de `db.data.configs` añaden `functionalSettings` y `settingsMigr
 
 El experimento añade `assetDirectory`, una ruta relativa al directorio de datos de la aplicación. Para experimentos nuevos y copias será `experiments/<experimentID>/media`. Para experimentos existentes se resuelve una vez el directorio anterior y se persiste esa asociación, sin mover ni renombrar archivos automáticamente.
 
+Si varios registros legados resuelven al mismo directorio, se permite leer y exportar; subir o eliminar archivos individuales devuelve `ASSET_DIRECTORY_SHARED` hasta crear una copia independiente. Eliminar uno de esos experimentos conserva los medios mientras otro registro los utilice. La comprobación incluye la identidad física del directorio, por ejemplo nombres que solo difieren en mayúsculas en macOS. No se infiere a quién pertenecían archivos mezclados. Las asociaciones a directorios reservados, rutas con traversal o enlaces simbólicos se rechazan para revisión.
+
 Todas las operaciones de listar, subir, comprimir, servir, borrar, exportar, generar y publicar medios utilizan el mismo resolvedor por ID. No se puede corregir únicamente el importador y dejar otras rutas basadas en el título.
 
 ### 5.3 Documento remoto
@@ -220,7 +222,7 @@ La revisión de despliegue conserva los valores visibles y pide comprobarlos; no
 
 El editor presenta una sola acción `Save Configuration` para batching, reclutamiento, CAPTCHA y nombres de sesión. Los campos de apariencia y dominio conservan sus acciones independientes. El guardado se habilita cuando hay cambios respecto de la última lectura completa o una revisión pendiente; en este último caso se llama `Confirm and Save Configuration`, también cuando el usuario acepta los valores predeterminados sin modificarlos. Guardar actualiza la referencia local de comparación después de la respuesta correcta. Una indicación breve explica que los cambios se aplican en la próxima publicación.
 
-El aviso de revisión y `Recover Published Settings` aparecen únicamente cuando falta configuración local completa. La recuperación es explícita, exige autorización del propietario y no se ofrece para copias marcadas con procedencia `package`. Si existen cambios funcionales sin guardar, se confirma su reemplazo antes de recuperar. Los nombres de sesión modificados se conservan como cambios pendientes, porque la recuperación remota abarca solo los tres apartados funcionales.
+El aviso aparece cuando falta configuración local completa o existe una revisión de despliegue pendiente tras importar. Esta última puede requerir confirmar CAPTCHA, reclutamiento o código personalizado aunque los ajustes estén completos; muestra sus motivos y exige `confirmDeploymentReview: true` al guardar. También bloquea la generación pública y la publicación local hasta confirmarse. `Recover Published Settings` se ofrece únicamente para configuración incompleta con procedencia distinta de `package`. La recuperación es explícita y exige autorización del propietario. Si existen cambios funcionales sin guardar, se confirma su reemplazo antes de recuperar. Los nombres de sesión modificados se conservan como cambios pendientes, porque la recuperación remota abarca solo los tres apartados funcionales.
 
 Las acciones de recarga se presentan según el contexto: `Retry` ante un fallo de lectura; `Discard Changes` cuando hay modificaciones; `Load Saved Version` ante un conflicto de revisión. Descartar o cargar otra versión requiere confirmar si se perderán cambios sin guardar. Cancelar conserva tanto los valores como la revisión actual y no emite otra lectura. Un conflicto conserva los cambios visibles y bloquea el guardado hasta cargar la versión más reciente. La carga conjunta de ajustes y nombres de sesión debe completarse antes de permitir editar o guardar; una respuesta tardía de otro experimento no sustituye el formulario actual.
 
@@ -245,6 +247,10 @@ experiments/<entryId>/media/others/...
 
 `data.json` contiene el diseño normalizado, ajustes, procedencia de la configuración y, solo para respaldo, los datos locales históricos incluidos. El serializador construye campos permitidos; no exporta indiscriminadamente el objeto completo con nuevos campos operativos. En portable, la identidad del origen solo puede aparecer como procedencia informativa.
 
+En el contenedor, `experimentID` y `entryId` identifican la entrada de origen; no activan una asociación remota. La copia recibe su UUID al aplicar. Los campos de asociación incluidos en respaldos también tienen una lista explícita de metadatos permitidos; no se copian objetos operativos completos ni credenciales anidadas.
+
+Límites comunes de lectura y exportación del ZIP: 256 MiB comprimidos, 512 MiB descomprimidos, 256 MiB por archivo, 32 MiB por `data.json`, 2 MiB para el manifiesto, 10.000 entradas de archivo/directorio y 1.000 experimentos. Se comprueban tamaños declarados y bytes descomprimidos; los límites devuelven `413 PACKAGE_TOO_LARGE`, sin truncar. Son límites del paquete local, independientes del transporte de publicación de M05. Los archivos de participantes se incluyen solo en respaldos, con rutas `experiments/<entryId>/participant-files/<filename>` y hashes en el manifiesto.
+
 El lector nuevo admite el formato actual sin manifiesto como legado v1 y conserva las migraciones de navegación existentes. Rechaza versiones futuras incompatibles y paquetes vacíos o sin experimentos reconocidos. No promete que una aplicación antigua entienda el formato v2.
 
 ### 8.2 Importar como copia
@@ -267,9 +273,17 @@ Puede restaurarse sin conexión. La asociación remota queda sin verificar hasta
 
 ### 8.4 Aplicación local y recuperación
 
-La importación realiza dos pasos: inspeccionar y aplicar. Valida todas las entradas y medios antes de reemplazar datos. Descomprime en un directorio temporal, calcula el plan, comprueba rutas y genera un respaldo de los registros afectados.
+La importación realiza dos pasos: inspeccionar y aplicar. Valida todas las entradas y medios antes de reemplazar datos. Descomprime en un directorio temporal, calcula el plan y comprueba rutas. Mantiene los registros anteriores en la base hasta la escritura atómica y respalda los directorios de medios afectados antes de sustituirlos.
 
 La aplicación del plan usa el bloqueo de la base local y un registro mínimo de importación. Si falla el movimiento de medios o la escritura, restaura el estado anterior. Al reiniciar, termina o revierte un plan interrumpido antes de exponer datos incompletos. El registro no se exporta como parte de una copia.
+
+La inspección dura 24 horas y devuelve `importID`, modos admitidos, entradas, colisiones, advertencias y `settingsState`. El plan y los archivos se conservan en `.imports/<importID>`; la huella comprende diseño, configuración, resultados, contador, comprobantes y bytes de los medios afectados. Los trabajos de compresión activos bloquean las operaciones que necesitan una instantánea estable mediante `ASSETS_BUSY`.
+
+La aplicación conserva un comprobante en `db.data.importCommits`, en la misma escritura atómica que los registros importados. Repetir una aplicación confirmada con el mismo ID y modo devuelve su resultado, sin duplicar experimentos. Si el proceso se interrumpe antes de esa escritura, el arranque revierte los medios; si el comprobante existe, conserva el resultado y termina la limpieza. Un fallo revertido devuelve `IMPORT_ROLLED_BACK` y exige otra inspección. Una respuesta de red incierta conserva el mismo ID en la interfaz para reintentar. El cierre de la aplicación se verifica con procesos de prueba interrumpidos; no se promete una transacción distribuida ni una garantía adicional frente a fallos físicos del almacenamiento.
+
+Cancelar elimina el staging sin modificar experimentos. El arranque elimina inspecciones vencidas y staging abandonado de más de 24 horas; el restablecimiento local también elimina planes y comprobantes. Al restaurar un experimento legado en su directorio canónico se conserva su directorio anterior, sin borrado automático, porque podría servir a otros registros o a una recuperación manual.
+
+La interfaz abre ambos tipos de paquete con `Create independent copies` seleccionado. `Restore backup` solo existe para respaldos y exige confirmar explícitamente las colisiones y la sustitución de resultados locales. Un cambio posterior a la inspección devuelve `IMPORT_PREVIEW_STALE`; la interfaz ofrece inspeccionar otra vez. Exportar mantiene `backup` como opción inicial y ofrece `portable` para compartir diseño, ajustes y medios.
 
 No se cambia la navegación del experimento para resolver propiedad. La migración de navegación y la de identidad son transformaciones independientes y se prueban en ese orden.
 
@@ -406,7 +420,8 @@ Se mantienen las rutas locales públicas para cargar, guardar y publicar experim
 |---|---|
 | Configuración funcional local | `GET/PUT /api/functional-settings/:experimentID`; guardado con revisión esperada |
 | Inspección de paquete | `POST /api/import-experiments/inspect`; devuelve entradas, formato, configuración pendiente y colisiones |
-| Aplicación de importación | `POST /api/import-experiments`; exige modo `copy` o `restore`, plan y huella de previsualización vigentes |
+| Aplicación de importación | `POST /api/import-experiments/:importID/apply`; cuerpo `{mode: "copy" | "restore", replaceExisting: boolean}` y plan vigente conservado en el servidor |
+| Cancelación de importación | `DELETE /api/import-experiments/:importID`; elimina el staging de una inspección no activa |
 | Exportación | Rutas actuales con `kind=portable` o `kind=backup`; el intercambio portable es una acción nueva y explícita |
 | Instantánea local | `POST /api/publish-snapshot/:experimentID`; devuelve contexto congelado y mapa de medios para generar el artefacto |
 | Publicación local | `POST /api/publish-experiment/:experimentID`; referencia instantánea y envía artefacto congelado con token |
@@ -614,7 +629,7 @@ Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos 
 |---|---|---|
 | M01 | Implementado y verificado localmente | Política común, reserva transaccional inactiva, preparación, exclusión de mutaciones, captura compatible, reglas y eliminación local/remota con acciones de alcance fijo verificadas. Despliegue pendiente. |
 | M02 | Implementado y verificado localmente | Ajustes locales con revisiones, migración autorizada, guardado único, recuperación contextual, generación sin Firestore y conservación de campos. Despliegue pendiente. |
-| M03 | Pendiente | Depende de M02; resolver medios por ID antes de habilitar copias |
+| M03 | Implementado y verificado localmente | Medios por identidad, paquetes v2, copia/restauración explícitas, revisión de ajustes importados y recuperación local. Sin operaciones remotas durante la importación. |
 | M04 | Pendiente | Verificar asociaciones legadas; retirar cambio implícito de proveedor |
 | M05 | Pendiente | Congelar artefacto y definir protocolo 2 completo |
 | M06 | Pendiente | Git Data, medios por versión, exclusión y reconciliación |
@@ -747,6 +762,37 @@ node client/runtime-e2e/coverage/checkCoverage.mjs
 ```
 
 Las pruebas de interfaz y la vista temporal usaron datos simulados; los experimentos y archivos locales previos del usuario se conservaron. La siguiente etapa continúa siendo M03.
+
+### Sesión M03 — 2026-11-06
+
+Se implementaron los módulos `experiment-assets` y `experiment-packages`. El resolvedor por identidad sirve a la biblioteca, subidas, compresión, archivos de participantes, ejecución, eliminación, exportación y publicación. Los experimentos nuevos nacen con directorio canónico; los legados conservan su asociación anterior. Se comprobaron títulos iguales y alias físicos por mayúsculas/minúsculas, renombrado, directorios compartidos, rutas reservadas y enlaces simbólicos. La publicación prefiere el HTML generado por ID y limita el fallback legado a un nombre dentro del directorio de artefactos.
+
+El serializador genera ZIP v2 con lista de campos permitidos, separación `portable`/`backup` y hashes. La inspección admite v1, conserva los convertidores temporales existentes y valida todas las entradas antes de staging. La copia asigna UUID nuevo, conserva IDs internos de loops, condiciones y ensayos, actualiza referencias estructuradas a medios —incluidos valores tipados de componentes y CSV—, conserva URLs externas y código personalizado, e invalida código automático. No copia sesiones, archivos de participantes, contador ni asociaciones activas. Los valores funcionales desconocidos quedan pendientes con procedencia `package`, sin recuperación remota del autor original.
+
+La restauración exige confirmar colisiones y una huella vigente. Sustituye también listas históricas vacías, contador y comprobantes afectados; restaura los archivos de participantes disponibles y conserva las asociaciones solo como pistas no verificadas. La revisión de despliegue conserva los valores importados de CAPTCHA/reclutamiento y los avisos previos, bloquea generar/publicar y se confirma desde la acción única de configuración.
+
+El plan usa staging, bloqueo local, respaldo de medios y comprobante de commit dentro de la escritura de la base. Las pruebas interrumpen un proceso antes y después del commit para comprobar reversión o finalización al reiniciar. El reintento de una aplicación confirmada conserva su mapa de IDs. Se cubren escritura fallida, previsualización obsoleta, compresión activa, cancelación, inspecciones vencidas, staging abandonado y restablecimiento local. La interfaz mantiene el ID ante una respuesta incierta y exige otra inspección cuando el cambio se revirtió.
+
+Se actualizaron la API documentada y el inventario de migraciones temporales. La ruta antigua de importación automática devuelve `426 IMPORT_PREVIEW_REQUIRED`; no conserva una vía que pueda sobrescribir datos sin una elección explícita. La ventana nueva presenta copia/restauración, nombres e IDs de las colisiones, advertencias y confirmación de sustitución. La exportación distingue el respaldo con resultados del paquete portable para compartir.
+
+Se siguió TDD para aislamiento de medios, protocolo de paquetes, revisión de despliegue, recuperación y errores de importación: primero se comprobaron las fallas correspondientes, después se implementaron las correcciones y se ejecutaron sus regresiones. Las pruebas anteriores de importación se adaptaron al protocolo explícito; se conservaron las comprobaciones de navegación, código manual, sesiones, medios y rechazo sin escrituras parciales. Los fixtures legados de varios experimentos ahora usan IDs coherentes también en sus sesiones y configuración.
+
+| Verificación | Resultado |
+|---|---|
+| Suite completa del servidor | 709 pruebas aprobadas en 72 suites; 5 pruebas de nube omitidas en 2 suites por su configuración existente |
+| Suite completa del cliente | 1.788 pruebas aprobadas en 431 archivos |
+| Regresión final de ajustes e intercambio en cliente | 53 pruebas aprobadas en 14 archivos, incluidos portable y nueva inspección tras reversión incorporados después de la ejecución completa |
+| Regresión final de archivos/eliminación | 96 pruebas aprobadas en 6 suites tras proteger alias físicos de directorios |
+| Casos nuevos de M03 | 36 pruebas de servidor; copia/restauración, validación, aislamiento y recuperación comprobados también tras la revisión de lint |
+| TypeScript y compilación del cliente | Correctos; salida de compilación temporal fuera del árbol mantenido |
+| Lint de módulos nuevos | Sin errores con los globales de Node declarados para la comprobación |
+| Límite de líneas y registro de escenarios runtime | Correctos; el registro comprueba declaraciones, no ejecución de escenarios |
+| Revisión visual en Chromium | Copia y restauración con datos simulados; escritorio 1280×900 y móvil 390×844, cero errores de página, confirmación de sustitución obligatoria y ventana contenida en el viewport |
+| Diff | `git diff --check` correcto |
+
+Las pruebas usaron bases temporales y la vista visual solo fixtures. No se iniciaron migraciones sobre la base del usuario, no se importaron sus ZIP de prueba ni se realizaron operaciones remotas reales. La base local, respaldos y archivos previos del tester siguen fuera de esta implementación. No se desplegaron funciones ni reglas.
+
+La siguiente etapa es **M04: asociaciones fijas de almacenamiento y GitHub, y verificación explícita de recursos legados**. M03 no convierte una URL o pista de un ZIP en autorización. El transporte de publicación, Git Data y la confirmación de Pages continúan en M05–M07.
 
 ## 20. Referencias técnicas
 
