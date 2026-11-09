@@ -1,0 +1,62 @@
+.destination-dialog {
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 12px;
+  background: var(--bg-white, white);
+  color: var(--text-dark, #222);
+  width: min(540px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  padding: 24px;
+  box-sizing: border-box;
+  overflow: auto;
+  box-shadow: 0 12px 48px #0003;
+}
+.destination-dialog::backdrop {
+  background: #0006;
+}
+.destination-dialog label {
+  display: block;
+  margin: 16px 0;
+}
+.destination-dialog input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0;
+  padding: 10px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+}
+.destination-dialog button {
+  margin: 8px 8px 0 0;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.destination-dialog button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.destination-summary {
+  background: var(--bg-light, #f3f5f7);
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.destination-summary h3 {
+  margin: 8px 0;
+}
+.destination-summary p {
+  margin: 6px 0;
+}
+.destination-dialog [role="alert"] {
+  color: #b3261e;
+}
+
+.destination-dialog .destination-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.destination-dialog .destination-ack input {
+  width: auto;
+  flex-shrink: 0;
+}

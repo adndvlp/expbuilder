@@ -109,6 +109,18 @@ endpoints:
     region: [us-central1]
     maxInstances: 5
     httpsTrigger: {}
+  getExperimentDeploymentContext:
+    platform: gcfv2
+    entryPoint: getExperimentDeploymentContext
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
+  configureExperimentBindings:
+    platform: gcfv2
+    entryPoint: configureExperimentBindings
+    region: [us-central1]
+    maxInstances: 5
+    httpsTrigger: {}
   uploadParticipantFile:
     platform: gcfv2
     entryPoint: uploadParticipantFile

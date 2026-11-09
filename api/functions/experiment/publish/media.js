@@ -15,6 +15,7 @@ export async function uploadMediaFiles(
   owner,
   repoName,
   mediaFiles,
+  branch = "main",
 ) {
   if (!mediaFiles || !Array.isArray(mediaFiles)) return [];
   console.log(`Uploading ${mediaFiles.length} media files...`);
@@ -49,6 +50,7 @@ export async function uploadMediaFiles(
             filePath,
             fileContent,
             `Upload ${file.type} file: ${file.filename}`,
+            branch,
           );
           if (!r.success) {
             console.warn(

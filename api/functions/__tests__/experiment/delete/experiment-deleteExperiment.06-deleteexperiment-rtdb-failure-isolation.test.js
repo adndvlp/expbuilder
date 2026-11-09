@@ -21,7 +21,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -37,13 +39,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -60,11 +68,23 @@ jest.unstable_mockModule("../../../oauth/providers/github/token.js", () => ({
   getGithubOwner: jest.fn(),
 }));
 
+jest.unstable_mockModule(
+  "../../../experiment/bindings/delete-resources.js",
+  () => ({
+    deleteBoundResources: async () => ({
+      folderDeleted: true,
+      repoDeleted: false,
+    }),
+  }),
+);
 const { deleteExperiment } = await import("../../../experiment/index.js");
 
 beforeEach(() => {
   fs.refsByPath.clear();
   fs.colsByPath.clear();
+  fs.getCol("experiments/EID/destination_history").get.mockResolvedValue(
+    makeSnapshot([]),
+  );
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
@@ -84,9 +104,9 @@ afterEach(() => {
 });
 
 function mockEmptyCleanupCollections(experimentID = "EID") {
-  fs.getCol(`experiments/${experimentID}/session_metadata`).get.mockResolvedValueOnce(
-    makeSnapshot([]),
-  );
+  fs.getCol(
+    `experiments/${experimentID}/session_metadata`,
+  ).get.mockResolvedValueOnce(makeSnapshot([]));
   fs.getCol(`experiments/${experimentID}/sessions`).get.mockResolvedValueOnce(
     makeSnapshot([]),
   );
@@ -108,9 +128,16 @@ describe("deleteExperiment — RTDB failure isolation", () => {
   test("if RTDB cleanup fails, returns success with rtdbWarning + rtdbCleared=false", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive", driveFolderPath: "/x" }),
+      data: () => ({
+        owner: "u1",
+        storageProvider: "googledrive",
+        driveFolderPath: "/x",
+      }),
     });
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
+    mockGetValidToken.mockResolvedValueOnce({
+      success: true,
+      access_token: "tok",
+    });
     mockDeleteFolder.mockResolvedValueOnce({ success: true });
     fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
     fs.getCol("experiments/EID/session_metadata").get.mockResolvedValueOnce(

@@ -1,6 +1,6 @@
 import fetch from "../../../utils/fetch-with-timeout.js";
 import { db } from "../../../app.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { escapeDriveQueryValue } from "../storage.js";
 import { PROVIDER_ENDPOINTS as endpoints } from "../../../utils/provider-endpoints.js";
 
@@ -110,7 +110,14 @@ export async function lookupSessionFileUrl(experimentID, sessionId) {
     const expData = expDoc.data();
     const provider = expData.storageProvider || "googledrive";
     const fileName = `${experimentID}_${sessionId}.csv`;
-    const tokenResult = await getValidToken(provider, expData.owner);
+    const tokenResult = await getExperimentStorageToken(
+      provider,
+      expData.owner,
+      expData,
+      experimentID,
+      sessionId,
+      { readOnly: true },
+    );
     if (!tokenResult.success) return null;
 
     if (provider === "googledrive") {

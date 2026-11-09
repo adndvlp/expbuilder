@@ -4,7 +4,10 @@ import * as cheerio from "cheerio";
 import { Router } from "express";
 import { __dirname } from "../../utils/paths.js";
 import { db } from "../../utils/db.js";
-import { resolveFirebaseFunctionsUrl } from "../../utils/firebaseUrl.js";
+import {
+  resolveFirebaseFunctionsUrl,
+  resolveFirebaseProjectId,
+} from "../../utils/firebaseUrl.js";
 import { ensureTemplate } from "../../utils/templates.js";
 import { getPluginScriptsFromTrials } from "../../utils/plugin-scripts.js";
 import { experimentsHtmlDir } from "./paths.js";
@@ -182,7 +185,16 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       });
     }
 
-    const normalizedStorage = storage || "googledrive";
+    const normalizedStorage = storage;
+    if (
+      req.body.backendProjectId &&
+      req.body.backendProjectId !== resolveFirebaseProjectId()
+    )
+      throw settingsError(
+        "BACKEND_CONTEXT_CHANGED",
+        409,
+        "The backend changed. Verify the publication destinations again.",
+      );
 
     await db.read();
     const experiment = db.data.experiments.find(
@@ -250,10 +262,11 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
       );
     }
 
-    const sanitizedRepoName = experiment.name
-      .replace(/\s+/g, "-")
-      .replace(/[^a-zA-Z0-9-_]/g, "")
-      .toLowerCase();
+    const sanitizedRepoName =
+      experiment.name
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-_]/g, "")
+        .toLowerCase() || "experiment";
 
     console.log(
       `Publishing experiment: ${experiment.name} as repo: ${sanitizedRepoName}`,
@@ -306,13 +319,22 @@ router.post("/api/publish-experiment/:experimentID", async (req, res) => {
           mediaFiles: mediaFiles.length > 0 ? mediaFiles : undefined,
           experimentID,
           storageProvider: normalizedStorage,
+          backendProjectId:
+            req.body.backendProjectId ||
+            resolveFirebaseProjectId() ||
+            undefined,
           functionalSettings,
         },
         req.get("authorization"),
       );
 
       if (githubData.success) {
-        experiment.storage = normalizedStorage;
+        if (githubData.storageProvider || normalizedStorage)
+          experiment.storage = githubData.storageProvider || normalizedStorage;
+        if (githubData.storageBinding)
+          experiment.storageBinding = githubData.storageBinding;
+        if (githubData.githubBinding)
+          experiment.githubBinding = githubData.githubBinding;
         console.log(
           "Experiment published to GitHub Pages:",
           githubData.pagesUrl,

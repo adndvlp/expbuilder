@@ -65,6 +65,56 @@ jest.unstable_mockModule(
   () => ({ finalizeSession: finalize }),
 );
 
+jest.unstable_mockModule(
+  "../../experiment/bindings/prepare-storage.js",
+  () => ({
+    prepareStorageBinding: async (mutation) => {
+      const result = await folder();
+      if (!result.success) throw new Error(result.errorText);
+      await mutation.update({
+        provisioningState: "ready",
+        driveFolderId: result.folderId,
+      });
+      return {
+        binding: { provider: "googledrive", folderId: result.folderId },
+      };
+    },
+  }),
+);
+// These tests exercise the ownership/lease boundary independently of provider HTTP.
+jest.unstable_mockModule("../../experiment/bindings/publication.js", () => ({
+  ensurePublicationBindings: async (mutation) => {
+    const result = await folder();
+    if (!result.success) throw new Error("Provider unavailable");
+    await mutation.update({ provisioningState: "ready" });
+    return {
+      storage: {
+        provider: "googledrive",
+        accountId: "account",
+        folderId: "folder",
+      },
+      github: {
+        repositoryId: "repo",
+        accountId: "github",
+        ownerLogin: "github-owner",
+        repoName: "study",
+        branch: "main",
+      },
+      accessToken: "dummy",
+      repoExists: true,
+    };
+  },
+}));
+jest.unstable_mockModule(
+  "../../experiment/bindings/delete-resources.js",
+  () => ({
+    deleteBoundResources: async (mutation) => {
+      await removeFolder();
+      await mutation.check();
+      return { folderDeleted: true, repoDeleted: false };
+    },
+  }),
+);
 const { publishExperiment } = await import("../../experiment/publish/index.js");
 const { createExperiment } = await import("../../experiment/create.js");
 const { apiDeleteExperiment } = await import("../../experiment/api/delete.js");
@@ -238,7 +288,7 @@ test("two users racing to reserve one ID create resources for exactly one owner"
   expect(store.read("experiments/study").owner).toBe("owner");
 });
 
-test("republishing a paused legacy experiment preserves identity, counters and pause", async () => {
+test("republishing a paused experiment preserves identity, counters and pause", async () => {
   store.seed("experiments/study", {
     owner: "owner",
     active: false,

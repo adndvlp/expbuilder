@@ -1,3 +1,14 @@
+// Destination authorization is integrated separately in destinations-m04.test.ts.
+vi.mock("../../../lib/deploymentBindings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/deploymentBindings")>()),
+  deploymentRequest: vi.fn(async () => ({
+    success: true,
+    exists: false,
+    projectId: "test-project",
+    storage: { state: "new" },
+    github: { state: "new" },
+  })),
+}));
 import { beforeEach, afterEach, test, expect, vi } from "vitest";
 import PublishExperiment from "../../../pages/ExperimentBuilder/components/Timeline/PublishExperiment";
 import { defaultFunctionalSettings } from "../../../lib/functionalSettings";

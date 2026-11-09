@@ -21,7 +21,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -37,13 +39,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -84,9 +92,9 @@ afterEach(() => {
 });
 
 function mockEmptyCleanupCollections(experimentID = "EID") {
-  fs.getCol(`experiments/${experimentID}/session_metadata`).get.mockResolvedValueOnce(
-    makeSnapshot([]),
-  );
+  fs.getCol(
+    `experiments/${experimentID}/session_metadata`,
+  ).get.mockResolvedValueOnce(makeSnapshot([]));
   fs.getCol(`experiments/${experimentID}/sessions`).get.mockResolvedValueOnce(
     makeSnapshot([]),
   );
@@ -104,115 +112,18 @@ function mockEmptyCleanupCollections(experimentID = "EID") {
 
 // ─── RTDB failure isolation ───────────────────────────────────────────────
 
-describe("deleteExperiment — GitHub cleanup", () => {
-  test("deletes GitHub repo using explicit repoName and reports repoDeleted", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
+test.each(["unrelated-repository", undefined])(
+  "a repository hint never authorizes legacy GitHub deletion: %s",
+  async (hint) => {
+    fs.getRef("experiments/EID").storedData = {
+      owner: "u1",
+      title: "Existing title",
+      storageProvider: "googledrive",
+    };
+    await expect(deleteExperiment("EID", "u1", hint)).rejects.toMatchObject({
+      code: "GITHUB_BINDING_REQUIRED",
     });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ githubTokens: { access_token: "gh-token" } }),
-    });
-    fetchMock.__setMockResponses([
-      { status: 200, body: { login: "owner" } },
-    ]);
-    mockDeleteRepositoryGithub.mockResolvedValueOnce({ success: true });
-    mockEmptyCleanupCollections();
-
-    const result = await deleteExperiment("EID", "u1", "repo-from-request");
-
-    expect(result.repoDeleted).toBe(true);
-    expect(mockDeleteRepositoryGithub).toHaveBeenCalledWith(
-      "gh-token",
-      "owner",
-      "repo-from-request",
-    );
-  });
-
-  test("falls back to experiment title and treats GitHub 404 as non-fatal", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({
-        owner: "u1",
-        title: "repo-from-title",
-        storageProvider: "googledrive",
-      }),
-    });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ githubTokens: { access_token: "gh-token" } }),
-    });
-    fetchMock.__setMockResponses([
-      { status: 200, body: { login: "owner" } },
-    ]);
-    mockDeleteRepositoryGithub.mockResolvedValueOnce({
-      success: false,
-      errorCode: 404,
-      errorText: "not found",
-    });
-    mockEmptyCleanupCollections();
-
-    const result = await deleteExperiment("EID", "u1");
-
-    expect(result.repoDeleted).toBe(false);
-    expect(result.repoWarning).toBeUndefined();
-    expect(mockDeleteRepositoryGithub).toHaveBeenCalledWith(
-      "gh-token",
-      "owner",
-      "repo-from-title",
-    );
-  });
-
-  test("returns repoWarning for GitHub delete errors and thrown failures", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
-    });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ githubTokens: { access_token: "gh-token" } }),
-    });
-    fetchMock.__setMockResponses([
-      { status: 200, body: { login: "owner" } },
-    ]);
-    mockDeleteRepositoryGithub.mockResolvedValueOnce({
-      success: false,
-      errorCode: 500,
-      errorText: "github down",
-    });
-    mockEmptyCleanupCollections();
-
-    const deleteError = await deleteExperiment("EID", "u1");
-    expect(deleteError.repoWarning).toBe("github down");
-
-    fs.getRef("experiments/E2").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
-    });
-    fs.getRef("users/u1").get.mockRejectedValueOnce(new Error("user lookup down"));
-    mockEmptyCleanupCollections("E2");
-
-    const thrownError = await deleteExperiment("E2", "u1");
-    expect(thrownError.repoWarning).toBe("user lookup down");
-  });
-
-  test("skips repository deletion when GitHub user lookup is not ok", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive" }),
-    });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({ githubTokens: { access_token: "gh-token" } }),
-    });
-    fetchMock.__setMockResponses([{ status: 401, body: { message: "bad token" } }]);
-    mockEmptyCleanupCollections();
-
-    const result = await deleteExperiment("EID", "u1");
-
-    expect(result.repoDeleted).toBe(false);
-    expect(result.repoWarning).toBeUndefined();
     expect(mockDeleteRepositoryGithub).not.toHaveBeenCalled();
-  });
-});
+    expect(fetchMock.__getCalls()).toEqual([]);
+  },
+);

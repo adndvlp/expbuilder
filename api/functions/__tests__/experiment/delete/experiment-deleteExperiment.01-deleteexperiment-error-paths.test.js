@@ -21,7 +21,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -37,13 +39,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -84,9 +92,9 @@ afterEach(() => {
 });
 
 function mockEmptyCleanupCollections(experimentID = "EID") {
-  fs.getCol(`experiments/${experimentID}/session_metadata`).get.mockResolvedValueOnce(
-    makeSnapshot([]),
-  );
+  fs.getCol(
+    `experiments/${experimentID}/session_metadata`,
+  ).get.mockResolvedValueOnce(makeSnapshot([]));
   fs.getCol(`experiments/${experimentID}/sessions`).get.mockResolvedValueOnce(
     makeSnapshot([]),
   );
@@ -104,66 +112,40 @@ function mockEmptyCleanupCollections(experimentID = "EID") {
 
 // ─── RTDB failure isolation ───────────────────────────────────────────────
 
-describe("deleteExperiment — error paths", () => {
-  test("throws EXPERIMENT_NOT_FOUND when exp doc missing", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({ exists: false });
-    await expect(deleteExperiment("EID", "u1")).rejects.toMatchObject({ code: "EXPERIMENT_NOT_FOUND", status: 404 });
-  });
-
-  test("continues with storageWarning when token lookup fails", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({
-        owner: "u1", storageProvider: "dropbox",
-        dropboxFolder: "/ExpBuilder/EID",
-      }),
+describe("deleteExperiment refuses incomplete authorization", () => {
+  test("a token error preserves the experiment and session history", async () => {
+    fs.getRef("experiments/EID").storedData = {
+      owner: "u1",
+      storageProvider: "googledrive",
+      storageBinding: {
+        provider: "googledrive",
+        accountId: "account",
+        folderId: "original",
+      },
+      githubBinding: {
+        repositoryId: "123",
+        accountId: "9",
+        ownerLogin: "owner",
+        repoName: "linked",
+        branch: "main",
+      },
+    };
+    mockGetValidToken.mockResolvedValue({ success: false, error: "expired" });
+    await expect(deleteExperiment("EID", "u1")).rejects.toMatchObject({
+      code: "STORAGE_BINDING_UNAVAILABLE",
     });
-    mockGetValidToken.mockResolvedValueOnce({ success: false, error: "no token" });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
-    mockEmptyCleanupCollections();
-
-    const result = await deleteExperiment("EID", "u1");
-
-    expect(result.success).toBe(true);
-    expect(result.folderDeleted).toBe(false);
-    expect(result.storageWarning).toBe("Token error: no token");
+    expect(fs.getRef("experiments/EID").delete).not.toHaveBeenCalled();
     expect(mockDeleteFolder).not.toHaveBeenCalled();
   });
-
-  test("continues with storageWarning when deleteFolder fails or throws", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({
-        owner: "u1", storageProvider: "dropbox",
-        dropboxFolder: "/ExpBuilder/EID",
-      }),
+  test("unverified legacy destinations never continue with only a warning", async () => {
+    fs.getRef("experiments/EID").storedData = {
+      owner: "u1",
+      driveFolderPath: "/original",
+    };
+    await expect(deleteExperiment("EID", "u1")).rejects.toMatchObject({
+      code: "GITHUB_BINDING_REQUIRED",
     });
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
-    mockDeleteFolder.mockResolvedValueOnce({
-      success: false,
-      errorText: "folder locked",
-    });
-    fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
-    mockEmptyCleanupCollections();
-
-    const failedDelete = await deleteExperiment("EID", "u1");
-    expect(failedDelete.storageWarning).toBe("folder locked");
-    expect(failedDelete.folderDeleted).toBe(false);
-
-    fs.getRef("experiments/E2").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({
-        owner: "u1", storageProvider: "googledrive",
-        driveFolderPath: "/ExpBuilder/E2",
-      }),
-    });
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
-    mockDeleteFolder.mockRejectedValueOnce(new Error("drive down"));
-    fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
-    mockEmptyCleanupCollections("E2");
-
-    const thrownDelete = await deleteExperiment("E2", "u1");
-    expect(thrownDelete.storageWarning).toBe("drive down");
-    expect(thrownDelete.folderDeleted).toBe(false);
+    expect(mockDeleteFolder).not.toHaveBeenCalled();
+    expect(fs.getRef("experiments/EID").delete).not.toHaveBeenCalled();
   });
 });

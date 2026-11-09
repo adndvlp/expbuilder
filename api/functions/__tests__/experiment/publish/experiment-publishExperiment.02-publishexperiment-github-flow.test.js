@@ -31,7 +31,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -47,13 +49,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -70,16 +78,30 @@ jest.unstable_mockModule("../../../oauth/providers/github/token.js", () => ({
   getGithubOwner: mockGetGithubOwner,
 }));
 
+const bindings = jest.fn();
+jest.unstable_mockModule("../../../experiment/bindings/publication.js", () => ({
+  ensurePublicationBindings: bindings,
+}));
 const { publishExperiment } = await import("../../../experiment/index.js");
 
 beforeEach(() => {
+  bindings.mockReset().mockResolvedValue({
+    storage: { provider: "googledrive" },
+    github: { ownerLogin: "owner", repoName: "linked", branch: "published" },
+    accessToken: "ghtok",
+    repoExists: true,
+  });
   fs.refsByPath.clear();
   fs.colsByPath.clear();
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
-  mockGetValidToken.mockReset().mockResolvedValue({ success: true, access_token: "storage-token" });
-  mockCreateFolder.mockReset().mockResolvedValue({ success: true, folderId: "folder" });
+  mockGetValidToken
+    .mockReset()
+    .mockResolvedValue({ success: true, access_token: "storage-token" });
+  mockCreateFolder
+    .mockReset()
+    .mockResolvedValue({ success: true, folderId: "folder" });
   mockDeleteFolder.mockReset();
   mockCreateRepositoryGithub.mockReset();
   mockUploadFileGithub.mockReset();
@@ -90,7 +112,10 @@ beforeEach(() => {
   mockGetGithubToken.mockReset();
   mockGetGithubOwner.mockReset();
   fetchMock.__reset();
-  fs.getRef("experiments/EID").storedData = { owner: "u1", storageProvider: "googledrive" };
+  fs.getRef("experiments/EID").storedData = {
+    owner: "u1",
+    storageProvider: "googledrive",
+  };
 });
 
 // ─── Preflight + validation ────────────────────────────────────────────────
@@ -103,168 +128,86 @@ beforeEach(() => {
 
 // ─── Internal error ────────────────────────────────────────────────────────
 
-describe("publishExperiment — GitHub flow", () => {
-  test("400 when GitHub token fetch fails", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: false, error: "no token" });
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
-    );
-    expect(res.statusCode).toBe(400);
-    expect(res.jsonBody.message).toBe("GitHub token not found or invalid");
-  });
-
-  test("repo exists → updates HTML + enables Pages → 200", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: true });
-    mockUploadFileGithub.mockResolvedValueOnce({ success: true });
-    mockEnableGithubPages.mockResolvedValueOnce({
-      success: true,
-      pagesUrl: "https://owner.github.io/r/",
-    });
-
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
-    );
-
-    expect(res.statusCode).toBe(200);
-    expect(res.jsonBody.message).toMatch(/updated and published/);
-    expect(res.jsonBody.pagesUrl).toBe("https://owner.github.io/r/");
-    expect(mockCreateRepositoryGithub).not.toHaveBeenCalled();
-    expect(mockWaitForGithubRepoReady).not.toHaveBeenCalled();
-    expect(mockUploadFileGithub).toHaveBeenCalledWith(
-      "ghtok",
-      "owner",
-      "r",
-      "index.html",
-      "<h/>",
-      "Update experiment HTML",
-    );
-  });
-
-  test("repo NOT exists → creates repo + waitForReady + uploads + 201", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: false });
-    mockCreateRepositoryGithub.mockResolvedValueOnce({ success: true });
-    mockWaitForGithubRepoReady.mockResolvedValueOnce({ success: true, waitedMs: 250 });
-    mockUploadFileGithub.mockResolvedValueOnce({ success: true });
-    mockEnableGithubPages.mockResolvedValueOnce({
-      success: true,
-      pagesUrl: "https://owner.github.io/r/",
-    });
-
+describe("publishExperiment with verified destinations", () => {
+  const invoke = async () => {
     const res = makeRes();
     await publishExperiment(
       makeReq({
-        body: { experimentID: "EID",
-          uid: "u1",
-          repoName: "r",
+        body: {
+          experimentID: "EID",
+          repoName: "display-title",
           htmlContent: "<h/>",
-          isPrivate: true,
-          description: "exp",
         },
       }),
       res,
     );
-
-    expect(res.statusCode).toBe(201);
-    expect(res.jsonBody.message).toMatch(/created and published/);
-    expect(mockCreateRepositoryGithub).toHaveBeenCalledWith("ghtok", "r", true, "exp");
-    expect(mockWaitForGithubRepoReady).toHaveBeenCalledWith("ghtok", "owner", "r");
+    return res;
+  };
+  test("uploads to the linked repository and branch rather than the display title", async () => {
+    mockUploadFileGithub.mockResolvedValue({ success: true });
+    mockEnableGithubPages.mockResolvedValue({
+      success: true,
+      pagesUrl: "https://owner.github.io/linked/",
+    });
+    const res = await invoke();
+    expect(res.statusCode).toBe(200);
     expect(mockUploadFileGithub).toHaveBeenCalledWith(
       "ghtok",
       "owner",
-      "r",
+      "linked",
       "index.html",
       "<h/>",
-      "Add experiment HTML file",
+      "Update experiment HTML",
+      "published",
     );
+    expect(mockEnableGithubPages).toHaveBeenCalledWith(
+      "ghtok",
+      "owner",
+      "linked",
+      "published",
+      "/",
+    );
+    expect(res.jsonBody.repoName).toBe("linked");
   });
-
-  test("400 when createRepositoryGithub fails", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: false });
-    mockCreateRepositoryGithub.mockResolvedValueOnce({
-      success: false,
-      errorText: "GH down",
+  test("first publication activates capture only after the HTML upload succeeds", async () => {
+    fs.getRef("experiments/EID").storedData.initialPublicationPending = true;
+    bindings.mockResolvedValue({
+      storage: { provider: "googledrive" },
+      github: { ownerLogin: "owner", repoName: "new", branch: "main" },
+      accessToken: "ghtok",
+      repoExists: false,
     });
-
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
-    );
-
-    expect(res.statusCode).toBe(400);
-    expect(res.jsonBody.message).toBe("Error creating repository");
-    expect(res.jsonBody.error).toBe("GH down");
+    mockUploadFileGithub.mockResolvedValue({ success: true });
+    mockEnableGithubPages.mockResolvedValue({ success: true, pagesUrl: "url" });
+    const res = await invoke();
+    expect(res.statusCode).toBe(201);
+    expect(fs.getRef("experiments/EID").storedData).toMatchObject({
+      active: true,
+      initialPublicationPending: false,
+    });
   });
-
-  test("400 when uploadFileGithub for HTML fails", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: true });
-    mockUploadFileGithub.mockResolvedValueOnce({
+  test("HTML failure is reported before Pages and capture activation", async () => {
+    mockUploadFileGithub.mockResolvedValue({
       success: false,
       errorText: "rate limit",
     });
-
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
-    );
-
+    const res = await invoke();
     expect(res.statusCode).toBe(400);
-    expect(res.jsonBody.message).toBe("Error uploading HTML file");
     expect(res.jsonBody.error).toBe("rate limit");
+    expect(mockEnableGithubPages).not.toHaveBeenCalled();
   });
-
-  test("enableGithubPages failure → falls back to estimated pagesUrl, still 200", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: true });
-    mockUploadFileGithub.mockResolvedValueOnce({ success: true });
-    mockEnableGithubPages.mockResolvedValueOnce({ success: false });
-
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
-    );
-
-    expect(res.statusCode).toBe(200);
-    expect(res.jsonBody.pagesUrl).toBe("https://owner.github.io/r/");
+  test("an unexpected binding failure is generic and sends no HTML", async () => {
+    bindings.mockRejectedValue(new Error("internal credential detail"));
+    const res = await invoke();
+    expect(res.statusCode).toBe(500);
+    expect(JSON.stringify(res.jsonBody)).not.toContain("credential");
+    expect(mockUploadFileGithub).not.toHaveBeenCalled();
   });
-
-  test("waitForGithubRepoReady timeout → still proceeds and returns 201", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
-    mockGetGithubOwner.mockResolvedValueOnce("owner");
-    mockGetRepositoryInfo.mockResolvedValueOnce({ success: false });
-    mockCreateRepositoryGithub.mockResolvedValueOnce({ success: true });
-    mockWaitForGithubRepoReady.mockResolvedValueOnce({
-      success: false,
-      errorText: "timeout",
-    });
-    mockUploadFileGithub.mockResolvedValueOnce({ success: true });
-    mockEnableGithubPages.mockResolvedValueOnce({
-      success: true,
-      pagesUrl: "https://owner.github.io/r/",
-    });
-
-    const res = makeRes();
-    await publishExperiment(
-      makeReq({ body: { experimentID: "EID", uid: "u1", repoName: "r", htmlContent: "<h/>" } }),
-      res,
+  test("keeps the existing Pages fallback pending the M07 confirmation protocol", async () => {
+    mockUploadFileGithub.mockResolvedValue({ success: true });
+    mockEnableGithubPages.mockResolvedValue({ success: false });
+    expect((await invoke()).jsonBody.pagesUrl).toBe(
+      "https://owner.github.io/linked/",
     );
-
-    expect(res.statusCode).toBe(201);
-    expect(mockUploadFileGithub).toHaveBeenCalled();
   });
 });

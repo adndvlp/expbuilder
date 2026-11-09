@@ -75,6 +75,7 @@ export function isExperimentPrepared(data) {
     (data?.provisioningState === undefined ||
       data.provisioningState === "ready") &&
     data?.initialPublicationPending !== true &&
+    !data?.deletionProgress?.startedAt &&
     data?.mutationLease?.operation !== "delete"
   );
 }

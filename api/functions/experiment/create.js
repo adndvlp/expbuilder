@@ -1,12 +1,8 @@
 import { FieldValue } from "firebase-admin/firestore";
 import writeLog from "./sessions/logging/write-log.js";
-import {
-  buildProviderFields,
-  ensureProviderFolder,
-} from "./publish/provider-folder.js";
+import { prepareStorageBinding } from "./bindings/prepare-storage.js";
 import { withExperimentMutation } from "./mutation.js";
 import { assertExperimentOwner } from "./access.js";
-import { ensureOsfProject } from "./publish/osf-project.js";
 
 const DEFAULTS = {
   limitSessions: false,
@@ -82,42 +78,22 @@ export async function createExperiment(
         folderCreated: false,
       };
     }
-    // Retrying preparation reuses the reserved title and provider.
-    const provider = mutation.data.storageProvider;
-    const title = mutation.data.title;
-    const folderPath = `/ExpBuilder/${title}`;
     try {
       await mutation.update({ provisioningState: "preparing" });
       await writeLog(experimentID, "createExperiment");
-      const projectPath =
-        provider === "osf" ? await ensureOsfProject(uid) : folderPath;
-      await mutation.check();
-      const folderResult = await ensureProviderFolder({
-        provider,
+      const target = await prepareStorageBinding(
+        mutation,
         uid,
-        folderPath: projectPath,
-        componentName: title,
-      });
-      if (!folderResult.success) {
-        await mutation.update({ provisioningState: "failed" });
-        return {
-          success: false,
-          storageError:
-            folderResult.code === "TOKEN_ERROR"
-              ? `Token error: ${folderResult.error}`
-              : folderResult.error,
-        };
-      }
-      await mutation.update({
-        ...buildProviderFields(provider, folderPath, folderResult),
-        provisioningState: "ready",
-      });
+        mutation.data.storageProvider,
+      );
       return {
         success: true,
         experimentID,
-        folderPath,
         folderCreated: true,
-        ...(folderResult.folderId && { folderId: folderResult.folderId }),
+        folderId: target.binding.folderId,
+        ...(target.binding.folderPath && {
+          folderPath: target.binding.folderPath,
+        }),
       };
     } catch (error) {
       // update() rechecks the lease; a stale worker cannot mark a newer attempt failed.

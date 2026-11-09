@@ -8,8 +8,10 @@ import appearanceRouter from "./experiments/appearance.js";
 import crudRouter, { serveUploadedMedia } from "./experiments/crud.js";
 import htmlRouter from "./experiments/html.js";
 import publishRouter from "./experiments/publish.js";
+import bindingsRouter from "./experiments/bindings.js";
 
 const router = Router();
+router.use(bindingsRouter);
 
 router.use(crudRouter);
 router.use(serveUploadedMedia);

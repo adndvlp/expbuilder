@@ -7,61 +7,20 @@ import {
 } from "../../../../lib/functionalSettings";
 const API_URL = getApiBaseUrl();
 
-type PublishErrorFile = {
-  url?: string;
-  filename?: string;
-  sizeBytes?: number;
-};
-
-type PublishResponse = {
-  success?: boolean;
-  message?: string;
-  error?: string;
-  code?: string;
-  repoUrl?: string;
-  pagesUrl?: string;
-  oversizedFiles?: PublishErrorFile[];
-};
-
-function formatSizeMiB(sizeBytes?: number) {
-  if (!sizeBytes) return "";
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MiB`;
-}
-
-function buildPublishErrorMessage(
-  result: PublishResponse | null,
-  status: number,
-) {
-  if (result?.code === "GITHUB_FILE_TOO_LARGE") {
-    if (result.message || result.error) return result.message || result.error;
-
-    const files =
-      result.oversizedFiles
-        ?.map((file) =>
-          [file.url || file.filename, formatSizeMiB(file.sizeBytes)]
-            .filter(Boolean)
-            .join(" "),
-        )
-        .join(", ") || "one or more media files";
-    return `GitHub no acepta archivos mayores a 100 MiB: ${files}. Comprime o reemplaza estos archivos antes de publicar.`;
-  }
-
-  return (
-    result?.message ||
-    result?.error ||
-    `Server responded with status: ${status}`
-  );
-}
-
-async function readPublishResponse(response: Response) {
-  try {
-    return (await response.json()) as PublishResponse;
-  } catch {
-    return null;
-  }
-}
+import {
+  buildPublishErrorMessage,
+  readPublishResponse,
+} from "./publishResponse";
+import {
+  deploymentRequest,
+  needsDestinationReview,
+  publicationStorage,
+  BindingRequestError,
+  type DeploymentContext,
+} from "../../../../lib/deploymentBindings";
 
 type Props = {
+  onReviewDestinations?: (context: DeploymentContext) => void;
   experimentID: string | undefined;
   setLastPagesUrl: Dispatch<SetStateAction<string>>;
   setPublishStatus: Dispatch<SetStateAction<string>>;
@@ -89,6 +48,7 @@ export default function PublishExperiment({
   setShowStorageModal,
   setIsPublishing,
   generateExperiment,
+  onReviewDestinations,
 }: Props) {
   const handlePublishToGitHub = async () => {
     try {
@@ -116,6 +76,25 @@ export default function PublishExperiment({
         return;
       }
 
+      const context = await deploymentRequest(experimentID, "context");
+      if (needsDestinationReview(context)) {
+        onReviewDestinations?.(context);
+        setPublishStatus(
+          context.pendingRepair
+            ? "Resume the pending destination repair before publishing."
+            : "Verify the original destinations from Publication destinations before publishing.",
+        );
+        return;
+      }
+      const linked = publicationStorage(context);
+      if (linked) {
+        if (!storages.includes(linked))
+          throw new Error(
+            "Reconnect the linked data provider in Settings before publishing.",
+          );
+        await publishWithStorage(uid, linked);
+        return;
+      }
       setAvailableStorages(storages);
 
       // Si hay ambos storages, mostrar modal para seleccionar
@@ -146,6 +125,8 @@ export default function PublishExperiment({
       }
       const idToken = await firebaseUser.getIdToken();
       const functionalSettings = await requireFunctionalSettings(experimentID);
+      const context = await deploymentRequest(experimentID, "context");
+      publicationStorage(context, selectedStorage);
 
       // Generar código público para GitHub Pages con el storage seleccionado
       const generatedPublicCode = await generateExperiment(
@@ -157,6 +138,17 @@ export default function PublishExperiment({
         throw new Error("Failed to generate public experiment code");
       }
 
+      const current = await deploymentRequest(experimentID, "context");
+      if (JSON.stringify(current) !== JSON.stringify(context))
+        throw new BindingRequestError(
+          "The backend or publication destinations changed. Generate and publish again.",
+          "BACKEND_CONTEXT_CHANGED",
+        );
+      if (auth?.currentUser?.uid !== uid)
+        throw new BindingRequestError(
+          "The signed in account changed. Publish again.",
+          "AUTH_REQUIRED",
+        );
       setPublishStatus("Publishing to GitHub...");
 
       const response = await fetch(
@@ -170,6 +162,7 @@ export default function PublishExperiment({
           body: JSON.stringify({
             uid,
             storage: selectedStorage,
+            backendProjectId: context.projectId,
             generatedPublicCode, // Enviar el código público generado
             functionalSettings,
           }),
@@ -181,7 +174,13 @@ export default function PublishExperiment({
       const result = await readPublishResponse(response);
 
       if (!response.ok) {
-        keepPublishStatus = result?.code === "GITHUB_FILE_TOO_LARGE";
+        keepPublishStatus =
+          result?.code === "GITHUB_FILE_TOO_LARGE" ||
+          Boolean(
+            result?.code?.includes("BINDING") ||
+              result?.code?.includes("MIGRATION") ||
+              result?.code?.includes("REPAIR"),
+          );
         throw new Error(buildPublishErrorMessage(result, response.status));
       }
 
@@ -212,6 +211,8 @@ export default function PublishExperiment({
         );
       }
     } catch (error) {
+      keepPublishStatus =
+        keepPublishStatus || error instanceof BindingRequestError;
       console.error("Error publishing to GitHub:", error);
       setPublishStatus(
         `Error: ${error instanceof Error ? error.message : "Unknown error"}`,

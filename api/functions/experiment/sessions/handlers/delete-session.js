@@ -1,7 +1,8 @@
+import { sendExperimentAccessError } from "../../access.js";
 import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
 import MESSAGES from "../../api/messages.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { deleteSession } from "../storage.js";
 import {
   getInvalidTokenMessage,
@@ -26,7 +27,14 @@ export async function handleDeleteSession(req, res, experimentID, sessionId) {
     const exp_data = exp_doc.data();
     const storageProvider = exp_data.storageProvider || "googledrive";
 
-    const tokenResult = await getValidToken(storageProvider, exp_data.owner);
+    const tokenResult = await getExperimentStorageToken(
+      storageProvider,
+      exp_data.owner,
+      exp_data,
+      experimentID,
+      sessionId,
+      { readOnly: true },
+    );
 
     if (!tokenResult.success) {
       res.status(400).json(getInvalidTokenMessage(storageProvider));
@@ -84,6 +92,7 @@ export async function handleDeleteSession(req, res, experimentID, sessionId) {
       message: "Session deleted successfully",
     });
   } catch (error) {
+    if (sendExperimentAccessError(res, error)) return;
     console.error("Error in handleDeleteSession:", error);
     res.status(500).json({
       success: false,

@@ -13,3 +13,12 @@ export function resolveFirebaseFunctionsUrl(env = process.env) {
   }
   return null;
 }
+export function resolveFirebaseProjectId(env = process.env) {
+  return (
+    env.FIREBASE_PROJECT_ID ||
+    /^https:\/\/[a-z]+-[a-z]+\d+-([a-z0-9-]+)\.cloudfunctions\.net$/.exec(
+      resolveFirebaseFunctionsUrl(env) || "",
+    )?.[1] ||
+    null
+  );
+}

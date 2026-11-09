@@ -575,7 +575,7 @@ describe('POST /api/publish-experiment/:experimentID', () => {
   test('publishes from template fallback without fullscreen when disabled', async () => {
     const originalFetch = global.fetch
     global.fetch = jest.fn().mockResolvedValueOnce({
-      json: async () => ({ success: true, repoUrl: 'https://github.com/u/template-exp' }),
+      json: async () => ({ success: true, repoUrl: 'https://github.com/u/template-exp', storageProvider: 'dropbox', storageBinding: { provider: 'dropbox', accountId: 'account', folderId: 'verified-folder' } }),
     })
     process.env.FIREBASE_URL = 'https://firebase.example.com'
     const { app, db } = await freshApp()
@@ -596,7 +596,10 @@ describe('POST /api/publish-experiment/:experimentID', () => {
       .expect(200)
 
     const body = JSON.parse(global.fetch.mock.calls[0][1].body)
-    expect(body.storageProvider).toBe('googledrive')
+    expect(body.storageProvider).toBeUndefined()
+    await db.read()
+    expect(db.data.experiments[0].storage).toBe('dropbox')
+    expect(db.data.experiments[0].storageBinding.folderId).toBe('verified-folder')
     expect(body.htmlContent).toContain('const publicCode = true;')
     expect(body.htmlContent).not.toContain('@jspsych/plugin-fullscreen')
     expect(body.mediaFiles).toBeUndefined()

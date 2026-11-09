@@ -1,6 +1,6 @@
 import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { appendResult } from "../storage.js";
 import { buildSessionCsv } from "./csv.js";
 import {
@@ -8,10 +8,7 @@ import {
   recordBatchParseFailures,
   saveFinalSessionMetadata,
 } from "./metadata.js";
-import {
-  prepareStorageCsv,
-  resolveFolderIdentifier,
-} from "./storage-file.js";
+import { prepareStorageCsv, resolveFolderIdentifier } from "./storage-file.js";
 import { cleanupTemporarySession } from "./cleanup.js";
 
 /**
@@ -31,7 +28,13 @@ export async function finalizeSession(experimentID, sessionId) {
 
   const expData = expDoc.data();
   const storageProvider = expData.storageProvider || "googledrive";
-  const tokenResult = await getValidToken(storageProvider, expData.owner);
+  const tokenResult = await getExperimentStorageToken(
+    storageProvider,
+    expData.owner,
+    expData,
+    experimentID,
+    sessionId,
+  );
 
   if (!tokenResult.success) {
     console.error(

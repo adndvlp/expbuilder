@@ -9,18 +9,60 @@ All routes are prefixed with the Express server URL. `experimentID` refers to th
 | GET | `/api/load-experiments` | List all experiments sorted by newest first |
 | GET | `/api/experiment/:experimentID` | Get a single experiment by ID |
 | POST | `/api/create-experiment` | Create new experiment. Body: `{ name, description?, author?, uid?, storage? }` |
-| DELETE | `/api/delete-experiment/:experimentID` | Delete experiment + trials + configs + results + HTML + files. Body: `{ uid? }` |
+| DELETE | `/api/delete-experiment/:experimentID` | Delete local records/files, optionally active published resources. Body: `{ scope: "local" | "remote", uid? }`; remote requires owner authentication |
 | POST | `/api/run-experiment/:experimentID` | Compile experiment to HTML. Body: `{ generatedCode }` |
 | POST | `/api/trials-preview/:experimentID` | Compile trial preview HTML. Body: `{ generatedCode }` |
 | GET | `/:experimentID` | Serve compiled experiment HTML |
 | GET | `/:experimentID/preview` | Serve compiled trial preview HTML |
-| POST | `/api/publish-experiment/:experimentID` | Publish to GitHub Pages. Body: `{ uid, storage?, generatedPublicCode }` |
+| POST | `/api/publish-experiment/:experimentID` | Publish to GitHub Pages. Body: `{ uid, storage?, backendProjectId?, generatedPublicCode, functionalSettings }` |
 | GET | `/api/appearance-settings/:experimentID` | Get appearance settings |
 | PUT | `/api/appearance-settings/:experimentID` | Save appearance settings. Body: `{ backgroundColor, fullScreen, progressBar }` |
 
 Run, preview and publication resolve appearance from the saved experiment,
 defaulting to white when unset. Construction requests use the fields listed
 above; appearance is configured through its dedicated settings API.
+
+### Verified publication destinations (M04)
+
+All routes below require `Authorization: Bearer <Firebase ID token>`. They proxy to
+`getExperimentDeploymentContext` or `configureExperimentBindings` in the selected
+Firebase project and verify the returned experiment/project/owner before saving
+local metadata. Remote calls do not hold the local database lock.
+
+| Method | Path | Body / behavior |
+|--------|------|-----------------|
+| GET | `/api/deployment-context/:experimentID` | Authoritative `exists`, project, owner, storage/GitHub states and whitelisted bindings; no provider creation |
+| POST | `/api/deployment-bindings/:experimentID/inspect` | `{backendProjectId?, selection: {repository?, storageFolder?, branch?}}`; inspect original legacy destinations without writing |
+| POST | `/api/deployment-bindings/:experimentID/confirm` | `{backendProjectId?, selection, contextFingerprint, fingerprint}`; revalidate and claim the inspected identities, add the repository marker, save bindings without publishing |
+| POST | `/api/deployment-bindings/:experimentID/repair/inspect` | `{backendProjectId?, resource: "storage" | "github", selection?}`; verify the linked account and preview replacement of an inaccessible bound resource |
+| POST | `/api/deployment-bindings/:experimentID/repair/confirm` | `{backendProjectId?, resource, selection, contextFingerprint, fingerprint, confirmReplacement: true, acknowledgeDataLoss: true}`; prepare only the confirmed replacement, atomically record history and switch its binding |
+
+Storage states: `new`, `bound`, `needs_confirmation`. GitHub states: `new`, `bound`,
+`needs_selection`. An absent remote experiment returns `exists: false` without
+reserving ownership or creating resources. Inspection previews carry a fingerprint
+and the source context fingerprint; changing an identity requires inspection again.
+A pending repair exposes its resource type and safe checkpoint hints (folder ID/path or repository name), never OAuth credentials. Ordinary publication is blocked until that repair is resolved.
+
+Publication uses fixed provider/account/folder IDs and GitHub account/repository ID
+and branch. Omitting a provider lets Functions use the existing binding. A different
+provider is rejected with `STORAGE_CHANGE_REQUIRES_MIGRATION`; publication cannot
+perform a data migration. Legacy original destinations require explicit verification,
+and imported URLs do not authorize association. A missing RPC on an older backend
+returns `426 BACKEND_UPGRADE_REQUIRED` rather than silently using the old behavior.
+
+Repair preserves experiment identity, counters, settings, pause and historical
+references. It neither recovers deleted files nor moves previous results. Registered
+sessions retain their original storage binding; new sessions use the replacement.
+A new GitHub repository returns `repairResult.requiresPublication: true` and
+`urlMayChange: true`, invalidating the local old Pages URL. Previous external
+resources remain untouched. An uncertain replacement creation can be explicitly
+selected and inspected through the repair flow; it is never adopted by name.
+
+Key errors: `BINDING_PREVIEW_STALE`, `STORAGE_BINDING_UNAVAILABLE`,
+`GITHUB_BINDING_UNAVAILABLE`, `RESOURCE_ALREADY_BOUND`, `REPAIR_NOT_NEEDED`,
+`REPAIR_CONFIRMATION_REQUIRED`, `REPAIR_IN_PROGRESS`, `BACKEND_CONTEXT_CHANGED`.
+A provider error does not establish that its resource was deleted. Reconnect the
+linked account and retry verification before confirming any replacement.
 
 ### Static File Serving
 - Files under an experiment's `img|aud|vid|others/` directories are resolved by exact `experimentID`

@@ -101,3 +101,31 @@ describe("uploadFileGithub", () => {
 });
 
 // ─── enableGithubPages ────────────────────────────────────────────────────
+test("checks the exact bound branch even when its name needs URL encoding", async () => {
+  fetchMock.__setMockResponses([
+    { status: 200, body: { sha: "branch-sha" } },
+    {
+      status: 200,
+      body: { content: { html_url: "file" }, commit: { sha: "commit" } },
+    },
+  ]);
+  expect(
+    (
+      await uploadFileGithub(
+        "token",
+        "owner",
+        "repo",
+        "index.html",
+        "html",
+        "Update",
+        "release/phase#1",
+      )
+    ).success,
+  ).toBe(true);
+  const calls = fetchMock.__getCalls();
+  expect(calls[0].url).toContain("?ref=release%2Fphase%231");
+  expect(JSON.parse(calls[1].options.body)).toMatchObject({
+    branch: "release/phase#1",
+    sha: "branch-sha",
+  });
+});

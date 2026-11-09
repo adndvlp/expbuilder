@@ -1,3 +1,4 @@
+import { pinSessionStorage } from "../../bindings/session-storage.js";
 import {
   assertExperimentPrepared,
   requireExperimentPrepared,
@@ -69,6 +70,8 @@ export async function handleCreateSession(req, res, experimentID, sessionId) {
       });
       return;
     }
+
+    await pinSessionStorage(exp_data, experimentID, sessionId);
 
     // Obtener número de participante desde el contador de condiciones.
     // H-11: when activeConditionAssignment is off, condition rotation isn't

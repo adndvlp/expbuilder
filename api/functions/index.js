@@ -17,12 +17,18 @@ import { getOAuthClientIds } from "./oauth/api/public-client-ids.js";
 import { uploadParticipantFile } from "./experiment/participant-files/api/upload.js";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { getExperimentFunctionalSettings } from "./experiment/functional-settings/api.js";
+import {
+  getExperimentDeploymentContext,
+  configureExperimentBindings,
+} from "./experiment/bindings/api.js";
 
 setGlobalOptions({
   maxInstances: 5,
 });
 
 export {
+  getExperimentDeploymentContext,
+  configureExperimentBindings,
   getExperimentFunctionalSettings,
   apiData,
   apiDataComplete,

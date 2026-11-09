@@ -1,3 +1,14 @@
+// Destination authorization is integrated separately in destinations-m04.test.ts.
+vi.mock("../../../lib/deploymentBindings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/deploymentBindings")>()),
+  deploymentRequest: vi.fn(async () => ({
+    success: true,
+    exists: false,
+    projectId: "test-project",
+    storage: { state: "new" },
+    github: { state: "new" },
+  })),
+}));
 import { defaultFunctionalSettings } from "../../../lib/functionalSettings";
 vi.mock("../../../lib/functionalSettings", async (importOriginal) => {
   const actual =

@@ -65,9 +65,7 @@ export async function saveFinalSessionMetadata({
 }) {
   try {
     const finalState =
-      sessionState && sessionState !== "completed"
-        ? sessionState
-        : "completed";
+      sessionState && sessionState !== "completed" ? sessionState : "completed";
     const combinedMetadata = {
       ...(sessionData.metadata || {}),
       ...rtdbMetadata,
@@ -92,7 +90,7 @@ export async function saveFinalSessionMetadata({
       metadata: combinedMetadata,
       ...(driveFileUrl && { fileUrl: driveFileUrl }),
     };
-    await metaDocRef.set(metaPayload);
+    await metaDocRef.set(metaPayload, { merge: true });
   } catch (metaErr) {
     console.error("Error saving session_metadata:", metaErr);
   }

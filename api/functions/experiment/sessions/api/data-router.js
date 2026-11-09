@@ -10,7 +10,7 @@ import writeLog from "../logging/write-log.js";
 import MESSAGES from "../../api/messages.js";
 import validateCSV from "../validation/validate-csv.js";
 import validateJSON from "../validation/validate-json.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { finalizeSession } from "../finalization/finalize.js";
 import { postFile } from "../storage.js";
 import {
@@ -142,7 +142,15 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     return;
   }
 
-  await handlePostFile(req, res, experimentID, data, filename);
+  try {
+    await handlePostFile(req, res, experimentID, data, filename);
+  } catch (error) {
+    if (sendExperimentAccessError(res, error)) return;
+    console.error("Could not store participant data:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Could not store participant data." });
+  }
 });
 
 /**
@@ -192,7 +200,13 @@ async function handlePostFile(req, res, experimentID, data, filename) {
   }
 
   const storageProvider = exp_data.storageProvider || "googledrive";
-  const tokenResult = await getValidToken(storageProvider, exp_data.owner);
+  const tokenResult = await getExperimentStorageToken(
+    storageProvider,
+    exp_data.owner,
+    exp_data,
+    experimentID,
+    req.body.sessionId,
+  );
 
   if (!tokenResult.success) {
     res
@@ -248,6 +262,7 @@ async function handlePostFile(req, res, experimentID, data, filename) {
  * Función auxiliar para manejar errores de finalización
  */
 function handleFinalizationError(res, error) {
+  if (sendExperimentAccessError(res, error)) return;
   if (error.message === "EXPERIMENT_NOT_FOUND") {
     res.status(400).json(MESSAGES.EXPERIMENT_NOT_FOUND);
   } else if (error.message === "INVALID_GOOGLE_DRIVE_TOKEN") {

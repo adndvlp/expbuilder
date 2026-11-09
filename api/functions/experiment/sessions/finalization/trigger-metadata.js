@@ -40,12 +40,15 @@ export async function saveAbandonedNoDataMetadata(
       .doc(experimentID)
       .collection("session_metadata")
       .doc(sessionId)
-      .set({
-        sessionId,
-        state: "abandoned",
-        completedAt: new Date().toISOString(),
-        metadata: afterData.metadata || {},
-      });
+      .set(
+        {
+          sessionId,
+          state: "abandoned",
+          completedAt: new Date().toISOString(),
+          metadata: afterData.metadata || {},
+        },
+        { merge: true },
+      );
     console.log(
       `Abandoned-no-data session ${sessionId} metadata saved to Firestore`,
     );

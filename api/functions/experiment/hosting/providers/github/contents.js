@@ -27,7 +27,7 @@ export async function uploadFileGithub(
     }
 
     const checkResponse = await fetch(
-      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/contents/${filePath}?ref=${branch}`,
+      `${endpoints.github.apiBase}/repos/${owner}/${repoName}/contents/${filePath}?ref=${encodeURIComponent(branch)}`,
       {
         method: "GET",
         headers: {

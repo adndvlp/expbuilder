@@ -1,7 +1,10 @@
-import { requireExperimentPrepared } from "../../access.js";
+import {
+  requireExperimentPrepared,
+  sendExperimentAccessError,
+} from "../../access.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { db } from "../../../app.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { uploadFileToBucket } from "../upload.js";
 
 /**
@@ -117,7 +120,22 @@ export const uploadParticipantFile = onRequest(
     }
 
     // ── Obtain a valid OAuth token ───────────────────────────────────────────
-    const tokenResult = await getValidToken(storageProvider, ownerUid);
+    let tokenResult;
+    try {
+      tokenResult = await getExperimentStorageToken(
+        storageProvider,
+        ownerUid,
+        expData,
+        experimentID,
+        sessionId,
+      );
+    } catch (error) {
+      if (sendExperimentAccessError(res, error)) return;
+      console.error("Could not verify participant file storage:", error);
+      return res
+        .status(500)
+        .json({ error: "Could not verify participant file storage." });
+    }
 
     if (!tokenResult.success) {
       res.status(400).json({

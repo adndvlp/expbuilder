@@ -31,7 +31,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -47,13 +49,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -70,6 +78,18 @@ jest.unstable_mockModule("../../../oauth/providers/github/token.js", () => ({
   getGithubOwner: mockGetGithubOwner,
 }));
 
+jest.unstable_mockModule("../../../experiment/bindings/publication.js", () => ({
+  ensurePublicationBindings: async () => {
+    const result = await mockGetGithubToken();
+    if (!result?.success) throw new Error("GitHub unavailable");
+    return {
+      storage: { provider: "googledrive" },
+      github: { ownerLogin: "owner", repoName: "r", branch: "main" },
+      accessToken: result.access_token,
+      repoExists: true,
+    };
+  },
+}));
 const { publishExperiment } = await import("../../../experiment/index.js");
 
 beforeEach(() => {
@@ -78,8 +98,12 @@ beforeEach(() => {
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
-  mockGetValidToken.mockReset().mockResolvedValue({ success: true, access_token: "storage-token" });
-  mockCreateFolder.mockReset().mockResolvedValue({ success: true, folderId: "folder" });
+  mockGetValidToken
+    .mockReset()
+    .mockResolvedValue({ success: true, access_token: "storage-token" });
+  mockCreateFolder
+    .mockReset()
+    .mockResolvedValue({ success: true, folderId: "folder" });
   mockDeleteFolder.mockReset();
   mockCreateRepositoryGithub.mockReset();
   mockUploadFileGithub.mockReset();
@@ -90,7 +114,10 @@ beforeEach(() => {
   mockGetGithubToken.mockReset();
   mockGetGithubOwner.mockReset();
   fetchMock.__reset();
-  fs.getRef("experiments/EID").storedData = { owner: "u1", storageProvider: "googledrive" };
+  fs.getRef("experiments/EID").storedData = {
+    owner: "u1",
+    storageProvider: "googledrive",
+  };
 });
 
 // ─── Preflight + validation ────────────────────────────────────────────────
@@ -105,14 +132,17 @@ beforeEach(() => {
 
 describe("publishExperiment — media files", () => {
   test("uploads img/vid/aud (decoding base64, stripping data:URL prefix); skips invalid type + empty content", async () => {
-    mockGetGithubToken.mockResolvedValueOnce({ success: true, access_token: "ghtok" });
+    mockGetGithubToken.mockResolvedValueOnce({
+      success: true,
+      access_token: "ghtok",
+    });
     mockGetGithubOwner.mockResolvedValueOnce("owner");
     mockGetRepositoryInfo.mockResolvedValueOnce({ success: true });
     mockUploadFileGithub
-      .mockResolvedValueOnce({ success: true })   // index.html
-      .mockResolvedValueOnce({ success: true })   // img
-      .mockResolvedValueOnce({ success: true })   // vid
-      .mockResolvedValueOnce({ success: true });  // aud
+      .mockResolvedValueOnce({ success: true }) // index.html
+      .mockResolvedValueOnce({ success: true }) // img
+      .mockResolvedValueOnce({ success: true }) // vid
+      .mockResolvedValueOnce({ success: true }); // aud
     mockEnableGithubPages.mockResolvedValueOnce({
       success: true,
       pagesUrl: "u",
@@ -120,16 +150,17 @@ describe("publishExperiment — media files", () => {
 
     const mediaFiles = [
       { type: "img", filename: "a.png", content: "data:image/png;base64,QUJD" }, // "ABC"
-      { type: "vid", filename: "b.mp4", content: "WFla" },                       // "XYZ"
-      { type: "aud", filename: "c.mp3", content: "MTIz" },                       // "123"
-      { type: "doc", filename: "skip.pdf", content: "ZZZ" },                     // invalid type
-      { type: "img", filename: "empty.png" },                                    // missing content
+      { type: "vid", filename: "b.mp4", content: "WFla" }, // "XYZ"
+      { type: "aud", filename: "c.mp3", content: "MTIz" }, // "123"
+      { type: "doc", filename: "skip.pdf", content: "ZZZ" }, // invalid type
+      { type: "img", filename: "empty.png" }, // missing content
     ];
 
     const res = makeRes();
     await publishExperiment(
       makeReq({
-        body: { experimentID: "EID",
+        body: {
+          experimentID: "EID",
           uid: "u1",
           repoName: "r",
           htmlContent: "<h/>",

@@ -1,21 +1,12 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { uploadFileGithub } from "../hosting/services.js";
-import {
-  getGithubToken,
-  getGithubOwner,
-} from "../../oauth/providers/github/token.js";
 import { requireAuth } from "../../utils/auth.js";
 import { uploadMediaFiles } from "./media.js";
-import { provisionRepository, enablePages } from "./repo.js";
-import { handleProviderChange } from "./provider-change.js";
-import { createExperimentIfMissing } from "./create-if-missing.js";
-import { ensureExperimentStorage } from "./ensure-storage.js";
+import { enablePages } from "./repo.js";
+import { backendProjectId, bindingError } from "../bindings/common.js";
+import { ensurePublicationBindings } from "../bindings/publication.js";
 import { buildExperimentReservation } from "../create.js";
-import {
-  assertExperimentID,
-  ExperimentAccessError,
-  sendExperimentAccessError,
-} from "../access.js";
+import { assertExperimentID, sendExperimentAccessError } from "../access.js";
 import { withExperimentMutation } from "../mutation.js";
 import { validateFunctionalSettings } from "../functional-settings/model.js";
 
@@ -62,6 +53,14 @@ export const publishExperiment = onRequest(
           : validateFunctionalSettings(req.body.functionalSettings);
 
       assertExperimentID(experimentID);
+      if (
+        req.body.backendProjectId &&
+        req.body.backendProjectId !== backendProjectId()
+      )
+        throw bindingError(
+          "BACKEND_CONTEXT_CHANGED",
+          "The selected backend changed. Verify the publication destinations again.",
+        );
       if (
         typeof repoName !== "string" ||
         !repoName ||
@@ -119,84 +118,19 @@ export const publishExperiment = onRequest(
             status: (status) => ({ json: (body) => ({ status, body }) }),
           };
 
-          const experimentRef = mutation.ref;
-          const currentData = mutation.data;
-          if (
-            mutation.created ||
-            ["preparing", "failed"].includes(currentData.provisioningState)
-          ) {
-            try {
-              await createExperimentIfMissing(
-                experimentID,
-                repoName,
-                uid,
-                storageProvider,
-                mutation,
-              );
-            } catch (error) {
-              if (error instanceof ExperimentAccessError) throw error;
-              return reply.status(400).json({
-                success: false,
-                code: "EXPERIMENT_STORAGE_SETUP_FAILED",
-                message:
-                  "Could not set up experiment storage. Connect the storage provider and try again.",
-              });
-            }
-          } else {
-            const currentProvider =
-              currentData.storageProvider || "googledrive";
-            const newProvider = storageProvider || "googledrive";
-            await mutation.check();
-            const check =
-              currentProvider !== newProvider
-                ? await handleProviderChange(
-                    experimentRef,
-                    currentData,
-                    newProvider,
-                    uid,
-                    repoName,
-                  )
-                : await ensureExperimentStorage(
-                    experimentRef,
-                    currentData,
-                    currentProvider,
-                    uid,
-                    repoName,
-                  );
-            if (!check.ok)
-              return reply
-                .status(check.response.status)
-                .json(check.response.body);
-          }
-
-          // Obtener el token de GitHub
-          const tokenResult = await getGithubToken(uid);
-          if (!tokenResult.success) {
-            return reply.status(400).json({
-              success: false,
-              message: "GitHub token not found or invalid",
-              error: tokenResult.error,
-            });
-          }
-
-          const accessToken = tokenResult.access_token;
-          const owner = await getGithubOwner(accessToken);
-
-          const provision = await provisionRepository(
-            accessToken,
-            owner,
-            repoName,
-            isPrivate,
-            description,
+          const targets = await ensurePublicationBindings(
+            mutation,
+            uid,
+            storageProvider,
+            { repoName, isPrivate, description },
           );
-          if (!provision.success) {
-            return reply.status(400).json({
-              success: false,
-              message: "Error creating repository",
-              error: provision.errorText,
-            });
-          }
-          const repoExists = provision.repoExists;
+          const {
+            ownerLogin: owner,
+            repoName: boundRepoName,
+            branch,
+          } = targets.github;
+          const accessToken = targets.accessToken;
+          const repoExists = targets.repoExists;
 
           // Subir/actualizar el archivo HTML
           console.log("Uploading/updating index.html...");
@@ -204,10 +138,11 @@ export const publishExperiment = onRequest(
           const uploadHtmlResult = await uploadFileGithub(
             accessToken,
             owner,
-            repoName,
+            boundRepoName,
             "index.html",
             htmlContent,
             repoExists ? "Update experiment HTML" : "Add experiment HTML file",
+            branch,
           );
 
           if (!uploadHtmlResult.success) {
@@ -223,12 +158,18 @@ export const publishExperiment = onRequest(
           const mediaUploadResults = await uploadMediaFiles(
             accessToken,
             owner,
-            repoName,
+            boundRepoName,
             mediaFiles,
+            branch,
           );
 
           await mutation.check();
-          const pagesUrl = await enablePages(accessToken, owner, repoName);
+          const pagesUrl = await enablePages(
+            accessToken,
+            owner,
+            boundRepoName,
+            branch,
+          );
 
           // E-11: aggregate media upload outcome so the client knows which
           // resources are actually live.
@@ -268,11 +209,14 @@ export const publishExperiment = onRequest(
             message: repoExists
               ? "Experiment updated and published successfully"
               : "Experiment created and published successfully",
-            repoUrl: `https://github.com/${owner}/${repoName}`,
+            repoUrl: `https://github.com/${owner}/${boundRepoName}`,
             pagesUrl: pagesUrl,
             owner: owner,
-            repoName: repoName,
+            repoName: boundRepoName,
             mediaUploads: mediaUploadStats,
+            storageProvider: targets.storage.provider,
+            storageBinding: targets.storage,
+            githubBinding: targets.github,
           });
         },
       );

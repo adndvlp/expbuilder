@@ -91,6 +91,7 @@ export async function withExperimentMutation(
   }
   const mutation = {
     ref,
+    leaseToken,
     ...reservation,
     check: () => transact({}),
     update: async (patch) => {

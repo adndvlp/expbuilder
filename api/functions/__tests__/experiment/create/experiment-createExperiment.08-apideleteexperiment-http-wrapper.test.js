@@ -8,7 +8,12 @@
  * 500 generic, 200 happy path.
  */
 import { jest } from "@jest/globals";
-import { makeFsMock, makeReq, makeRes, makeSnapshot } from "../../helpers/firestore-mock.js";
+import {
+  makeFsMock,
+  makeReq,
+  makeRes,
+  makeSnapshot,
+} from "../../helpers/firestore-mock.js";
 
 const fs = makeFsMock();
 const mockWriteLog = jest.fn().mockResolvedValue(true);
@@ -25,7 +30,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -41,13 +48,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -64,6 +77,15 @@ jest.unstable_mockModule("../../../oauth/providers/github/token.js", () => ({
   getGithubOwner: jest.fn(),
 }));
 
+jest.unstable_mockModule(
+  "../../../experiment/bindings/delete-resources.js",
+  () => ({
+    deleteBoundResources: async () => ({
+      folderDeleted: true,
+      repoDeleted: false,
+    }),
+  }),
+);
 const { createExperiment, apiDeleteExperiment } = await import(
   "../../../experiment/index.js"
 );
@@ -71,6 +93,9 @@ const { createExperiment, apiDeleteExperiment } = await import(
 beforeEach(() => {
   fs.refsByPath.clear();
   fs.colsByPath.clear();
+  fs.getCol("experiments/EID/destination_history").get.mockResolvedValue(
+    makeSnapshot([]),
+  );
   fs.db.collection.mockClear();
   fs.db.batch.mockClear();
   mockWriteLog.mockClear();
@@ -107,9 +132,7 @@ describe("apiDeleteExperiment — HTTP wrapper", () => {
   });
 
   test("500 on generic error from deleteExperiment", async () => {
-    fs.getRef("experiments/EID").get.mockRejectedValueOnce(
-      new Error("boom"),
-    );
+    fs.getRef("experiments/EID").get.mockRejectedValueOnce(new Error("boom"));
     const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     const res = makeRes();
@@ -125,9 +148,16 @@ describe("apiDeleteExperiment — HTTP wrapper", () => {
   test("200 happy path returns deleteExperiment result body", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ owner: "u1", storageProvider: "googledrive", driveFolderPath: "/x" }),
+      data: () => ({
+        owner: "u1",
+        storageProvider: "googledrive",
+        driveFolderPath: "/x",
+      }),
     });
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
+    mockGetValidToken.mockResolvedValueOnce({
+      success: true,
+      access_token: "tok",
+    });
     mockDeleteFolder.mockResolvedValueOnce({ success: true });
     fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
     fs.getCol("experiments/EID/session_metadata").get.mockResolvedValueOnce(

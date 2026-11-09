@@ -1,11 +1,14 @@
-import { requireExperimentPrepared } from "../../access.js";
+import {
+  requireExperimentPrepared,
+  sendExperimentAccessError,
+} from "../../access.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { Parser } from "json2csv";
 import { db } from "../../../app.js";
 import writeLog from "../logging/write-log.js";
 import MESSAGES from "../../api/messages.js";
-import { getValidToken } from "../../../oauth/index.js";
+import { getExperimentStorageToken } from "../../bindings/runtime.js";
 import { appendResult } from "../storage.js";
 
 /**
@@ -78,7 +81,13 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
     }
 
     // Obtener token válido
-    const tokenResult = await getValidToken(storageProvider, exp_data.owner);
+    const tokenResult = await getExperimentStorageToken(
+      storageProvider,
+      exp_data.owner,
+      exp_data,
+      experimentID,
+      sessionId,
+    );
 
     if (!tokenResult.success) {
       res
@@ -190,6 +199,7 @@ export const apiDataComplete = onRequest({ cors: true }, async (req, res) => {
       storageProvider,
     });
   } catch (error) {
+    if (sendExperimentAccessError(res, error)) return;
     // T-11: log internal detail; respond generic.
     console.error("Error in apiDataComplete:", error);
     res.status(500).json({

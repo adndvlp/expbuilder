@@ -8,6 +8,11 @@ import PublishControls from "./components/PublishControls";
 import { useExperimentCode } from "./ExperimentCode/useExperimentCode";
 import FileUploader from "./FileUploader";
 import PublishExperiment from "./PublishExperiment";
+import DestinationDialog from "./DestinationDialog";
+import {
+  deploymentRequest,
+  type DeploymentContext,
+} from "../../../../lib/deploymentBindings";
 import { StorageSelectModal } from "./StorageSelectModal";
 import { useUserTokens } from "./hooks/useUserTokens";
 
@@ -48,6 +53,9 @@ function Timeline({
   const [isPublishing, setIsPublishing] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [availableStorages, setAvailableStorages] = useState<string[]>([]);
+  const [destinationContext, setDestinationContext] =
+    useState<DeploymentContext | null>(null);
+  const [isVerifyingDestinations, setIsVerifyingDestinations] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const experimentID = useExperimentID();
   const { generateLocalExperiment, generateExperiment, generatedBaseCode } =
@@ -79,6 +87,7 @@ function Timeline({
     setShowStorageModal,
     setIsPublishing,
     generateExperiment,
+    onReviewDestinations: setDestinationContext,
   });
 
   return (
@@ -112,6 +121,45 @@ function Timeline({
         setPagesCopyStatus={setPagesCopyStatus}
         onPublish={handlePublishToGitHub}
       />
+      <button
+        disabled={isPublishing || isVerifyingDestinations}
+        onClick={async () => {
+          setIsVerifyingDestinations(true);
+          try {
+            setDestinationContext(
+              await deploymentRequest(experimentID, "context"),
+            );
+          } catch (error) {
+            setPublishStatus(
+              `Error: ${error instanceof Error ? error.message : "Could not verify destinations."}`,
+            );
+          } finally {
+            setIsVerifyingDestinations(false);
+          }
+        }}
+      >
+        {isVerifyingDestinations
+          ? "Verifying destinations…"
+          : "Publication destinations"}
+      </button>
+      {destinationContext && (
+        <DestinationDialog
+          experimentID={experimentID}
+          context={destinationContext}
+          onClose={() => setDestinationContext(null)}
+          onSaved={(result) => {
+            setDestinationContext(null);
+            if (result.repairResult?.urlMayChange) setLastPagesUrl("");
+            setPublishStatus(
+              result.repairResult?.requiresPublication
+                ? "Repository repaired. Publish again and use the new URL."
+                : result.repairResult
+                  ? "Data destination repaired. Previous results have not been moved or recovered."
+                  : "Destinations saved. You can now publish.",
+            );
+          }}
+        />
+      )}
       <div
         style={{
           margin: "16px 0",

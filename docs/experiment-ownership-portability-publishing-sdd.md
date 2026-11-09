@@ -1,6 +1,6 @@
 # SDD: propiedad, portabilidad y publicación de experimentos
 
-Estado: M01–M03 implementados y verificados localmente; M04–M08 pendientes. Sin despliegue de estos cambios.
+Estado: M01–M04 implementados y verificados localmente; M05–M08 pendientes. Sin despliegue de estos cambios.
 
 Fecha: 2026-11-05. Base de revisión: `2ba2913` y archivos locales observados. Los cambios previos de la base local, respaldos y archivos del tester son ajenos a esta SDD.
 
@@ -293,7 +293,7 @@ No se cambia la navegación del experimento para resolver propiedad. La migraci�
 
 La primera publicación elige un proveedor conectado al propietario y prepara una carpeta identificada por el UUID, con un nombre legible opcional. Los reintentos buscan/reutilizan la misma carpeta; un nombre coincidente por sí solo no demuestra que la carpeta sea la correcta.
 
-Para un experimento existente, `storageBinding` se fija al verificar sus identificadores actuales. Republicar comprueba acceso a esa misma cuenta y carpeta. No crea una carpeta sustituta si desaparece una carpeta de un experimento ya publicado ni cambia de proveedor automáticamente: devuelve `STORAGE_BINDING_UNAVAILABLE`.
+Para un experimento existente, `storageBinding` se fija al verificar sus identificadores actuales. Republicar comprueba acceso a esa misma cuenta y carpeta. No crea una carpeta sustituta durante una republicación ni cambia de proveedor automáticamente: devuelve `STORAGE_BINDING_UNAVAILABLE` y ofrece reconectar, comprobar de nuevo o iniciar la reparación explícita de 9.3.
 
 Una preparación nueva puede recuperar una carpeta creada por un intento anterior cuyo resultado no se registró, usando identidad estable y comprobación del proveedor. Es diferente de reemplazar un destino de datos ya utilizado.
 
@@ -301,11 +301,31 @@ Si el proveedor solicitado difiere del asociado, se devuelve `STORAGE_CHANGE_REQ
 
 ### 9.2 Repositorio GitHub
 
-Las cuentas se verifican con IDs del proveedor, no solo nombres de usuario. Un vínculo registra el ID numérico del repositorio y la cuenta, su nombre legible y la rama. Renombrar el experimento no crea otro repositorio.
+Las cuentas se verifican con IDs del proveedor, no solo nombres de usuario. Se conservan etiquetas legibles de cuenta para indicar qué cuenta debe reconectarse; esas etiquetas no conceden autorización. Un vínculo registra el ID numérico del repositorio y la cuenta, su nombre legible y la rama. Renombrar el experimento no crea otro repositorio.
 
 Los repositorios nuevos usan un nombre derivado del título más un sufijo estable del UUID. Una colisión se resuelve sin sobrescribir automáticamente el repositorio encontrado. La primera vinculación de un repositorio legado requiere verificar propiedad del experimento y permisos sobre el repositorio, y una selección explícita del repositorio existente. Una URL del ZIP o un nombre parecido no son evidencia suficiente.
 
 El publicador agrega `expbuilder-manifest.json` con proyecto, experimento, versión, intento y huella del artefacto. Es metadato público sin credenciales. Un repositorio cuyo marcador identifica otro experimento no se reutiliza automáticamente. El flujo de vinculación legado se restringe al propietario y no transfiere propiedad de experimentos.
+
+### 9.3 Recuperación y reparación explícita de destinos
+
+La recuperación forma parte de M04. Una publicación normal reutiliza los IDs vinculados. Si no puede comprobarlos, conserva las asociaciones y explica el problema. Un `404` no demuestra eliminación: Drive también lo devuelve por falta de acceso de lectura y GitHub puede usarlo para ocultar un repositorio privado. Se ofrece reconectar la cuenta desde Settings y volver a comprobar el destino. Referencias: [Drive, notFound](https://developers.google.com/workspace/drive/api/guides/handle-errors), [GitHub, 404 de recursos existentes](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#404-not-found-for-an-existing-resource).
+
+`Publication destinations` permite verificar y confirmar asociaciones legadas sin publicar. La inspección comprueba propietario, proyecto, cuenta, ID del recurso, permisos, rama y marcador cuando existe. Un path legado de Drive se resuelve solo mediante lectura, exigiendo un resultado único por componente; una ambigüedad requiere seleccionar el ID original. No se buscan sustitutos por título. Una URL importada sigue siendo una pista sin autoridad. Guardar un repositorio agrega su marcador público y explica los paths que podrá actualizar la próxima publicación.
+
+Para un destino ya vinculado se ofrece `Repair data folder` o `Repair GitHub repository`. La inspección de reparación es de solo lectura: verifica primero el ID de la cuenta vinculada y después el acceso al recurso elegido. Una cuenta diferente exige reconexión; un cambio intencional de cuenta o proveedor continúa siendo una migración separada. Un recurso accesible se reutiliza (`REPAIR_NOT_NEEDED`). Fallos de red o del proveedor se presentan como reintentables; no prueban desaparición ni autorizan crear un sustituto.
+
+La previsualización identifica el destino anterior, la cuenta verificada y qué recurso se creará. Antes de confirmar, el usuario acepta expresamente que crear un reemplazo no recupera archivos eliminados ni traslada resultados anteriores. Una reparación pendiente bloquea la publicación ordinaria hasta resolverse. La confirmación incluye `confirmReplacement: true`, `acknowledgeDataLoss: true` y huellas del contexto/previsualización. Cambiar proyecto, propietario, cuenta o asociación exige inspeccionar otra vez. Solo se prepara el recurso seleccionado; el otro destino no se crea ni modifica.
+
+La reparación mantiene el UUID del experimento, propietario, ajustes, contadores y estado de captura/pausa. No duplica el diseño, no reactiva la captura por sí misma y no borra el recurso anterior. Un repositorio nuevo requiere publicar de nuevo; la aplicación invalida la URL anterior y avisa que puede cambiar. Conserva la visibilidad registrada; si no se conoce, el nuevo repositorio se crea privado y se muestra esa decisión antes de confirmar.
+
+La preparación deja comprobantes de creación por intento de reparación. Los nombres se derivan de la identidad del experimento y de la reparación, independientes del título. La sustitución de la asociación y la escritura de `experiments/{id}/destination_history/{repairId}` se realizan juntas mediante una transacción condicionada al propietario y permiso temporal vigente. Las reservas de `experimentResourceBindings` impiden que dos experimentos del mismo backend reclamen el mismo recurso. Se conservan también las reservas anteriores; su liberación y el inventario entre proyectos quedan para M08.
+
+Una confirmación que ya terminó puede repetirse con la misma huella y contexto sin crear otro recurso. Si se perdió una respuesta de creación, se reutilizan los IDs comprobados o los marcadores del intento. Un recurso cuya creación sigue siendo incierta puede seleccionarse por ID o URL e inspeccionarse explícitamente dentro de la reparación pendiente; no se adopta por coincidencia de nombre. Cerrar el diálogo después de iniciar una operación no cancela sus efectos remotos. Una terminación abrupta que conserve un permiso vencido sigue requiriendo la reconciliación de M06; no se promete una transacción distribuida con los proveedores.
+
+Las referencias históricas y URLs de resultados se conservan. Cada sesión vinculada fija una instantánea de su destino al registrarse o al primer acceso al almacenamiento, incluido `batch=0`. Al reparar la primera carpeta se conserva además `legacyStorageBinding` para sesiones anteriores que tengan registro pero carezcan de instantánea. Una sesión ya registrada continúa usando su carpeta anterior: si esta sigue inaccesible, su descarga o envío falla explícitamente; nunca se redirige silenciosamente a la nueva. Las sesiones nuevas usan el reemplazo. Un cliente antiguo que nunca registró una sesión ni envió datos fija el destino al primer envío, porque no existe un registro anterior que permita identificarlo.
+
+Los documentos legados que aún no tengan cuenta e identidad verificadas deben completar la vinculación de 9.1/9.2 antes de usar esta reparación. No se inventa una cuenta histórica cuando falta esa evidencia; los casos irrecuperables requieren revisión durante el inventario de M08. La eliminación remota verifica los destinos activos antes de borrarlos, conserva progreso tras una eliminación parcial y no adivina repositorios desde el título. Los destinos anteriores conservados para recuperación no se borran automáticamente. La eliminación definitiva del experimento limpia sus metadatos de historial, sin asumir que también eliminó aquellos recursos externos anteriores.
 
 ## 10. Instantánea y límites de publicación
 
@@ -559,7 +579,7 @@ La numeración M01–M08 es el orden de ejecución, distinto de los seis temas c
 | M01 | Autorización estricta, reserva de identidad, estados de preparación y reglas compatibles | Ninguna | Acceso ajeno sin efectos, carrera entre usuarios resuelta, participantes y eliminación compatibles |
 | M02 | Configuración funcional local, revisiones y migración autorizada | M01 | Nuevo diseño configurable sin Firebase; legado recuperado o marcado; ausencia de fallback silencioso |
 | M03 | Medios por identidad, formato v2 y flujos copy/restore | M02 | Dos copias con igual título independientes; restauración v1/v2 y recuperación de fallos locales |
-| M04 | Asociaciones fijas de almacenamiento/GitHub y compatibilidad de recursos legados | M01; integrar M03 | Republicar no cambia destinos; repositorio ajeno o ambiguo no se sobrescribe |
+| M04 | Asociaciones fijas, compatibilidad de recursos legados y reparación explícita del mismo experimento | M01; integrar M03 | Republicar no cambia destinos; repositorio ajeno o ambiguo no se sobrescribe |
 | M05 | Instantánea congelada, protocolo 2, manifiesto, límites y errores de extremo a extremo | M02–M04 | Artefacto reproducible por intento; mayores a 1 MiB admitidos; rechazo temprano por tamaño real |
 | M06 | Publicador Git Data, recursos por versión y permiso temporal completo | M04–M05 | Un commit completo, conflictos sin forzar, reintentos y respuestas inciertas reconciliados |
 | M07 | Pages verificado, interfaz de estado y recuperación al reabrir | M06 | La UI distingue commit, pendiente y éxito del commit correcto; no duplica publicación al consultar |
@@ -621,6 +641,14 @@ Las pruebas verifican resultados y efectos observables. Los proveedores se simul
 | A42 | Eliminar con y sin sesión o perderla mientras se obtiene el token | Acciones de alcance fijo; eliminación remota sin autenticación no se transforma en local |
 | A43 | Navegar mientras una recuperación sigue pendiente | La respuesta anterior no modifica los ajustes, avisos ni estado de guardado del experimento actual |
 
+| A44 | Destino inaccesible o cuenta distinta al republicar | Conservar asociaciones; ofrecer reconexión y reintento, sin asumir eliminación ni crear recursos |
+| A45 | Reparar carpeta o repositorio sin confirmar pérdida de archivos | Rechazo sin crear ni sustituir recursos |
+| A46 | Reparación confirmada de un destino | Crear/verificar solo el seleccionado, conservar UUID, propietario, ajustes, contadores, pausa e historial |
+| A47 | Repetir una reparación confirmada o perder una respuesta de creación | Reutilizar comprobantes; una creación incierta requiere inspección explícita, sin duplicados ni adopción por nombre |
+| A48 | Descargar o finalizar una sesión anterior tras reparar su carpeta | Mantener el destino de esa sesión; no buscar ni guardar silenciosamente sus datos en el reemplazo |
+| A49 | Recurso restaurado, cambio de cuenta/contexto o fallo transitorio durante reparación | Reutilizar el original o rechazar/reintentar; no usar el error como autorización de sustitución |
+| A50 | Rama, directorio o workflow de Pages cambió fuera de la aplicación | Detener la publicación antes de subir HTML; no reconfigurar silenciosamente el destino |
+
 Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos que toca. La matriz global se completa en M08; no es necesario repetir toda la suite por cambios documentales ni ampliar pruebas sin una dependencia o riesgo concreto.
 
 ## 19. Registro para próximas sesiones
@@ -630,10 +658,10 @@ Cada etapa ejecuta las pruebas correspondientes y las regresiones de los flujos 
 | M01 | Implementado y verificado localmente | Política común, reserva transaccional inactiva, preparación, exclusión de mutaciones, captura compatible, reglas y eliminación local/remota con acciones de alcance fijo verificadas. Despliegue pendiente. |
 | M02 | Implementado y verificado localmente | Ajustes locales con revisiones, migración autorizada, guardado único, recuperación contextual, generación sin Firestore y conservación de campos. Despliegue pendiente. |
 | M03 | Implementado y verificado localmente | Medios por identidad, paquetes v2, copia/restauración explícitas, revisión de ajustes importados y recuperación local. Sin operaciones remotas durante la importación. |
-| M04 | Pendiente | Verificar asociaciones legadas; retirar cambio implícito de proveedor |
+| M04 | Implementado y verificado localmente | Destinos fijos por cuenta/ID, verificación legada, reparación explícita con historial y destino por sesión; sin migración implícita. Despliegue pendiente. |
 | M05 | Pendiente | Congelar artefacto y definir protocolo 2 completo |
 | M06 | Pendiente | Git Data, medios por versión, exclusión y reconciliación |
-| M07 | Pendiente | Confirmación de Pages e interfaz de recuperación |
+| M07 | Pendiente | Confirmación de Pages e interfaz de estados/reintentos de publicación |
 | M08 | Pendiente | Inventario real, integración y despliegue por proyecto |
 
 Pendiente externo identificado: inventario de documentos y asociaciones reales en producción. No se conoce cuántos casos necesitan intervención. Ninguna etapa se considera desplegada por el hecho de pasar sus pruebas locales.
@@ -805,3 +833,25 @@ La siguiente etapa es **M04: asociaciones fijas de almacenamiento y GitHub, y ve
 - [GitHub Pages: sitios y compilaciones](https://docs.github.com/en/rest/pages/pages). Comprobación de despliegue y correspondencia del commit.
 
 Las referencias se consultaron para redactar el diseño el 2026-11-05. Antes de implementar los adaptadores se comprueban las versiones de API y permisos de las credenciales realmente utilizadas; no se copia una fecha de ejemplo de la documentación como constante sin verificarla.
+
+### Sesión M04 — 2026-11-08
+
+Se implementó el alcance de 9.1–9.3, incluida la reparación explícita aprobada durante esta sesión. El publicador verifica destinos por IDs de cuenta, carpeta/componente y repositorio/rama. Se retiraron los helpers sin uso que recreaban por título o cambiaban de proveedor durante la publicación; `createExperiment` utiliza la preparación segura compartida. Las primeras publicaciones usan nombres derivados del UUID y comprobantes reutilizables. Un repositorio coincidente por nombre no se adopta.
+
+Se agregaron los RPC autenticados `getExperimentDeploymentContext` y `configureExperimentBindings`, sus proxies locales y la acción `Publication destinations` en el editor. El cliente consulta el contexto antes de generar, fija el proveedor existente, comprueba de nuevo el contexto antes de enviar e identifica el proyecto en la petición. Los proxies no mantienen el bloqueo de la base local durante las consultas remotas. Un backend que carezca de estos RPC devuelve `426 BACKEND_UPGRADE_REQUIRED`; aplicación y Functions deben desplegarse coordinadamente.
+
+La reparación permite reemplazar exclusivamente la carpeta o repositorio elegido bajo la misma cuenta/proveedor. Exige previsualización y confirmación separadas, mantiene comprobantes e historial y no publica automáticamente. Las sesiones conservan su destino, y los resultados existentes no se trasladan. La eliminación remota verifica ambos recursos activos antes del primer borrado y registra progreso para reintentar un fallo parcial.
+
+Se siguió TDD para identidad fija, cuentas/proveedores distintos, recursos inaccesibles, asociaciones legadas, colisiones, confirmaciones obsoletas, creación de resultado incierto, concurrencia, acceso de participantes, reparación, reintentos, destinos históricos y configuración de Pages. Se reemplazaron pruebas que exigían recreación/sustitución implícita por las nuevas comprobaciones integradas; las pruebas unitarias de propiedad, limpieza y publicación aíslan la frontera de recursos verificados.
+
+Validación local: Functions, servidor, cliente, TypeScript, build de producción, lint de los módulos nuevos, límite de 300 líneas y registro de escenarios. La interfaz se comprobó con datos ficticios en Chromium a 1440 y 390 píxeles, sin desbordamiento horizontal y sin confirmar una creación durante la inspección. Evidencia de cierre:
+
+- Functions: **599 pruebas correctas, 17 omitidas** en 108 suites correctas (`/private/tmp/m04-api-verified.json`). Incluye 61 casos de integración de destinos, reparación, historial y Pages, más el caso de codificación de rama.
+- Servidor: **718 correctas, 5 omitidas**, 73 suites correctas y salida 0 (`/private/tmp/m04-root-final.json`).
+- Cliente completo: **1.800 correctas** en 435 archivos (`/private/tmp/m04-client-final.log`). Tras las comprobaciones finales de reparación pendiente, **98 pruebas afectadas correctas** en 22 archivos (`/private/tmp/m04-client-verified-focused.log`); la nueva prueba agrega un caso respecto de la ejecución completa.
+- TypeScript, build de producción, lint acotado, `check:max-lines` y registro de 30 tags de escenarios: correctos. El registro valida declaraciones, no equivale a ejecutar toda la matriz runtime.
+- Inspección visual con datos ficticios: escritorio 1440 px y móvil 390 px (`/private/tmp/m04-visual/`); solo se emitieron solicitudes de inspección, sin crear recursos.
+
+Los logs temporales pueden desaparecer al reiniciar o limpiar el sistema. Las pruebas permanecen en el repositorio. No se ejecutó la matriz cloud E2E contra proveedores reales; esa verificación e inventario siguen en M08.
+
+No se ejecutaron escrituras contra proveedores reales, inventario de producción ni despliegues. El marcador de esta etapa usa identidad pública `schemaVersion: 1`; M05 lo ampliará con versión, intento y huella del artefacto. El límite interno de 1 MiB del publicador anterior, la subida mediante Contents API y el fallback de URL estimada de Pages continúan pendientes de M05–M07. La siguiente etapa es **M05: instantánea congelada y protocolo de publicación 2**.

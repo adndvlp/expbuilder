@@ -1,13 +1,8 @@
 import { getDatabase } from "firebase-admin/database";
 import { app, db } from "../app.js";
 import writeLog from "./sessions/logging/write-log.js";
-import { deleteFolder } from "./sessions/services/folder.js";
-import { getValidToken } from "../oauth/index.js";
-import { deleteRepositoryGithub } from "./hosting/services.js";
-import fetch from "../utils/fetch-with-timeout.js";
-import { PROVIDER_ENDPOINTS as endpoints } from "../utils/provider-endpoints.js";
 import { withExperimentMutation } from "./mutation.js";
-import { ExperimentAccessError } from "./access.js";
+import { deleteBoundResources } from "./bindings/delete-resources.js";
 
 /**
  * Stream-delete a collection in page-sized chunks. Optionally drains named
@@ -50,139 +45,20 @@ async function paginatedDelete(colRef, options = {}) {
 /**
  * Función reutilizable para eliminar experimento
  * @param {string} experimentID - ID del experimento
- * @param {string} uid - ID del usuario (opcional)
- * @param {string} repoName - Nombre del repositorio de GitHub (opcional)
+ * @param {string} uid - Authenticated owner
  * @returns {Promise<Object>} - Resultado de la operación
  */
-export async function deleteExperiment(experimentID, uid, repoName = null) {
+export async function deleteExperiment(experimentID, uid) {
   return withExperimentMutation(
     { experimentID, uid, operation: "delete" },
     async (mutation) => {
       await writeLog(experimentID, "deleteExperiment");
 
       const experimentRef = mutation.ref;
-      const experimentData = mutation.data;
-      const storageProvider = experimentData.storageProvider || "googledrive";
-
-      // Obtener el identificador de carpeta según el proveedor
-      let folderIdentifier;
-      if (storageProvider === "googledrive") {
-        folderIdentifier = experimentData.driveFolderPath;
-      } else if (storageProvider === "dropbox") {
-        folderIdentifier = experimentData.dropboxFolder;
-      } else if (storageProvider === "osf") {
-        // deleteFolder OSF espera componentId (borra el componente entero)
-        folderIdentifier = experimentData.osfComponentId;
-      }
-
-      let folderDeleted = false;
-      let storageError = null;
-      let repoDeleted = false;
-      let repoError = null;
-
-      // Eliminar carpeta de almacenamiento (Dropbox/Drive)
-      if (uid && folderIdentifier) {
-        try {
-          const tokenResult = await getValidToken(storageProvider, uid);
-
-          if (tokenResult.success) {
-            await mutation.check();
-            const deleteResult = await deleteFolder(
-              storageProvider,
-              tokenResult.access_token,
-              folderIdentifier,
-            );
-
-            if (deleteResult.success) {
-              folderDeleted = true;
-            } else {
-              storageError = deleteResult.errorText;
-              console.error(
-                `Error deleting ${storageProvider} folder:`,
-                storageError,
-              );
-            }
-          } else {
-            storageError = `Token error: ${tokenResult.error}`;
-            console.error(
-              `Error getting valid ${storageProvider} token:`,
-              tokenResult.error,
-            );
-          }
-        } catch (error) {
-          if (error instanceof ExperimentAccessError) throw error;
-          console.error("Error accessing user data or deleting folder:", error);
-          storageError = error.message;
-        }
-      }
-
-      // Eliminar repositorio de GitHub
-      await mutation.check();
-      if (uid) {
-        try {
-          const userDoc = await db.collection("users").doc(uid).get();
-
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            const githubTokens = userData.githubTokens;
-
-            if (githubTokens && githubTokens.access_token) {
-              const accessToken = githubTokens.access_token;
-
-              // Obtener el username de GitHub
-              const userResponse = await fetch(
-                `${endpoints.github.apiBase}/user`,
-                {
-                  method: "GET",
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    Accept: "application/vnd.github.v3+json",
-                  },
-                },
-              );
-
-              if (userResponse.ok) {
-                const githubUser = await userResponse.json();
-                const owner = githubUser.login;
-
-                // Intentar eliminar el repositorio usando repoName si se proporciona, sino experimentData.title o experimentID
-                const repoToDelete =
-                  repoName || experimentData.title || experimentID;
-                await mutation.check();
-                const deleteRepoResult = await deleteRepositoryGithub(
-                  accessToken,
-                  owner,
-                  repoToDelete,
-                );
-
-                if (deleteRepoResult.success) {
-                  repoDeleted = true;
-                  console.log(
-                    `GitHub repository ${repoToDelete} deleted successfully`,
-                  );
-                } else {
-                  // Si el error es 404, significa que el repo no existía (no es un error crítico)
-                  if (deleteRepoResult.errorCode === 404) {
-                    console.log(
-                      `GitHub repository ${repoToDelete} does not exist`,
-                    );
-                  } else {
-                    repoError = deleteRepoResult.errorText;
-                    console.error(
-                      `Error deleting GitHub repository:`,
-                      repoError,
-                    );
-                  }
-                }
-              }
-            }
-          }
-        } catch (error) {
-          if (error instanceof ExperimentAccessError) throw error;
-          repoError = error.message;
-          console.error("Error deleting GitHub repository:", error);
-        }
-      }
+      const { folderDeleted, repoDeleted } = await deleteBoundResources(
+        mutation,
+        uid,
+      );
 
       // E-6: stream subcollections instead of loading every doc into memory.
       // For experiments with thousands of sessions the previous `.get()` on the
@@ -197,6 +73,9 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
         checkMutation: mutation.check,
       });
 
+      await paginatedDelete(experimentRef.collection("destination_history"), {
+        checkMutation: mutation.check,
+      });
       await mutation.remove();
 
       // Limpiar Realtime Database — sino el trigger finalizeDisconnectedSessions
@@ -219,8 +98,6 @@ export async function deleteExperiment(experimentID, uid, repoName = null) {
         ...(rtdbError && { rtdbWarning: rtdbError }),
         folderDeleted: folderDeleted,
         repoDeleted: repoDeleted,
-        ...(storageError && { storageWarning: storageError }),
-        ...(repoError && { repoWarning: repoError }),
       };
     },
   );

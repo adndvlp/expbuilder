@@ -21,7 +21,9 @@ jest.unstable_mockModule("firebase-functions/v2/https", () => ({
   onRequest: (...args) => args[args.length - 1],
 }));
 jest.unstable_mockModule("firebase-admin/auth", () => ({
-  getAuth: () => ({ verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }) }),
+  getAuth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({ uid: "u1" }),
+  }),
 }));
 jest.unstable_mockModule("../../../utils/auth.js", () => ({
   requireAuth: jest.fn().mockResolvedValue("u1"),
@@ -37,13 +39,19 @@ jest.unstable_mockModule("firebase-admin/database", () => ({
   getDatabase: mockGetDatabase,
 }));
 jest.unstable_mockModule("../../../app.js", () => ({ db: fs.db, app: {} }));
-jest.unstable_mockModule("../../../experiment/sessions/logging/write-log.js", () => ({
-  default: mockWriteLog,
-}));
-jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () => ({
-  createFolder: mockCreateFolder,
-  deleteFolder: mockDeleteFolder,
-}));
+jest.unstable_mockModule(
+  "../../../experiment/sessions/logging/write-log.js",
+  () => ({
+    default: mockWriteLog,
+  }),
+);
+jest.unstable_mockModule(
+  "../../../experiment/sessions/services/folder.js",
+  () => ({
+    createFolder: mockCreateFolder,
+    deleteFolder: mockDeleteFolder,
+  }),
+);
 jest.unstable_mockModule("../../../oauth/index.js", () => ({
   getValidToken: mockGetValidToken,
 }));
@@ -84,9 +92,9 @@ afterEach(() => {
 });
 
 function mockEmptyCleanupCollections(experimentID = "EID") {
-  fs.getCol(`experiments/${experimentID}/session_metadata`).get.mockResolvedValueOnce(
-    makeSnapshot([]),
-  );
+  fs.getCol(
+    `experiments/${experimentID}/session_metadata`,
+  ).get.mockResolvedValueOnce(makeSnapshot([]));
   fs.getCol(`experiments/${experimentID}/sessions`).get.mockResolvedValueOnce(
     makeSnapshot([]),
   );
@@ -104,31 +112,16 @@ function mockEmptyCleanupCollections(experimentID = "EID") {
 
 // ─── RTDB failure isolation ───────────────────────────────────────────────
 
-describe("deleteExperiment — OSF (E-4 fix)", () => {
-  test("uses osfComponentId as folderIdentifier and calls deleteFolder('osf', ...)", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
-      exists: true,
-      data: () => ({
-        owner: "u1", storageProvider: "osf",
-        osfComponentId: "comp42",
-        osfUploadLink: "https://files.osf.io/v1/resources/comp42/providers/osfstorage/",
-      }),
-    });
-    mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
-    mockDeleteFolder.mockResolvedValueOnce({ success: true });
-
-    fs.getRef("users/u1").get.mockResolvedValueOnce({ exists: false });
-    fs.getCol("experiments/EID/session_metadata").get.mockResolvedValueOnce(
-      makeSnapshot([]),
-    );
-    fs.getCol("experiments/EID/sessions").get.mockResolvedValueOnce(
-      makeSnapshot([]),
-    );
-
-    const r = await deleteExperiment("EID", "u1");
-
-    expect(r.folderDeleted).toBe(true);
-    expect(mockDeleteFolder).toHaveBeenCalledTimes(1);
-    expect(mockDeleteFolder).toHaveBeenCalledWith("osf", "tok", "comp42");
+test("legacy osf deletion requires verification before touching external resources", async () => {
+  fs.getRef("experiments/EID").storedData = {
+    owner: "u1",
+    storageProvider: "osf",
+    driveFolderPath: "/original",
+    osfComponentId: "component",
+  };
+  await expect(deleteExperiment("EID", "u1")).rejects.toMatchObject({
+    code: "GITHUB_BINDING_REQUIRED",
   });
+  expect(mockDeleteFolder).not.toHaveBeenCalled();
+  expect(rtdbRefRemove).not.toHaveBeenCalled();
 });

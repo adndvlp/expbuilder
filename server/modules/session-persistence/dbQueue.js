@@ -58,6 +58,12 @@ export function serializeDbRequest(req, res, next) {
         req.path === "/api/close-tunnel")) ||
     (method === "POST" && req.path.startsWith("/api/upload-files/")) ||
     (method === "POST" && req.path === "/api/import-experiments/inspect") ||
+    (method === "GET" &&
+      /^\/api\/deployment-context\/[^/]+\/?$/.test(req.path)) ||
+    (method === "POST" &&
+      /^\/api\/deployment-bindings\/[^/]+\/(?:repair\/)?(?:inspect|confirm)\/?$/.test(
+        req.path,
+      )) ||
     (method === "POST" &&
       /^\/api\/functional-settings\/[^/]+\/migrate\/?$/.test(req.path)) ||
     (method === "GET" && req.path.startsWith("/api/upload-jobs/")) ||
