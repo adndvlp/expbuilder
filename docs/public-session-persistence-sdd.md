@@ -1,10 +1,10 @@
 # SDD: persistencia y recuperación de sesiones públicas
 
-Estado: puntos 1–5 implementados y verificados localmente mediante TDD. El despliegue, la republicación y la recuperación de datos reales no se han ejecutado. Evidencia y límites en las secciones 16–20.
+Estado: persistencia y publicación única implementadas y verificadas localmente mediante TDD. La revisión final, sus resultados y los aplazamientos del usuario se registran en la [SDD de retirada del versionado](publication-versioning-removal-sdd.md). Esta tarea no despliega, republica ni recupera datos reales. Las secciones 16–20 son el registro histórico de entregas anteriores, no instrucciones operativas vigentes.
 
 Cambio de alcance, 2026-11-12: la [spec de retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md) sustituye el soporte de versiones anteriores y la recuperación histórica definidos en este documento. Prevé actualizar una lista finita de experimentos y eliminar después los convertidores. Su implementación todavía no ha comenzado. Las secciones de entrega registran el trabajo anterior; no constituyen instrucciones para ejecutar el rescate histórico ni republicar todos los experimentos.
 
-Cambio de publicación, 2026-11-12: la [SDD de publicación única](publication-versioning-removal-sdd.md) sustituye los requisitos de conservar HTML, multimedia y registros de publicaciones anteriores, sus IDs y sus redirecciones. La configuración por sesión, la retoma compatible y las garantías de guardado se conservan. Es una implementación independiente y pendiente; la limpieza externa corresponde al usuario.
+Cambio de publicación, 2026-11-12: la [SDD de publicación única](publication-versioning-removal-sdd.md) sustituye los requisitos de conservar HTML, multimedia y registros de publicaciones anteriores, sus IDs y sus redirecciones. La configuración por sesión, la retoma compatible y las garantías de guardado se conservan. Su implementación ya retiró el historial del código; la limpieza externa corresponde al usuario.
 
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
@@ -14,7 +14,7 @@ Conseguir que las respuestas de un experimento publicado lleguen a su proveedor 
 
 El diseño cubre IndexedDB activado y desactivado; lotes `0`, `1` y `N`; Google Drive, Dropbox y OSF; finalización normal; desconexión; retoma; expiración; recuperación posterior y republicación. Incluye los ocho escenarios del [informe de investigación](investigaciones/indexeddb-2026-11-05.md).
 
-Esta SDD define el comportamiento completo; el avance por etapas se registra al final. El campo `Batch Size` ya se oculta localmente cuando IndexedDB está desactivado. Se implementaron los puntos 1–4 de la sección 15; las reglas de los puntos siguientes conservan su carácter de especificación. No se ejecutaron recuperaciones ni despliegues de producción.
+Esta SDD define el comportamiento de persistencia y conserva al final el registro de sus entregas. El campo `Batch Size` se oculta cuando IndexedDB está desactivado. El [plan de publicación y verificación](public-session-release-plan.md) describe la comprobación actual con un experimento de prueba.
 
 El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su servidor no se sustituyen incidentalmente. Una extracción compartida debe conservar sus garantías y pruebas. La lógica de trials, loops, condiciones y branching se integra con la persistencia; no se redefine su significado.
 
@@ -76,8 +76,8 @@ Se conserva `experiments/{experimentID}/sessions/{sessionId}` como registro de i
 
 | Grupo | Campos propuestos y significado |
 |---|---|
-| Identidad | `protocolVersion`, `experimentID`, `sessionId`, `participantNumber`, `condition`, `createdAt`, `startedAt`, `sessionName`. La condición puede derivarse del valor asignado actualmente, pero queda fijada para la sesión. |
-| Configuración | `publicationId`, `executionRevision`, copia de `batchConfig`, proveedor, destino y metadata inicial. Las credenciales se obtienen del backend; no se copian tokens OAuth al documento ni al HTML. |
+| Identidad | `sessionProtocolVersion: 3`, `eventProtocolVersion: 1`, `experimentID`, `sessionId`, `participantNumber`, `condition`, `createdAt`, `sessionName`. La condición queda fijada para la sesión. |
+| Configuración | Copia de `publishedConfiguration` al crear la sesión: lote, IndexedDB, timeout, reclutamiento, CAPTCHA, validación, proveedor y destino; metadata inicial. No incluye una identidad de publicación. Las credenciales se obtienen del backend; no se copian tokens OAuth al documento ni al HTML. |
 | Ejecución | `lifecycle`: `active`, `disconnected`, `completed` o `expired`; `closedAt`; `closeReason`. `completed` y `expired` son terminales para la ejecución. |
 | Presencia | `connectionGeneration`, `connectionId`, `disconnectedAt`, `resumeExpiresAt`. Tiempos de servidor y generación que invalida mensajes antiguos. |
 | Recepción | Total de eventos únicos, última secuencia conocida, prefijo continuo confirmado y, al completar, `expectedEventCount`, `expectedLastSequence` y resumen verificable del conjunto esperado. |
@@ -107,14 +107,14 @@ Se resuelve la escritura en `transaction.oncomplete` y se rechazan `onerror` y `
 
 Los eventos se particionan por experimento y sesión. No se llama a `clear()` al encontrar una sesión diferente. La limpieza por antigüedad no elimina pendientes sin confirmar: el TTL actual de tres días debe dejar de borrar respuestas no reconocidas.
 
-## 6. Contrato HTTP propuesto
+## 6. Contrato HTTP vigente
 
-Se mantiene `apiData` como punto de entrada y se añaden acciones explícitas para el protocolo nuevo. `apiDataComplete` pasa a delegar en la recepción/cierre común. Los nombres siguientes definen operaciones; no requieren nuevas URLs públicas para cada acción.
+`apiData` es el punto de entrada de las acciones del protocolo 3. El runtime vigente recibe eventos y cierra mediante esas acciones. Las rutas antiguas no pueden cerrar ni cargar un archivo que evite las verificaciones de una sesión vigente; su retirada se trata en la spec independiente de retrocompatibilidad.
 
 | Operación | Solicitud esencial | Resultado y regla |
 |---|---|---|
-| `createSession` | ID nuevo estable por intento de creación, versión y publicación | Crea una vez y devuelve identidad, configuración efectiva y estado. Una repetición devuelve la misma asignación. |
-| `resumeSession` | ID existente, generación de conexión y revisión de ejecución | Devuelve `resume_allowed`, `session_expired`, `session_completed`, `session_in_use` o `revision_mismatch`. Devuelve los recibos necesarios para conciliar pendientes. No crea otra sesión implícitamente. |
+| `createSession` | ID estable, protocolo 3, conexión y permiso de escritura | Crea una vez y devuelve identidad, configuración efectiva y estado. Una repetición devuelve la misma asignación. |
+| `resumeSession` / `activateConnection` | ID existente, conexión, generación y permiso de escritura | Autoriza la retoma/activación, informa cierre, uso por otra pestaña o necesidad de renovar el permiso y devuelve recibos para conciliar pendientes. No necesita IDs ni URLs de publicación. |
 | `appendEvents` | Sesión, permiso de escritura, eventos con ID, secuencia y hash | Confirma eventos únicos tras persistencia duradera. Devuelve IDs/hashes reconocidos y estado de recepción. Una colisión de contenido devuelve conflicto. |
 | `completeSession` | Sesión y conjunto esperado: total, última secuencia y resumen | Cierra normalmente solo si todos los eventos coinciden. Devuelve revisión de exportación y `pending` o `confirmed`; no necesita esperar la carga dentro de la misma petición. |
 | `recoverEvents` | ID de sesión cerrada y registros anteriores pendientes | Conciliación idempotente; añade respuestas pendientes a esa sesión y solicita otra revisión del mismo archivo. No cambia `lifecycle`, participante ni checkpoint de ejecución. |
@@ -122,7 +122,7 @@ Se mantiene `apiData` como punto de entrada y se añaden acciones explícitas pa
 
 Un HTTP exitoso debe incluir un reconocimiento verificable. El cliente comprueba `success`, sesión, IDs, secuencias y hashes; un `200` con cuerpo vacío, inválido o `success:false` no autoriza borrar eventos ni mostrar éxito. Un reconocimiento de otro lote o sesión tampoco.
 
-`apiData` con `action:finish`, los triggers, el timeout y `apiDataComplete` dejan de tener finalizadores independientes. Delegan en las operaciones de cierre y exportación comunes. Una llamada antigua no puede saltarse la verificación del protocolo nuevo.
+Las sesiones vigentes completan, expiran y recuperan a través del exportador común. `action:finish`, el envío de archivo completo y `apiDataComplete` rechazan el uso que intente saltarse la verificación del protocolo 3. La separación de los contratos antiguos sigue siendo objeto de la spec de retrocompatibilidad.
 
 Se conservan las validaciones y autorizaciones del proyecto. Los eventos se validan también dentro de un lote; el contenedor no debe saltarse `requiredFields`. El proveedor y destino efectivos se obtienen de la sesión, no de un parámetro arbitrario del evento.
 
@@ -132,12 +132,12 @@ Se conservan las validaciones y autorizaciones del proyecto. Los eventos se vali
 
 1. Leer las referencias locales sin borrar datos de otra sesión.
 2. Consultar el backend para crear o retomar antes de ejecutar un trial. La existencia de un ID en `localStorage` no concede permiso de retoma.
-3. Usar la identidad, configuración y revisión fijadas por la sesión. Una publicación reciente no cambia `useIndexedDB`, tamaño de lote, proveedor ni condición de una sesión iniciada.
+3. Usar la identidad y configuración fijadas por la sesión. Una publicación reciente no cambia `useIndexedDB`, tamaño de lote, timeout, reclutamiento, proveedor ni condición de una sesión iniciada.
 4. Conciliar los eventos locales con sus recibos. Eliminar únicamente los ya reconocidos; conservar los demás. Recuperar la secuencia sin reutilizar IDs de respuestas anteriores.
 5. Si la sesión expiró, realizar recuperación de datos y mostrar el aviso de cierre. Iniciar otra requiere una acción del participante y otro ID; no adopta el checkpoint anterior.
 6. Si está completada y la exportación sigue pendiente, mostrar el estado de guardado y permitir reintentar esa operación; no ejecutar de nuevo el experimento.
 
-Cuando una revisión de ejecución anterior siga abierta, el runtime solicita el artefacto inmutable correspondiente a `executionRevision` y reanuda allí con la configuración original. El publicador debe conservar ese artefacto separado de `index.html`. Una incompatibilidad o la falta del artefacto produce un estado visible y conserva los pendientes; nunca se interpreta el checkpoint sobre un grafo nuevo.
+La retoma utiliza el HTML vigente del mismo enlace. Antes de ejecutar, la navegación valida el destino guardado, sus ámbitos y colas, el cursor y el orden/repetición de los loops. Cambiar la fecha o revisión de edición por sí solo no invalida un progreso válido. Una incompatibilidad se informa conservando identidad y pendientes, sin reiniciar ni crear otra participación automáticamente.
 
 La recuperación de eventos cerrados no requiere ejecutar el grafo antiguo. Debe poder reconocer sus registros y configuración sin cargar plugins de esa publicación.
 
@@ -251,7 +251,7 @@ Se actualiza `Storage Behavior Summary` para expresar las mismas reglas. Se reti
 
 El participante dispone de estados claros: guardando, guardado confirmado, error con reintento, sesión expirada y opción de nueva participación. La recuperación de pendientes cerrados se informa por separado; su fallo no mueve esas respuestas a la sesión nueva ni las elimina. El investigador puede distinguir cierre, exportación pendiente, error y archivo confirmado.
 
-Cambiar configuración o publicar no modifica sesiones existentes. El HTML incorpora `publicationId`, `executionRevision` y versión del protocolo; el backend devuelve la configuración efectiva de la sesión. Los artefactos anteriores necesarios para retoma se conservan mientras existan sesiones activas compatibles. La recuperación de datos no depende de conservar eternamente el HTML.
+Cambiar configuración o publicar no modifica las sesiones existentes. El HTML incorpora el contrato de sesión vigente y sus ajustes generados; el publicador confirma una sola `publishedConfiguration` en el experimento después de subir correctamente HTML y recursos. El backend copia esa configuración al crear una sesión y devuelve su configuración propia al retomar. La retoma y la recuperación no consultan un historial de HTML ni de configuración.
 
 ## 11. Trazabilidad de los ocho hallazgos
 
@@ -298,7 +298,7 @@ Las pruebas nuevas expresan el resultado correcto y deben fallar contra la imple
 | AC24 | Existe archivo y falla su descarga; o un escritor antiguo termina tarde | No se sobrescribe con un fragmento ni se limpia sin conciliación segura; se conservan datos y estado de atención. |
 | AC25 | Misma identidad de evento con payload distinto | Conflicto explícito; no se sustituye silenciosamente la respuesta original ni se confirma el cierre. |
 | AC26 | Browser guarda pendientes durante más de tres días o cambia de sesión | No los elimina el TTL anterior ni el inicio de otra sesión. Solo se limpian tras reconocimiento válido o eliminación explícita. |
-| AC27 | Publicación cambia la revisión de navegación de una sesión todavía retomable | Se abre el artefacto compatible para la retoma. Si no está disponible, error visible y pendientes intactos; no se aplica su checkpoint al grafo nuevo. |
+| AC27 | Republicar cambia presentación, metadatos o fecha de edición de una sesión retomable | Continúa en el HTML actual con el mismo ID, participante y progreso válido. Si desaparece un destino o el recorrido de un loop es incompatible, se informa el problema y se conservan los pendientes. |
 | AC28 | Cierre confirmado con Prolific/MTurk; proveedor lento o caído | La redirección ocurre tras la confirmación del guardado, una vez. No se dispara mientras la exportación esté pendiente. |
 
 Se cubren todos los modos admitidos: IndexedDB con `0`, `1` y al menos un `N > 1`, y sin IndexedDB con distintos valores guardados de lote para demostrar que no alteran su transporte. Los límites temporales se prueban con reloj controlado; la aceptación no depende de dormir un minuto real.
@@ -316,13 +316,13 @@ Los tests de unidades cubren cálculo de plazo, transacciones, reconocimientos y
 | [publicSessionCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicSessionCode.ts), [publicBootstrapCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicBootstrapCode.ts), [publicRuntimeStorageKeys.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicRuntimeStorageKeys.ts) | Handshake con el servidor, identidad/configuración persistentes, separación de sesiones activas y recuperación, presencia por conexión. |
 | [localOutboxCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/localOutboxCode.ts), [localOutboxDatabaseCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/localOutboxDatabaseCode.ts) | Referencia para extraer garantías de cola y transacción sin copiar rutas ni alterar el protocolo local accidentalmente. |
 | [persistenceCoordinator.ts](../client/src/pages/ExperimentBuilder/modules/experiment-runtime/persistenceCoordinator.ts) y coordinador de navegación | Integración de promesas, fallos y pausa real de jsPsych. Verificación de branching, loops y resume. |
-| [create-session.js](../api/functions/experiment/sessions/handlers/create-session.js), [append-result.js](../api/functions/experiment/sessions/handlers/append-result.js) | Registro duradero, transacciones de asignación y deduplicación, recibos y validación por evento. |
-| [data-router.js](../api/functions/experiment/sessions/api/data-router.js), [data-complete.js](../api/functions/experiment/sessions/api/data-complete.js) | Acciones del protocolo común; el lote 0 y `finish` delegan en recepción/cierre verificados. |
-| [triggers.js](../api/functions/experiment/sessions/finalization/triggers.js), [resume-expiration.js](../api/functions/experiment/sessions/finalization/resume-expiration.js), [tasks.js](../api/functions/experiment/sessions/timeout/tasks.js), [queue.js](../api/functions/experiment/sessions/timeout/queue.js) | Ciclo de vida y deadline común, generaciones, trabajos duraderos y cancelación lógica de tareas obsoletas. |
-| [finalize.js](../api/functions/experiment/sessions/finalization/finalize.js), [storage-file.js](../api/functions/experiment/sessions/finalization/storage-file.js), [cleanup.js](../api/functions/experiment/sessions/finalization/cleanup.js) | Exportación por revisión, conciliación por eventos y limpieza después del recibo, conservando identidad y datos ajenos al snapshot. |
+| [handshake.js](../api/functions/experiment/sessions/lifecycle/handshake.js), [append-events.js](../api/functions/experiment/sessions/handlers/append-events.js), [complete-session.js](../api/functions/experiment/sessions/handlers/complete-session.js) | Registro duradero, asignación idempotente, configuración propia, recibos, deduplicación y cierre verificado. |
+| [data-router.js](../api/functions/experiment/sessions/api/data-router.js), [status.js](../api/functions/experiment/sessions/export/status.js) | Acciones del protocolo vigente, estado de exportación y reintento; el lote 0 usa el mismo camino de eventos/cierre. |
+| [state.js](../api/functions/experiment/sessions/lifecycle/state.js), [presence.js](../api/functions/experiment/sessions/lifecycle/presence.js), [tasks.js](../api/functions/experiment/sessions/timeout/tasks.js), [dispatch.js](../api/functions/experiment/sessions/timeout/dispatch.js) | Ciclo de vida y deadline común, generaciones, intención duradera y cancelación lógica de tareas obsoletas. |
+| [request.js](../api/functions/experiment/sessions/export/request.js), [process.js](../api/functions/experiment/sessions/export/process.js), [confirmation.js](../api/functions/experiment/sessions/export/confirmation.js) | Exportación por revisión, conciliación y limpieza tras confirmar el proveedor, conservando identidad y eventos ajenos al snapshot. |
 | [csv.js](../api/functions/experiment/sessions/finalization/csv.js), [metadata.js](../api/functions/experiment/sessions/finalization/metadata.js), [trigger-metadata.js](../api/functions/experiment/sessions/finalization/trigger-metadata.js) y proveedores de sesiones | CSV determinista con identidad de evento, metadata inmutable y confirmación verificable del recurso. |
 | [DataSettingsSection.tsx](../client/src/pages/ExperimentPanel/ExperimentSettings/components/DataSettingsSection.tsx), ResultsList y tipos de configuración | Ayudas coherentes, visibilidad de lote, y presentación separada de cierre y exportación. |
-| [publish.js](../server/routes/experiments/publish.js) y publicación cloud | Versionar protocolo/publicación y conservar el artefacto compatible para sesiones existentes. |
+| [publish.js](../server/routes/experiments/publish.js), [current.js](../api/functions/experiment/publish/current.js) y [media.js](../api/functions/experiment/publish/media.js) | Publicación en `index.html` y recursos normales; configuración vigente única, validación y exclusión de subidas/eliminación concurrentes. |
 | [functions.yaml](../api/functions/functions.yaml), [index.js](../api/functions/index.js), [firestore.indexes.json](../api/firestore.indexes.json), reglas y eliminación de sesiones/experimentos | Registrar worker/encolador y campos consultables; restringir escrituras de estado; limpiar los recursos nuevos al eliminar. |
 | Tests de sesiones de la API, tests públicos de codegen/IndexedDB, runtime-e2e y recorrido cloud | Regresiones H01–H08 y matriz AC01–AC28 con aserciones sobre el archivo final. |
 
@@ -349,7 +349,7 @@ La documentación operativa deberá actualizar [SESSION_TIMEOUT_CLOUD_TASKS.md](
 1. **Regresiones críticas y contrato de recepción.** Reproducir H01/H02 con pruebas del resultado correcto. Introducir IDs y recibos, cola serial y borrado exacto, junto con el arreglo que impide saltarse la exportación solicitada. Verificar respuestas HTTP perdidas y reconocimientos inválidos.
 2. **Identidad, checkpoint y cierre.** Registro duradero para todos los modos, asignación idempotente, barrera de persistencia y cierre con conjunto esperado. Corregir H03–H05 y H08. Encauzar lote 0 por el cierre común.
 3. **Exportador y recuperación.** Trabajos por revisión, recurso estable, reintentos y conciliación de resultados inciertos. Corregir H07 y garantizar que los pendientes recuperados actualizan la sesión original sin duplicar filas.
-4. **Timeout y publicación.** Unificar la regla en ambos modos/proveedores, aplicar deadline y generaciones, conservar configuración/artefactos y corregir H06. Actualizar la UI con sus límites reales.
+4. **Timeout y publicación.** Unificar la regla en ambos modos/proveedores, aplicar deadline y generaciones, conservar la configuración por sesión y corregir H06. La publicación única y la retoma compatible se rigen por su SDD independiente. Actualizar la UI con sus límites reales.
 5. **Integración y transición.** Ejecutar la matriz, comprobar adaptadores y regresiones locales, revisar el plan de publicación y preparar la herramienta de recuperación de resultados anteriores.
 
 Las etapas son unidades de trabajo, no una afirmación de que las primeras dos resuelvan todos los hallazgos. La publicación final del comportamiento completo requiere AC01–AC28 y los contratos de los tres proveedores aprobados. Una entrega parcial identifica qué garantías ofrece y qué sigue pendiente.
@@ -526,6 +526,8 @@ Quedan para el punto 4 la unificación del timeout, deadline y generaciones de c
 
 ## 19. Entrega del punto 4: timeout y publicación
 
+Registro histórico: esta entrega incorporó un historial de publicaciones que ya fue retirado conforme a la SDD independiente. Sus descripciones de HTML anteriores no son requisitos vigentes.
+
 Estado: implementado y verificado localmente. La ejecución se detiene antes del punto 5, conforme a la instrucción del usuario. No se desplegó, republicó ni recuperó información de producción.
 
 ### Comportamiento implementado
@@ -589,4 +591,4 @@ Verificación final: 133 suites y 673 tests de la API aprobados; 13 archivos y 5
 
 Los intentos previos se interrumpieron por ENOSPC. Después de que el usuario liberara espacio, la ejecución integral terminó con código 0 y cerró sus emuladores. No queda pendiente esa revisión.
 
-El [plan de publicación y recuperación](public-session-release-plan.md) contiene la trazabilidad AC01–AC28, los comandos de inspección/aplicación, los límites y el orden de despliegue coordinado. Los proveedores simulados y la entrega local de tareas no certifican credenciales, IAM ni configuración de colas de producción. El workflow queda preparado para ejecutarse en GitHub. La sesión de la captura permanece sin intervención.
+El plan de esa entrega incluía inspección/aplicación histórica. Ha sido sustituido por el [plan de publicación y verificación vigente](public-session-release-plan.md), que conserva la trazabilidad AC01–AC28 para una publicación de prueba. La herramienta histórica permanece bajo la SDD separada de retrocompatibilidad; no es una operación pendiente de este plan. Los proveedores simulados y la entrega local de tareas no certifican el estado del proyecto desplegado. La sesión de la captura permanece sin intervención.

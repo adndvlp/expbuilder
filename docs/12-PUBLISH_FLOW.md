@@ -2,6 +2,8 @@
 
 This document covers the end-to-end flow for creating and publishing experiments, including CSV data handling, multimedia file management, and the complete publish pipeline to GitHub Pages.
 
+Public execution uses one current publication per experiment, a server-confirmed configuration copied per session, and compatible resume on the current HTML. The [publication and verification plan](public-session-release-plan.md) records the operational steps; the [retirement SDD](publication-versioning-removal-sdd.md) records implementation and tests.
+
 ---
 
 ## Part 1: CSV Data Handling
@@ -390,6 +392,9 @@ const { files } = await res.json();
 
 8. Firebase:
    - Creates/updates GitHub repository
+   - Validates the generated configuration and media paths
+   - Acquires the publication lease, uploads `img/`, `aud/`, `vid/` and the root `index.html`, and confirms one `publishedConfiguration`
+   - Retains each existing session's own configuration and destination
    - Sets up GitHub Pages
    - Returns `{ repoUrl, pagesUrl }`
 
@@ -402,6 +407,8 @@ Client receives: `{ success: true, repoUrl, pagesUrl }`
 - URL is automatically copied to clipboard
 - User can share the public experiment URL
 
+Republishing updates that same entry and resource paths. New sessions use the confirmed settings; existing sessions retain their original settings and resume only if their saved progress remains valid for the current execution. Base64 is used to transfer media to the publisher, not to embed every resource in the participant's HTML. The browser loads the published files from their normal paths.
+
 ---
 
 ## Part 4: Public vs Local Code Differences
@@ -411,14 +418,14 @@ Client receives: `{ success: true, repoUrl, pagesUrl }`
 | jsPsych | Local bundle | unpkg CDN |
 | DynamicPlugin | Local server | unpkg CDN |
 | Plugin scripts | Local bundle | Individual CDN per plugin |
-| Media files | Local URLs (`img/photo.jpg`) | Base64 embedded |
-| Data storage | Express API → LowDB → DB API | Firebase RTDB → Storage provider |
+| Media files | Local URLs (`img/photo.jpg`) | Published `img/`, `aud/`, `vid/` files |
+| Data storage | Express API → LowDB → DB API | Firestore events/receipts → verified provider export; RTDB presence |
 | File upload | Express API | Firebase Cloud Function |
-| Session ID | Generated locally | Generated + stored in Firebase |
-| Batching | None | IndexedDB + batch to Firebase |
-| Resume | None | Full resume support via localStorage |
+| Session ID | Generated locally | Stable browser ID registered idempotently on the server |
+| Batching | Serialized local persistence | Optional IndexedDB batches 0/1/N; individual acknowledged events without IndexedDB |
+| Resume | Local backed checkpoint | Server-authorized deadline and backed checkpoint on the current HTML |
 | CAPTCHA | None | hCaptcha/reCAPTCHA gate |
-| Recruitment | None | Prolific redirect / MTurk form submit |
+| Recruitment | None | Session's Prolific/MTurk settings; redirect/submit only after verified storage |
 
 ---
 

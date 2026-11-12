@@ -47,13 +47,20 @@ type BatchConfig = {
   useIndexedDB: boolean;       // true: cache trials in browser IndexedDB, batch send
                                // false: send each trial directly to Firestore
   batchSize: number;           // 0: send all at end; >0: batch every N trials
-  resumeTimeoutMinutes: number; // 1-1440: minutes before disconnected session data is deleted
+  resumeTimeoutMinutes: number; // 1-1440: minutes available to resume after disconnection
 };
 ```
 
-### Behavior by provider
-- **IndexedDB enabled**: Trials cached locally. `batchSize=0` → all at once on completion. `batchSize>0` → batches of N trials.
-- **IndexedDB disabled**: Trials sent individually to Firestore. Google Drive/Dropbox: partial save on disconnect, append on completion. OSF: only saves after timeout or completion (no PATCH support).
+`Batch Size` appears only when IndexedDB is enabled and accepts nonnegative integers. Its stored value is retained but does not control transport when IndexedDB is disabled.
+
+### Behavior in all providers
+
+- **IndexedDB enabled**: Confirm the local event/checkpoint transaction before advancing. `batchSize=0` sends on completion; positive values send batches of N events with a final remnant. Pending events survive until acknowledged, subject to browser storage availability.
+- **IndexedDB disabled**: Send each event to Firestore and await its durable acknowledgement before advancing. There is no durable browser copy; an unacknowledged response stays in memory while the page remains open.
+- **Disconnect and timeout**: Drive, Dropbox and OSF use the same server deadline. Returning before it permits the same session to continue. Expiry closes execution and requests export of data already received by the server; it does not delete session identity or permit further trials. Normal completion requests export immediately.
+- **Batch 0 limitation**: If the page closes before upload, the timeout cannot export responses that exist only in its browser. Returning with that stored data can recover them into the original session's file without reopening execution.
+
+Saving these settings changes the editor's configuration. Publishing confirms a single `publishedConfiguration` on the experiment; new sessions copy it. Existing sessions retain their own IndexedDB, batch, timeout, recruitment, validation and destination settings. Compatible progress resumes on the current HTML. See the [publication and verification plan](public-session-release-plan.md).
 
 ---
 
@@ -275,4 +282,6 @@ For published experiments, Firebase stores:
 }
 ```
 
-The Firebase Firestore client is initialized in `client/src/lib/firebase.ts` and uses `doc()`, `getDoc()`, `setDoc()` from the Firebase Web SDK.
+The fields above are editable settings. Successful publication also stores one server-confirmed `publishedConfiguration` with these settings plus validation/provider/destination, and `sessionExportProtocolVersion: 1`. The protocol 3 session document at `experiments/{experimentID}/sessions/{sessionId}` stores its own `configuration` and stable export destination. It does not refer to a history of published HTML.
+
+The Firebase Firestore client is initialized in `client/src/lib/firebase.ts` and uses `doc()`, `getDoc()`, `setDoc()` from the Firebase Web SDK. The public handshake reads the confirmed configuration on the server; it does not accept unpublished settings supplied by a participant.

@@ -1,6 +1,6 @@
 # SDD: una publicación por experimento y retirada del versionado
 
-Estado: puntos 1–3 implementados mediante TDD; punto 4 pendiente. Falta el cierre de regresión integral y documentación.
+Estado: puntos 1–4 implementados mediante TDD y revisión local final registrada. Permanecen aplazadas, por indicación del usuario, las comprobaciones adicionales de Chromium/FFmpeg detalladas en la sección 15. La limpieza remota corresponde al usuario y no se ha ejecutado.
 
 Fecha: 2026-11-12. Código revisado: `88825ff`.
 
@@ -288,3 +288,49 @@ La admisión de HTML sin contrato de sesión vigente está inventariada expresam
 - Inspección de referencias retiradas y `git diff --check`: aprobados.
 
 Las revisiones de navegador aplazadas por falta de Chromium/FFmpeg continúan pendientes; no se repiten en esta entrega. El punto 4 conserva la regresión integral y la actualización general de instrucciones. La ejecución se detiene antes de ese punto, sin despliegues, republicaciones reales ni limpieza remota.
+
+## 15. Entrega del punto 4 — 2026-11-12
+
+### Cierre de cobertura y TDD
+
+Se añadió la comprobación de AC02 que faltaba en navegador: crear mediante las APIs de edición, generar y publicar un experimento con imagen, audio y vídeo, cargarlos desde las rutas normales y verificar después el CSV final.
+
+La primera ejecución falló porque el harness anterior no transmitía los archivos al publicador y servía todos los recursos como HTML. Se extendió únicamente el harness para enviar multimedia y servir su MIME. La prueba pasa con el generador y publicador reales, un PNG, audio WAV y vídeo WebM generado en Chrome. Comprueba la carga, la ausencia de un `base` histórico, el mismo enlace y el resultado confirmado. No se modificó la lógica del producto en este punto.
+
+### Verificación final
+
+| Comprobación | Resultado efectivo |
+|---|---|
+| Functions completas, Node 22 | 134 suites, **685 pruebas aprobadas**. |
+| Servidor local: grafo, contrato de branching, ámbitos/orden de loops y persistencia de sesiones | 8 suites, **62 pruebas aprobadas** con bases temporales. |
+| Cliente: generación/navegación/restauración, runtime público en Chrome y configuración | 31 suites, **161 pruebas aprobadas**: 116 unitarias, 37 de navegador y 8 de configuración. |
+| Contratos HTTP y runtime previos a E2E | **9 pruebas aprobadas**: siete de proveedor y dos del runtime/configuración con Firebase CLI. |
+| Matriz completa de persistencia | **61 casos aprobados**, sin omisiones dentro de esa matriz, con Firebase SDK 9.23.0, jsPsych y Firestore/RTDB en emuladores. Incluye 58 casos del flujo vigente y los tres históricos que permanecen bajo la spec separada. |
+| TypeScript y build de producción del cliente | Aprobados. Vite conserva su aviso de chunks grandes. |
+| Lint de los archivos mantenidos en este punto, referencias del producto y whitespace | Aprobados; sin identidades, rutas, helpers ni selectores del historial en el código del producto. |
+
+La matriz E2E usa proveedores HTTP y entrega de tareas controlados. Confirma los CSV, identidades, secuencias, configuración, permisos de conexión, retoma, recuperación y eliminación; no acredita el estado de cuentas, permisos, cuotas o despliegues remotos.
+
+### Trazabilidad de aceptación de esta SDD
+
+| Criterios | Evidencia |
+|---|---|
+| AC01, AC03–AC04, AC12–AC14 | Publicador/handshake y regresiones de concurrencia, subida fallida y bloqueo del envío antiguo en las 685 pruebas de Functions. |
+| AC02 | `media.e2e.mjs`: imagen, audio y vídeo cargados desde `img/`, `aud/`, `vid/`, sin historial, y CSV confirmado. |
+| AC05–AC08 | `resilience.e2e.mjs` y `republication.e2e.mjs`: ambos modos, retoma real, guardado/regeneración de cambios no fundamentales y ON → OFF → ON. |
+| AC09 | Destino eliminado, experimento vacío, ámbitos/colas inválidos y filas/repeticiones eliminadas: error previo a ejecutar y conservación de identidad, checkpoint y pendientes. |
+| AC10–AC11 | Expiración, recuperación original, transacción abortada, acuse retenido/perdido y fallos del proveedor. |
+| AC15 | `deletion.e2e.mjs` y pruebas de borrado: metadata, recibos, trabajos/chunks y presencia; preservación ante escrituras inciertas o publicación en curso. |
+| AC16 | Recuperación con URLs de dominio propio en unidades y nueva participación con parámetros/fragmento en navegador; recarga del origen actual. |
+| AC17 | Inspección de fuentes/imports y HTML generado, más los contratos negativos del publicador y handshake. Las referencias documentales identifican lo retirado. |
+| AC18 | Las 18 combinaciones normales de tres proveedores con IndexedDB 0/1/N y sin IndexedDB con distintos valores almacenados, más las regresiones del resto de la matriz. |
+
+### Documentación y límites de cierre
+
+Se actualizaron la SDD de persistencia, el plan de publicación/verificación, las instrucciones de timeout/exportación y las referencias de configuración/publicación del índice. El modelo vigente ya no pide conservar copias de HTML, IDs de publicación ni redirigir a un artefacto anterior. El plan deja de exigir publicar los demás experimentos o ejecutar inspección/aplicación histórica. Las secciones de entregas anteriores de la SDD de persistencia quedan identificadas como registro histórico.
+
+La admisión de contratos antiguos, los convertidores y la herramienta histórica siguen bajo la SDD independiente de retrocompatibilidad. Este cierre no implementa esa retirada ni opera sobre experimentos reales.
+
+Continúan aplazadas las tres suites locales que requieren el Chromium propio de Playwright (`localInvalidAck`, `localRuntime`, `localSessionCreationRecovery`, 12 pruebas) y los diez casos de `loop-resume-runtime`/`native-public-navigation-runtime` que no pudieron iniciar por falta de FFmpeg. No se instalaron esos componentes ni se repitieron esas revisiones. El cierre distingue estas comprobaciones pendientes de la matriz pública y los tests aprobados.
+
+Los cuatro puntos de implementación están completados. No se han realizado despliegues, republicaciones ni limpieza de recursos remotos durante estas entregas.

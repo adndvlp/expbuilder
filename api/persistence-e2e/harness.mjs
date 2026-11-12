@@ -68,9 +68,9 @@ export async function startHarness() {
   fixture.get('/vendor.js', async (_req, res) => res.type('js').send((await readFile(path.join(process.env.PERSISTENCE_SDK_DIR, 'firebase-app-compat.js'), 'utf8')) + '\n' + (await readFile(path.join(process.env.PERSISTENCE_SDK_DIR, 'firebase-database-compat.js'), 'utf8'))));
   fixture.get('/jspsych.js', (_req, res) => res.type('js').sendFile(path.join(root, 'server/jspsych-bundle/index.js')));
   fixture.get(/.*/, (req, res) => {
-    const [, id, ...parts] = req.path.split('/'), file = store.github.contents.get(`lab/${id}/${parts.join('/') || 'index.html'}`);
+    const [, id, ...parts] = req.path.split('/'), filename = parts.join('/') || 'index.html', file = store.github.contents.get(`lab/${id}/${filename}`);
     if (!file) { res.status(404).end(); return; }
-    res.type('html').send(Buffer.from(file.content, 'base64'));
+    res.type(path.extname(filename)).send(Buffer.from(file.content, 'base64'));
   });
   const origin = await listen(fixture);
   await build({ stdin: { contents: `export { buildPublicExperimentCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/buildPublicExperimentCode.ts')}'; export { generateOnFinishCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator.ts')}'; export { branchingEvaluationRuntimeCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/branchingRuntimeCode.ts')}';`, resolveDir: root },
@@ -93,7 +93,7 @@ export async function startHarness() {
     } finally { pumping = false; }
   }
   const timer = setInterval(() => pump().catch(error => errors.push(error.message)), 200);
-  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, timeout = 1, auto = true, count = 5, baseCode, id = `study-${++sequence}` } = {}) {
+  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, timeout = 1, auto = true, count = 5, baseCode, mediaFiles = [], id = `study-${++sequence}` } = {}) {
     const ids = Array.from({ length: count }, (_, i) => i+1);
     const answers = count === 5 ? ['A,quoted', 'B\nline', 'C"quote', 'D', 'E'] : ids.map(id => 'answer ' + id);
     const batchConfig = { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: timeout };
@@ -119,7 +119,7 @@ export async function startHarness() {
       firebase.initializeApp({ apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com' }); firebase.database().useEmulator('127.0.0.1',${port});
       ${baseCode ? '' : `window.ExpBuilderExecutionAddresses = ${JSON.stringify(manifest)};`}
       ${code}</script></body></html>`;
-    await publishCurrentExperiment({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent });
+    await publishCurrentExperiment({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent, mediaFiles });
     return { id, url: `${origin}/${id}/`, indexed, size };
   }
   async function result(experimentID, sessionId) {

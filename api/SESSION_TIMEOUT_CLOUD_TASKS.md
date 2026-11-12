@@ -1,19 +1,17 @@
 # Public session timeout and export queues
 
-Publication scope update (2026-11-12): the [single publication SDD](../docs/publication-versioning-removal-sdd.md) specifies removal of publication history and old-HTML redirection as a separate, pending change. It preserves session configuration, compatible resume, timeout and export guarantees. Existing GitHub/Firestore cleanup belongs to the user; no cleanup scripts are included. The publication-history implementation described below is the current implementation scheduled for removal, not a requirement to preserve it.
-
-Implementation status: persistence SDD points 1–5 are verified locally. Seven
-provider HTTP contracts and all 51 browser/emulator cases passed using the
-published Firebase 9.23.0 SDK. Provider services and Cloud Tasks delivery are
-controlled locally; production IAM, scheduler and queue configuration still
-require deployment verification. The [coordinated release and historical recovery
-plan](../docs/public-session-release-plan.md) includes the prepared recovery tool.
-No production deployment, republication or recovery was performed.
+The current implementation uses one publication per experiment. The
+[single publication SDD](../docs/publication-versioning-removal-sdd.md) records
+its local regression results and the browser checks deferred by the user.
+The [publication and verification plan](../docs/public-session-release-plan.md)
+describes a concrete test publication. This task does not deploy or republish
+real experiments. Existing GitHub/Firestore history cleanup belongs to the user.
 
 ## Protocol 3 lifecycle
 
-A session freezes its publication, execution revision, batch configuration,
-validation rules, provider and destination when it is created. New publications
+A session copies the current server-confirmed `publishedConfiguration`, including
+batch configuration, validation, recruitment, CAPTCHA, provider and destination,
+when it is created. New publications
 apply to new sessions. `Resume Timeout` is an integer from 1 to 1440 minutes and
 has the same meaning with either IndexedDB mode and all three providers.
 
@@ -86,9 +84,10 @@ checked-in Functions manifest declare the new trigger and scheduler.
 modes now schedule their disconnect timeout for all providers, using the
 recorded disconnect timestamp when available. Drive/Dropbox no longer request
 an immediate partial export on disconnect. This compatibility path does not
-invent immutable revisions or writer capabilities for old clients. New runtime
-sessions use protocol 3; an older session without a compatible artifact stops
-visibly and retains its data for the separate transition work.
+invent protocol 3 writer capabilities for old clients. The
+[compatibility removal spec](../docs/retrocompatibility-removal-sdd.md) treats
+retirement of that old trigger and transport separately. Current sessions do
+not consult a publication history.
 
 ## Export confirmation
 
@@ -113,34 +112,37 @@ redirecting to a recruitment platform. `retryExport` reactivates a blocked job.
 
 ## Publications and local retention
 
-The generated runtime embeds its publication configuration. Cloud publishing
-validates it and saves immutable HTML and media under
-`publications/{publicationId}/`, plus a Firestore publication manifest. The root
-entry is updated only after the artifact is ready. A publication lease prevents
-competing entry/manifest updates; experiment deletion waits for that lease.
+The generated runtime embeds its configuration. Cloud publishing validates it,
+uploads media to `img/`, `aud/` and `vid/`, and updates the root `index.html`.
+It then confirms the single `publishedConfiguration` on the experiment. A
+publication lease prevents competing uploads; experiment deletion waits for it.
 The publisher's 300-second timeout is shorter than its ten-minute lease.
 Switching providers retains earlier folders required by existing sessions.
 
-Active sessions with another execution revision return their original artifact
-URL. Missing manifests produce an explicit error instead of applying an old
-checkpoint to the current graph. Closed-session recovery does not execute the
-old graph.
+Existing sessions resume on the current HTML with their own configuration.
+Navigation validates the saved destination, scope, queue, loop order and
+repetition before execution. A changed authoring date alone cannot reject a
+valid checkpoint. Invalid progress is reported without resetting identity or
+deleting pending responses. Closed-session recovery sends data to the original
+session without executing another graph. New participation reloads the current
+location, preserving its origin, path, query and fragment.
 
 IndexedDB retains unacknowledged events without age-based deletion. Cleanup is
 scoped to the current session and exact acknowledged IDs. With batch 0, the
 server cannot export responses that have never left the browser; closing that
 browser does not create a background delivery guarantee.
 
-## Eventual coordinated release
+## Publication and environment verification
 
-Point 5 must verify the emulator/provider matrix and transition before release.
+The local suite verifies the provider/emulator matrix; its controlled task
+delivery tests dispatch failures and retries without claiming production IAM.
 Deploy the Functions exports and manifest together with RTDB rules and Firestore
-indexes, then republish the compatible runtime. Deploying only Functions does
+indexes, then publish the selected test experiment. Deploying only Functions does
 not update an already published HTML file or provision the required indexes.
 The timeout dispatcher requires Cloud Tasks enqueue/invoke permissions. Cloud
 Tasks and Cloud Scheduler are declared required APIs; no new npm dependency or
 environment variable is introduced.
 
-Session deletion removes receipts, jobs/chunks and connection records. Experiment
-deletion also removes publication manifests. Pending or uncertain provider writes
+Session and experiment deletion remove receipts, jobs/chunks and connection
+records without consulting a publication history. Pending or uncertain provider writes
 must be reconciled before deleting their remaining recoverable copies.
