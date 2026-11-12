@@ -2,6 +2,8 @@
 
 Estado: puntos 1–5 implementados y verificados localmente mediante TDD. El despliegue, la republicación y la recuperación de datos reales no se han ejecutado. Evidencia y límites en las secciones 16–20.
 
+Cambio de alcance, 2026-11-12: la [spec de retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md) sustituye el soporte de versiones anteriores y la recuperación histórica definidos en este documento. Prevé actualizar una lista finita de experimentos y eliminar después los convertidores. Su implementación todavía no ha comenzado. Las secciones de entrega registran el trabajo anterior; no constituyen instrucciones para ejecutar el rescate histórico ni republicar todos los experimentos.
+
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
 ## 1. Objetivo y alcance
@@ -325,6 +327,8 @@ Los tests de unidades cubren cálculo de plazo, transacciones, reconocimientos y
 Los módulos nuevos separarán identidad/ciclo de vida, recepción, cola y exportación. No se concentrarán las transacciones, generación de HTML, proveedor y UI en un único archivo.
 
 ## 14. Transición y recuperación de datos anteriores
+
+**Apartado sustituido por la [spec de retirada](retrocompatibility-removal-sdd.md).** Se conserva a continuación como registro del diseño anterior. La herramienta histórica y la coexistencia de protocolos se retirarán; no se ejecutará ese rescate como parte de la transición.
 
 El HTML ya publicado incorpora código antiguo y no se actualiza por desplegar el backend. La transición requiere publicar el nuevo runtime y desplegar sus operaciones de recepción y exportación de forma coordinada. La nueva versión de protocolo distingue las garantías nuevas de las que un cliente antiguo no puede cumplir.
 

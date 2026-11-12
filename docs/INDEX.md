@@ -13,6 +13,7 @@ This documentation covers the complete architecture, data model, API, and system
 | [05-TRIALS_AND_LOOPS.md](05-TRIALS_AND_LOOPS.md) | Trial lifecycle, loop system, orders & categories, CSV integration, code injection hooks |
 | [06-BRANCHING.md](06-BRANCHING.md) | Explicit branching, default destinations, parameter overrides, loops and resume |
 | [temporary-migrations.md](temporary-migrations.md) | Temporary tester migrations, current status, and the code and tests to retire before the release for users |
+| [retrocompatibility-removal-sdd.md](retrocompatibility-removal-sdd.md) | Spec for removing old public session protocols and historical recovery, updating a finite set of existing experiments, and deleting temporary converters after validation |
 | [dynamic-plugin-proportional-scaling-sdd.md](dynamic-plugin-proportional-scaling-sdd.md) | Implemented proportional scaling with a shared internal 2560 × 1450 scene, editor/runtime geometry, input mapping, graphics resolution, verification results and pending npm distribution |
 | [unified-branching-contract-sdd.md](unified-branching-contract-sdd.md) | Single Branching contract, scope entries, loops, persistence, resume and TDD acceptance criteria |
 | [experiment-background-sdd.md](experiment-background-sdd.md) | Single experiment background for local execution, preview and publication; removal of per-trial background copies and verification results |

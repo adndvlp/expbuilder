@@ -4,6 +4,8 @@ La aplicación está en pruebas con testers. Estas conversiones permiten actuali
 
 Las migraciones activas de este registro deben retirarse al cerrar la transición de los testers, antes de distribuir la versión para usuarios. Al retirar cada migración se eliminan también sus llamadas y pruebas exclusivas. Las validaciones del modelo vigente conservan sus propias pruebas.
 
+La [spec de retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md), redactada el 2026-11-12, concreta esta transición: actualizar únicamente la lista finita de experimentos que necesitan conservarse y después eliminar los convertidores y sus entradas automáticas. Se retiran también los protocolos públicos antiguos y la herramienta de rescate histórico. La spec todavía no se ha implementado; el inventario siguiente describe el código que sigue activo.
+
 ## Inventario
 
 | Migración | Estado | Ubicación |
@@ -11,7 +13,7 @@ Las migraciones activas de este registro deben retirarse al cerrar la transició
 | Limpieza de parámetros internos de DynamicPlugin al arrancar | Activa y temporal | `normalizeDynamicDatabase` en [dynamicConfigModel.js](../server/utils/dynamicConfigModel.js), llamada desde [api.js](../server/api.js). |
 | Importación al antiguo branching con destinos solo a trials, añadida en `0044fc3` | Ya retirada en `cd3dd10` | `migrateLegacyBranching.js` ya no existe y no tiene llamadas activas. |
 | Importación a navegación unificada, añadida en `560a3ba` | Activa y temporal | [migrateLegacyNavigation.js](../server/routes/db/legacy/migrateLegacyNavigation.js), llamada desde [db/import.js](../server/routes/db/import.js). |
-| Compatibilidad de publicaciones públicas anteriores al protocolo 3 | Activa y temporal; plan y herramienta preparados, transición real pendiente | Rutas legacy en `apiData`/`apiDataComplete`, `handleCreateSession`, `handleAppendResult` y `finalizeDisconnectedSessions`; [SDD](public-session-persistence-sdd.md), secciones 14 y 19–20. |
+| Compatibilidad de publicaciones públicas anteriores al protocolo 3 | Activa; retirada especificada sin recuperación histórica | Rutas legacy en `apiData`/`apiDataComplete`, `handleCreateSession`, `handleAppendResult` y `finalizeDisconnectedSessions`; [spec de retirada](retrocompatibility-removal-sdd.md). |
 
 Las dos conversiones de navegación aparecen en el historial, pero solo la de navegación unificada continúa en el código actual. No hay dos convertidores de navegación activos que deban eliminarse por separado.
 
@@ -46,4 +48,4 @@ El archivo de pruebas `db-legacy-import.test.js` fue reutilizado para el convert
 
 El punto 4 conserva temporalmente la recepción/finalización anterior para HTML ya publicado. El trigger legacy usa ahora el mismo timeout para todos los proveedores y modos. No convierte automáticamente sus respuestas a IDs estables ni inventa una revisión de ejecución. El runtime nuevo se bloquea ante una sesión antigua sin artefacto compatible, conservando sus pendientes.
 
-El punto 5 preparó y verificó localmente el [plan de publicación y recuperación](public-session-release-plan.md) y la herramienta de inspección/aplicación de planes históricos. La transición real sigue pendiente: inventariar publicaciones y resultados anteriores, completar la transición/republicación de testers y después retirar exclusivamente las rutas legacy y sus pruebas exclusivas. Se conservan el protocolo 3, el exportador por revisiones, la validación de recibos y los tests de conservación de pendientes. No se ejecutó una migración ni recuperación histórica de datos reales.
+El punto 5 añadió una herramienta de rescate histórico y un plan de coexistencia que quedan sustituidos por la [spec de retirada](retrocompatibility-removal-sdd.md). La herramienta se eliminará; su ejecución no es un paso pendiente. La actualización se limita a las definiciones de los experimentos enumerados que todavía necesitan actualizarse. Después se eliminan sus convertidores temporales y las rutas antiguas, con sus llamadas y pruebas exclusivas. Se conservan el protocolo 3, el exportador por revisiones, los recibos y el reenvío de pendientes de sesiones vigentes. No se ha ejecutado esta retirada ni una recuperación histórica sobre datos reales.

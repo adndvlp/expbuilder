@@ -1,5 +1,7 @@
 # Public session persistence: coordinated release and historical recovery
 
+Scope update, 2026-11-12: the [compatibility removal spec](retrocompatibility-removal-sdd.md) supersedes this plan's legacy coexistence, historical recovery and general republication steps. Only the identified experiments that need updating enter the temporary transition; converters are removed after validation. The historical tool is scheduled for removal and must not be treated as a pending recovery operation. The removal is specified but not implemented yet.
+
 Status: implementation and local verification complete. The full local run passed all seven HTTP contracts and 51 emulator/browser cases without skips; backend, selected client and local server regressions also passed. This file is a release plan, not a record of deployment. No production experiment has been republished or recovered.
 
 ## Reproducible checks
