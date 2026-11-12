@@ -1,4 +1,5 @@
 import { expect, type Locator } from "@playwright/test";
+import { canvasItemId, canvasNode } from "./canvasNode";
 
 export async function waitForCanvasViewport(canvas: Locator) {
   let previous = "",
@@ -22,12 +23,9 @@ export async function readCanvasNodeGeometry(
   canvas: Locator,
   nodeIds: string[],
 ) {
+  nodeIds = nodeIds.map(canvasItemId);
   await Promise.all(
-    nodeIds.map((id) =>
-      canvas
-        .locator(`.react-flow__node[data-id="${id}"]`)
-        .waitFor({ state: "visible" }),
-    ),
+    nodeIds.map((id) => canvasNode(canvas, id).waitFor({ state: "visible" })),
   );
   return canvas.evaluate((element, ids) => {
     const nodes = new Map(

@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/test.fixture";
-import { branchEdge, fulfillGraph, graph } from "../helpers/loopBranchGraph";
+import { branchEdge, routeGraph, graph } from "../helpers/loopBranchGraph";
 import { getScopedNodeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/composeExpandedLoopLayout";
 import { ROOT_CANVAS_SCOPE_ID } from "../../src/pages/ExperimentBuilder/components/Canvas/services/expandedLayoutTypes";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
@@ -90,9 +90,7 @@ const expected = {
 for (const theme of ["light", "dark"] as const) {
   test(`keeps trial branches readable in ${theme} mode`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: theme });
-    await page.route("**/api/experiment-graph/exp-branch-colors", (route) =>
-      route.fulfill(fulfillGraph(snapshot)),
-    );
+    await routeGraph(page, "exp-branch-colors", snapshot);
     await page.setViewportSize({ width: 1800, height: 1100 });
     await page.goto("/#/home/experiment/exp-branch-colors/builder");
 

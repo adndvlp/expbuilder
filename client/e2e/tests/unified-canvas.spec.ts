@@ -1,3 +1,4 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import { readCanvasNodeGeometry } from "../helpers/layoutAssertions";
 import {
@@ -206,12 +207,8 @@ test("routes a one-item loop as one exterior circuit", async ({ page }) => {
   await expect(path("loop-return", taskId, taskId)).toHaveCount(0);
   await expect(circuit).toHaveCount(1);
 
-  const markerBox = await canvas
-    .locator(`.react-flow__node[data-id="${markerId}"]`)
-    .boundingBox();
-  const taskBox = await canvas
-    .locator(`.react-flow__node[data-id="${taskId}"]`)
-    .boundingBox();
+  const markerBox = await canvasNode(canvas, markerId).boundingBox();
+  const taskBox = await canvasNode(canvas, taskId).boundingBox();
   const geometry = await circuit.evaluate((element) => {
     const svgPath = element as SVGPathElement;
     const matrix = svgPath.getScreenCTM()!;
@@ -272,13 +269,7 @@ test("balances two branch roots when one subtree is wider", async ({
   await page.goto("/#/home/experiment/exp-balanced-branches/builder");
   const canvas = page.locator(".canvas-container");
   const node = (id: string) =>
-    canvas.locator(
-      `.react-flow__node[data-id="${getScopedNodeId(
-        ROOT_CANVAS_SCOPE_ID,
-        "trial",
-        id,
-      )}"]`,
-    );
+    canvasNode(canvas, getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", id));
   await expect(node("parent")).toBeVisible();
   await expect
     .poll(async () => {

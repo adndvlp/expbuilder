@@ -9,6 +9,8 @@ import WorkspaceEdge from "./WorkspaceEdge.tsx";
 import LoopRoutingEdge from "../components/LoopRoutingEdge";
 import CanvasToolbar from "../components/CanvasToolbar";
 import CanvasViewportFitter from "../components/CanvasViewportFitter";
+import CanvasGraphStatus from "../components/CanvasGraphStatus";
+import type { GraphDiagnostic } from "../../../modules/experiment-graph/types";
 import AddTrialModal from "../components/AddTrialModal";
 import LoopBranchLevelModal from "../features/loop-branching/LoopBranchLevelModal";
 import {
@@ -21,8 +23,10 @@ const nodeTypes = { trial: WorkspaceNode, loop: WorkspaceNode },
   edgeTypes = { navigation: WorkspaceEdge, loop: LoopRoutingEdge };
 export default function WorkspaceCanvas({
   document: doc,
+  diagnostics = [],
 }: {
   document: WorkspaceDocument;
+  diagnostics?: readonly GraphDiagnostic[];
 }) {
   const {
     clearPane,
@@ -101,6 +105,11 @@ export default function WorkspaceCanvas({
       >
         <CanvasViewportFitter layoutSignature={topology} bounds={bounds} />
       </ReactFlow>
+      <CanvasGraphStatus
+        isLoopLoading={false}
+        loopLoadFailed={false}
+        diagnostics={diagnostics}
+      />
       <CanvasToolbar
         fabStyle={getFabStyle(isDark)}
         scopeKind="root"

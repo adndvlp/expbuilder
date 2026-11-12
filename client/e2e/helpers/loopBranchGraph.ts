@@ -1,4 +1,6 @@
 import type { Page } from "@playwright/test";
+import { workspaceFixture } from "../fixtures/workspace.mock";
+import { workspaceDocument } from "./workspaceDocument";
 import type {
   ExperimentGraphSnapshot,
   GraphBranchEdge,
@@ -27,7 +29,7 @@ export const graphScope = (
   items: TimelineItem[],
 ): GraphScopeView => ({ scopeId, parentScopeId, items });
 
-export const fulfillGraph = (snapshot: ExperimentGraphSnapshot) => {
+const validateGraphFixture = (snapshot: ExperimentGraphSnapshot) => {
   const items = [snapshot.root, ...Object.values(snapshot.scopes)].flatMap(
     (scope) => scope.items,
   );
@@ -54,21 +56,18 @@ export const fulfillGraph = (snapshot: ExperimentGraphSnapshot) => {
         `Graph fixture edge ${edge.sourceId} → ${edge.targetId} must connect trials`,
       );
   });
-  return {
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ graph: snapshot }),
-  };
 };
 
 export const routeGraph = (
   page: Page,
   experimentId: string,
   snapshot: ExperimentGraphSnapshot,
-) =>
-  page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
-    route.fulfill(fulfillGraph(snapshot)),
-  );
+) => {
+  validateGraphFixture(snapshot);
+  const fixture = workspaceFixture(page);
+  fixture.seed(workspaceDocument(snapshot, experimentId));
+  return fixture;
+};
 
 export const branchEdge = (
   sourceId: string | number,

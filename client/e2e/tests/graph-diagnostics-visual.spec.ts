@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/test.fixture";
-import { fulfillGraph, graph } from "../helpers/loopBranchGraph";
+import { routeGraph, graph } from "../helpers/loopBranchGraph";
 
 test("[TL-13] reports a dangling canonical edge instead of silently hiding it", async ({
   page,
@@ -11,25 +11,20 @@ test("[TL-13] reports a dangling canonical edge instead of silently hiding it", 
         id: "source",
         type: "trial",
         name: "Dangling Source",
-        branches: ["missing-target"],
+        branches: [],
       },
     ],
     {},
     [],
   );
-  snapshot.diagnostics = [
-    {
-      code: "BRANCH_TARGET_NOT_FOUND",
-      sourceId: "source",
-      targetId: "missing-target",
-    },
-  ];
-  await page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
-    route.fulfill(fulfillGraph(snapshot)),
-  );
+  const fixture = routeGraph(page, experimentId, snapshot);
+  const source = fixture.document(experimentId).trials[0];
+  source.branches = ["missing-target"];
+  source.defaultNextTrialId = "missing-target";
 
   await page.goto(`/#/home/experiment/${experimentId}/builder`);
 
+  await expect(page.locator(".workspace-canvas")).toBeVisible();
   const error = page.getByTestId("experiment-graph-error");
   await expect(error).toHaveAttribute("role", "alert");
   await expect(error).toContainText("BRANCH_TARGET_NOT_FOUND");

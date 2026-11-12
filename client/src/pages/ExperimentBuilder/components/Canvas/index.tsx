@@ -13,7 +13,10 @@ export default function Canvas() {
     );
   return graph?.workspace ? (
     <ReactFlowProvider>
-      <WorkspaceCanvas document={graph.workspace} />
+      <WorkspaceCanvas
+        document={graph.workspace}
+        diagnostics={graph.diagnostics}
+      />
     </ReactFlowProvider>
   ) : (
     <LegacyCanvas />
