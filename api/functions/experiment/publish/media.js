@@ -15,7 +15,6 @@ export async function uploadMediaFiles(
   owner,
   repoName,
   mediaFiles,
-  prefix = "",
 ) {
   if (!mediaFiles || !Array.isArray(mediaFiles)) return [];
   console.log(`Uploading ${mediaFiles.length} media files...`);
@@ -34,7 +33,7 @@ export async function uploadMediaFiles(
     const batch = eligibleFiles.slice(i, i + CONCURRENCY);
     const settled = await Promise.all(
       batch.map(async (file) => {
-        const filePath = `${prefix}${FOLDER_BY_TYPE[file.type]}/${file.filename}`;
+        const filePath = `${FOLDER_BY_TYPE[file.type]}/${file.filename}`;
         let fileContent = file.content;
         if (typeof fileContent === "string") {
           const base64Part = fileContent.includes(",")

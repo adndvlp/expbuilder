@@ -36,6 +36,25 @@ test('registration retry preserves identity and frozen settings after another pu
   expect(experiment.sessions).toBe(1); expect(experiment.currentCondition).toBe(1);
 });
 
+test('the handshake returns the current public contract instead of forwarding private or retired document fields', async () => {
+  await create();
+  const data = store.records.get(base), checkpoint = { completed: { builderId: 'A', eventId: 'event-0', sequence: 0 }, cursor: { targetId: 'B' } };
+  Object.assign(data, { publicationId: 'obsolete', executionRevision: 'obsolete', artifactUrl: '/obsolete', entryUrl: '/obsolete',
+    extraInternalField: 'private', resumeCheckpoint: checkpoint, resumeCheckpointSequence: 0, receivedEventCount: 1 });
+  store.records.set(base + '/event_receipts/event-0', { eventId: 'event-0', sequence: 0, payloadHash: 'a'.repeat(64) });
+  const before = structuredClone(data), response = await create();
+  expect(response.statusCode).toBe(200);
+  expect(response.jsonBody).toMatchObject({ experimentID: 'EID', sessionId: 'S1', participantNumber: 0, condition: 0,
+    sessionProtocolVersion: 3, eventProtocolVersion: 1, lifecycle: 'active', configuration: configuration(),
+    connection: { id: 'C1', generation: 1, phase: 'connecting' }, receivedEventCount: 1,
+    resumeCheckpoint: checkpoint, resumeCheckpointSequence: 0,
+    receivedEvents: [{ eventId: 'event-0', sequence: 0, payloadHash: 'a'.repeat(64) }] });
+  for (const key of ['publicationId', 'executionRevision', 'artifactUrl', 'entryUrl', 'writeTokenHash', 'extraInternalField']) {
+    expect(response.jsonBody).not.toHaveProperty(key);
+  }
+  expect(store.records.get(base)).toEqual(before);
+});
+
 test('client configuration and unpublished editor settings cannot replace the server published configuration', async () => {
   const response = await create({ configuration: { ...configuration(), batchConfig: { useIndexedDB: false, batchSize: 1, resumeTimeoutMinutes: 100 } } });
   expect(response.statusCode).toBe(201);

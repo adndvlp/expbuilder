@@ -17,8 +17,15 @@ function grant(data, body) {
   return { ...patch, ...timeoutPatch(patch, 'setup', patch.connectionSetupExpiresAt) };
 }
 function publicSession(data) {
-  const safe = { ...data }; delete safe.writeTokenHash;
-  return { ...safe, resumeCheckpoint: deserializeFromFirestore(data.resumeCheckpoint) ?? null,
+  return { experimentID: data.experimentID, sessionId: data.sessionId,
+    sessionProtocolVersion: data.sessionProtocolVersion, eventProtocolVersion: data.eventProtocolVersion,
+    participantNumber: data.participantNumber, condition: data.condition,
+    createdAt: data.createdAt, sessionName: data.sessionName, metadata: data.metadata,
+    configuration: data.configuration, lifecycle: data.lifecycle,
+    trialCount: data.trialCount, receivedEventCount: data.receivedEventCount,
+    disconnectedAt: data.disconnectedAt, resumeExpiresAt: data.resumeExpiresAt, closedAt: data.closedAt,
+    resumeCheckpointSequence: data.resumeCheckpointSequence,
+    resumeCheckpoint: deserializeFromFirestore(data.resumeCheckpoint) ?? null,
     connection: { id: data.connectionId, generation: data.connectionGeneration, phase: data.connectionPhase } };
 }
 export async function handleSessionHandshake(req, res) {

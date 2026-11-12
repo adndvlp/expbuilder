@@ -12,7 +12,9 @@ export function readPublicationConfiguration(html) {
       || !Number.isSafeInteger(batch.resumeTimeoutMinutes) || batch.resumeTimeoutMinutes < 1 || batch.resumeTimeoutMinutes > 1440) {
     throw Object.assign(new Error('Batch size must be a nonnegative integer and Resume Timeout an integer from 1 to 1440 minutes'), { status: 400 });
   }
-  return config;
+  return { batchConfig: batch,
+    ...(config.recruitmentConfig !== undefined && { recruitmentConfig: config.recruitmentConfig }),
+    ...(config.captchaConfig !== undefined && { captchaConfig: config.captchaConfig }) };
 }
 export async function publishCurrentExperiment({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles = [] }) {
   const generated = readPublicationConfiguration(htmlContent);

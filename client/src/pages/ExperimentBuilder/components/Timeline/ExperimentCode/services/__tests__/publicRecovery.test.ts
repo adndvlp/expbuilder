@@ -11,9 +11,8 @@ function fixture(url = 'https://study.test/?PROLIFIC_PID=P') {
       lifecycle: 'expired', export: { confirmed: true, requestedRevision: 2, confirmedRevision: 2 },
       acknowledged: body.data?.events.map(({ eventId, sequence, payloadHash }: Record<string, unknown>) => ({ eventId, sequence, payloadHash })) }) };
   });
-  const historicalEntry = vi.fn(() => new URL('https://old.test/publications/obsolete/index.html'));
-  const api = new Function('responses', 'values', 'assigned', 'reloaded', 'deleted', 'fetch', 'rows', 'url', '_publicEntryLocation', `
-    const _publicSessionState = { lifecycle: 'expired', entryUrl: 'https://study.test/' }, publicResponses = responses;
+  const api = new Function('responses', 'values', 'assigned', 'reloaded', 'deleted', 'fetch', 'rows', 'url', `
+    const _publicSessionState = { lifecycle: 'expired' }, publicResponses = responses;
     const trialSessionId = 'old-session', _publicStorageKeys = { recoverySessions: 'recovery', sessionId: 'active', participant: 'participant', resumeTrial: 'checkpoint', captchaPassed: 'captcha' };
     const localStorage = { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
     const current = new URL(url);
@@ -22,8 +21,8 @@ function fixture(url = 'https://study.test/?PROLIFIC_PID=P') {
     const _publicEventEnvelope = async row => row;
     ${publicRecoveryCode({ DATA_API_URL: '/apiData', experimentID: 'EID' } as PublicExperimentCodeOptions)}
     return { offer: _offerNewPublicSession, recover: _recoverOlderPublicSessions, location: window.location };
-  `)(responses, values, assigned, reloaded, deleted, fetch, rows, url, historicalEntry) as { offer(panel: HTMLElement): void; recover(): Promise<void>; location: { href: string } };
-  return { api, values, responses, assigned, reloaded, deleted, fetch, historicalEntry };
+  `)(responses, values, assigned, reloaded, deleted, fetch, rows, url) as { offer(panel: HTMLElement): void; recover(): Promise<void>; location: { href: string } };
+  return { api, values, responses, assigned, reloaded, deleted, fetch };
 }
 describe('separate recovery and explicit new participation', () => {
   it('never starts automatically, and enables starting only after memory responses are backed', () => {
@@ -43,12 +42,11 @@ describe('separate recovery and explicit new participation', () => {
     expect(f.deleted).toHaveBeenCalledWith([1]); expect(JSON.parse(f.values.get('recovery')!)).toEqual([]);
   });
   it.each(['https://custom.study.test/run/?PROLIFIC_PID=P&x=1#consent', 'https://lab.github.io/study/index.html?workerId=W#step'])(
-    'starts another participation at the current location %s without consulting a historical entry', url => {
+    'starts another participation at the current location %s', url => {
       const f = fixture(url), panel = document.createElement('div');
       f.responses[0].persisted = true; f.api.offer(panel); panel.querySelector('button')!.click();
       expect(f.reloaded).toHaveBeenCalledOnce(); expect(f.assigned).not.toHaveBeenCalled();
       expect(f.api.location.href).toBe(url);
-      expect(f.historicalEntry).not.toHaveBeenCalled();
       expect(JSON.parse(f.values.get('recovery')!)).toEqual(['old-session']);
     });
   it('keeps recovery references and payloads when a received acknowledgement is for another event', async () => {

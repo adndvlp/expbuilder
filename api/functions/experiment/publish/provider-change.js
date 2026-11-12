@@ -189,8 +189,8 @@ export async function handleProviderChange(
     );
     console.log(`[PROVIDER CHANGE] Firestore updated successfully`);
 
-    // Existing sessions and immutable publications still own their original
-    // destination. Provider changes must never delete those files/folders.
+    // Existing sessions still own their original destination.
+    // Provider changes must never delete those files/folders.
     // These fields describe only the current provider; sessions retain a snapshot.
     const clearFields = {};
     if (currentProvider === "googledrive" && newProvider !== "googledrive") {

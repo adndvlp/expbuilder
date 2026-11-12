@@ -1,6 +1,6 @@
 # SDD: una publicación por experimento y retirada del versionado
 
-Estado: puntos 1–2 implementados mediante TDD; puntos 3–4 pendientes. La retirada completa todavía no está terminada.
+Estado: puntos 1–3 implementados mediante TDD; punto 4 pendiente. Falta el cierre de regresión integral y documentación.
 
 Fecha: 2026-11-12. Código revisado: `88825ff`.
 
@@ -262,3 +262,29 @@ Las comprobaciones antiguas de `publicConfiguration.test.ts` se actualizan para 
 Los selectores y campos históricos restantes pertenecen al punto 3; la regresión integral y la actualización general de instrucciones pertenecen al punto 4. Esta entrega no cambia protocolos antiguos, no crea migradores y no limpia recursos remotos.
 
 El punto 2 termina con esas verificaciones y las revisiones de entorno expresamente pendientes. La implementación se detiene antes del punto 3. No se han realizado despliegues ni republicaciones de experimentos reales.
+
+## 14. Entrega del punto 3 — 2026-11-12
+
+### Retirada del código restante
+
+- El borrado del experimento deja de consultar o eliminar `publications` y de utilizar `activePublicationId` para seleccionar sus garantías. El contrato de exportación vigente conserva el bloqueo ante escrituras inciertas y la eliminación de sesiones, metadata, recibos, snapshots de exportación y presencia. El lease de una publicación en curso sigue impidiendo borrar el experimento durante su subida.
+- El cargador de multimedia pierde el parámetro `prefix`; solo genera las rutas normales de imágenes, audio y vídeo.
+- El publicador copia únicamente las secciones vigentes de la configuración generada. Ya no persiste propiedades arbitrarias del HTML como parte de esa configuración.
+- El handshake devuelve explícitamente los campos del contrato público. Ya no propaga todos los campos del documento de sesión, incluidos los identificadores históricos o campos internos. Mantiene identidad, condición, configuración, checkpoint, recibos y permiso de conexión, sin reescribir el registro almacenado.
+- Se retiran el fixture de manifiestos usado en borrado, los datos/localizadores históricos innecesarios del test de recuperación y el comentario sobre publicaciones inmutables. Las referencias negativas de los tests que comprueban la retirada se conservan como regresiones.
+
+La revisión del código del producto en `api`, `client/src`, `server`, `scripts` y `.github` no encuentra los identificadores, placeholders, helpers, decisiones ni rutas del historial enumerados en la sección 4.3. Las especificaciones conservan sus referencias para describir qué se retiró. Los números de protocolo, las revisiones del exportador, el checkpoint de navegación y los leases de publicación mantienen sus funciones actuales.
+
+La admisión de HTML sin contrato de sesión vigente está inventariada expresamente en la SDD independiente de retrocompatibilidad. No es un camino hacia un HTML histórico y no se adelanta su retirada en este punto. No se añaden lectores, aliases, migradores ni limpieza de datos remotos.
+
+### TDD y verificaciones
+
+- RED: cuatro fallos observados entre 24 casos — prefijo de multimedia todavía funcional, propiedades ajenas copiadas a la configuración, campos históricos propagados por el handshake y consulta de `publications` durante el borrado.
+- GREEN: los 24 casos afectados pasan tras la retirada.
+- Functions completas: 134 suites, 685 pruebas aprobadas, conservando las comprobaciones de fallos, concurrencia y exportación.
+- Cliente: las cinco pruebas de recuperación y nueva participación pasan con el fixture vigente. TypeScript y lint de los archivos modificados también pasan.
+- E2E: nueve casos funcionales seleccionados pasan con Chrome y los emuladores de Firestore/RTDB. Cubren el borrado de recursos reales de sesión, retoma y loops con ambos modos de IndexedDB, republicación ON → OFF → ON, timeout original, acuse final pendiente y exclusión de otra pestaña. Los proveedores de archivos siguen simulados por HTTP. Las nueve comprobaciones previas de runtime/proveedores pasan.
+- El reporte TAP de la selección E2E muestra 11 resultados porque incluye dos archivos sin casos coincidentes; esos dos resultados no se cuentan como casos funcionales.
+- Inspección de referencias retiradas y `git diff --check`: aprobados.
+
+Las revisiones de navegador aplazadas por falta de Chromium/FFmpeg continúan pendientes; no se repiten en esta entrega. El punto 4 conserva la regresión integral y la actualización general de instrucciones. La ejecución se detiene antes de ese punto, sin despliegues, republicaciones reales ni limpieza remota.

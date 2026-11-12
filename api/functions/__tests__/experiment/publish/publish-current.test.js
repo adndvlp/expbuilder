@@ -22,6 +22,7 @@ jest.unstable_mockModule('../../../experiment/publish/ensure-storage.js', () => 
 
 const { publishCurrentExperiment: publish } = await import('../../../experiment/publish/current.js');
 const { publishExperiment } = await import('../../../experiment/publish/index.js');
+const { uploadMediaFiles } = await import('../../../experiment/publish/media.js');
 const batch = { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 };
 function input(code = 'A', batchConfig = batch) {
   return { accessToken: 'test-token', owner: 'lab', repoName: 'study', experimentID: 'EID',
@@ -60,6 +61,25 @@ test('ON → OFF → ON replaces the same paths and the single published configu
   expect(String(files.get('img/a.bin'))).toBe('C');
   expect([...store.records.keys()]).toEqual(['experiments/EID']);
   expect(store.records.get('experiments/EID').publishedConfiguration.batchConfig).toEqual({ ...batch, batchSize: 3 });
+});
+
+test('the media uploader has only the root layout even if a caller supplies an obsolete extra argument', async () => {
+  await uploadMediaFiles('test-token', 'lab', 'study', input().mediaFiles, 'publications/obsolete/');
+  expect([...files.keys()].sort()).toEqual(['aud/aud.bin', 'img/a.bin', 'vid/vid.bin']);
+  expect(String(files.get('img/a.bin'))).toBe('A');
+});
+
+test('publishing stores only the current configuration contract, without passing arbitrary publication fields through', async () => {
+  const config = { batchConfig: batch, recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+    captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' } };
+  const request = input();
+  request.htmlContent = `<script>const _PUBLIC_PUBLICATION_CONFIG = ${JSON.stringify({ ...config,
+    publicationId: 'obsolete', executionRevision: 'obsolete', artifactUrl: '/obsolete', entryUrl: '/obsolete', extraInternalField: 'unused' })};</script>`;
+  await publish(request);
+  expect(store.records.get('experiments/EID').publishedConfiguration).toEqual({ ...config,
+    storageProvider: 'googledrive', exportDestination: { provider: 'googledrive', owner: 'owner', folder: 'original' },
+    validation: { useValidation: true, allowCSV: true, allowJSON: true, requiredFields: ['trial_type'] } });
+  expect([...store.records.keys()]).toEqual(['experiments/EID']);
 });
 
 test('a resource upload failure preserves the confirmed configuration and does not replace index.html', async () => {

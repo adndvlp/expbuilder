@@ -66,7 +66,6 @@ describe('one authoritative session deadline and writer generation', () => {
     const result = await resume();
     expect(result.jsonBody).toMatchObject({ decision: 'resume_allowed', participantNumber: 0,
       configuration: { batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 } } });
-    expect(result.jsonBody).not.toHaveProperty('artifactUrl');
     expect(store.records.get('experiments/EID').sessions).toBe(1);
   });
   test('recovery after expiry validates with the frozen configuration and never reopens execution', async () => {
