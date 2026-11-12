@@ -87,7 +87,7 @@ The matrix combines existing focused regressions with the new emulator suite. Th
 
 Historical recovery additionally has three emulator cases, one per provider: read-only inspection followed by journaled conversion of 151 events, a complete verified CSV, retained originals, unchanged participation counters and an idempotent second apply. Focused tests cover malformed batches, missing identity/payloads, changed sources, edited plans, project mismatch, existing unverified files, interrupted conversion and CLI defaults/flags.
 
-These test layers are distinct: unit tests do not stand in for Firebase emulators, and local task delivery does not establish production Cloud Tasks IAM or scheduler configuration. CI repeats the provider/emulator suite on Node 22/JDK 21 and checks Functions units on both Node 20 and Node 22. That workflow is prepared locally; it has not been executed on GitHub in this task.
+These test layers are distinct: unit tests do not stand in for Firebase emulators, and local task delivery does not establish production Cloud Tasks IAM or scheduler configuration. CI repeats the provider/emulator suite on Node 22/JDK 21 and checks Functions units on Node 22, matching the declared deployment runtime. The persistence runner first uses the installed Firebase CLI to reject a retired runtime and check package/lockfile consistency. That workflow is prepared locally; it has not been executed on GitHub in this task.
 
 ## Provider contract sources
 

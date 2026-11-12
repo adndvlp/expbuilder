@@ -18,9 +18,12 @@ if (!compatible && candidate) {
 }
 if (!compatible) throw new Error('Run this suite using Node 22 or 24');
 const freePort = () => new Promise(resolve => { const server = net.createServer(); server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); }); });
+const preflight = spawnSync(process.execPath, ['--test',
+  path.join(root, 'api/persistence-e2e/runtime.test.mjs'),
+  path.join(root, 'api/persistence-e2e/provider-contract.test.mjs'),
+], { cwd: root, stdio: 'inherit' });
+if (preflight.status !== 0) process.exit(preflight.status || 1);
 const sdk = await preparePersistenceSdk();
-const contracts = spawnSync(process.execPath, ['--test', path.join(root, 'api/persistence-e2e/provider-contract.test.mjs')], { cwd: root, stdio: 'inherit' });
-if (contracts.status !== 0) process.exit(contracts.status || 1);
 const directory = await mkdtemp(path.join(tmpdir(), 'public-persistence-e2e-'));
 const [firestore, database] = await Promise.all([freePort(), freePort()]);
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
