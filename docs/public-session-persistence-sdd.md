@@ -4,6 +4,8 @@ Estado: puntos 1–5 implementados y verificados localmente mediante TDD. El des
 
 Cambio de alcance, 2026-11-12: la [spec de retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md) sustituye el soporte de versiones anteriores y la recuperación histórica definidos en este documento. Prevé actualizar una lista finita de experimentos y eliminar después los convertidores. Su implementación todavía no ha comenzado. Las secciones de entrega registran el trabajo anterior; no constituyen instrucciones para ejecutar el rescate histórico ni republicar todos los experimentos.
 
+Cambio de publicación, 2026-11-12: la [SDD de publicación única](publication-versioning-removal-sdd.md) sustituye los requisitos de conservar HTML, multimedia y registros de publicaciones anteriores, sus IDs y sus redirecciones. La configuración por sesión, la retoma compatible y las garantías de guardado se conservan. Es una implementación independiente y pendiente; la limpieza externa corresponde al usuario.
+
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
 ## 1. Objetivo y alcance
@@ -30,7 +32,7 @@ El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su s
 | D08 | Los pendientes locales de una sesión expirada se recuperan para el archivo de esa sesión. Esa recuperación no reabre su ejecución, no cambia su participante y no traslada respuestas a una sesión nueva. |
 | D09 | Al completar normalmente se inicia el guardado final sin esperar el timeout. La confirmación al participante requiere verificar las respuestas y el guardado en el proveedor. |
 | D10 | Con lote `0`, el servidor no dispone de los ensayos que siguen únicamente en el navegador. Si se cierra la página antes de enviarlos, el timeout no puede guardarlos. Se acepta y se comunica esta limitación. |
-| D11 | Una republicación aplica su configuración a sesiones nuevas. Una sesión existente conserva su configuración y revisión de ejecución para retoma y recuperación. |
+| D11 | Una republicación aplica su configuración a sesiones nuevas. Una sesión existente conserva su configuración y progreso; retoma sobre el HTML actual si sigue siendo compatible, según la [SDD de publicación única](publication-versioning-removal-sdd.md). |
 
 El timeout es una fecha límite de retoma. La tarea del proveedor puede terminar después debido a latencia o reintentos; esa demora no amplía el plazo para continuar el experimento.
 

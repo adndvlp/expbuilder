@@ -1,5 +1,7 @@
 # Public session timeout and export queues
 
+Publication scope update (2026-11-12): the [single publication SDD](../docs/publication-versioning-removal-sdd.md) specifies removal of publication history and old-HTML redirection as a separate, pending change. It preserves session configuration, compatible resume, timeout and export guarantees. Existing GitHub/Firestore cleanup belongs to the user; no cleanup scripts are included. The publication-history implementation described below is the current implementation scheduled for removal, not a requirement to preserve it.
+
 Implementation status: persistence SDD points 1–5 are verified locally. Seven
 provider HTTP contracts and all 51 browser/emulator cases passed using the
 published Firebase 9.23.0 SDK. Provider services and Cloud Tasks delivery are

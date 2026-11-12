@@ -46,7 +46,7 @@ export async function startHarness() {
   const realtime = getDatabase(adminApp);
   const bulk = db.bulkWriter(); await db.recursiveDelete(db.collection('experiments'), bulk); await bulk.close(); await realtime.ref().set(null);
   const { apiData } = await import('../functions/experiment/sessions/api/data-router.js');
-  const { publishImmutableArtifact } = await import('../functions/experiment/publish/immutable.js');
+  const { publishCurrentExperiment } = await import('../functions/experiment/publish/current.js');
   const { processSessionExport } = await import('../functions/experiment/sessions/export/process.js');
   const { refreshLifecycle } = await import('../functions/experiment/sessions/lifecycle/state.js');
   const { reconcileSessionExports } = await import('../functions/experiment/sessions/export/dispatch.js');
@@ -119,8 +119,8 @@ export async function startHarness() {
       firebase.initializeApp({ apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com' }); firebase.database().useEmulator('127.0.0.1',${port});
       window.ExpBuilderExecutionAddresses = ${JSON.stringify(manifest)};
       ${code}</script></body></html>`;
-    const publication = await publishImmutableArtifact({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent });
-    return { id, url: `${origin}/${id}/`, publication, indexed, size };
+    await publishCurrentExperiment({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent });
+    return { id, url: `${origin}/${id}/`, indexed, size };
   }
   async function result(experimentID, sessionId) {
     const ref = db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId);

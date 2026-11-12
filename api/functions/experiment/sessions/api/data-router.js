@@ -174,7 +174,7 @@ async function handlePostFile(req, res, experimentID, data, filename) {
   }
 
   const exp_data = exp_doc.data();
-  if (exp_data.activePublicationId) {
+  if (exp_data.sessionExportProtocolVersion === 1) {
     res.status(409).json({ success: false, message: 'This publication requires stable events and verified completion' });
     return;
   }

@@ -35,15 +35,15 @@ export async function handleSessionHandshake(req, res) {
         if (action === 'resumeSession' || action === 'activateConnection') throw exportError('Session not found', { status: 404 });
         if (!config.active) throw exportError('Data collection is not active', { status: 409 });
         if (config.limitSessions && (config.sessions || 0) >= config.maxSessions) throw exportError('Maximum sessions reached', { status: 409 });
-        const publication = await transaction.get(experimentRef.collection('publications').doc(body.publicationId || '_missing'));
-        if (!publication.exists || publication.data().status !== 'ready' || config.activePublicationId !== body.publicationId
-            || publication.data().executionRevision !== body.executionRevision) throw exportError('Publication unavailable; reload the current experiment', { status: 409 });
-        const published = publication.data(), participantNumber = config.currentCondition || 0;
+        if (config.publicationLeaseUntil > Date.now()) throw exportError('Publication in progress; retry when it finishes', { status: 409 });
+        const published = config.publishedConfiguration;
+        if (!published?.batchConfig || !published.exportDestination) throw exportError('Published experiment configuration unavailable', { status: 409 });
+        const participantNumber = config.currentCondition || 0;
         const data = { experimentID, sessionId, participantNumber, condition: participantNumber, sessionProtocolVersion: 3,
           eventProtocolVersion: 1, createdAt: new Date(Date.now()).toISOString(), lifecycle: 'active', trialCount: 0, receivedEventCount: 0,
-          publicationId: body.publicationId, executionRevision: published.executionRevision, configuration: published.configuration,
-          exportDestination: { ...published.configuration.exportDestination, name: `${experimentID}_${sessionId}.csv` },
-          artifactUrl: published.artifactUrl, entryUrl: published.entryUrl, metadata: body.metadata || {},
+          configuration: published,
+          exportDestination: { ...published.exportDestination, name: `${experimentID}_${sessionId}.csv` },
+          metadata: body.metadata || {},
           ...(body.sessionName && { sessionName: body.sessionName }), ...grant({}, body) };
         transaction.set(ref, data);
         transaction.set(experimentRef, { sessionExportProtocolVersion: 1, sessions: (config.sessions || 0) + 1, currentCondition:
@@ -51,13 +51,9 @@ export async function handleSessionHandshake(req, res) {
         return { status: 201, decision: 'resume_allowed', data, lease: true };
       }
       const resolution = await resolveLifecycle(transaction, ref, snapshot.data(), config), data = resolution.data;
-      const publication = data.publicationId ? await transaction.get(experimentRef.collection('publications').doc(data.publicationId)) : null;
       resolution.commit();
       if (closedSession(data)) return { status: 200, data, decision: `session_${data.lifecycle}` };
-      if (data.sessionProtocolVersion !== 3) return { status: 409, data, decision: 'revision_unavailable' };
-      if (body.publicationId && (body.publicationId !== data.publicationId || body.executionRevision !== data.executionRevision)) {
-        return { status: 409, data, decision: publication?.data()?.status === 'ready' ? 'revision_mismatch' : 'revision_unavailable' };
-      }
+      if (data.sessionProtocolVersion !== 3) return { status: 409, data, decision: 'session_unavailable' };
       if (action === 'activateConnection') {
         if (!writerMatches(data, body) || resolution.presence?.connected !== true) return { status: 409, data, decision: 'resume_required' };
         const activated = { ...data, connectionPhase: 'active', lifecycle: 'active', timeoutPending: false };

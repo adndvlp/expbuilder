@@ -1,4 +1,4 @@
-import { readPublicationConfiguration, publishImmutableArtifact } from "./immutable.js";
+import { readPublicationConfiguration, publishCurrentExperiment } from "./current.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { db } from "../../app.js";
 import { uploadFileGithub } from "../hosting/services.js";
@@ -170,13 +170,13 @@ export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, ma
     }
     const repoExists = provision.repoExists;
 
-    let immutablePublication = null;
+    let currentPublication = null;
     if (publicationConfiguration) {
-      immutablePublication = await publishImmutableArtifact({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles });
+      currentPublication = await publishCurrentExperiment({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles });
     }
     // Subir/actualizar el archivo HTML
     console.log("Uploading/updating index.html...");
-    const uploadHtmlResult = immutablePublication ? { success: true } : await uploadFileGithub(
+    const uploadHtmlResult = currentPublication ? { success: true } : await uploadFileGithub(
       accessToken,
       owner,
       repoName,
@@ -195,7 +195,7 @@ export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, ma
 
     console.log("HTML file uploaded successfully");
 
-    const mediaUploadResults = immutablePublication?.mediaUploadResults || await uploadMediaFiles(
+    const mediaUploadResults = currentPublication?.mediaUploadResults || await uploadMediaFiles(
       accessToken,
       owner,
       repoName,
@@ -222,7 +222,6 @@ export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, ma
       owner: owner,
       repoName: repoName,
       mediaUploads: mediaUploadStats,
-      ...(immutablePublication && { publicationId: immutablePublication.publicationId, executionRevision: immutablePublication.executionRevision }),
     });
   } catch (error) {
     console.error("Error in publishExperiment:", error);

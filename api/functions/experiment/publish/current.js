@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { db } from '../../app.js';
 import { uploadFileGithub } from '../hosting/services.js';
 import { uploadMediaFiles } from './media.js';
@@ -14,8 +14,7 @@ export function readPublicationConfiguration(html) {
   }
   return config;
 }
-const hash = value => createHash('sha256').update(value).digest('hex');
-export async function publishImmutableArtifact({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles = [] }) {
+export async function publishCurrentExperiment({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles = [] }) {
   const generated = readPublicationConfiguration(htmlContent);
   if (!generated || !experimentID) throw new Error('Missing publication configuration');
   if (mediaFiles.some(file => !['img', 'vid', 'aud'].includes(file.type) || !file.filename || /[\\/]/.test(file.filename) || ['.', '..'].includes(file.filename))) {
@@ -36,27 +35,18 @@ export async function publishImmutableArtifact({ accessToken, owner, repoName, e
     const configuration = { ...generated, storageProvider: provider, exportDestination: { provider, owner: experiment.owner,
       folder: resolveFolderIdentifier(provider, experiment) }, validation: { useValidation: experiment.useValidation === true,
       allowJSON: experiment.allowJSON !== false, allowCSV: experiment.allowCSV !== false, requiredFields: experiment.requiredFields || [] } };
-    const executionRevision = hash(JSON.stringify({ htmlContent, mediaFiles }));
-    const publicationId = hash(JSON.stringify({ executionRevision, configuration, owner, repoName }));
-    const entryUrl = `https://${owner}.github.io/${repoName}/`, prefix = `publications/${publicationId}/`;
-    const artifactUrl = entryUrl + prefix + 'index.html';
-    const html = htmlContent.replaceAll('__PUBLICATION_ID__', publicationId).replaceAll('__EXECUTION_REVISION__', executionRevision);
-    const manifest = ref.collection('publications').doc(publicationId);
-    const prior = await manifest.get();
-    // Identical content is reused. Immutable artifacts are never removed or rewritten on republish.
-    if (prior.data()?.status !== 'ready') {
-      await manifest.set({ publicationId, executionRevision, artifactUrl, entryUrl, configuration, status: 'preparing', createdAt: Date.now() });
-      const media = await uploadMediaFiles(accessToken, owner, repoName, mediaFiles, prefix);
-      if (media.length !== mediaFiles.length || media.some(file => !file.success)) throw new Error('Immutable publication media could not be uploaded');
-      const uploaded = await uploadFileGithub(accessToken, owner, repoName, prefix + 'index.html', html, 'Preserve published execution');
-      if (!uploaded.success) throw new Error('Immutable publication HTML could not be uploaded');
-      await manifest.set({ status: 'ready' }, { merge: true });
-    }
-    const entry = html.replace(/<head([^>]*)>/i, `<head$1><base href="./${prefix}">`);
-    const uploaded = await uploadFileGithub(accessToken, owner, repoName, 'index.html', entry, 'Publish experiment entry');
-    if (!uploaded.success) throw new Error('Publication entry could not be uploaded');
-    await ref.set({ activePublicationId: publicationId, executionRevision }, { merge: true });
-    return { publicationId, executionRevision, artifactUrl, mediaUploadResults: mediaFiles.map(file => ({ filename: file.filename, success: true })) };
+    const mediaUploadResults = await uploadMediaFiles(accessToken, owner, repoName, mediaFiles);
+    if (mediaUploadResults.length !== mediaFiles.length || mediaUploadResults.some(file => !file.success)) throw new Error('Experiment media could not be uploaded');
+    const uploaded = await uploadFileGithub(accessToken, owner, repoName, 'index.html', htmlContent, 'Publish experiment HTML');
+    if (!uploaded.success) throw new Error('Experiment HTML could not be uploaded');
+    await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(ref), current = snapshot.data();
+      if (!current || current.deleting) throw Object.assign(new Error('Experiment unavailable'), { status: 410 });
+      if (current.publicationLeaseId !== leaseId) throw Object.assign(new Error('Publication ownership changed'), { status: 409 });
+      // update replaces this map, including settings removed in a republish.
+      transaction.update(ref, { publishedConfiguration: configuration, sessionExportProtocolVersion: 1 });
+    });
+    return { mediaUploadResults };
   } finally {
     await db.runTransaction(async transaction => {
       const snapshot = await transaction.get(ref);

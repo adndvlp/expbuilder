@@ -27,10 +27,8 @@ const { apiData } = await import('../../../experiment/sessions/api/data-router.j
 export const request = async body => {
   const response = makeRes(); await apiData(makeReq({ body: { experimentID: 'EID', sessionId: 'S1', ...body } }), response); return response;
 };
-export const create = (id = 'C1', publicationId = 'pub-A', executionRevision = 'rev-A') => request({ action: 'createSession', sessionProtocolVersion: 3,
-  publicationId, executionRevision, ...connection(id) });
-export const resume = (id = 'C2', publicationId = 'pub-A', executionRevision = 'rev-A') => request({ action: 'resumeSession', sessionProtocolVersion: 3,
-  publicationId, executionRevision, ...connection(id) });
+export const create = (id = 'C1') => request({ action: 'createSession', sessionProtocolVersion: 3, ...connection(id) });
+export const resume = (id = 'C2') => request({ action: 'resumeSession', sessionProtocolVersion: 3, ...connection(id) });
 export function presence(id, generation, connected, changedAt) {
   realtime.set(`session_connections/EID/S1/${id}`, { generation, connected, changedAt, token });
 }
@@ -42,10 +40,8 @@ export function event(sequence, response = String(sequence)) {
 export function setup(indexed = true, provider = 'googledrive') {
   store.reset(); realtime.clear(); realtimeWrites.length = 0; enqueue.mockClear();
   store.records.set('experiments/EID', { active: true, owner: 'owner', sessions: 0, currentCondition: 0, nConditions: 1,
-    activePublicationId: 'pub-A', batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
-    driveFolderId: 'new-folder', dropboxFolder: '/new-folder', osfUploadLink: 'https://files.osf.io/new-folder/' });
-  store.records.set('experiments/EID/publications/pub-A', { status: 'ready', publicationId: 'pub-A', executionRevision: 'rev-A',
-    artifactUrl: 'https://lab.github.io/study/publications/pub-A/index.html', entryUrl: 'https://lab.github.io/study/',
-    configuration: { batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
+    sessionExportProtocolVersion: 1, batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
+    driveFolderId: 'new-folder', dropboxFolder: '/new-folder', osfUploadLink: 'https://files.osf.io/new-folder/',
+    publishedConfiguration: { batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
       exportDestination: { provider, owner: 'owner', folder: 'original-folder' }, validation: { useValidation: true, allowJSON: true, requiredFields: ['trial_type'] } } });
 }

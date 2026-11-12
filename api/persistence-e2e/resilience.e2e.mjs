@@ -107,14 +107,15 @@ for (const indexed of [true, false]) {
     } finally { await f.context.close(); }
   });
 }
-test('ON → OFF → ON redirects to the original immutable graph and preserves batch-zero pending data', async () => {
+test('ON → OFF → ON resumes at the current URL and preserves batch-zero pending data', async () => {
   const f = await start({ indexed: true, size: 0 });
   try {
     await answer(f.page, 2); await f.page.close(); await disconnected(f.study, f.sid);
     await h.study({ id: f.study.id, indexed: false, size: 1, auto: false });
     await h.study({ id: f.study.id, indexed: true, size: 3, auto: false });
     const resumed = await f.context.newPage(); await resumed.goto(f.study.url); await resumed.locator('#answer').waitFor();
-    assert.ok(resumed.url().includes(f.study.publication.publicationId));
+    assert.equal(resumed.url(), f.study.url);
+    assert.equal(await resumed.evaluate(() => window.JSPSYCH_SESSION_ID), f.sid);
     await answer(resumed, 3); await complete(resumed);
     const result = await h.result(f.study.id, f.sid); assert.equal(result.rows.length, 5);
     assert.equal(result.session.configuration.batchConfig.batchSize, 0);

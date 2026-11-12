@@ -8,10 +8,10 @@ const append = (generation = 1, id = 'C1', sequence = 0) => request({ action: 'a
 async function connected() { const result = await create(); presence('C1', 1, true, time); await activate(); return result; }
 const timeout = async payload => (await import('../../../experiment/sessions/timeout/tasks.js')).handleSessionTimeoutTask(payload);
 describe('one authoritative session deadline and writer generation', () => {
-  test('freezes publication, execution, batching, destination and validation at creation', async () => {
+  test('freezes published batching, destination and validation at creation', async () => {
     const result = await create();
     expect(result.statusCode).toBe(201);
-    expect(store.records.get(base)).toMatchObject({ sessionProtocolVersion: 3, publicationId: 'pub-A', executionRevision: 'rev-A',
+    expect(store.records.get(base)).toMatchObject({ sessionProtocolVersion: 3,
       configuration: { batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 } },
       exportDestination: { folder: 'original-folder' }, connectionGeneration: 1, connectionId: 'C1' });
     expect(result.jsonBody.connection).toMatchObject({ generation: 1, id: 'C1' });
@@ -58,13 +58,16 @@ describe('one authoritative session deadline and writer generation', () => {
       { connected: false, generation: 1, changedAt: 120000, token });
     expect(store.records.get(base)).toMatchObject({ lifecycle: 'active', connectionGeneration: 2 });
   });
-  test('republication redirects active sessions to their immutable artifact without changing configuration', async () => {
+  test('republication allows resume without changing the session configuration', async () => {
     await connected(); presence('C1', 1, false, 120000); time = 130000;
-    store.records.set('experiments/EID', { ...store.records.get('experiments/EID'), activePublicationId: 'pub-B', batchConfig: { useIndexedDB: false, batchSize: 20, resumeTimeoutMinutes: 30 } });
-    const result = await resume('C2', 'pub-B', 'rev-B');
-    expect(result.jsonBody).toMatchObject({ decision: 'revision_mismatch', artifactUrl: 'https://lab.github.io/study/publications/pub-A/index.html',
+    const experiment = store.records.get('experiments/EID');
+    store.records.set('experiments/EID', { ...experiment, publishedConfiguration: { ...experiment.publishedConfiguration,
+      batchConfig: { useIndexedDB: false, batchSize: 20, resumeTimeoutMinutes: 30 } } });
+    const result = await resume();
+    expect(result.jsonBody).toMatchObject({ decision: 'resume_allowed', participantNumber: 0,
       configuration: { batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 } } });
-    expect(store.records.get(base).publicationId).toBe('pub-A');
+    expect(result.jsonBody).not.toHaveProperty('artifactUrl');
+    expect(store.records.get('experiments/EID').sessions).toBe(1);
   });
   test('recovery after expiry validates with the frozen configuration and never reopens execution', async () => {
     await connected(); presence('C1', 1, false, 120000); time = 180000; await resume();

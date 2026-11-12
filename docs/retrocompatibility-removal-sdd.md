@@ -4,6 +4,8 @@ Estado: especificación redactada; retirada y actualización de datos todavía s
 
 Fecha: 2026-11-12. Base revisada: `fb66dda`.
 
+La [retirada del versionado de publicaciones](publication-versioning-removal-sdd.md) es un trabajo independiente. Esta spec no obliga a conservar HTML anteriores ni incluye esa retirada dentro de la limpieza de retrocompatibilidad. La limpieza externa de las carpetas y registros de publicaciones existentes corresponde al usuario.
+
 ## 1. Objetivo
 
 Dejar la aplicación con un único contrato vigente y retirar el código destinado a sostener publicaciones, sesiones y formatos anteriores. La aplicación no tiene usuarios de producción que obliguen a mantener esos caminos.
@@ -24,7 +26,7 @@ La entrega actual modifica documentación. No ejecuta migraciones, elimina datos
 | R04 | La lista de objetivos es finita. No se convierte en un servicio para importar indefinidamente cualquier versión antigua. |
 | R05 | Se retira la herramienta de recuperación histórica añadida en el punto 5. Los datos borrados que originaron la investigación no se reconstruyen ni se usan como motivo para mantenerla. |
 | R06 | El reenvío de respuestas pendientes de sesiones creadas con el contrato vigente se conserva: IDs estables, recibos, reintentos y recuperación después de expirar forman parte del guardado normal. |
-| R07 | La configuración y el artefacto de una sesión vigente se conservan ante una republicación, como exige el caso ON → OFF → ON. Esto no habilita un protocolo antiguo. |
+| R07 | La configuración y los pendientes de cada sesión se conservan ante una republicación. La publicación única y la retoma compatible se rigen por la [SDD independiente de versionado](publication-versioning-removal-sdd.md); no se exige conservar un HTML anterior. |
 | R08 | El importador y el runtime finales consumen el modelo vigente. Una entrada incompatible recibe un error de validación antes de producir efectos; no se interpreta, convierte ni intenta por otro camino. |
 | R09 | Las validaciones generales del modelo actual se conservan aunque compartan archivo con un migrador. No se elimina un módulo completo por contener código temporal. |
 | R10 | La retirada incluye código, registros de funciones, reglas, consumidores, fixtures, pruebas exclusivas y documentación operativa. Una etiqueta «deprecated» o un flag desactivado no completan la retirada. |
@@ -41,14 +43,14 @@ El inventario identifica responsabilidades; antes de borrar un helper se comprob
 | [timeout/tasks.js](../api/functions/experiment/sessions/timeout/tasks.js), [timeout/queue.js](../api/functions/experiment/sessions/timeout/queue.js), `finalization/resume-expiration.js` | Conservar el worker y la programación del timeout vigente. Exigir el contrato actual de conexión/generación y quitar la rama para tareas antiguas sin esos datos y el programador que solo la alimenta. |
 | [lifecycle/state.js](../api/functions/experiment/sessions/lifecycle/state.js), `handlers/append-events.js`, `handlers/complete-session.js`, exportador y consultas | Sustituir los bypass por protocolo antiguo, comparaciones que admiten el protocolo 2 y valores reconstruidos desde documentos viejos por validación del contrato vigente. Una sesión ausente o incompatible no puede crearse implícitamente al recibir respuestas. |
 | [database.rules.json](../api/database.rules.json), [functions.yaml](../api/functions/functions.yaml), [index.js](../api/functions/index.js) y reexports de sesiones | Cerrar la escritura pública de `/sessions/{experimentID}/{sessionId}` y eliminar los registros/exportaciones de funciones retiradas. Mantener `session_connections`, leases, presencia, workers y reconciliadores vigentes. |
-| [publish/index.js](../api/functions/experiment/publish/index.js) y publicador | Retirar la publicación alternativa de HTML sin el contrato de publicación vigente. Validarlo antes de crear carpetas, modificar el experimento o subir archivos. La publicación actual, sus artefactos y su control de concurrencia se conservan. |
+| [publish/index.js](../api/functions/experiment/publish/index.js) y publicador | Retirar la publicación alternativa de HTML sin el contrato de publicación vigente. Validarlo antes de crear carpetas, modificar el experimento o subir archivos. Conservar validaciones y control de concurrencia. La retirada del historial de publicaciones tiene su [propia SDD](publication-versioning-removal-sdd.md). |
 | [publicEventStorageCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicEventStorageCode.ts), [publicDatabaseCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicDatabaseCode.ts) y arranque público | Eliminar `_upgradePublicEvents` y la adaptación de registros antiguos. Crear el esquema vigente para bases nuevas y abrir correctamente las bases que ya cumplen ese esquema. Validar respuestas/configuraciones actuales en lugar de sustituir campos ausentes por datos de una publicación diferente. |
 | [sessions/recovery/](../api/functions/experiment/sessions/recovery/), sus tests y [historical.e2e.mjs](../api/persistence-e2e/historical.e2e.mjs) | Eliminar el CLI, inspección, planes, aplicación y pruebas de rescate histórico. Retirar las referencias a `recovery_sources`/`recovery_plans` y los métodos de proveedor usados exclusivamente por ese bloque. Conservar los contratos de escritura, identidad y revisión de los proveedores. |
 | [normalizeDynamicDatabase](../server/utils/dynamicConfigModel.js), llamada desde [server/api.js](../server/api.js) | Utilizar la limpieza que necesiten los experimentos seleccionados durante la transición y después eliminar la conversión automática de la base al arrancar, su función y sus pruebas exclusivas. |
 | [migrateLegacyNavigation.js](../server/routes/db/legacy/migrateLegacyNavigation.js), llamada desde [db/import.js](../server/routes/db/import.js) | Actualizar los experimentos seleccionados que lo requieran y después eliminar el convertidor, su importación/llamada y sus pruebas exclusivas. La importación posterior valida directamente la navegación vigente. |
 | [temporary-migrations.md](temporary-migrations.md), SDD de persistencia, plan de publicación e instrucciones operativas | Registrar la transición acotada y, al terminar, marcarla como retirada. Eliminar de los pasos pendientes el rescate histórico y la republicación general de experimentos. |
 
-El código de registro de eventos, el esquema IndexedDB actual y las revisiones de publicaciones pueden tener números de versión como metadata. Tener ese número no implica mantener lectores o ejecutores para versiones anteriores.
+El código de registro de eventos y el esquema IndexedDB actual pueden tener números de versión como metadata. Tener ese número no implica mantener lectores o ejecutores para versiones anteriores. Esa metadata no exige un historial de publicaciones.
 
 Los adaptadores de proveedores y los helpers de CSV/serialización se revisan por uso. La retirada no elimina descarga, listado, eliminación, metadata ni subida de archivos que pertenezcan a funcionalidades actuales.
 
@@ -107,10 +109,10 @@ La retirada debe conservar:
 - Timeout común, generaciones de conexión, exclusión de una segunda pestaña y bloqueo de continuación después de expirar.
 - Exportador por revisiones, archivo estable, reintentos y conciliación de escrituras inciertas para Drive, Dropbox y OSF.
 - Reenvío de pendientes del contrato vigente a su sesión original, incluso después de expirar, sin reabrirla ni mezclarla con otra participación.
-- Configuración fija por sesión y retoma sobre el artefacto vigente correspondiente después de republicar.
+- Configuración fija por sesión y retoma compatible sobre el HTML actual, conforme a la [SDD independiente de versionado](publication-versioning-removal-sdd.md).
 - Validación, autenticación administrativa y funcionalidades actuales de navegación, plugins, archivos y resultados.
 
-Los términos `recoverEvents`, recuperación tras expiración o revisión anterior de una publicación no justifican eliminar esos comportamientos por coincidencia de nombre con la herramienta histórica. Sus datos y operaciones pertenecen al contrato vigente.
+Los términos `recoverEvents` y recuperación tras expiración describen el reenvío de pendientes de sesiones del contrato vigente. Se conserva ese comportamiento al retirar la herramienta histórica. La eliminación del historial de HTML se trata por separado.
 
 ## 6. Pruebas y criterios de aceptación mediante TDD
 

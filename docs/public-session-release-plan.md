@@ -2,6 +2,8 @@
 
 Scope update, 2026-11-12: the [compatibility removal spec](retrocompatibility-removal-sdd.md) supersedes this plan's legacy coexistence, historical recovery and general republication steps. Only the identified experiments that need updating enter the temporary transition; converters are removed after validation. The historical tool is scheduled for removal and must not be treated as a pending recovery operation. The removal is specified but not implemented yet.
 
+Publication update, 2026-11-12: the independent [single publication spec](publication-versioning-removal-sdd.md) supersedes the immutable HTML/media, publication manifests and old-artifact resume requirements below. It requires complete removal of that history while preserving session configuration and compatible resume. The user handles existing GitHub/Firestore cleanup; no cleanup scripts or compatibility mechanism are part of this change. Implementation is pending.
+
 Status: implementation and local verification complete. The full local run passed all seven HTTP contracts and 51 emulator/browser cases without skips; backend, selected client and local server regressions also passed. This file is a release plan, not a record of deployment. No production experiment has been republished or recovered.
 
 ## Reproducible checks
