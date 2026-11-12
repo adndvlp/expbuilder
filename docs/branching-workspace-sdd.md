@@ -1,6 +1,6 @@
 # SDD — Integración del workspace de branching
 
-Fecha: 5 de noviembre de 2026. Estado: especificación para implementar. Las reglas de producto indicadas como acordadas proceden de la conversación; los contratos y la organización de módulos que siguen son el diseño técnico propuesto para cumplirlas.
+Fecha de la especificación: 5 de noviembre de 2026. Estado actualizado el 12 de noviembre de 2026: implementada e integrada en `bug-fixes`. Las reglas de producto y los contratos de este documento siguen siendo la referencia funcional. El estado del código y los resultados ejecutados se describen en [la implementación](branching-workspace-implementation.md) y [la evidencia de validación](branching-workspace-typescript-validation.md).
 
 Referencia funcional: [demo](demos/branching-workspace.html). Evidencia y diferencias comprobadas: [revisión de integración](branching-workspace-integration-review.md). El demo y sus pruebas son una referencia de comportamiento, no un reemplazo de los registros completos ni del runtime de la app.
 
@@ -8,7 +8,7 @@ Referencia funcional: [demo](demos/branching-workspace.html). Evidencia y difere
 
 Integrar en la app un editor con un único inicio, conexiones respaldadas por Default/Then, estructuras desconectadas que conservan su layout y se pueden mover, edición de conexiones, selección múltiple, agrupación de loops, inserción por arrastre, copia/pegado y deshacer/rehacer. Guardar todos los trials y loops del editor y generar el experimento completo únicamente con su estructura alcanzable.
 
-Se conservan los componentes visuales, el layout, el panel de branching, los modales de niveles y Sequential/Parallel y la configuración completa de trials/loops. El enrutador compartido ya tiene la búsqueda de curvas alrededor de obstáculos. La protección de edges agregados ya existe en el demo; aún hay que llevarla al canvas de la app.
+Se conservan los componentes visuales, el layout, el panel de branching, los modales de niveles y Sequential/Parallel y la configuración completa de trials/loops. El enrutador compartido busca curvas alrededor de obstáculos. La protección de edges agregados se aplica tanto en el demo como en el canvas de la app.
 
 Esta SDD sustituye la propuesta de separar conexiones del canvas y del panel de [branch-connection-removal-sdd.md](branch-connection-removal-sdd.md). El modelo definitivo tiene una sola autoridad de conexiones. Se conserva la distinción contextual entre End this route y Finish experiment de [branching-default-destination-sdd.md](branching-default-destination-sdd.md).
 
@@ -408,11 +408,13 @@ Además de fixtures concretos, usar grafos generados con bifurcaciones, converge
 
 ## 14. Estado de implementación y cierre
 
-Implementado y comprobado antes de esta SDD: enrutamiento geométrico compartido en la app/demo y protección de edges agregados en el demo. Pasaron 80 pruebas de layout/curvas de la app, 143 del modelo del demo y 97 comprobaciones de navegador, además de tipos y lint correspondientes. Esos resultados no validan todavía el contrato versión 2 ni su integración persistida.
+El workspace versión 2 está implementado: dominio común de edición, comandos atómicos y lecturas de revisión consistente, canvas real, referencias `route`, compatibilidad terminal, conversión, proyección de generación, clipboard completo y undo/redo persistidos.
 
-Pendiente de implementar: dominio común de edición, comandos y lecturas de versión consistente, estado del canvas real, referencias `route` y compatibilidad terminal, conversión, proyección de generación, clipboard completo y aplicación persistida de undo/redo.
+Los cambios se registraron en `8daf279` (integración), `b724e0e` (TypeScript), `69d539d` (merge en `bug-fixes`) y `6f68e44` (adaptación de E2E al protocolo del workspace y recuperación del aviso de diagnósticos).
 
-La integración se considera terminada cuando A01–A32 pasan sobre la app con persistencia y recarga, los generadores usan la misma proyección, la conversión tiene fixtures de equivalencia/reparación y no queda una ruta antigua que escriba conexiones por otra autoridad. Los controles visuales y los casos del demo conservan sus regresiones. La documentación de verificación debe identificar los recorridos realmente ejecutados y los límites restantes.
+La validación local del 12 de noviembre incluye 169 E2E generales sin reintentos y una ejecución completa posterior de los 81 casos de runtime sobre `6f68e44`, también sin reintentos. El registro de runtime comprueba 30 tags en 13 archivos y ya no depende de documentos eliminados. También pasaron tipos, lint, formato y límite de líneas de los cambios E2E.
+
+La matriz A01–A32 conserva los criterios de aceptación. [La evidencia](branching-workspace-typescript-validation.md) distingue las pruebas de modelo, HTTP, UI y ejecución real, así como los resultados históricos y los comprobados después de integrar las ramas.
 
 
 ## Implementación

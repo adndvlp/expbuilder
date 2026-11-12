@@ -1,6 +1,6 @@
 # SDD — Migración del workspace de branching a TypeScript
 
-Fecha: 5 de noviembre de 2026. Estado: implementada; validación local registrada en [la evidencia de implementación](branching-workspace-typescript-validation.md). La entrada oficial de runtime sigue pendiente de incorporar la corrección de su registro, descrita allí.
+Fecha de la especificación: 5 de noviembre de 2026. Estado actualizado el 12 de noviembre de 2026: implementada e integrada en `bug-fixes`. La corrección del registro de runtime está incorporada; la ejecución completa de sus 81 casos pasó sin reintentos. Los commits, comandos y resultados se registran en [la evidencia de implementación](branching-workspace-typescript-validation.md).
 
 Esta SDD define la migración técnica del workspace existente. Complementa la [SDD de integración](branching-workspace-sdd.md): sus reglas R01–R20 y sus contratos de persistencia y ejecución siguen siendo la referencia funcional. Las decisiones de compilación y organización descritas aquí son el diseño técnico de esta migración.
 
@@ -19,9 +19,9 @@ El alcance comprende:
 
 No comprende convertir todo el backend, Functions, los scripts `.mjs`, las pruebas nativas `.mjs` ni otras áreas JavaScript del proyecto. Tampoco añade controles de producto, reglas de validación de componentes ni funciones al prototipo.
 
-## 2. Problemas comprobados que debe resolver
+## 2. Problemas de partida
 
-| ID | Situación actual | Consecuencia para la migración |
+| ID | Situación previa comprobada | Consecuencia para la migración |
 | --- | --- | --- |
 | P01 | El programa TypeScript del cliente carga tipos y declaraciones manuales, pero excluye las 35 implementaciones JS/JSX del workspace y del dominio examinadas. | Que el chequeo actual termine sin errores no acredita el tipado de esas implementaciones. |
 | P02 | `modelServices.js` importa `scopeGraph.js` y `createLoopBranch.js` desde `server/`. | El dominio no tiene una frontera de compilación independiente. Cambiar su ubicación de salida rompe las rutas relativas. |

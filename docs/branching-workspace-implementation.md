@@ -2,6 +2,8 @@
 
 Implementación de [la SDD](branching-workspace-sdd.md). El editor mantiene los registros completos, incluidos los desconectados, y genera el experimento completo desde una proyección de alcance separada.
 
+Estado al 12 de noviembre de 2026: integrado en `bug-fixes`. `8daf279` incorpora el workspace, `b724e0e` lo migra a TypeScript, `69d539d` integra las ramas y `6f68e44` adapta las fixtures E2E al protocolo actual y restaura los diagnósticos visibles del grafo. [La evidencia de validación](branching-workspace-typescript-validation.md) registra los resultados y sus fechas.
+
 ## Modelo y persistencia
 
 - `shared/experiment-workspace/` contiene navegación, componentes, pertenencia a loops, inicio, comandos, copia y deltas de historial. No depende de React, del DOM ni de LowDB.
@@ -25,6 +27,10 @@ Las posiciones se guardan por ID. Cada edición captura también las referencias
 
 El componente `LegacyCanvas` conserva las pruebas y compatibilidad del contrato anterior. La carga normal convierte antes de mostrar el editor nuevo; un documento aún no cargado no ofrece acciones de escritura antiguas. Las pruebas anteriores de ese componente lo importan explícitamente y no se contabilizan como recorridos del workspace nuevo.
 
+Las fixtures E2E generales cargan `/api/workspace` y ejecutan los comandos reales del servidor sobre un estado en memoria. Los escenarios visuales se convierten a documentos completos mediante el conversor de la aplicación. Los selectores distinguen el ID persistido del nodo de la identidad del edge, que conserva su ámbito. La creación de ramas comprueba el documento devuelto, su revisión y las posiciones, sin sustituir la respuesta por un grafo preparado de antemano.
+
+El workspace reutiliza `CanvasGraphStatus` para mostrar los diagnósticos de conexiones inválidas, igual que la vista anterior. La regresión E2E verifica que el aviso sigue visible en el canvas versión 2.
+
 ## Compatibilidad de datos y ejecución
 
 - La conversión conserva un Default terminal explícito mediante `preserve-terminal`. Editar su navegación activa la regla automática acordada. Renombrar o mover no cambia esa decisión.
@@ -38,7 +44,20 @@ El componente `LegacyCanvas` conserva las pruebas y compatibilidad del contrato 
 
 ## Verificación
 
-Resultados comprobados en este worktree:
+Resultados locales del 12 de noviembre de 2026 para los cambios integrados en `6f68e44`:
+
+| Comprobación | Resultado |
+| --- | --- |
+| Suite E2E general | 169 pruebas aprobadas en una ejecución completa, sin reintentos. |
+| Verificación posterior de la organización de fixtures | 24 casos de autenticación y colores aprobados, sin reintentos. |
+| Registro de runtime | 30 tags verificados en 13 archivos de escenarios. |
+| Suite completa de runtime sobre `6f68e44` | 81 pruebas aprobadas, sin reintentos, con API real, publicación local simulada y DB temporal. |
+| Tipos del dominio, declaraciones, cliente y fixture del workspace | Aprobados. |
+| ESLint, Prettier y límite de líneas de los cambios E2E | Aprobados. |
+
+La pasada E2E completa se ejecutó durante la preparación de `6f68e44`. Después se extrajeron los handlers de emuladores y sockets a otro archivo, conservando su contenido; los 24 casos posteriores verificaron esa organización final. La pasada de los 81 casos de runtime sí se ejecutó sobre el commit ya registrado. El hash de `server/database/db.json` se mantuvo intacto en ambas validaciones.
+
+Resultados históricos de la integración inicial, registrados el 5 de noviembre de 2026:
 
 | Comprobación | Resultado |
 | --- | --- |
@@ -51,7 +70,7 @@ Resultados comprobados en este worktree:
 | ESLint de los módulos nuevos del cliente y archivos de integración revisados | Sin errores ni advertencias. |
 | Límite de líneas y diff | Aprobados. |
 
-Los comandos reproducibles son:
+Los comandos de cada pasada, sus entornos y los registros locales se detallan en [la evidencia actualizada](branching-workspace-typescript-validation.md). Los comandos de las suites de integración inicial son:
 
 ```sh
 npm test -- --runInBand
@@ -78,6 +97,6 @@ El laboratorio de navegador monta `Canvas`, `TrialsProvider`, el panel de branch
 - Borrado de todos los trials, canvas vacío operativo y nuevo inicio automático.
 - Desplazamiento por rueda equivalente al trackpad, conservando la selección y sin iniciar rectángulo.
 
-El catálogo del modelo añade prefijos, ciclos, eliminación de inicio, borrados múltiples, nested loops, separación, convergencias, forks de varios tamaños y copia de configuraciones. Las suites existentes de ejecución ejercitan CSV, Orders/Categories, repeticiones, navegación y reanudación nativas.
+El catálogo del modelo añade prefijos, ciclos, eliminación de inicio, borrados múltiples, nested loops, separación, convergencias, forks de varios tamaños y copia de configuraciones. La suite de runtime ejecutada el 12 de noviembre ejercita CSV, Orders/Categories, repeticiones, navegación, publicación local y reanudación nativas.
 
-La validación automatizada no utiliza cámara física para WebGazer, gestos físicos de un trackpad ni un instalador de Electron. El código generado de WebGazer y el desplazamiento del canvas se verifican mediante fixtures y eventos de navegador. Estas comprobaciones no sustituyen una prueba de hardware o del paquete distribuido.
+El código generado de WebGazer y el desplazamiento del canvas se verifican mediante fixtures y eventos de navegador. La comprobación del paquete Electron de macOS arm64 realizada el 5 de noviembre está descrita, con su alcance, en la evidencia de validación.
