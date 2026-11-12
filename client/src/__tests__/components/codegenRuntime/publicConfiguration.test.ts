@@ -6,6 +6,8 @@ import {
   PublicConfigurationHarness,
 } from "./testHarness";
 
+const publishedConfig = (code: string) => JSON.parse(code.match(/const _PUBLIC_PUBLICATION_CONFIG = (\{.*?\});/)![1]);
+
 describe("PublicConfigurationHarness", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,9 +92,7 @@ describe("PublicConfigurationHarness", () => {
       createPublicConfigurationHarness("experiment-empty");
     const code = normalize(await generateExperiment());
 
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).toContain("size: 0");
-    expect(code).toContain("resumeTimeoutMinutes: 30");
+    expect(publishedConfig(code).batchConfig).toEqual({ useIndexedDB: true, batchSize: 0, resumeTimeoutMinutes: 30 });
     expect(code).toContain("_showSuccess();");
     expect(code).toContain("const Trial_A_procedure = {};");
   });
@@ -136,16 +136,14 @@ describe("PublicConfigurationHarness", () => {
       createPublicConfigurationHarness("experiment-mturk");
     const code = normalize(await generateExperiment("cloud"));
 
-    expect(code).toContain("useIndexedDB: false");
-    expect(code).toContain("size: 7");
-    expect(code).toContain("resumeTimeoutMinutes: 45");
+    expect(publishedConfig(code)).toMatchObject({ batchConfig: { useIndexedDB: false, batchSize: 7, resumeTimeoutMinutes: 45 },
+      recruitmentConfig: { platform: 'mturk' }, captchaConfig: { enabled: true, siteKey: 'site-key' } });
     expect(code).toContain("Accept the HIT to start the experiment");
     expect(code).toContain("Submitting to MTurk");
     expect(code).toContain("jsPsych.data.addProperties");
     expect(code).toContain("window.beforePublic = true;");
     expect(code).toContain("on_trial_finish: function(data)");
     expect(code).toContain("display_element: 'jspsych-container'");
-    expect(code).toContain("storage: 'cloud'");
   });
 
   it("skips remote config without experiment id and can emit dev-mode base code", async () => {
@@ -192,7 +190,7 @@ describe("PublicConfigurationHarness", () => {
       createPublicConfigurationHarness("missing-doc");
     const code = normalize(await generateExperiment());
 
-    expect(code).toContain("useIndexedDB: true");
+    expect(publishedConfig(code).batchConfig.useIndexedDB).toBe(true);
     expect(code).toContain("_showSuccess();");
   });
 
@@ -213,8 +211,8 @@ describe("PublicConfigurationHarness", () => {
       createPublicConfigurationHarness("empty-doc");
     const code = normalize(await generateExperiment());
 
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).not.toContain("platform IDs");
+    expect(publishedConfig(code).batchConfig.useIndexedDB).toBe(true);
+    expect(publishedConfig(code).recruitmentConfig.platform).toBe('none');
     expect(code).toContain("_showSuccess();");
   });
 
@@ -265,7 +263,7 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("updateHook();");
     expect(code).toContain("finishHook();");
     expect(code).toContain("Redirecting to Prolific");
-    expect(code).toContain("cc=DONE");
+    expect(publishedConfig(code).recruitmentConfig).toMatchObject({ platform: 'prolific', prolificCompletionCode: 'DONE' });
     expect(code).toContain("jsPsych.data.addProperties");
   });
 
@@ -287,7 +285,6 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("_updateSessionName(trialSessionId, _finalName)");
     expect(code).not.toContain("trialSessionId = _finalName");
     expect(code).not.toContain("window.JSPSYCH_SESSION_ID = trialSessionId; // update global");
-    expect(code).toContain("throw new Error('Batch upload failed:");
     expect(() => new Function(code)).not.toThrow();
   });
 });

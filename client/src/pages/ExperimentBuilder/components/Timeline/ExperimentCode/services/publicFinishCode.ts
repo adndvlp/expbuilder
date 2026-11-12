@@ -97,23 +97,17 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
 
         publicFinished = true;
         // --- Recruitment platform redirect ---
-        ${
-          recruitmentConfig.platform === "prolific"
-            ? `
-        if (_prolificPID && '${recruitmentConfig.prolificCompletionCode}') {
+        const recruitment = _publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)};
+        if (recruitment.platform === 'prolific') {
+        if (_prolificPID && recruitment.prolificCompletionCode) {
           _setLoadingMsg('Redirecting to Prolific\u2026');
           await new Promise(r => setTimeout(r, 300));
-          window.location.href = 'https://app.prolific.com/submissions/complete?cc=${recruitmentConfig.prolificCompletionCode}';
+          window.location.href = 'https://app.prolific.com/submissions/complete?cc=' + encodeURIComponent(recruitment.prolificCompletionCode);
         } else {
           // No Prolific URL params — testing mode or direct access
           _showSuccess();
         }
-        `
-            : ""
-        }
-        ${
-          recruitmentConfig.platform === "mturk"
-            ? `
+        } else if (recruitment.platform === 'mturk') {
         if (_mturkTurkSubmitTo && _mturkAssignmentID && !_mturkIsPreview) {
           _setLoadingMsg('Submitting to MTurk\u2026');
           const _mturkForm = document.createElement('form');
@@ -125,10 +119,9 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         } else {
           _showSuccess();
         }
-        `
-            : ""
-        }
-        ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
+        } else {
+          _showSuccess();
+        }${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
         })();
         try { await publicFinishInFlight; } finally { publicFinishInFlight = null; }
       }${(() => {
@@ -163,10 +156,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
 
-    ${
-      recruitmentConfig.platform === "prolific" ||
-      recruitmentConfig.platform === "mturk"
-        ? `
+    if (['prolific', 'mturk'].includes((_publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)}).platform)) {
     // Add platform IDs to all trials automatically (after initJsPsych)
     jsPsych.data.addProperties({
       prolific_pid: _prolificPID || "",
@@ -176,8 +166,6 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
       mturk_assignment_id: _mturkAssignmentID || "",
       mturk_hit_id: _mturkHitID || "",
     });
-    `
-        : ""
     }
 
     if (typeof _recoverOlderPublicSessions === 'function') _recoverOlderPublicSessions().catch(error => {

@@ -53,12 +53,6 @@ export function publicBootstrapCode(
   (async () => {
     _setLoadingMsg('Creating session…');
     let _publicSessionState = await createSession();
-    if (_publicSessionState.decision === 'revision_mismatch') {
-      if (!_publicSessionState.artifactUrl) throw new Error('The original publication is unavailable. Your pending responses are preserved.');
-      const destination = _publicArtifactLocation(_publicSessionState);
-      destination.search = window.location.search; destination.hash = window.location.hash;
-      window.location.replace(destination.href); return;
-    }
     if (_publicSessionState.decision && !['resume_allowed', 'session_expired', 'session_completed'].includes(_publicSessionState.decision)) {
       throw new Error('Session cannot resume: ' + _publicSessionState.decision + '. Your pending responses are preserved.');
     }
@@ -142,20 +136,15 @@ ${activateResumeRouteDecisionCode()}
     const _mturkTurkSubmitTo = _urlParams.get('turkSubmitTo');
     const _mturkIsPreview = _mturkAssignmentID === 'ASSIGNMENT_ID_NOT_AVAILABLE';
 
-    ${
-      recruitmentConfig.platform === "mturk"
-        ? `
+    const effectiveRecruitment = _publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)};
     // MTurk preview mode: block experiment from starting
-    if (_mturkIsPreview) {
+    if (effectiveRecruitment.platform === 'mturk' && _mturkIsPreview) {
       document.getElementById('jspsych-container').innerHTML =
         '<div style="padding:40px;text-align:center;font-family:sans-serif">' +
         '<h2>Preview</h2>' +
         '<p>Accept the HIT to start the experiment.</p>' +
         '</div>';
       return;
-    }
-    `
-        : ""
     }
 `;
 }

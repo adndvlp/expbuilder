@@ -93,10 +93,10 @@ export async function startHarness() {
     } finally { pumping = false; }
   }
   const timer = setInterval(() => pump().catch(error => errors.push(error.message)), 200);
-  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, auto = true, count = 5, id = `study-${++sequence}` } = {}) {
+  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, timeout = 1, auto = true, count = 5, baseCode, id = `study-${++sequence}` } = {}) {
     const ids = Array.from({ length: count }, (_, i) => i+1);
     const answers = count === 5 ? ['A,quoted', 'B\nline', 'C"quote', 'D', 'E'] : ids.map(id => 'answer ' + id);
-    const batchConfig = { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: 1 };
+    const batchConfig = { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: timeout };
     const folder = `folder-${id}`;
     store.osf.nodes.set(folder, { id: folder, kind: 'nodes', attributes: {} });
     const exists = (await db.collection('experiments').doc(id).get()).exists;
@@ -107,7 +107,7 @@ export async function startHarness() {
       experimentID: id, useStorage: storageProvider, batchConfig, recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
       captchaConfig: { enabled: false, siteKey: '', provider: 'hcaptcha' }, sessionNameTokens: [], sessionNameSeparator: '_', currentUid: 'owner',
       evaluateCondition: '', branchingEvaluation: branchingEvaluationRuntimeCode, customPreInitCode: {}, publicParams: {}, extensions: '', progressBar: false,
-      baseCode: `const branchParameters = null; if (branchParameters) Object.entries(branchParameters);
+      baseCode: baseCode ?? `const branchParameters = null; if (branchParameters) Object.entries(branchParameters);
         class Trial { static info = { name: 'test', version: '1', parameters: {}, data: {} }; constructor(instance) { this.instance = instance; }
           trial(_display, trial) { window.__answer = () => this.instance.finishTrial({ response: trial.answer }); if (${auto}) window.__answer(); else { _display.innerHTML = '<button id="answer">Answer</button>'; _display.querySelector('button').onclick = window.__answer; } } }
         const answers = ${JSON.stringify(answers)};
@@ -117,7 +117,7 @@ export async function startHarness() {
     const manifest = { version: 3, entries: { root: '1' }, loopContinuations: {}, revision: 'fixture', nextBySource: {}, scopes: { root: ids.map(String) }, allScopes: { root: ids.map(String) }, addressesByTarget: Object.fromEntries(ids.map(id => [id, { targetId: id, targetKind: 'trial', targetOwnerId: null, enterLoopIds: [] }])) };
     const htmlContent = `<html><head><script src="${origin}/vendor.js"></script><script src="${origin}/jspsych.js"></script></head><body><div id="jspsych-container"></div><script>
       firebase.initializeApp({ apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com' }); firebase.database().useEmulator('127.0.0.1',${port});
-      window.ExpBuilderExecutionAddresses = ${JSON.stringify(manifest)};
+      ${baseCode ? '' : `window.ExpBuilderExecutionAddresses = ${JSON.stringify(manifest)};`}
       ${code}</script></body></html>`;
     await publishCurrentExperiment({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent });
     return { id, url: `${origin}/${id}/`, indexed, size };
@@ -134,6 +134,7 @@ export async function startHarness() {
     return { session, rows: cells.map(row => Object.fromEntries(header.map((key, i) => [key, row[i]]))), pending: (await ref.collection('trials').get()).size, providerFiles };
   }
   return { get browser() { return browser; }, db, realtime, origin, study, result, pump, errors, faults, deliveries,
+    async authoring() { const { startAuthoring } = await import('./authoring.mjs'); return startAuthoring({ listen, temp, root, study }); },
     async newPage() { await browser.close(); browser = await launch(); const context = await browser.newContext(); await context.route(/https:\/\//, route => route.abort()); return context.newPage(); },
     async wait(predicate, message = 'Condition did not converge') { const until = nativeNow() + 20000; while (nativeNow() < until) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 50)); } throw new Error(message + ': ' + errors.slice(-5).join('; ')); },
     async session(id, sid) { return (await db.collection('experiments').doc(id).collection('sessions').doc(sid).get()).data(); },

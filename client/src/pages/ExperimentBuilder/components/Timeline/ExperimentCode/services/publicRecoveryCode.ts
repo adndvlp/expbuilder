@@ -32,10 +32,7 @@ export function publicRecoveryCode({ DATA_API_URL, experimentID }: PublicExperim
         localStorage.removeItem(_publicStorageKeys.participant);
         localStorage.removeItem(_publicStorageKeys.resumeTrial);
         sessionStorage.removeItem(_publicStorageKeys.captchaPassed);
-        const target = typeof _publicEntryLocation === 'function' ? _publicEntryLocation(_publicSessionState.entryUrl)
-          : new URL(_publicSessionState.entryUrl || window.location.href);
-        target.search = window.location.search; target.hash = window.location.hash;
-        window.location.assign(target.href);
+        window.location.reload();
       };
       panel.append(document.createElement('br'), button);
     }

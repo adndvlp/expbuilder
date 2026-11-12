@@ -1,6 +1,6 @@
 # SDD: una publicación por experimento y retirada del versionado
 
-Estado: punto 1 implementado mediante TDD; puntos 2–4 pendientes. La retirada completa todavía no está terminada.
+Estado: puntos 1–2 implementados mediante TDD; puntos 3–4 pendientes. La retirada completa todavía no está terminada.
 
 Fecha: 2026-11-12. Código revisado: `88825ff`.
 
@@ -128,7 +128,7 @@ La comprobación debe basarse en los datos de ejecución necesarios para interpr
 | [publish/index.js](../api/functions/experiment/publish/index.js) y [media.js](../api/functions/experiment/publish/media.js) | Un único flujo de subida a `index.html`, `img/`, `aud/` y `vid/`; actualizar la configuración publicada vigente al completar correctamente. Retirar la selección de un flujo por presencia de metadata del historial y el prefijo usado exclusivamente para sus recursos. |
 | [sessions/lifecycle/handshake.js](../api/functions/experiment/sessions/lifecycle/handshake.js) | Crear y retomar sesiones sin consultas a manifiestos de publicaciones, validación de IDs de publicación o retorno de URLs históricas. Mantener asignación idempotente, configuración por sesión, límites, deadline y permisos. |
 | [publicHandshakeCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicHandshakeCode.ts) y [publicBootstrapCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicBootstrapCode.ts) | Retirar IDs, placeholders y redirecciones de versión. Mantener configuración efectiva de sesión, presencia, restauración del checkpoint y barreras de persistencia. |
-| [publicPublicationLocationCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicPublicationLocationCode.ts) y [publicRecoveryCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicRecoveryCode.ts) | Eliminar el localizador de carpetas/artefactos anteriores y sus llamadas. La recuperación de respuestas y el botón de nueva participación usan la ubicación actual sin consultar datos del historial. |
+| `publicPublicationLocationCode.ts` (retirado en el punto 2) y [publicRecoveryCode.ts](../client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/publicRecoveryCode.ts) | Eliminar el localizador de carpetas/artefactos anteriores y sus llamadas. La recuperación de respuestas y el botón de nueva participación usan la ubicación actual sin consultar datos del historial. |
 | Navegación y checkpoints citados en la sección 5 | Conservar la validación real del progreso y corregir el rechazo por cambios no fundamentales si las regresiones lo reproducen. No duplicar la navegación ni modificar el comportamiento de loops o branching para ocultar un error de retoma. |
 | [sessions/api/data-router.js](../api/functions/experiment/sessions/api/data-router.js) | Sustituir el bloqueo de envíos antiguos basado en `activePublicationId` por el contrato de sesión/exportación vigente. Un experimento publicado no debe admitir un archivo por un camino que evita los eventos y recibos solo porque se retiró aquel campo. |
 | [experiment/delete.js](../api/functions/experiment/delete.js) y sus consumidores | Retirar lecturas y limpieza programada de la subcolección eliminada y el uso de su identidad como selector de garantías. Conservar la eliminación normal de sesiones, metadata, recibos, exportaciones y presencia, y el conflicto con una publicación en curso. |
@@ -226,4 +226,39 @@ El bloqueo del envío antiguo de archivos utiliza `sessionExportProtocolVersion`
 
 La prueba de republicación del harness ya usa el enlace actual y comprueba la identidad y el CSV. Su manifiesto de navegación todavía utiliza una revisión fija de fixture: no demuestra AC07. Esa comprobación con guardado y generación reales pertenece al punto 2.
 
-Esta entrega no declara completa la retoma compatible ni la retirada de residuos. Quedan para los puntos 2–3 el localizador histórico, la rama de redirección del arranque, la ubicación utilizada al iniciar otra participación, las validaciones de compatibilidad de navegación y los selectores de eliminación restantes. No se ha desplegado, republicado ni limpiado ningún recurso remoto. La implementación se detiene antes del punto 2.
+Al cerrar el punto 1 quedaron para los puntos 2–3 el localizador histórico, la rama de redirección del arranque, la ubicación utilizada al iniciar otra participación, las validaciones de compatibilidad de navegación y los selectores de eliminación restantes. La ejecución se detuvo antes del punto 2. No se desplegó, republicó ni limpió ningún recurso remoto.
+
+## 13. Entrega del punto 2 — 2026-11-12
+
+### Comportamiento implementado
+
+Se retiran el localizador histórico y la redirección del arranque. La retoma utiliza el HTML actual y valida el destino, la propiedad de las entradas de la cola, sus destinos diferidos, el cursor actual y el recorrido de loops. La fecha/revisión de edición deja de ser una condición de igualdad para retomar; el grafo y su revisión de concurrencia de edición no se modifican.
+
+Antes de ejecutar un ensayo, las filas guardadas deben seguir dentro de los índices de estímulos del loop y la repetición guardada debe seguir existiendo. Una incompatibilidad se informa sin reiniciar la participación ni borrar su progreso o sus respuestas pendientes.
+
+Las sesiones conservan sus ajustes de IndexedDB, lote y timeout durante las republicaciones ON → OFF → ON; las nuevas reciben los ajustes vigentes. El cierre, los identificadores de plataforma y el bloqueo de vista previa de MTurk utilizan también el reclutamiento propio de la sesión, incluido su código de finalización de Prolific.
+
+Al iniciar otra participación explícitamente, se registra la identidad anterior para recuperar pendientes, se asigna la nueva identidad y se recarga la ubicación actual. La recarga conserva origen, ruta, parámetros y fragmento. Asignar otra vez una URL con el mismo fragmento no aseguraba una recarga; ese caso se reprodujo en navegador y se corrigió.
+
+### Evidencia TDD
+
+- Las primeras pruebas unitarias reprodujeron el rechazo por revisión y el uso del localizador histórico: 5 fallos y 6 casos aprobados antes de corregirlos.
+- Las APIs reales de edición y el generador real reprodujeron los rechazos al cambiar presentación o nombre, con ambos modos de IndexedDB. Las pruebas publican el HTML actual mediante el publicador real contra GitHub simulado, y verifican identidad, configuración y CSV final. No fijan ni sustituyen la revisión de navegación.
+- Después de permitir cambios de revisión, se reprodujeron por separado la repetición eliminada que permitía saltar el loop y la fila eliminada que no informaba el fallo en el arranque. Se añadieron validaciones previas a la ejecución para ambos casos.
+- Dos pruebas de cola reprodujeron la ejecución de ensayos que no correspondían al cursor guardado. Se comprueba ahora que el cursor alcance su destino y que los destinos de entrada pertenezcan a su contenedor.
+- Una prueba adicional reprodujo que un experimento sin ensayos compilados omitía la validación del progreso y terminaba vacío. El arranque valida también ese caso y rechaza el destino ausente antes de ejecutar.
+- Cinco pruebas funcionales reprodujeron el uso de la plataforma/código de reclutamiento de otra publicación en el cierre o la vista previa; ahora pasan con la configuración propia de la sesión.
+- La regresión de expiración tras republicar confirmó el timeout original y encontró el fallo de nueva participación con `#fragmento`. Tres pruebas unitarias adicionales de recarga fallaron antes de aplicar la corrección.
+
+Las comprobaciones antiguas de `publicConfiguration.test.ts` se actualizan para leer la configuración publicada en vez de exigir literales del transporte anterior. Cinco de sus ocho pruebas ya fallaban sobre `d697b6a`; se verificó usando ese código sin cambiar los archivos de trabajo. Se conserva la comprobación de sintaxis, identidad estable, valores predeterminados, configuración remota y código del usuario. Los nuevos tests de reclutamiento verifican el comportamiento ejecutado.
+
+### Verificación y límites
+
+- Comprobación final conjunta de navegación, generación, restauración y runtime público: 29 suites, 153 pruebas aprobadas con el ajuste de recarga y el caso de experimento vacío incluidos.
+- Matriz final de persistencia: 59 casos aprobados, incluidos los ocho nuevos con guardado y generación reales. Firestore/RTDB se ejecutan en emuladores y Drive/Dropbox/OSF mediante los proveedores HTTP simulados existentes. Pasan también sus nueve comprobaciones previas de runtime y contratos.
+- TypeScript y lint de los archivos modificados: aprobados.
+- Revisión adicional `loop-resume-runtime`/`native-public-navigation-runtime`: 10 casos no pudieron iniciar la página porque falta el ejecutable FFmpeg de Playwright. Quedan pendientes, sin instalarlo ni repetir esa revisión, según la indicación del usuario. Las tres suites locales pendientes de Chromium del punto 1 también continúan pendientes.
+
+Los selectores y campos históricos restantes pertenecen al punto 3; la regresión integral y la actualización general de instrucciones pertenecen al punto 4. Esta entrega no cambia protocolos antiguos, no crea migradores y no limpia recursos remotos.
+
+El punto 2 termina con esas verificaciones y las revisiones de entorno expresamente pendientes. La implementación se detiene antes del punto 3. No se han realizado despliegues ni republicaciones de experimentos reales.

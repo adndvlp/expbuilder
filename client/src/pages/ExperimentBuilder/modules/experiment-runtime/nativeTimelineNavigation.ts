@@ -216,7 +216,7 @@ export function getNativeTimelineNavigationCode(): string {
     const registerTrial = (id, node) => definitions.set(String(id), { kind: 'trial', node });
     const registerLoop = (id, node, metadata) => definitions.set(String(id), { kind: 'loop', node, metadata });
     const attach = (jsPsych, timeline) => {
-      if (!definitions.size) return;
+      if (!definitions.size && !deferredResume) return;
       if (!currentManifest()?.scopes) throw new Error('Unsupported execution manifest');
       nativeRuntime = jsPsych;
       nativeResume = deferredResume;
