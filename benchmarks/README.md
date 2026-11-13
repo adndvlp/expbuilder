@@ -1,4 +1,4 @@
-# Benchmarking de costos: entregas 1 a 3
+# Benchmarking de costos
 
 Implementa los contratos, observadores y cálculo de la [SDD](../docs/cost-benchmarking-sdd.md). Funciona con Node 22 o posterior, sin dependencias nuevas ni credenciales de nube.
 
@@ -116,10 +116,6 @@ Con las tarifas del perfil, 1.000 unidades de ese caso aritmético suman 0.01012
 
 Las pruebas verifican el resultado conocido, fracciones que atraviesan una serialización JSON, importes menores a un centavo, mínimos, escalones, datos inválidos, cobertura incompleta y ausencia de solicitudes de nube.
 
-## Lo que queda pendiente
-
-La entrega 4 incorporará CI y documentación de extensiones. Las entregas actuales mantienen el guardado del producto; no despliegan funciones ni modifican datos reales.
-
 ## Comparación y límites (entrega 3)
 
 Después de medir una versión candidata, se comparan sus archivos con una referencia:
@@ -196,3 +192,48 @@ El comando valida los datos, conserva reference.json sin alterar sus mediciones,
 | 6 | Datos, política, argumentos o salida inválidos |
 
 Se admite únicamente el formato de captura 1 y no hay conversores históricos. Entradas y salidas están acotadas a 16 MiB. La comparación y el registro trabajan con archivos locales y no regeneran referencias automáticamente.
+
+## Check local y CI (entrega 4)
+
+Con las dependencias y bundles indicados arriba, Node 22.22.2 o posterior de la rama 22, o Node 24:
+
+    npm run benchmark:cost:check -- --output /tmp/cost-check
+
+Ejecuta una vez las pruebas unitarias de benchmarking, los 23 escenarios y la comparación con la referencia inicial y la política estricta. Admite --baseline, --policy y --normalization; las tres entradas son archivos/directorios locales. El destino debe ser nuevo y estar separado de las capturas, también cuando hay enlaces simbólicos.
+
+Para revisar otra política o verificar el ejecutor con una captura ya obtenida:
+
+    npm run benchmark:cost:check -- --candidate /tmp/persistence-cost-run --output /tmp/cost-check-reused
+
+--candidate omite la medición; vuelve a ejecutar las unitarias y la comparación. No significa que se haya probado de nuevo el runtime. Ambos modos generan run.json con etapas, códigos, señales, bytes de logs y resultado final; unit.xml; logs por etapa; y comparison/ con el JSON y Markdown. La ejecución que mide también conserva capture/. Un fallo unitario o funcional detiene las etapas posteriores y conserva lo obtenido. Los códigos 2–6 mantienen el significado de la tabla anterior; 130/143 indican interrupción.
+
+Los logs conservan hasta 2 MiB por etapa y declaran los bytes omitidos. Un JUnit mayor de 2 MiB se trunca, queda identificado y falla el check. Se validan los límites de 16 MiB de las capturas/comparaciones y 40 MiB del conjunto. No se sobrescriben salidas ni se registra una referencia automáticamente. La cancelación envía señales al grupo de procesos para detener también los emuladores locales.
+
+El workflow [Public session persistence](../.github/workflows/public-persistence.yml) comparte instalación, Chromium, Java y cachés entre los checks:
+
+| Cambio | Qué ejecuta este workflow |
+|---|---|
+| Observadores, escenarios, perfiles, políticas, referencias o tests en benchmarks/ | Unitarias de benchmarking, medición y comparación |
+| Backend, harness/proveedores, generador público, componentes dinámicos, código compartido, bundles, dependencias o runner de persistencia | Suite funcional de persistencia una vez y check de costos una vez |
+| El propio workflow o ejecución manual | Ambos checks |
+| Documentación ajena a benchmarks/ | Ninguno |
+
+[paths.json](ci/paths.json) define la selección interna. Los filtros push/PR del YAML incluyen esas rutas; las pruebas leen el YAML real y comprueban su cobertura. La selección usa los SHAs del evento y git diff sin shell. Si no se puede leer el diff, falla; una rama nueva o ejecución manual selecciona ambos checks. Conserva la exclusión existente de pushes directos a main; los PR sí están cubiertos.
+
+La suite de Functions ya está en [Builder contracts](../.github/workflows/builder-contracts.yml); se retiró su segunda ejecución del workflow de persistencia. Un cambio exclusivo de benchmarking no activa toda la suite del Builder. La suite funcional de persistencia y el benchmark conservan comprobaciones distintas: el segundo no sustituye la primera.
+
+El check de costos puede ejecutarse aunque falle la suite funcional previa. Verificar el informe y subirlo usan [condiciones de estado de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions). Si falló la preparación y falta un informe, ensure-report.mjs guarda un diagnóstico y devuelve error. [upload-artifact](https://github.com/actions/upload-artifact/tree/v4#retention-period) conserva las evidencias siete días y falla si no encuentra archivos. Esto configura su ejecución al subir cambios; no afirma que ya haya corrido en GitHub.
+
+CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con la referencia capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. **La política estricta puede dejar el check rojo con los mismos contadores**, por diferencias pequeñas en bytes o permanencia temporal. Se conserva ese resultado. Aceptar un margen exige revisar una política explícita con sus motivos; ni CI ni el ejecutor lo añaden para obtener verde.
+
+## Añadir medición de otra funcionalidad
+
+La integración específica de persistencia está en persistence/; los contratos, observadores y aritmética compartidos están en core/. Para extender la herramienta:
+
+1. Crear un escenario aislado que ejecute el código real de la funcionalidad con entradas y resultado esperado definidos. Incluir éxito, error/reintento, cero actividad y tamaños relevantes. Comprobar el resultado funcional antes de evaluar su costo. Usar datos sintéticos y separar preparación/verificación de trabajo medido.
+2. Crear un medidor con createMeter({scenario, environment}) y conectar observeFirestore, observeRealtimeDatabase, observeTaskQueue u observeOperations en los límites utilizados. wrapFunction conserva la atribución por handler y snapshot() devuelve cantidades con su procedencia. Si aparece una operación no soportada, añadir primero una prueba de su conteo y error; no delegarla sin medir ni convertirla en cero.
+3. Traducir esas cantidades a partidas con el mismo calculateBudget de core/budget.mjs y los modelos de core/models.mjs. Cada partida declara servicio, ubicación, unidad, tarifa y scope window/per-session. Añadir tarifas e hipótesis como datos con fuentes. Verificar un importe conocido de forma independiente, incluidos el costo fijo una vez y las proyecciones; no copiar el motor monetario a la nueva funcionalidad.
+4. Guardar carga, configuración, inventario, resultado funcional, cobertura y huellas del código. Mantener los límites de artefactos. Para otra ruta de persistencia, ampliar los escenarios e inventarios existentes. Para una funcionalidad con otro modelo, conectar explícitamente su construcción/recalculo de partidas en la comparación: compareReferences y el check actual usan el modelo persistence/referenceBudgets. No basta cambiar el nombre de una captura. Añadir pruebas de compatibilidad, cobertura ausente y aumento de costo antes de habilitarla.
+5. Añadir las nuevas rutas de producto a ci/paths.json y a los filtros push/PR, y comprobarlas en ci-selection.test.mjs y ci-workflows.test.mjs. Conectar su medición al check sin repetir suites completas. Conservar una referencia solo mediante una acción explícita, con motivo; una referencia nueva tampoco aprueba su consumo.
+
+Para modificar el guardado actual se compara una medición nueva con la referencia existente bajo las mismas condiciones. Las optimizaciones del producto requieren su propio cambio autorizado; esta herramienta no las aplica.

@@ -83,6 +83,7 @@
     "benchmark:cost:example": "node benchmarks/examples/known-budget.mjs",
     "benchmark:cost:persistence": "node benchmarks/persistence/run.mjs",
     "benchmark:cost:compare": "node benchmarks/cli.mjs compare",
+    "benchmark:cost:check": "node benchmarks/ci/check.mjs",
     "benchmark:cost:reference": "node benchmarks/cli.mjs reference"
   },
   "jest": {

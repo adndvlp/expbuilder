@@ -1,6 +1,6 @@
 # SDD: medición y presupuesto de costos por funcionalidad
 
-Estado: entregas 1 a 3 implementadas; entrega 4 pendiente.
+Estado: las cuatro entregas implementadas. CI configurado y verificado localmente; ejecución remota pendiente de subir los cambios.
 
 Fecha: 2026-11-13. Código revisado: 9081ed2, rama bug-fix.
 
@@ -339,3 +339,23 @@ Validación mediante TDD: 90 pruebas unitarias aprobadas y nueva ejecución de l
 En la repetición nueva coincidieron todos los contadores de operaciones. La comparación estricta señaló diferencias pequeñas de bytes y permanencia temporal de datos, con código 2, y conservó su informe. Estos cambios se muestran separadamente de los contadores; admitirse requiere un margen explícito, no redondearlos a cero ni actualizar automáticamente la referencia.
 
 ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules. La entrega 4, correspondiente a CI y extensiones, permanece pendiente.
+
+## 15. Entrega 4: resultado y validación
+
+Se integró [el check de costos](../benchmarks/ci/check.mjs) en el workflow existente de persistencia. El mismo comando local/CI ejecuta unitarias, medición y comparación una vez por etapa; permite reutilizar explícitamente una captura sin volver a medir. No modifica las referencias. Las comparaciones mantienen los códigos 2–6; una interrupción conserva el motivo y devuelve 130/143. Un fallo de escenario, informe ausente o resultado inconsistente no se convierte en éxito.
+
+Los [filtros comprobados](../benchmarks/test/ci-workflows.test.mjs) incluyen observadores, escenarios, perfiles, referencias, dependencias, código bajo prueba y workflow. Los cambios exclusivos de benchmarking no lanzan la suite completa del Builder ni la suite funcional de persistencia. Los cambios de producto seleccionan ambos checks de persistencia. Se retiró la ejecución duplicada de Functions, ya cubierta en Builder contracts; se reutilizan instalación y cachés.
+
+Se conservan manifiesto de etapas, JUnit, logs, captura y comparación, con retención de siete días en GitHub. Los pasos de diagnóstico/subida se seleccionan también ante fallos; si la preparación impidió crear el informe, se guarda su diagnóstico y el check falla. Los logs y JUnit están acotados a 2 MiB cada uno, además de los límites de las capturas/comparaciones y la validación de tamaño total. La cancelación detiene el grupo de procesos, incluidos descendientes. Los destinos existentes o dentro de las entradas, incluso mediante enlaces simbólicos, se rechazan.
+
+El [README](../benchmarks/README.md) documenta requisitos, comandos, salidas, activación de CI, normalización entre máquinas y pasos para otra funcionalidad. La extensión reutiliza observadores, cantidades, modelos y calculateBudget; requiere conectar el escenario y su modelo de partidas. La comparación actual usa el modelo de persistencia; no se anuncia un adaptador universal sin implementar. No se añadió infraestructura desplegada ni una segunda fórmula de costos.
+
+Validación mediante TDD: las pruebas nuevas fallaron antes de implementar selección, ejecutor y protecciones de salida. Pasaron 113 pruebas unitarias de benchmarking (23 nuevas) y las 17 comprobaciones existentes de workflows/Chromium/FFmpeg. actionlint 1.7.12 validó el YAML y sus expresiones. ESLint y git diff --check sin errores, conservando el aviso existente de ESLint sobre no-unused-modules.
+
+Se ejecutó el flujo completo:
+
+    npm run benchmark:cost:check -- --output /tmp/expbuilder-cost-ci-point4 --normalization benchmarks/ci/normalization.json
+
+Las 23 pruebas de persistencia pasaron. La comparación devolvió código 2 y conservó su informe: todos los contadores coincidieron, pero la política sin tolerancias señaló aumentos pequeños en partidas afectadas por bytes y permanencia temporal. No se presenta ese resultado como un incremento causado por este cambio de CI ni como ahorro; requiere revisar los márgenes explícitamente si se desea admitirlo. La referencia y la política estricta permanecen intactas. Se comprobó también --candidate con la captura recién medida, ejecutando las 112 unitarias y la comparación sin repetir los 23 escenarios.
+
+Las evidencias de la ejecución completa quedaron en /tmp/expbuilder-cost-ci-point4 y las de reutilización en /tmp/expbuilder-cost-ci-point4-verified. Las rutas temporales son locales y no forman parte de la referencia del repositorio. No se ha ejecutado el workflow remotamente ni desplegado ningún cambio del producto.

@@ -1,0 +1,4 @@
+{
+  "reason": "Compare operation counts and modeled cloud costs on Ubuntu CI against the captured macOS reference. Local duration and RSS remain descriptive; no performance limit or monetary tolerance is enabled.",
+  "allowMachineDifference": true
+}

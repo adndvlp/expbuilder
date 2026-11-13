@@ -1,0 +1,16 @@
+{
+  "persistence": [
+    "api/**",
+    "client/src/pages/ExperimentBuilder/**",
+    "client/runtime-e2e/authoring/**",
+    "client/package*.json",
+    "server/dynamicplugin/**",
+    "server/jspsych-bundler/**",
+    "server/jspsych-bundle/**",
+    "shared/**",
+    "scripts/*persistence*",
+    "package*.json",
+    ".github/workflows/public-persistence.yml"
+  ],
+  "benchmark": ["benchmarks/**"]
+}

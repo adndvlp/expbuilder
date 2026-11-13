@@ -7,19 +7,29 @@ on:
     paths:
       - 'api/**'
       - 'client/src/pages/ExperimentBuilder/**'
+      - 'client/runtime-e2e/authoring/**'
       - 'client/package*.json'
+      - 'server/dynamicplugin/**'
       - 'server/jspsych-bundler/**'
+      - 'server/jspsych-bundle/**'
+      - 'shared/**'
       - 'scripts/*persistence*'
       - 'package*.json'
+      - 'benchmarks/**'
       - '.github/workflows/public-persistence.yml'
   pull_request:
     paths:
       - 'api/**'
       - 'client/src/pages/ExperimentBuilder/**'
+      - 'client/runtime-e2e/authoring/**'
       - 'client/package*.json'
+      - 'server/dynamicplugin/**'
       - 'server/jspsych-bundler/**'
+      - 'server/jspsych-bundle/**'
+      - 'shared/**'
       - 'scripts/*persistence*'
       - 'package*.json'
+      - 'benchmarks/**'
       - '.github/workflows/public-persistence.yml'
   workflow_dispatch:
 
@@ -31,19 +41,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  functions:
+  changes:
     runs-on: ubuntu-24.04
+    outputs:
+      persistence: ${{ steps.select.outputs.persistence }}
+      benchmark: ${{ steps.select.outputs.benchmark }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: ">=22.22.2 <23"
-          cache: npm
-          cache-dependency-path: api/functions/package-lock.json
-      - run: npm ci --prefix api/functions
-      - run: npm test --prefix api/functions -- --runInBand
+      - id: select
+        run: node benchmarks/ci/select.mjs
 
   persistence:
+    needs: changes
+    if: needs.changes.outputs.persistence == 'true' || needs.changes.outputs.benchmark == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -76,5 +92,22 @@ jobs:
       - run: npm run build --prefix server/jspsych-bundler
       - run: npx --prefix client playwright install --with-deps chromium
       - run: npm run test:e2e:persistence
+        if: needs.changes.outputs.persistence == 'true'
         env:
           PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0
+      - name: Measure and compare costs
+        if: ${{ !cancelled() && needs.changes.outputs.benchmark == 'true' }}
+        run: npm run benchmark:cost:check -- --output "$COST_CHECK_OUTPUT" --normalization benchmarks/ci/normalization.json
+        env:
+          COST_CHECK_OUTPUT: ${{ runner.temp }}/cost-check
+          PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0
+      - name: Verify benchmark report exists
+        if: ${{ always() && needs.changes.outputs.benchmark == 'true' }}
+        run: node benchmarks/ci/ensure-report.mjs "${{ runner.temp }}/cost-check"
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && needs.changes.outputs.benchmark == 'true' }}
+        with:
+          name: cost-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cost-check
+          if-no-files-found: error
+          retention-days: 7
