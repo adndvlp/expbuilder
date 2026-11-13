@@ -1,6 +1,6 @@
 # SDD: medición y presupuesto de costos por funcionalidad
 
-Estado: especificada; implementación pendiente.
+Estado: entrega 1 implementada; entregas 2 a 4 pendientes.
 
 Fecha: 2026-11-13. Código revisado: 9081ed2, rama bug-fix.
 
@@ -14,7 +14,7 @@ El resultado debe responder: cuánto trabajo genera una sesión, cuánto costar�
 
 El costo se calcula con cantidades y tarifas. El cálculo previo declara sus condiciones de carga, recursos, tiempos, retención y red. **No requiere esperar una factura ni ejecutar primero el experimento en Google Cloud.** Se podrán incorporar mediciones externas para ajustar esas condiciones, sin convertirlas en un requisito del presupuesto local.
 
-Esta SDD especifica la herramienta y sus pruebas. No autoriza implementarla, modificar el guardado, retirar recibos o trabajos, desplegar funciones, generar consumo real ni editar datos existentes.
+Esta SDD especifica la herramienta y sus pruebas; su redacción por sí sola no inicia una implementación. Las entregas se ejecutan cuando se indiquen. No autoriza modificar el guardado, retirar recibos o trabajos, desplegar funciones, generar consumo real ni editar datos existentes.
 
 ## 2. Evidencia y alcance inicial
 
@@ -282,3 +282,13 @@ La implementación se considera completa cuando produce presupuestos monetarios 
 Debe quedar documentado qué se observó, qué se supuso, cuánto cuesta cada partida y qué falta si el presupuesto es parcial. No se declara ahorro del guardado hasta contar con resultados comparables.
 
 Esta SDD no cambia la [configuración pública pendiente](public-settings-sdd.md), la [persistencia vigente](public-session-persistence-sdd.md), la [publicación única](publication-versioning-removal-sdd.md) ni la [retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md).
+
+## 12. Entrega 1: resultado y validación
+
+Se implementó el núcleo de contratos, observadores, modelos de recursos y presupuesto monetario en [benchmarks](../benchmarks/README.md), con datos de tarifas separados del código.
+
+El desarrollo comenzó con pruebas en rojo. Se verificaron también fallos concretos antes de corregirlos: pérdida de precisión al proyectar fracciones serializadas, errores de muestreo que ocultaban el error del handler y modelos de costo que podían inducir fallos artificiales del escenario.
+
+Las 39 pruebas unitarias cubren cantidades y procedencias, transacciones y rollback, errores y reintentos, consultas vacías/paginación, cómputo compartido, retención, tareas, tráfico de RTDB, cálculo de dinero y el ejemplo reproducible. Se ejecutan con npm run test:cost:unit; el ejemplo se obtiene con npm run benchmark:cost:example.
+
+La observación se verificó con adaptadores aislados y las tarifas del ejemplo tienen fuentes oficiales fechadas. El costo del guardado público aún no está medido: conectar el harness y producir su referencia corresponde a la entrega 2. No se modificó la persistencia del producto ni se inició esa entrega.

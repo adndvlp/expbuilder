@@ -1,0 +1,40 @@
+{
+  "id": "google-cloud-usd-2026-11-13",
+  "currency": "USD",
+  "basis": "gross",
+  "description": "Selected standard prices before free quotas, discounts and taxes; not a complete project price catalog.",
+  "sources": {
+    "firestore": {
+      "url": "https://firebase.google.com/docs/firestore/billing-example",
+      "checkedAt": "2026-11-13",
+      "scope": "Firestore Standard nam5 example"
+    },
+    "run": {
+      "url": "https://cloud.google.com/run/pricing",
+      "checkedAt": "2026-11-13",
+      "scope": "us-central1 request-based billing, default consumption model"
+    },
+    "tasks": {
+      "url": "https://cloud.google.com/tasks/pricing",
+      "checkedAt": "2026-11-13",
+      "scope": "Gross operation price, before account-wide free quota"
+    },
+    "scheduler": {
+      "url": "https://cloud.google.com/scheduler/pricing",
+      "checkedAt": "2026-11-13",
+      "scope": "Gross job-day price, including paused jobs"
+    }
+  },
+  "rates": {
+    "reads": { "service": "firestore", "location": "nam5", "unit": "count", "per": 100000, "price": "0.06", "source": "firestore" },
+    "writes": { "service": "firestore", "location": "nam5", "unit": "count", "per": 100000, "price": "0.18", "source": "firestore" },
+    "deletes": { "service": "firestore", "location": "nam5", "unit": "count", "per": 100000, "price": "0.02", "source": "firestore" },
+    "requests": { "service": "functions", "location": "us-central1", "unit": "count", "per": 1000000, "price": "0.40", "source": "run" },
+    "cpu": { "service": "functions", "location": "us-central1", "category": "active", "unit": "vCPU-second", "per": 1, "price": "0.000024", "source": "run" },
+    "memory": { "service": "functions", "location": "us-central1", "category": "active", "unit": "GiB-second", "per": 1, "price": "0.0000025", "source": "run" },
+    "cpu-idle": { "service": "functions", "location": "us-central1", "category": "idle", "unit": "vCPU-second", "per": 1, "price": "0.0000025", "source": "run" },
+    "memory-idle": { "service": "functions", "location": "us-central1", "category": "idle", "unit": "GiB-second", "per": 1, "price": "0.0000025", "source": "run" },
+    "task-operations": { "service": "tasks", "location": "global", "unit": "count", "per": 1000000, "price": "0.40", "source": "tasks" },
+    "scheduler": { "service": "scheduler", "location": "global", "unit": "job-day", "per": 31, "price": "0.10", "source": "scheduler" }
+  }
+}
