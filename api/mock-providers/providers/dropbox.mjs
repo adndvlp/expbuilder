@@ -1,5 +1,6 @@
 import { bearerToken, parseForm, parseJson, sendJson } from "../http-utils.mjs";
-import { nextId, store } from "../store.mjs";
+import { nextId, store, providerTimestamp } from "../store.mjs";
+import { Buffer } from 'node:buffer';
 
 function entryMeta(pathValue, kind, id, extra = {}) {
   const name = pathValue === "" || pathValue === "/" ? "" : pathValue.split("/").pop();
@@ -87,7 +88,7 @@ export async function handleDropbox(req, res, url, body) {
     const metadata = entryMeta(pathValue, "file", id, {
       rev: nextId('rev'),
       size: body.length,
-      server_modified: new Date().toISOString(),
+      server_modified: providerTimestamp(),
     });
     store.dropbox.entries.set(pathValue, metadata);
     store.dropbox.files.set(pathValue, body);

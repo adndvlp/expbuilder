@@ -8,7 +8,7 @@ import { deliveries } from '../../api/persistence-e2e/task-queue.mjs';
 const require = createRequire(new URL('../../api/functions/package.json', import.meta.url));
 const nativeDatabase = require('firebase-admin/database').getDatabase;
 const fetchModule = require('node-fetch'), fetch = fetchModule.default || fetchModule;
-export const state = { active: null, nativeDb: null, failEnqueue: false };
+export const state = { active: null, nativeDb: null, failEnqueue: false, transport: null };
 export function database(native) {
   state.nativeDb = native;
   return new Proxy(native, { get(target, key) {
@@ -30,7 +30,8 @@ export const getFunctions = () => ({ taskQueue: name => {
 } });
 export default async function measuredFetch(url, options = {}) {
   const active = state.active;
-  if (!active) return fetch(url, options);
+  const actual = state.transport ? state.transport.resolve(url) : url;
+  if (!active) return fetch(actual, options);
   const endpoint = new URL(url);
   if (endpoint.hostname !== '127.0.0.1') throw new Error('Benchmark refuses external provider traffic');
   const provider = ['googledrive', 'dropbox', 'osf'].find(name => {
@@ -44,7 +45,7 @@ export default async function measuredFetch(url, options = {}) {
     ? Buffer.byteLength(options.body) : payloadJsonBytes(options.body);
   meter.add(prefix + '.requestContentBytes', bodyBytes, { unit: 'byte', source: 'HTTP entity body; excludes headers/TLS' });
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(actual, options);
     // Buffer the controlled fixture response so all body bytes (including error bodies) are counted once.
     const body = Buffer.from(await response.arrayBuffer());
     meter.add(prefix + '.responseContentBytes', body.byteLength, { unit: 'byte', source: 'HTTP entity body; excludes headers/TLS' });

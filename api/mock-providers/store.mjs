@@ -1,3 +1,8 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+const providerInputs = new AsyncLocalStorage();
+export const withProviderInputs = (inputs, operation) => providerInputs.run(inputs, operation);
+export const providerTimestamp = () => (providerInputs.getStore()?.date() || new Date()).toISOString();
+
 export const store = {
   github: {
     users: new Map(),
@@ -23,6 +28,8 @@ export const store = {
 };
 
 export function nextId(prefix) {
+  const inputs = providerInputs.getStore();
+  if (inputs) return `${prefix}-${inputs.id('provider:' + prefix)}`;
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 

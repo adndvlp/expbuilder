@@ -359,3 +359,5 @@ Se ejecutó el flujo completo:
 Las 23 pruebas de persistencia pasaron. La comparación devolvió código 2 y conservó su informe: todos los contadores coincidieron, pero la política sin tolerancias señaló aumentos pequeños en partidas afectadas por bytes y permanencia temporal. No se presenta ese resultado como un incremento causado por este cambio de CI ni como ahorro; requiere revisar los márgenes explícitamente si se desea admitirlo. La referencia y la política estricta permanecen intactas. Se comprobó también --candidate con la captura recién medida, ejecutando las 112 unitarias y la comparación sin repetir los 23 escenarios.
 
 Las evidencias de la ejecución completa quedaron en /tmp/expbuilder-cost-ci-point4 y las de reutilización en /tmp/expbuilder-cost-ci-point4-verified. Las rutas temporales son locales y no forman parte de la referencia del repositorio. No se ha ejecutado el workflow remotamente ni desplegado ningún cambio del producto.
+
+La estabilización pendiente de esas comparaciones se define en la [SDD de repetibilidad del benchmark](cost-benchmarking-repeatability-sdd.md), con implementación separada y conservación de la política estricta.

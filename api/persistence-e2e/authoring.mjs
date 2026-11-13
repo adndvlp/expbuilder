@@ -1,4 +1,5 @@
 import path from 'node:path';
+import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import express from '../../node_modules/express/index.js';
 import { build } from '../../client/node_modules/esbuild/lib/main.js';
@@ -22,6 +23,7 @@ export async function startAuthoring({ listen, temp, root, study }) {
   `, resolveDir: root }, bundle: true, platform: 'node', format: 'esm', outfile });
   const { ScenarioAuthor, generateExperimentBaseCode } = await import(pathToFileURL(outfile));
   return {
+    async reset() { db.data = {}; ensureDbData(); await db.write(); },
     create: () => new ScenarioAuthor(apiBaseUrl),
     async publish(author, options = {}) {
       const baseCode = await generateExperimentBaseCode({ experimentID: author.experimentId, apiBaseUrl,

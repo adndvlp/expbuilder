@@ -23,12 +23,14 @@ const args = process.argv.slice(2), option = name => {
   if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error('Missing value: ' + name);
   const value = args[index + 1]; args.splice(index, 2); return value;
 };
+const contentIndex = args.indexOf('--content-checks'), contentChecks = contentIndex >= 0;
+if (contentChecks) args.splice(contentIndex, 1);
 const target = option('--output'), pattern = option('--scenario');
 if (args.length) throw new Error('Unknown benchmark options: ' + args.join(' '));
 const directory = await mkdtemp(path.join(tmpdir(), 'persistence-cost-'));
 const output = target ? path.resolve(target) : path.join(directory, 'report');
 // Existing references cannot be replaced implicitly.
-if (existsSync(path.join(output, 'reference.json'))) throw new Error('Output already contains a reference; choose a new directory');
+if (existsSync(path.join(output, 'reference.json')) || existsSync(path.join(output, 'content-checks.json'))) throw new Error('Output already contains a report; choose a new directory');
 await mkdir(output, { recursive: true });
 const freePort = () => new Promise(resolve => { const server = net.createServer(); server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); }); });
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
@@ -43,11 +45,13 @@ try {
   const child = spawn(process.execPath, [path.join(root, 'node_modules/firebase-tools/lib/bin/firebase.js'), 'emulators:exec', '--only', 'firestore,database', '--project', 'demo-public-persistence', '--config', path.join(directory, 'firebase.json'), command], {
     cwd: directory, stdio: 'inherit', env: { ...process.env, JAVA_TOOL_OPTIONS: '-Xms32m -Xmx256m', PERSISTENCE_E2E: '1', PERSISTENCE_E2E_ROOT: root, PERSISTENCE_E2E_TEMP: directory, PERSISTENCE_SDK_DIR: sdk,
       COST_BENCHMARK_OUTPUT: output, GCLOUD_PROJECT: 'demo-public-persistence', GOOGLE_APPLICATION_CREDENTIALS: '',
+      COST_CONTENT_CHECKS: contentChecks ? '1' : '',
       FIREBASE_CONFIG: JSON.stringify({ projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com' }),
     },
   });
   process.exitCode = await new Promise(resolve => child.on('exit', code => resolve(code ?? 1)));
-  if (!existsSync(path.join(output, 'reference.json'))) { process.exitCode = 1; console.error('No reference was produced; check scenario selection or the failed setup above.'); }
+  const expected = contentChecks ? 'content-checks.json' : 'reference.json';
+  if (!existsSync(path.join(output, expected))) { process.exitCode = 1; console.error('No report was produced; check scenario selection or the failed setup above.'); }
   console.log('Benchmark report: ' + output);
 } finally {
   // Keep reports when no explicit destination was supplied, remove only infrastructure temporaries.

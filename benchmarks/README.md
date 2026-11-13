@@ -31,6 +31,20 @@ Genera reference.json (métricas e inventario), budget.json (partidas, cantidade
 
 La matriz contiene 23 escenarios: inactividad; ambos modos y lotes 0/1/3; volúmenes 3/30/300 con padding definido; tres ensayos visuales con tres componentes; retoma antes del minuto; expiración y recuperación con ambos modos; confirmación HTTP perdida; fallo al encolar y confirmación de proveedor perdida en Drive, Dropbox y OSF. Comprueba contenido, orden, cantidad y unicidad del CSV, además del inventario final contra lecturas independientes del emulador.
 
+### Contenido controlado: primera entrega de repetibilidad
+
+La [SDD de repetibilidad](../docs/cost-benchmarking-repeatability-sdd.md) tiene implementada su primera entrega. El benchmark usa identidades aisladas por escenario/actor, calendario sintético y respuestas de proveedor controladas. Los valores se generan antes de enviar/medir; no se recortan ni reemplazan cantidades en los informes. Las URLs lógicas de proveedores se resuelven hacia puertos libres locales. Los proveedores y el harness ordinarios mantienen su comportamiento cuando no reciben estos controles.
+
+El participante sintético usa tiempos de respuesta declarados de 125 ms y un contexto Chromium con locale en-US, UTC, pantalla/viewport 1280×720 y user-agent CostBenchmarkFixture/1. La versión real del navegador sigue apareciendo en machine.browser. Los temporizadores del SDK y las duraciones locales de diagnóstico continúan usando sus relojes ordinarios. controlledInputs identifica las condiciones de contenido en cada escenario; la validación de su contrato y huella corresponde a la tercera entrega.
+
+Para comprobar contenido repetido:
+
+    npm run test:cost:content -- --output /tmp/persistence-controlled-content
+
+Ejecuta seis casos, cada uno con dos participaciones aisladas, y compara envelopes enviados y filas completas del CSV. Cubre ambos modos, tres proveedores y los ensayos visuales. Conserva content-checks.json con condiciones, hashes de CSV y resultados, también ante una comparación fallida; el código de salida conserva el fallo del test. Rechaza un destino que ya contiene un informe. No genera una referencia monetaria ni activa tres ejecuciones completas en CI.
+
+**La igualdad monetaria todavía está pendiente:** recordStorage conserva el componente de tiempo real hasta implementar la segunda entrega. Esta primera entrega no cambia tarifas, tolerancias o referencias ni se presenta como ahorro del producto.
+
 ## Integración del guardado actual
 
 [loader.mjs](persistence/loader.mjs) conecta los observadores solo en el proceso de benchmark. [controller.mjs](persistence/controller.mjs) usa los handlers registrados y comprueba sus paths, recursos y frecuencias. [dispatcher.mjs](persistence/dispatcher.mjs) reproduce cambios confirmados, funciones sin trabajo, encolado, entregas y reintentos; entrega también tareas obsoletas. Las revisiones se ejecutan cada minuto virtual según su configuración, en vez de cada 200 ms del harness funcional.

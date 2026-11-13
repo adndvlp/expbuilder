@@ -36,13 +36,15 @@ export async function startHarness({ benchmark } = {}) {
       if (fault.mode === 'lost') { res.end = () => { res.destroy(); return res; }; }
       else { sendJson(res, fault.status || 503, {}); return; }
     }
-    try { await handler(req, res, url, body, req.headers['content-type']); }
+    try { if (benchmark) await benchmark.provider(name, handler, req, res, url, body, req.headers['content-type']);
+      else await handler(req, res, url, body, req.headers['content-type']); }
     catch (error) { errors.push(error.message); if (!res.destroyed) sendJson(res, 500, {}); }
   };
-  process.env.GOOGLE_DRIVE_API_BASE = await listen(provider('googledrive', handleGoogleDrive));
-  process.env.DROPBOX_CONTENT_BASE = process.env.DROPBOX_API_BASE = await listen(provider('dropbox', handleDropbox));
-  const osfOrigin = process.env.OSF_API_BASE = await listen(provider('osf', handleOsf));
-  process.env.GITHUB_API_BASE = await listen(provider('github', handleGithub));
+  const providerUrl = async (name, handler) => { const actual = await listen(provider(name, handler)); return benchmark ? benchmark.providerUrl(name, actual) : actual; };
+  process.env.GOOGLE_DRIVE_API_BASE = await providerUrl('googledrive', handleGoogleDrive);
+  process.env.DROPBOX_CONTENT_BASE = process.env.DROPBOX_API_BASE = await providerUrl('dropbox', handleDropbox);
+  const osfOrigin = process.env.OSF_API_BASE = await providerUrl('osf', handleOsf);
+  process.env.GITHUB_API_BASE = await providerUrl('github', handleGithub);
   store.drive.tokens.set('token', {}); store.dropbox.tokens.set('token', {}); store.osf.tokens.set('token', {});
   const { db, app: adminApp } = await import('../functions/app.js');
   const { getDatabase } = requireFunctions('firebase-admin/database');
@@ -98,7 +100,7 @@ export async function startHarness({ benchmark } = {}) {
     } finally { pumping = false; }
   }
   const timer = setInterval(() => pump().catch(error => errors.push(error.message)), 200);
-  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, timeout = 1, auto = true, count = 5, payloadBytes = 0, baseCode, mediaFiles = [], id = `study-${++sequence}` } = {}) {
+  async function study({ provider: storageProvider = 'googledrive', indexed = true, size = 1, timeout = 1, auto = true, count = 5, payloadBytes = 0, baseCode, mediaFiles = [], id = benchmark ? benchmark.studyId() : `study-${++sequence}` } = {}) {
     const ids = Array.from({ length: count }, (_, i) => i+1);
     const answers = count === 5 ? ['A,quoted', 'B\nline', 'C"quote', 'D', 'E'] : ids.map(id => 'answer ' + id);
     const batchConfig = { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: timeout };
@@ -124,7 +126,7 @@ export async function startHarness({ benchmark } = {}) {
       firebase.initializeApp({ apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com' }); firebase.database().useEmulator('127.0.0.1',${port});
       ${benchmark?.browserScript || ''}
       ${baseCode ? '' : `window.ExpBuilderExecutionAddresses = ${JSON.stringify(manifest)};`}
-      ${code}</script></body></html>`;
+      ${benchmark ? benchmark.publicCode(code) : code}</script></body></html>`;
     await publishCurrentExperiment({ accessToken: 'token', owner: 'lab', repoName: id, experimentID: id, htmlContent, mediaFiles });
     return { id, url: `${origin}/${id}/`, indexed, size };
   }
@@ -141,7 +143,7 @@ export async function startHarness({ benchmark } = {}) {
   }
   return { get browser() { return browser; }, db, realtime, origin, study, result, pump, errors, faults, deliveries,
     async authoring() { const { startAuthoring } = await import('./authoring.mjs'); return startAuthoring({ listen, temp, root, study }); },
-    async newPage() { await browser.close(); browser = await launch(); const context = await browser.newContext(); await context.route(/https:\/\//, route => route.abort()); await benchmark?.attach(context); return context.newPage(); },
+    async newPage() { await browser.close(); browser = await launch(); const context = await browser.newContext(benchmark?.contextOptions || {}); await context.route(/https:\/\//, route => route.abort()); await benchmark?.attach(context); return context.newPage(); },
     async wait(predicate, message = 'Condition did not converge') { const until = nativeNow() + 20000; while (nativeNow() < until) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 50)); } throw new Error(message + ': ' + errors.slice(-5).join('; ')); },
     async session(id, sid) { return (await db.collection('experiments').doc(id).collection('sessions').doc(sid).get()).data(); },
     requests, hold(sequence) { heldSequence = sequence; }, release() { releaseHeld?.(); releaseHeld = null; },

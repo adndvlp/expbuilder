@@ -13,6 +13,11 @@ import { changedDocuments, documentStorage, indexReadUnits, registration } from 
 import { createDispatcher } from './dispatcher.mjs';
 import { state } from './bridge.mjs';
 import { deliveries } from '../../api/persistence-e2e/task-queue.mjs';
+import { createScenarioInputs } from './inputs.mjs';
+import { instrumentInputs } from './instrument-inputs.mjs';
+import { selectNodeInputs } from './node-inputs.mjs';
+import { createProviderTransport } from './input-transport.mjs';
+import { withProviderInputs, resetStore, store } from '../../api/mock-providers/store.mjs';
 
 const nativeNow = Date.now;
 const count = (object, key) => Number(object?.[key]?.value || 0);
@@ -20,6 +25,10 @@ const assumedBytes = value => quantity(value, 'byte', { provenance: 'assumed', s
 export async function createController() {
   if (process.env.PERSISTENCE_E2E !== '1' || process.env.GCLOUD_PROJECT !== 'demo-public-persistence') throw new Error('Isolated demo benchmark required');
   const bundle = await build({ entryPoints: [new URL('./browser.mjs', import.meta.url).pathname], bundle: true, platform: 'browser', format: 'iife', write: false });
+  const inputBundle = await build({ entryPoints: [new URL('./browser-inputs.mjs', import.meta.url).pathname], bundle: true, platform: 'browser', format: 'iife', globalName: 'CostFixtureInputs', write: false });
+  const transport = createProviderTransport(), providerOrigins = new Map();
+  let inputs = createScenarioInputs({ scenario: 'setup' }), providerInputs = new Map(), participants = 0;
+  state.transport = transport; selectNodeInputs(inputs);
   const indexConfig = JSON.parse(await readFile(new URL('../../api/firestore.indexes.json', import.meta.url)));
   let tail = Promise.resolve(), active = false, definitions = [], cached = new Map(), timeline = [], currentTime = nativeNow(), overheadMs = 0;
   let realtimeCache = new Map(), diagnosticReads = 0, httpRequests = 0, virtualStart = 0, wallStart = 0, stopListener = () => {};
@@ -70,6 +79,25 @@ export async function createController() {
   }
   const controller = {
     browserScript: bundle.outputFiles[0].text,
+    contextOptions: { locale: 'en-US', timezoneId: 'UTC', viewport: { width: 1280, height: 720 }, screen: { width: 1280, height: 720 },
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 CostBenchmarkFixture/1' },
+    inputConditions: () => ({ ...inputs.conditions(), participantEnvironment: controller.contextOptions }),
+    async prepare(name, conditions = {}) {
+      await tail; if (active) throw new Error('Cannot replace active scenario inputs');
+      inputs = createScenarioInputs({ ...conditions, scenario: name }); providerInputs = new Map(); participants = 0;
+      selectNodeInputs(inputs); resetStore();
+      store.drive.tokens.set('token', {}); store.dropbox.tokens.set('token', {}); store.osf.tokens.set('token', {});
+    },
+    studyId: () => inputs.id('experiment'),
+    publicCode: source => instrumentInputs(source, { scope: 'public', browser: true }),
+    providerUrl(name, actual) {
+      const logical = transport.register(name, actual); providerOrigins.set(name, logical); return logical;
+    },
+    provider(name, handler, req, res, url, body, contentType) {
+      if (!providerInputs.has(name)) providerInputs.set(name, createScenarioInputs({ ...inputs.conditions(), scenario: inputs.scenario + '/provider-' + name }));
+      const logical = new URL(url.pathname + url.search, providerOrigins.get(name));
+      return withProviderInputs(providerInputs.get(name), () => handler(req, res, logical, body, contentType));
+    },
     now: () => active ? currentTime : nativeNow(),
     advance(ms) { if (!Number.isSafeInteger(ms) || ms < 0) throw new Error('Invalid virtual advance'); currentTime += ms; },
     inspect, exclusive,
@@ -136,6 +164,8 @@ export async function createController() {
       return controller.rtdbWrappers.get(database);
     },
     async attach(context) {
+      const conditions = { ...inputs.conditions(), participant: ++participants };
+      await context.addInitScript(inputBundle.outputFiles[0].text + '\nCostFixtureInputs.installBrowserInputs(window, ' + JSON.stringify(conditions) + ');');
       await context.exposeBinding('__benchmarkMetric', (_source, method, args) => {
         if (!active) return;
         if (!['add', 'addQuantity', 'unknown'].includes(method)) throw new Error('Invalid browser observation');
@@ -187,7 +217,7 @@ export async function createController() {
         active = false; state.active = null; controller.failure = null; return result;
       });
     },
-    stop() { active = false; state.active = null; stopListener(); },
+    stop() { active = false; state.active = null; state.transport = null; selectNodeInputs(null); stopListener(); },
     metric(name) { return count(controller.meter.snapshot().metrics, name); },
   };
   return controller;

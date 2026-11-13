@@ -15,6 +15,8 @@ import { state } from './bridge.mjs';
 import { referenceBudgets, renderReference } from './budget.mjs';
 import { readFile } from 'node:fs/promises';
 let h, controller, editor, currentPage;
+const contentChecks = process.env.COST_CONTENT_CHECKS === '1';
+const contentComparisons = [];
 const scenarios = [], executionStart = performance.now();
 const test = (name, run) => nodeTest(name, { timeout: 60000 }, run);
 before(async () => {
@@ -25,6 +27,11 @@ after(async () => {
   try {
     if (scenarios.length) {
       const output = process.env.COST_BENCHMARK_OUTPUT; await mkdir(output, { recursive: true });
+      if (contentChecks) {
+        const evidence = { purpose: 'Delivery 1: controlled content checks, not monetary repeatability approval', comparisons: contentComparisons, cases: scenarios.map(({ name, inputs, controlledInputs, functional }) => ({ name, inputs, controlledInputs, functional })) };
+        await writeFile(path.join(output, 'content-checks.json'), JSON.stringify(evidence, null, 2) + '\n');
+        return;
+      }
       const files = [...new Set([...execFileSync('git', ['ls-files', '-co', '--exclude-standard', '-z', 'api/functions', 'api/persistence-e2e', 'client/src', 'server/dynamicplugin', 'server/jspsych-bundle', 'benchmarks', 'package.json', 'scripts/persistence-sdk.mjs'], { cwd: process.env.PERSISTENCE_E2E_ROOT }).toString().split('\0'), 'server/dynamicplugin/dist/index.iife.js', 'server/jspsych-bundle/index.js'])].filter(file => /\.(mjs|js|ts|tsx|json)$/.test(file) && !file.startsWith('benchmarks/references/')).sort();
       const digest = createHash('sha256');
       for (const file of files) { digest.update(file + '\0'); digest.update(await readFile(path.join(process.env.PERSISTENCE_E2E_ROOT, file))); }
@@ -52,11 +59,13 @@ async function prepare(options) {
   return h.study(options);
 }
 async function resetFixtures() {
+  await editor?.reset();
   await inspect(async () => {
     const bulk = h.db.bulkWriter(); await h.db.recursiveDelete(h.db.collection('experiments'), bulk); await bulk.close();
   });
 }
 async function scenario(name, inputs, run) {
+  await controller.prepare(name, inputs);
   const study = inputs.visual ? await visual(inputs) : await prepare(inputs);
   await controller.begin(name, h, study);
   let functional;
@@ -72,10 +81,10 @@ async function scenario(name, inputs, run) {
       error.message += '\nPage: ' + await currentPage.locator('body').innerText();
       error.message += '\nBrowser: ' + JSON.stringify(await currentPage.evaluate(() => globalThis.window.__benchmarkErrors || []));
     }
-    const measured = await controller.finish(h); scenarios.push({ name, inputs, ...measured, functional: { passed: false, reason: error.message } }); throw error;
+    const measured = await controller.finish(h); scenarios.push({ name, inputs, controlledInputs: controller.inputConditions(), ...measured, functional: { passed: false, reason: error.message } }); throw error;
   }
   const measured = await controller.finish(h);
-  scenarios.push({ name, inputs, ...measured, functional: { passed: true, ...functional } });
+  scenarios.push({ name, inputs, controlledInputs: controller.inputConditions(), ...measured, functional: { passed: true, ...functional } });
   assert.deepEqual(measured.coverageIssues, [], 'Every applicable SDK operation must be measured');
   assert.ok(measured.functions.enqueueSessionTimeout, 'Session document triggers, including no-op invocations, must be replayed');
 }
@@ -132,7 +141,9 @@ async function visual(inputs) {
   }
   return editor.publish(author, inputs);
 }
+if (!contentChecks) {
 test('idle: registered schedules execute once per minute', async () => {
+  await controller.prepare('idle');
   await resetFixtures();
   await controller.begin('idle', h);
   h.advance(60000); await controller.pump();
@@ -141,7 +152,7 @@ test('idle: registered schedules execute once per minute', async () => {
   assert.equal(report.functions.reconcilePendingSessionExports.metrics['functions.invocations'].value, '1');
   assert.equal(report.metrics['firestore.readUnits'].value, '3');
   assert.deepEqual(report.coverageIssues, []);
-  scenarios.push({ name: 'idle', inputs: { seconds: 60, sessions: 0 }, ...report, functional: { passed: true } });
+  scenarios.push({ name: 'idle', inputs: { seconds: 60, sessions: 0 }, controlledInputs: controller.inputConditions(), ...report, functional: { passed: true } });
 });
 for (const indexed of [true, false]) for (const size of [0, 1, 3]) {
   test(`normal: indexed=${indexed} batch=${size}`, () => scenario(`normal-${indexed}-${size}`, { indexed, size, count: 5, timeout: 1 }, async study => {
@@ -221,3 +232,37 @@ for (const provider of ['googledrive', 'dropbox', 'osf']) test(`provider write a
   assert.ok(controller.metric('provider.' + provider + '.transportFailures') >= 1);
   await page.context().close(); await controller.pump(); return { events: 5, uniqueFile: true };
 }));
+} else {
+  for (const options of [
+    { provider: 'googledrive', indexed: true }, { provider: 'googledrive', indexed: false },
+    { provider: 'dropbox', indexed: true }, { provider: 'osf', indexed: true },
+    { provider: 'googledrive', indexed: true, visual: true }, { provider: 'googledrive', indexed: false, visual: true },
+  ]) test('controlled content: ' + JSON.stringify(options), async () => {
+    const captures = [], name = 'controlled-' + JSON.stringify(options);
+    for (let repetition = 0; repetition < 2; repetition++) {
+      await scenario(name, { ...options, size: 1, timeout: 1, count: 3 }, async study => {
+        const start = h.requests.length, page = await pageFor(study);
+        if (options.visual) {
+          for (let trial = 0; trial < 3; trial++) {
+            const canvas = page.locator('#jspsych-dynamic-plugin-container [data-dynamic-scene]');
+            await canvas.waitFor(); const bounds = await canvas.boundingBox();
+            await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+            await page.waitForFunction(() => !globalThis.window.ExpBuilderPersistence.pendingCount());
+          }
+        }
+        await complete(page);
+        const sid = await page.evaluate(() => globalThis.window.JSPSYCH_SESSION_ID);
+        const received = await inspect(() => session(study, sid));
+        const result = await verified(study, sid, received.receivedEventCount);
+        const browser = h.requests.slice(start).filter(request => request.action === 'appendEvents').flatMap(request => request.data.events);
+        captures.push({ browser: JSON.parse(JSON.stringify(browser)), rows: result.rows });
+        await page.context().close(); await controller.pump();
+        return { passed: true, events: result.rows.length, csvHash: createHash('sha256').update(JSON.stringify(result.rows)).digest('hex') };
+      });
+    }
+    try {
+      assert.deepEqual(captures[1], captures[0], 'Actual submitted envelopes and complete CSV rows must repeat, without stripping fields');
+      contentComparisons.push({ name, passed: true });
+    } catch (error) { contentComparisons.push({ name, passed: false, reason: error.message }); throw error; }
+  });
+}

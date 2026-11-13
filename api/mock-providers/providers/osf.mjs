@@ -1,5 +1,6 @@
 import { bearerToken, parseForm, parseJson, parseMultipart, sendJson } from "../http-utils.mjs";
-import { nextId, store } from "../store.mjs";
+import { nextId, store, providerTimestamp } from "../store.mjs";
+import { Buffer } from 'node:buffer';
 
 function nodeJson(node, withRelationships = true) {
   const base = `${node.kind === "users" ? "/v2/users/me" : `/v2/nodes/${node.id}`}`;
@@ -195,7 +196,7 @@ export async function handleOsf(req, res, url, body, contentType) {
       nodeId,
       name,
       content: filePart ? Buffer.from(filePart.content) : Buffer.alloc(0),
-      createdAt: new Date().toISOString(),
+      createdAt: providerTimestamp(),
     };
     store.osf.files.set(file.id, file);
     sendJson(res, 201, fileJson(nodeId, file, url.origin));
@@ -205,7 +206,7 @@ export async function handleOsf(req, res, url, body, contentType) {
   if (storageMatch && req.method === 'PUT') {
     const nodeId = storageMatch[1], name = url.searchParams.get('name');
     const existing = [...store.osf.files.values()].find(file => file.nodeId === nodeId && file.name === name);
-    const file = { id: existing?.id || nextId('file'), nodeId, name, content: Buffer.from(body), createdAt: new Date().toISOString(), version: (existing?.version || 0) + 1 };
+    const file = { id: existing?.id || nextId('file'), nodeId, name, content: Buffer.from(body), createdAt: providerTimestamp(), version: (existing?.version || 0) + 1 };
     store.osf.files.set(file.id, file); sendJson(res, 201, fileJson(nodeId, file, url.origin)); return;
   }
   if (storageMatch && req.method === "GET") {
