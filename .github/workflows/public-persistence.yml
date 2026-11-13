@@ -1,6 +1,17 @@
 name: Public session persistence
 
 on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'api/**'
+      - 'client/src/pages/ExperimentBuilder/**'
+      - 'client/package*.json'
+      - 'server/jspsych-bundler/**'
+      - 'scripts/*persistence*'
+      - 'package*.json'
+      - '.github/workflows/public-persistence.yml'
   pull_request:
     paths:
       - 'api/**'
@@ -37,7 +48,6 @@ jobs:
     timeout-minutes: 20
     env:
       CI: true
-      PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,3 +76,5 @@ jobs:
       - run: npm run build --prefix server/jspsych-bundler
       - run: npx --prefix client playwright install --with-deps chromium
       - run: npm run test:e2e:persistence
+        env:
+          PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0

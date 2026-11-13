@@ -8,17 +8,23 @@ on:
       - "client/**"
       - "server/**"
       - "api/functions/**"
+      - "api/persistence-e2e/**"
+      - "scripts/*persistence*"
+      - "__tests__/ci-workflows.test.js"
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/builder-contracts.yml"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "client/**"
       - "server/**"
       - "api/functions/**"
+      - "api/persistence-e2e/**"
+      - "scripts/*persistence*"
+      - "__tests__/ci-workflows.test.js"
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/builder-contracts.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -39,6 +45,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate workflow syntax and expressions
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color -shellcheck= -pyflakes=
 
       - name: Setup Node
         uses: actions/setup-node@v4
