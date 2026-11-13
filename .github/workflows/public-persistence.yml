@@ -32,19 +32,19 @@ concurrency:
 
 jobs:
   functions:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ">=22.22.2 <23"
           cache: npm
           cache-dependency-path: api/functions/package-lock.json
       - run: npm ci --prefix api/functions
       - run: npm test --prefix api/functions -- --runInBand
 
   persistence:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       CI: true
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ">=22.22.2 <23"
           cache: npm
           cache-dependency-path: |
             package-lock.json
