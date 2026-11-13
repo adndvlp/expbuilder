@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
       "BASE_TIMELINE_CODE();" +
       "if (window.branchCustomParameters) { Object.entries(window.branchCustomParameters).forEach(() => {}); }",
   ),
-  firestoreData: null as null | Record<string, any>,
+  firestoreData: null as null | Record<string, unknown>,
 }));
 
 vi.mock(
@@ -62,7 +62,7 @@ vi.mock("../../lib/firebase", () => ({
 const defaultProps = {
   experimentID: "exp-1",
   evaluateCondition: "function evaluateCondition() { return true; }",
-  fetchExtensions: vi.fn(async () => "const extensions = ['webgazer'];"),
+  fetchExtensions: vi.fn(async () => "extensions: [],"),
   branchingEvaluation: "branchingEvaluation(data);",
   uploadedFiles: [],
   getTrial: vi.fn(),
@@ -263,10 +263,15 @@ describe("experiment configuration generators", () => {
     expect(code).toContain(
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );
-    expect(code).toContain("await _showCaptchaGate(\"site-key-123\", \"recaptcha\")");
-    expect(code).toContain("batchSize: 5");
-    expect(code).toContain("resumeTimeoutMinutes: 45");
-    expect(code).toContain("useIndexedDB: false");
+    expect(() => new Function(code)).not.toThrow();
+    const publishedConfiguration = code.match(
+      /const _PUBLIC_PUBLICATION_CONFIG = (\{[^\n]+\});/,
+    );
+    expect(publishedConfiguration).not.toBeNull();
+    expect(JSON.parse(publishedConfiguration![1])).toEqual(mocks.firestoreData);
+    expect(code).toContain(
+      "await _showCaptchaGate(effectiveCaptcha.siteKey, effectiveCaptcha.provider)",
+    );
     expect(code).toContain("window.beforePublic = true;");
     expect(code).toContain("show_progress_bar: true,");
     expect(code).toContain("trial.publicStarted = true;");
@@ -275,7 +280,7 @@ describe("experiment configuration generators", () => {
     expect(code).toContain("window.publicDone = true;");
     expect(code).toContain("message_progress_bar: 'Loading trial'");
     expect(code).toContain(
-      "https://app.prolific.com/submissions/complete?cc=COMPLETE123",
+      "'https://app.prolific.com/submissions/complete?cc=' + encodeURIComponent(recruitment.prolificCompletionCode)",
     );
     expect(code).toContain("BASE_TIMELINE_CODE();");
   });
