@@ -1,4 +1,4 @@
-# Benchmarking de costos: entregas 1 y 2
+# Benchmarking de costos: entregas 1 a 3
 
 Implementa los contratos, observadores y cálculo de la [SDD](../docs/cost-benchmarking-sdd.md). Funciona con Node 22 o posterior, sin dependencias nuevas ni credenciales de nube.
 
@@ -118,4 +118,81 @@ Las pruebas verifican el resultado conocido, fracciones que atraviesan una seria
 
 ## Lo que queda pendiente
 
-Las entregas 3 y 4 incorporarán comparaciones/límites y CI. Las entregas actuales mantienen el guardado del producto; no despliegan funciones ni modifican datos reales.
+La entrega 4 incorporará CI y documentación de extensiones. Las entregas actuales mantienen el guardado del producto; no despliegan funciones ni modifican datos reales.
+
+## Comparación y límites (entrega 3)
+
+Después de medir una versión candidata, se comparan sus archivos con una referencia:
+
+    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-2026-11-13 --candidate /tmp/persistence-cost-run --output /tmp/persistence-cost-comparison
+
+El destino debe ser nuevo y estar separado de las entradas. Se escriben comparison.json y README.md incluso si la comparación falla. Los hashes de las entradas y del código de cálculo identifican lo utilizado; el informe conserva las revisiones y condiciones de las capturas. No se ejecutan versiones anteriores del producto: se comparan sus mediciones guardadas.
+
+Los escenarios, inputs, resultados funcionales, entorno, moneda, alcance, ventana y volumen se verifican antes de aprobar una comparación. El orden de ejecución de los escenarios puede cambiar. CPU y RAM se recalculan desde los recursos de cada captura y sus cambios permanecen visibles; no se restablece la configuración anterior para comparar. Un recurso o ubicación que el modelo no sabe costear se rechaza.
+
+Ambos lados se recalculan desde sus mediciones con el mismo modelo y tarifas. Por defecto se usa el catálogo capturado en la referencia; --profile permite seleccionar otro catálogo común. Los importes precalculados de la versión candidata no se utilizan como prueba de ahorro. Cambiar el nombre/fecha de un catálogo no se presenta como cambio de sus tarifas.
+
+La [política inicial](policies/no-increases.json) no admite aumentos de contadores ni de partidas monetarias. Los bytes, tiempos y RSS locales se muestran; las cantidades de bytes también afectan a sus partidas monetarias. Una métrica desaparecida produce falta de cobertura, no un ahorro. Un cero medido o justificado sí permite mostrar una reducción, incluso al retirar una función de la implementación. El inventario de una colección ausente puede valer cero cuando se verificó de forma independiente contra el emulador.
+
+La política estricta puede señalar diferencias muy pequeñas entre repeticiones por bytes serializados o duración de almacenamiento temporal, aunque los contadores coincidan. No se redondean esas diferencias a cero ni se incorporan tolerancias implícitas. --policy permite dar márgenes y límites con motivo explícito:
+
+```json
+{
+  "format": 1,
+  "metrics": [
+    { "scenario": "normal-true-1", "path": "/metrics/firestore.readUnits", "unit": "count", "maxIncreaseAbsolute": "1", "reason": "Motivo de la operación adicional revisada" }
+  ],
+  "money": [
+    { "scenario": "normal-true-1", "path": "/nominal/1000/total", "currency": "USD", "max": "2", "maxIncreaseAbsolute": "0.001", "reason": "Ejemplo de límite y margen explícitos; no es una aprobación del consumo actual" }
+  ]
+}
+```
+
+Las cifras del ejemplo ilustran el formato. max limita el valor final; maxIncreaseAbsolute y maxIncreasePercent fijan el margen respecto a la referencia. Se utiliza el mayor de los dos márgenes. La política comprueba totales, fijo, variable y cada partida: una regla sobre el total no permite automáticamente aumentos en las partidas. Las rutas y escenarios deben coincidir con el informe, o ser exactamente `*`; una regla sin coincidencias, reglas superpuestas o unidades incorrectas fallan.
+
+Las rutas de dinero tienen forma /nominal/1000/total, /high/1000/items/ID o /idle-2592000/0/total. Las rutas de métricas siguen /metrics/NOMBRE, /functions/FUNCION/metrics/NOMBRE y /inventory/COLECCION/CAMPO. La comparación con referencia cero conserva el cambio absoluto y marca un concepto nuevo; no produce infinito.
+
+Para tiempo/RSS se necesita una regla en performance con path, unit, motivo, margen, el objeto machine de ambas capturas y minimumSamples. Sin esa regla son datos descriptivos. La captura actual tiene una muestra por escenario. Una regla que exige más muestras o usa otra máquina no se aprueba.
+
+### Condiciones y calibración
+
+--conditions selecciona condiciones comunes; --window-seconds y --volumes permiten proyecciones comunes. Cambiar condiciones, ventana o volumen requiere --normalization con un JSON que explique reason. Para comparar contadores y costo modelado de máquinas diferentes se puede declarar además allowMachineDifference:true; esto no permite aprobar límites de rendimiento entre máquinas diferentes ni cambiar la carga o reducir el alcance.
+
+--calibration importa datos externos opcionales. Solo modifica coeficientes del modelo, nunca los contadores de la captura. Debe incluir format:1, id, source, recordedAt, environment y parameters. Ejemplo de forma, cuyos valores/fuentes deben sustituirse por una medición documentada:
+
+```json
+{
+  "format": 1,
+  "id": "latencia-lecturas",
+  "source": "file:mediciones/lecturas.json",
+  "recordedAt": "2026-11-13T00:00:00Z",
+  "environment": "Entorno de la medición externa",
+  "parameters": {
+    "nominal.firestoreReadMs": {
+      "value": "30", "unit": "millisecond", "provenance": "external",
+      "source": "file:mediciones/lecturas.json"
+    }
+  }
+}
+```
+
+Se admiten los parámetros numéricos de low/nominal/high en persistence-30d.json, con unidades compatibles, límites válidos y rangos ordenados. La conversión de unidades conserva la entrada original. La calibración se aplica a ambos lados y sus fuentes quedan en comparison.json; no exige conexión a facturación ni un colector desplegado.
+
+### Registro explícito y códigos
+
+Para conservar una captura como referencia nueva:
+
+    npm run benchmark:cost:reference -- --source /tmp/persistence-cost-run --output /tmp/persistence-cost-reference --reason "Motivo de esta captura"
+
+El comando valida los datos, conserva reference.json sin alterar sus mediciones, recalcula budget.json y agrega reference-record.json con motivo y hashes. Rechaza resultados incompletos/fallidos y destinos existentes. Registrar consumo no lo aprueba como objetivo ni cambia los límites de las comparaciones.
+
+| Código | Resultado |
+|---|---|
+| 0 | Comparación aprobada bajo la política seleccionada, o referencia registrada |
+| 2 | Aumento/límite superado |
+| 3 | Medición o presupuesto incompletos |
+| 4 | Condiciones, formato o perfiles incompatibles |
+| 5 | Fallo o diferencia funcional |
+| 6 | Datos, política, argumentos o salida inválidos |
+
+Se admite únicamente el formato de captura 1 y no hay conversores históricos. Entradas y salidas están acotadas a 16 MiB. La comparación y el registro trabajan con archivos locales y no regeneran referencias automáticamente.

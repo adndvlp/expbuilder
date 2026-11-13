@@ -1,6 +1,6 @@
 # SDD: medición y presupuesto de costos por funcionalidad
 
-Estado: entregas 1 y 2 implementadas; entregas 3 y 4 pendientes.
+Estado: entregas 1 a 3 implementadas; entrega 4 pendiente.
 
 Fecha: 2026-11-13. Código revisado: 9081ed2, rama bug-fix.
 
@@ -311,4 +311,31 @@ Comando disponible:
 
     npm run benchmark:cost:persistence -- --output /tmp/persistence-cost-run
 
-La salida está acotada a 16 MiB; cada escenario tiene límite de 60 segundos. El runner rechaza sobrescribir referencias y una selección sin resultados no se anuncia como ejecución correcta. No se implementaron las entregas 3 o 4.
+La salida está acotada a 16 MiB; cada escenario tiene límite de 60 segundos. El runner rechaza sobrescribir referencias y una selección sin resultados no se anuncia como ejecución correcta. Al cerrar esta entrega aún estaban pendientes las entregas 3 y 4.
+
+## 14. Entrega 3: resultado y validación
+
+Se implementaron la [comparación](../benchmarks/core/comparison.mjs), la [calibración externa](../benchmarks/core/calibration.mjs) y los [comandos locales](../benchmarks/cli.mjs). Se comparan capturas guardadas; no se mantienen implementaciones anteriores activas. La referencia existente permanece como evidencia del consumo capturado.
+
+La comparación verifica escenarios, carga, resultados funcionales, cobertura, entorno, alcance, moneda y proyecciones. Recalcula ambos lados desde las mediciones con las mismas tarifas y condiciones. Distingue un cambio de nombre/fecha del catálogo de un cambio real de tarifas. CPU/RAM se toman de cada captura y sus diferencias quedan visibles, sin restaurar la asignación anterior. Ubicaciones o recursos que el modelo no puede costear se rechazan.
+
+Un contador ausente no se convierte en ahorro; un cero explícito sí puede representar una función retirada sin conservar su código. Una colección ausente se considera vacía solo con inventario verificado. Las funciones declaradas con cero llamadas mantienen partidas explícitas de cero. El cálculo de costos fijos usa ticks enteros en horizontes comunes y no produce ejecuciones fraccionarias por acortar la ventana.
+
+La política inicial no admite aumentos de contadores ni de partidas monetarias. Las reglas adicionales requieren unidad/moneda, selector y motivo; los selectores sin coincidencia o superpuestos fallan. Los límites se comprueban con aritmética exacta, incluyendo sus bordes y referencias cero. Los tiempos y RSS son descriptivos salvo tolerancias explícitas con máquina y muestra compatibles. Ni una comparación barata con CSV fallido ni la pérdida de cobertura se aprueban.
+
+La calibración acepta coeficientes numéricos documentados del modelo, con fuente, fecha, entorno, unidades y procedencia externa. Se aplica a ambos lados, conserva sus evidencias y no puede reemplazar contadores observados. Rechaza unidades inválidas, fracciones imposibles, ubicaciones no soportadas y rangos low/nominal/high invertidos. No requiere un colector ni consultas de facturación.
+
+El registro explícito conserva las mediciones, recalcula su presupuesto y agrega motivo, hashes de entrada y huellas del cálculo. Rechaza resultados incompletos o fallidos y destinos existentes. Registrar una referencia no aprueba su consumo ni cambia una política de límites. Los comandos no sobrescriben entradas y conservan informes de comparación con código de salida específico cuando fallan.
+
+Comandos disponibles:
+
+    npm run benchmark:cost:compare -- --baseline REFERENCIA --candidate CANDIDATA --output DIRECTORIO_NUEVO
+    npm run benchmark:cost:reference -- --source CAPTURA --output REFERENCIA_NUEVA --reason "Motivo"
+
+Las opciones, formatos de reglas, calibración, normalización y códigos están documentados en [benchmarks/README.md](../benchmarks/README.md). La comparación y el registro solo acceden a archivos locales; se conserva el límite de 16 MiB y se rechazan formatos no soportados sin introducir conversores históricos.
+
+Validación mediante TDD: 90 pruebas unitarias aprobadas y nueva ejecución de los 23 escenarios de persistencia aprobada. Las pruebas cubren incrementos, omisiones, ceros explícitos, perfiles y condiciones incompatibles, límites absolutos/porcentuales, cambios de CPU, calibración y comportamiento de los comandos. La captura original sigue reproduciendo sus importes y una comparación consigo misma no muestra cambios.
+
+En la repetición nueva coincidieron todos los contadores de operaciones. La comparación estricta señaló diferencias pequeñas de bytes y permanencia temporal de datos, con código 2, y conservó su informe. Estos cambios se muestran separadamente de los contadores; admitirse requiere un margen explícito, no redondearlos a cero ni actualizar automáticamente la referencia.
+
+ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules. La entrega 4, correspondiente a CI y extensiones, permanece pendiente.

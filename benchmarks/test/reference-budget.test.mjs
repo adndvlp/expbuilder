@@ -48,3 +48,9 @@ test('cloud compute uses explicit operation latency/cold-start assumptions rathe
   assert.ok(Number(first.scenarios[0].high.projections[0].knownSubtotal) > Number(first.scenarios[0].low.projections[0].knownSubtotal));
   assert.ok(JSON.stringify(first.assumptions).includes('cold'));
 });
+test('explicit short horizons use whole schedule ticks consistently in fixed and idle budgets', () => {
+  const result = referenceBudgets({ scenarios: [idle, normal] }, profile, { windowSeconds: 1 });
+  const fixed = result.scenarios[0].nominal.items.find(item => item.id === 'window-firestore-readUnits');
+  const idleCost = result.idle.find(item => item.windowSeconds === 1).items.find(item => item.id === 'window-firestore-readUnits');
+  assert.equal(fixed.quantity.value, '3'); assert.equal(fixed.quantity.value, idleCost.quantity.value);
+});
