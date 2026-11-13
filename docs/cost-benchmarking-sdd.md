@@ -1,6 +1,6 @@
 # SDD: medición y presupuesto de costos por funcionalidad
 
-Estado: entrega 1 implementada; entregas 2 a 4 pendientes.
+Estado: entregas 1 y 2 implementadas; entregas 3 y 4 pendientes.
 
 Fecha: 2026-11-13. Código revisado: 9081ed2, rama bug-fix.
 
@@ -291,4 +291,24 @@ El desarrollo comenzó con pruebas en rojo. Se verificaron también fallos concr
 
 Las 39 pruebas unitarias cubren cantidades y procedencias, transacciones y rollback, errores y reintentos, consultas vacías/paginación, cómputo compartido, retención, tareas, tráfico de RTDB, cálculo de dinero y el ejemplo reproducible. Se ejecutan con npm run test:cost:unit; el ejemplo se obtiene con npm run benchmark:cost:example.
 
-La observación se verificó con adaptadores aislados y las tarifas del ejemplo tienen fuentes oficiales fechadas. El costo del guardado público aún no está medido: conectar el harness y producir su referencia corresponde a la entrega 2. No se modificó la persistencia del producto ni se inició esa entrega.
+Al cerrar la entrega 1, la observación se había verificado con adaptadores aislados y tarifas con fuentes oficiales fechadas. Conectar el harness y producir la referencia del guardado público correspondía a la entrega 2. No se modificó la persistencia del producto en esa entrega.
+
+## 13. Entrega 2: resultado y validación
+
+Se conectaron los observadores al [harness de persistencia](../api/persistence-e2e/harness.mjs) mediante un [loader exclusivo del benchmark](../benchmarks/persistence/loader.mjs). Se reutilizan los handlers registrados, el HTML generado, Firestore y RTDB emulados y los adaptadores de Drive, Dropbox y OSF contra proveedores HTTP locales. Las funciones desplegadas y los datos reales permanecen fuera de la ejecución.
+
+La [referencia capturada](../benchmarks/references/persistence-2026-11-13/README.md) contiene 23 escenarios: inactividad; ambos modos de IndexedDB y lotes 0/1/3; volúmenes de 3/30/300 eventos; tres ensayos con tres componentes; retoma antes del plazo; expiración con y sin pendientes locales; confirmación HTTP perdida; fallo al encolar y escritura de proveedor con confirmación perdida. Se comprobaron cantidad, contenido, orden y unicidad del CSV. El inventario final medido coincide con lecturas independientes del emulador.
+
+Se cuentan también disparadores sin trabajo, cambios agrupados por commit, reintentos y tareas obsoletas. Las revisiones periódicas respetan el minuto configurado. Las lecturas adicionales necesarias para observar/verificar el benchmark se separan como sobrecarga; no se cobran como operaciones del producto.
+
+El informe ofrece costo bruto en USD para las ubicaciones declaradas, fijo por minuto/día/30 días, variable por sesión y proyecciones de 1/1.000/10.000 sesiones. Incluye Firestore con índices, Functions, Tasks, Scheduler, RTDB, transporte Pub/Sub/Eventarc, red y logging. Mantiene los datos retenidos hasta el final del horizonte, sin suponer limpiezas inexistentes. Las tarifas y condiciones están en archivos de datos revisables. El alcance monetario excluye el plan/capacidad/API del proveedor y las operaciones de publicación/construcción/despliegue.
+
+La duración de nube, arranques, distribución de red y retención son hipótesis explícitas. Las variantes de latencia costean la mezcla de operaciones observada; no vuelven a simular cuántos polls o reintentos causaría otra latencia. Una captura por escenario aporta contadores y tiempos locales descriptivos; no se presentan percentiles ni una medición de facturación real.
+
+Validación mediante TDD: 53 pruebas unitarias y 23 escenarios completos aprobados. También se ejecutaron las 18 combinaciones existentes de proveedor/modo/lote del harness sin instrumentación y sus 9 comprobaciones previas de runtime/proveedor. ESLint y git diff --check sin errores; ESLint conserva su aviso existente sobre no-unused-modules en la versión 10.
+
+Comando disponible:
+
+    npm run benchmark:cost:persistence -- --output /tmp/persistence-cost-run
+
+La salida está acotada a 16 MiB; cada escenario tiene límite de 60 segundos. El runner rechaza sobrescribir referencias y una selección sin resultados no se anuncia como ejecución correcta. No se implementaron las entregas 3 o 4.

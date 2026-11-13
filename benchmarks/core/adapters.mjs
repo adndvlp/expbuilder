@@ -1,9 +1,8 @@
-import { Buffer } from 'node:buffer';
 import { convertQuantity } from './quantity.mjs';
 import { taskUnits } from './models.mjs';
 
 const owners = new WeakMap();
-export const payloadJsonBytes = payload => Buffer.byteLength(JSON.stringify(payload ?? null), 'utf8');
+export const payloadJsonBytes = payload => new globalThis.TextEncoder().encode(JSON.stringify(payload ?? null)).byteLength;
 function existing(target, meter, kind) {
   const owner = owners.get(target);
   if (!owner) return null;
@@ -125,6 +124,21 @@ export function observeRealtimeDatabase(database, meter, { transferBytes } = {})
       'equalTo', 'startAt', 'startAfter', 'endAt', 'endBefore', 'limitToFirst', 'limitToLast']);
     const proxy = new Proxy(native, { get(target, key) {
       if (key === 'parent' || key === 'root') return ref(target[key]);
+      if (key === 'onDisconnect') return () => {
+        const disconnect = target.onDisconnect();
+        return new Proxy(disconnect, { get(object, operation) {
+          if (!['set', 'update', 'remove', 'cancel'].includes(operation)) return plainValue(object, operation, meter, 'rtdb.onDisconnect');
+          return async (...args) => {
+            meter.add('rtdb.disconnectAttempts', 1);
+            let result;
+            try { result = await object[operation](...args); }
+            catch (error) { meter.add('rtdb.disconnectFailures', 1); wire({ direction: 'write', outcome: 'failure' }); throw error; }
+            meter.add(operation === 'cancel' ? 'rtdb.disconnectCancellations' : 'rtdb.disconnectRegistrations', 1);
+            wire({ direction: 'write', outcome: 'success', payloadJsonBytes: payloadJsonBytes(args[0]) });
+            return result;
+          };
+        } });
+      };
       if (builders.has(key)) return (...args) => ref(target[key](...args));
       if (key === 'get' || key === 'once') return async (...args) => {
         meter.add('rtdb.readCalls', 1);

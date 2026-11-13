@@ -12,6 +12,41 @@ const noIndexes = () => quantity(0, 'count', { provenance: 'not-applicable', sou
 const wireBytes = () => quantity(32769, 'byte', { ...evidence, source: 'Declared request including envelope' });
 
 describe('Firestore observer', () => {
+  it('notifies once per successful commit with native references, including retries and repeated document writes', async () => {
+    const store = fakeFirestore(), m = meter(), commits = [];
+    const db = observeFirestore(store.db, m, { onCommitted: operations => commits.push(operations) });
+    const a = db.collection('items').doc('a');
+    await a.set({ value: 1 });
+    store.retryNextTransaction();
+    await db.runTransaction(async tx => { await tx.get(a); tx.set(a, { value: 2 }); tx.update(a, { value: 3 }); });
+    const batch = db.batch(); batch.delete(a); store.failNextCommit();
+    await assert.rejects(batch.commit());
+    assert.equal(commits.length, 2);
+    assert.deepEqual(commits.map(ops => ops.map(op => op.type)), [['set'], ['set', 'update']]);
+    assert.equal(commits[0][0].ref.path, 'items/a');
+    await commits[0][0].ref.get(); // Inspection is deliberately outside the measured SDK wrapper.
+    assert.equal(value(m, 'firestore.readUnits'), '2');
+  });
+  it('does not turn an observer failure into an application write failure', async () => {
+    const store = fakeFirestore(), m = meter();
+    const db = observeFirestore(store.db, m, { onCommitted: () => { throw new Error('inspection failed'); } });
+    await db.collection('items').doc('a').set({ value: 1 });
+    assert.equal(value(m, 'firestore.writes'), '1');
+    assert.equal(value(m, 'firestore.writeFailures'), '0');
+    assert.ok(m.snapshot().coverageIssues.some(issue => /commit observer/i.test(issue)));
+  });
+  it('passes query shape without filter values to the index model, also for transaction queries', async () => {
+    const store = fakeFirestore(), m = meter(), queries = [];
+    const makeQuery = () => ({ where() { return makeQuery(); }, orderBy() { return makeQuery(); }, async get() { return { docs: [], size: 0 }; } });
+    store.db.collectionGroup = () => makeQuery();
+    const db = observeFirestore(store.db, m, { queryIndexReads: context => { queries.push(context.query); return noIndexes(); } });
+    const query = db.collectionGroup('sessions').where('timeoutPending', '==', 'secret').where('timeoutNextDispatchAt', '<=', 1).orderBy('timeoutNextDispatchAt');
+    await query.get();
+    await db.runTransaction(tx => tx.get(query));
+    assert.deepEqual(queries[0], { filters: [{ field: 'timeoutPending', operator: '==' }, { field: 'timeoutNextDispatchAt', operator: '<=' }], orderBy: ['timeoutNextDispatchAt'], offset: 0 });
+    assert.deepEqual(queries[1], queries[0]);
+    assert.ok(!JSON.stringify(queries).includes('secret'));
+  });
   it('counts a missing lookup and each query page, including the empty-query minimum', async () => {
     const store = fakeFirestore(), m = meter(), db = observeFirestore(store.db, m, { queryIndexReads: noIndexes });
     store.records.set('items/a', { value: 1 }); store.records.set('items/b', { value: 2 });
@@ -34,6 +69,7 @@ describe('Firestore observer', () => {
     const result = await db.collection('items').doc('a').get();
     await result.ref.update({ value: 2 });
     await result.ref.delete();
+    assert.equal(value(m, 'firestore.directWriteCalls'), '3');
     assert.equal(value(m, 'firestore.writes'), '2');
     assert.equal(value(m, 'firestore.deletes'), '1');
     assert.equal(value(m, 'firestore.readUnits'), '1');
@@ -72,6 +108,7 @@ describe('Firestore observer', () => {
     batch.set(db.collection('items').doc('b'), { value: 2 });
     batch.delete(db.collection('items').doc('missing'));
     await batch.commit();
+    assert.equal(value(m, 'firestore.directWriteCalls'), '0');
     assert.equal(value(m, 'firestore.writes'), '2');
     assert.equal(value(m, 'firestore.deletes'), '1');
     assert.throws(() => db.collection('items').count(), /Unobserved/);
@@ -177,6 +214,19 @@ describe('function and service observers', () => {
 });
 
 describe('task and realtime observers', () => {
+  it('counts onDisconnect registrations and cancellation without inventing immediate writes', async () => {
+    const calls = [], m = meter();
+    const db = observeRealtimeDatabase({ ref: () => ({ onDisconnect: () => ({
+      async set(value) { calls.push(value); }, async cancel() { calls.push('cancel'); },
+    }) }) }, m, { transferBytes: () => ({ download: quantity(20, 'byte', evidence), upload: quantity(100, 'byte', evidence) }) });
+    await db.ref('presence').onDisconnect().set({ connected: false });
+    await db.ref('presence').onDisconnect().cancel();
+    assert.equal(calls.length, 2);
+    assert.equal(value(m, 'rtdb.disconnectRegistrations'), '1');
+    assert.equal(value(m, 'rtdb.disconnectCancellations'), '1');
+    assert.equal(value(m, 'rtdb.writes'), '0');
+    assert.equal(value(m, 'rtdb.downloadBytes'), '40');
+  });
   it('counts task enqueue and delivery separately, including a retried delivery', async () => {
     const m = meter(), queue = observeTaskQueue({ async enqueue() { return { id: 'task' }; } }, m, { billableBytes: wireBytes, blockBytes: 32768 });
     assert.deepEqual(await queue.enqueue({ secret: 'must-not-be-recorded' }), { id: 'task' });

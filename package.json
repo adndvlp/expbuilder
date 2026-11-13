@@ -80,7 +80,8 @@
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:e2e:persistence": "node scripts/run-persistence-e2e.mjs",
     "test:cost:unit": "node --test --test-reporter=spec benchmarks/test/*.test.mjs",
-    "benchmark:cost:example": "node benchmarks/examples/known-budget.mjs"
+    "benchmark:cost:example": "node benchmarks/examples/known-budget.mjs",
+    "benchmark:cost:persistence": "node benchmarks/persistence/run.mjs"
   },
   "jest": {
     "testEnvironment": "node",

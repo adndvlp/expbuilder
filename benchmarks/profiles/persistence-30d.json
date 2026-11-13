@@ -1,0 +1,59 @@
+{
+  "source": "Explicit pre-deployment workload hypotheses, not measured cloud durations or an invoice. Change these inputs to cost another workload.",
+  "low": {
+    "baseMs": 5,
+    "firestoreReadMs": 5,
+    "firestoreCommitMs": 10,
+    "realtimeMs": 5,
+    "providerMs": 100,
+    "coldFraction": 0.01,
+    "startupMs": 200,
+    "networkFactor": 1.05,
+    "protocolBytes": 256,
+    "logBytesPerInvocation": 512,
+    "rtdbStoredFactor": 1.1
+  },
+  "nominal": {
+    "baseMs": 20,
+    "firestoreReadMs": 20,
+    "firestoreCommitMs": 35,
+    "realtimeMs": 30,
+    "providerMs": 300,
+    "coldFraction": 0.1,
+    "startupMs": 500,
+    "networkFactor": 1.15,
+    "protocolBytes": 512,
+    "logBytesPerInvocation": 1024,
+    "rtdbStoredFactor": 1.3
+  },
+  "high": {
+    "baseMs": 50,
+    "firestoreReadMs": 60,
+    "firestoreCommitMs": 100,
+    "realtimeMs": 100,
+    "providerMs": 1000,
+    "coldFraction": 1,
+    "startupMs": 2000,
+    "networkFactor": 1.5,
+    "protocolBytes": 1024,
+    "logBytesPerInvocation": 4096,
+    "rtdbStoredFactor": 2
+  },
+  "placement": {
+    "firestore": "nam5",
+    "functions": "us-central1",
+    "realtime": "us-central1 (assumed)",
+    "providersAndClients": "North America",
+    "pubsub": "us-central1, no cross-region subscriptions/backlog over one day"
+  },
+  "compute": "gcfv2 request-based billing, 100ms increments, serial requests in separate instances; assigned CPU/RAM from endpoint/defaults; cold/startup allocation added separately, minInstances=0. This does not assert the deployed concurrency or actual cold rate.",
+  "retention": "Sessions projected at the start of a 30-day window; retained documents and RTDB nodes stay until window end. No TTL is invented. Temporary Firestore inventory uses observed emulator residency including virtual waits. Config/log documents allocated once per experiment/window.",
+  "network": "Provider and public HTTP content observed; TLS/protocol uplift assumed. RTDB 512 response bytes per SDK exchange plus 3500 TLS bytes per connection, including a backend connection per invocation with RTDB operations. Event payloads add 1024 envelope bytes, one publication and each delivery; model one message/request, minimum 1KiB. Eventarc Google-source rate zero, Pub/Sub charged separately.",
+  "logs": "Cloud Logging bytes assumed per invocation, with 30-day retention. Firestore logs/{experimentID} writes/storage are measured separately.",
+  "exclusions": [
+    "Existing provider subscription/storage plan (Drive, Dropbox or OSF); bytes/files and API calls reported, no zero-priced unlimited storage assumed",
+    "Publication/build/deployment/artifact storage and SDK/browser downloads: preparation outside runtime workload",
+    "Actual billing account quotas, tax, discounts, currency conversion and unrelated project workloads",
+    "Browser device CPU/storage and benchmark infrastructure: not Cloud Functions resources"
+  ]
+}

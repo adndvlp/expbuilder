@@ -19,6 +19,13 @@
       "checkedAt": "2026-11-13",
       "scope": "Gross operation price, before account-wide free quota"
     },
+    "storage": { "url": "https://firebase.google.com/docs/firestore/billing-example", "checkedAt": "2026-11-13", "scope": "nam5 standard storage, USD 0.18 per GiB-month; monthly storage representation includes indexes" },
+    "firebase": { "url": "https://firebase.google.com/pricing", "checkedAt": "2026-11-13", "scope": "Realtime Database Blaze storage and downloads, gross pre-quota" },
+    "eventarc": { "url": "https://cloud.google.com/eventarc/pricing", "checkedAt": "2026-11-13", "scope": "Standard Google-source events; Pub/Sub transport charged separately" },
+    "pubsub": { "url": "https://cloud.google.com/pubsub/pricing", "checkedAt": "2026-11-13", "scope": "Message Delivery Basic USD40/TiB, gross before account quota" },
+    "network": { "url": "https://cloud.google.com/vpc/network-pricing", "checkedAt": "2026-11-13", "scope": "Premium egress from US to North America; gross tiers before shared free quota" },
+    "firestore-network": { "url": "https://cloud.google.com/firestore/pricing", "checkedAt": "2026-11-13", "scope": "Traffic within a region or regions of the same multi-region" },
+    "logging": { "url": "https://cloud.google.com/products/observability/pricing", "checkedAt": "2026-11-13", "scope": "USD0.50/GiB ingestion, includes first 30 retention days, gross before shared free allotment" },
     "scheduler": {
       "url": "https://cloud.google.com/scheduler/pricing",
       "checkedAt": "2026-11-13",
@@ -35,6 +42,14 @@
     "cpu-idle": { "service": "functions", "location": "us-central1", "category": "idle", "unit": "vCPU-second", "per": 1, "price": "0.0000025", "source": "run" },
     "memory-idle": { "service": "functions", "location": "us-central1", "category": "idle", "unit": "GiB-second", "per": 1, "price": "0.0000025", "source": "run" },
     "task-operations": { "service": "tasks", "location": "global", "unit": "count", "per": 1000000, "price": "0.40", "source": "tasks" },
-    "scheduler": { "service": "scheduler", "location": "global", "unit": "job-day", "per": 31, "price": "0.10", "source": "scheduler" }
+    "scheduler": { "service": "scheduler", "location": "global", "unit": "job-day", "per": 31, "price": "0.10", "source": "scheduler" },
+    "firestore-storage": { "service": "firestore", "location": "nam5", "unit": "GiB-month", "per": 1, "price": "0.18", "source": "storage" },
+    "rtdb-storage": { "service": "rtdb", "location": "us-central1", "unit": "GB-month", "per": 1, "price": "5", "source": "firebase" },
+    "rtdb-download": { "service": "rtdb", "location": "us-central1", "unit": "GB", "per": 1, "price": "1", "source": "firebase" },
+    "eventarc-google": { "service": "eventarc", "location": "global", "unit": "count", "per": 1000000, "price": "0", "zeroReason": "Google-source events have no Eventarc Standard per-event charge; transport remains priced", "source": "eventarc" },
+    "pubsub-throughput": { "service": "pubsub", "location": "us-central1", "unit": "GiB", "per": 1024, "price": "40", "source": "pubsub" },
+    "internet-egress": { "service": "network", "location": "us-central1", "unit": "GiB", "per": 1, "tiers": [{ "upTo": 1024, "price": "0.12" }, { "upTo": 10240, "price": "0.11" }, { "upTo": null, "price": "0.08" }], "source": "network" },
+    "firestore-internal-egress": { "service": "firestore", "location": "nam5", "unit": "byte", "per": 1, "price": "0", "zeroReason": "Assumed placement: nam5 and us-central1 within the same multi-region, no direct client Firestore traffic", "source": "firestore-network" },
+    "log-ingestion": { "service": "logging", "location": "us-central1", "unit": "GiB", "per": 1, "price": "0.50", "source": "logging" }
   }
 }
