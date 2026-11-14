@@ -87,6 +87,23 @@ beforeEach(() => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe("createExperiment — googledrive", () => {
+  test('AC05: valid explicit settings remain unchanged and other defaults are initialized', async () => {
+    const batchConfig = { useIndexedDB: false, batchSize: 7, resumeTimeoutMinutes: 1 };
+    await createExperiment('custom', 'Custom', undefined, 'googledrive', { batchConfig, sessions: 100, currentCondition: 100 });
+    expect(fs.getRef('experiments/custom').create).toHaveBeenCalledWith(expect.objectContaining({ batchConfig,
+      recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+      captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' }, sessions: 0, currentCondition: 0 }));
+  });
+  test('invalid overrides fail before provider calls, logging or experiment writes', async () => {
+    await expect(createExperiment('invalid', 'Invalid', 'u1', 'googledrive', { batchConfig: { useIndexedDB: true, batchSize: -1, resumeTimeoutMinutes: 1 } })).rejects.toMatchObject({ status: 400 });
+    expect(mockWriteLog).not.toHaveBeenCalled(); expect(mockCreateFolder).not.toHaveBeenCalled();
+    expect(fs.db.collection).not.toHaveBeenCalled();
+  });
+  test('AC05: creating an existing document cannot reset its configuration or counters', async () => {
+    const ref = fs.getRef('experiments/existing'); ref.create.mockRejectedValueOnce({ code: 6 });
+    await expect(createExperiment('existing', 'Existing')).rejects.toThrow('EXPERIMENT_ALREADY_EXISTS');
+    expect(ref.set).not.toHaveBeenCalled(); expect(ref.update).not.toHaveBeenCalled();
+  });
   test("creates folder, persists driveFolderId/driveFolderPath, owner set", async () => {
     mockGetValidToken.mockResolvedValueOnce({ success: true, access_token: "tok" });
     mockCreateFolder.mockResolvedValueOnce({ success: true, folderId: "fldX" });
@@ -118,6 +135,9 @@ describe("createExperiment — googledrive", () => {
       sessions: 0,
       owner: "u1",
       id: "EID",
+      batchConfig: { useIndexedDB: true, batchSize: 0, resumeTimeoutMinutes: 30 },
+      recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+      captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' },
     });
     // logs counter incremented
     expect(mockWriteLog).toHaveBeenCalledWith("EID", "createExperiment");
