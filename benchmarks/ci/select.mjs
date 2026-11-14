@@ -12,6 +12,15 @@ export function selectChecks(files) {
   const persistence = matches(checkPaths.persistence);
   return { persistence, benchmark: persistence || matches(checkPaths.benchmark) };
 }
+function commitAvailable(sha, git) {
+  try {
+    git(['rev-parse', '--verify', '--quiet', `${sha}^{commit}`]);
+    return true;
+  } catch (error) {
+    if (error.status === 1) return false;
+    throw error;
+  }
+}
 export function changedFiles(event, payload, git = args => execFileSync('git', args)) {
   if (event === 'workflow_dispatch') return null;
   if (!['push', 'pull_request'].includes(event)) throw new Error('Unsupported selection event: ' + event);
@@ -19,6 +28,11 @@ export function changedFiles(event, payload, git = args => execFileSync('git', a
     : [payload.pull_request?.base?.sha, payload.pull_request?.head?.sha];
   if (![before, after].every(sha => typeof sha === 'string' && /^[a-f0-9]{40}$/i.test(sha))) throw new Error('Invalid event SHA');
   if (event === 'push' && /^0+$/.test(before)) return null;
+  if (!commitAvailable(after, git)) throw new Error(`Event head commit ${after} is unavailable`);
+  if (!commitAvailable(before, git)) {
+    console.warn(`Base commit ${before} is unavailable; running both checks.`);
+    return null;
+  }
   const range = before + (event === 'push' ? '..' : '...') + after;
   return git(['diff', '--name-only', '--no-renames', '-z', range, '--']).toString('utf8').split('\0').filter(Boolean);
 }

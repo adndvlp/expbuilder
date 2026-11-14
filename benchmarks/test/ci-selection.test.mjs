@@ -28,11 +28,12 @@ test('the workflow and its activation tests select checks; unrelated docs do not
 });
 test('push and PR selectors use validated git ranges, include deleted/renamed paths, and never execute a shell', () => {
   const a = 'a'.repeat(40), b = 'b'.repeat(40), calls = [];
-  const git = (args) => { calls.push(args); return Buffer.from('api/old.js\0benchmarks/new.mjs\0'); };
+  const git = (args) => { calls.push(args); return Buffer.from(args[0] === 'diff' ? 'api/old.js\0benchmarks/new.mjs\0' : b); };
   assert.deepEqual(changedFiles('push', { before: a, after: b }, git), ['api/old.js','benchmarks/new.mjs']);
-  assert.deepEqual(calls[0], ['diff', '--name-only', '--no-renames', '-z', a + '..' + b, '--']);
+  assert.deepEqual(calls.slice(0, 2), [['rev-parse', '--verify', '--quiet', b + '^{commit}'], ['rev-parse', '--verify', '--quiet', a + '^{commit}']]);
+  assert.deepEqual(calls[2], ['diff', '--name-only', '--no-renames', '-z', a + '..' + b, '--']);
   changedFiles('pull_request', { pull_request: { base: { sha: a }, head: { sha: b } } }, git);
-  assert.ok(calls[1].includes(a + '...' + b));
+  assert.ok(calls.at(-1).includes(a + '...' + b));
   assert.throws(() => changedFiles('push', { before: '$(malicious)', after: b }, git), /SHA/);
   assert.throws(() => changedFiles('schedule', {}, git), /event/);
 });
