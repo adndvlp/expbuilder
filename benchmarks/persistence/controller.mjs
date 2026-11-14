@@ -9,7 +9,8 @@ import { createMeter } from '../core/meter.mjs';
 import { observeFirestore } from '../core/firestore.mjs';
 import { observeRealtimeDatabase } from '../core/adapters.mjs';
 import { quantity } from '../core/quantity.mjs';
-import { changedDocuments, documentStorage, indexReadUnits, registration } from './model.mjs';
+import { changedDocuments, indexReadUnits, registration } from './model.mjs';
+import { storageInventory, storageMeasurement } from './storage-measurement.mjs';
 import { createDispatcher } from './dispatcher.mjs';
 import { state } from './bridge.mjs';
 import { deliveries } from '../../api/persistence-e2e/task-queue.mjs';
@@ -35,6 +36,7 @@ export async function createController() {
   const nativeDelay = async () => { if (nativeDelayMs) { injectedDelayMs += nativeDelayMs; await delay(nativeDelayMs); } };
   state.transport = transport; state.clock = clock; selectNodeInputs(inputs, clock);
   const indexConfig = JSON.parse(await readFile(new URL('../../api/firestore.indexes.json', import.meta.url)));
+  const storageModel = await storageMeasurement(indexConfig);
   let tail = Promise.resolve(), active = false, definitions = [], cached = new Map(), overheadMs = 0;
   let realtimeCache = new Map(), diagnosticReads = 0, httpRequests = 0, stopListener = () => {};
   const presenceWaiters = new Set();
@@ -93,13 +95,7 @@ export async function createController() {
     } finally { overheadMs += performance.now() - start; }
   }
   function inventory(documents = cached) {
-    const groups = {};
-    for (const [path, data] of documents) {
-      const group = path.split('/').at(-2), size = documentStorage(path, data, indexConfig);
-      const entry = groups[group] ||= { documents: 0, documentBytes: 0, indexBytes: 0, storedBytes: 0, indexEntries: 0 };
-      for (const key of Object.keys(entry)) entry[key] += key === 'documents' ? 1 : size[key];
-    }
-    return groups;
+    return storageInventory(documents, indexConfig);
   }
   function recordStorage() {
     const groups = inventory(), bytes = Object.entries(groups).filter(([key]) => !['experiments', 'logs', 'users'].includes(key)).reduce((sum, [, value]) => sum + value.storedBytes, 0);
@@ -258,7 +254,7 @@ export async function createController() {
         if (!isDeepStrictEqual(retainedInventory, inventory(nativeInventory))) controller.meter.unknown('inventory.coverage', 'count', 'Observed retained inventory differs from native emulator inventory');
         overheadMs += performance.now() - measurementStart;
         const nativeTree = await h.realtime.ref().once('value'); diagnosticReads++;
-        const result = { ...controller.meter.snapshot(), inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: clock.samples(), storageTiming:clock.snapshot(),
+        const result = { ...controller.meter.snapshot(), storageModel, inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: clock.samples(), storageTiming:clock.snapshot(),
           retainedRtdbJsonBytes: Buffer.byteLength(JSON.stringify(nativeTree.val() || {})),
           pending: controller.dispatcher.pending(), virtualSeconds: clock.elapsedMs() / 1000,
           overhead: { diagnosticReads, localInspectionMs: overheadMs, injectedDelayMs, note: 'Unpriced benchmark-only snapshot reads, setup, validation, browser instrumentation and emulator traffic; inspection time excluded from local function samples' }, httpRequests,

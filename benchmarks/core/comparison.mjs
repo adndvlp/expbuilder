@@ -193,7 +193,7 @@ export function compareReferences(options) {
       const after = candidate.reference.scenarios.find(s => s.name === before.name), name = before.name;
       const result = { name, inputs: { baseline: clone(before.inputs), candidate: clone(after.inputs) }, metrics: [], quantities: [], money: [], implementationChanges: [] }; report.scenarios.push(result);
       result.functional = { baseline: clone(before.functional), candidate: clone(after.functional) };
-      const storage = scenario => ({ timeline: clone(scenario.storageTimeline ?? null), timing: scenario.storageTiming ? {
+      const storage = scenario => ({ model: clone(scenario.storageModel ?? null), timeline: clone(scenario.storageTimeline ?? null), timing: scenario.storageTiming ? {
         elapsedMs: scenario.storageTiming.elapsedMs, operations: clone(scenario.storageTiming.operations), actions: clone(scenario.storageTiming.actions),
       } : null });
       result.storage = { baseline: storage(before), candidate: storage(after) };
