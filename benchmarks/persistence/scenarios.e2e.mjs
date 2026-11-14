@@ -17,6 +17,7 @@ import { readFile } from 'node:fs/promises';
 let h, controller, editor, currentPage;
 const contentChecks = process.env.COST_CONTENT_CHECKS === '1';
 const contentComparisons = [];
+const costProfile = JSON.parse(await readFile(new URL('../profiles/google-cloud-usd-2026-11-13.json', import.meta.url)));
 const scenarios = [], executionStart = performance.now();
 const test = (name, run) => nodeTest(name, { timeout: 60000 }, run);
 before(async () => {
@@ -28,7 +29,7 @@ after(async () => {
     if (scenarios.length) {
       const output = process.env.COST_BENCHMARK_OUTPUT; await mkdir(output, { recursive: true });
       if (contentChecks) {
-        const evidence = { purpose: 'Delivery 1: controlled content checks, not monetary repeatability approval', comparisons: contentComparisons, cases: scenarios.map(({ name, inputs, controlledInputs, functional }) => ({ name, inputs, controlledInputs, functional })) };
+        const evidence = { purpose: 'Controlled content, storage and modeled costs with native IO delays; not approval of a reference or consumption target', comparisons: contentComparisons, cases: scenarios.map(({ name, inputs, controlledInputs, functional, storageTiming, overhead }) => ({ name, inputs, controlledInputs, functional, storageTiming, overhead })) };
         await writeFile(path.join(output, 'content-checks.json'), JSON.stringify(evidence, null, 2) + '\n');
         return;
       }
@@ -119,6 +120,7 @@ async function verified(study, sid, expected) {
 }
 async function closePage(page, study, sid) {
   await page.evaluate(() => globalThis.window.__benchmarkDrain());
+  await page.evaluate(() => globalThis.window.__costInputs.prepareDisconnect());
   await page.close();
   await wait(async () => ['disconnected', 'expired', 'completed'].includes((await session(study, sid)).lifecycle));
   await controller.pump();
@@ -141,7 +143,6 @@ async function visual(inputs) {
   }
   return editor.publish(author, inputs);
 }
-if (!contentChecks) {
 test('idle: registered schedules execute once per minute', async () => {
   await controller.prepare('idle');
   await resetFixtures();
@@ -154,6 +155,7 @@ test('idle: registered schedules execute once per minute', async () => {
   assert.deepEqual(report.coverageIssues, []);
   scenarios.push({ name: 'idle', inputs: { seconds: 60, sessions: 0 }, controlledInputs: controller.inputConditions(), ...report, functional: { passed: true } });
 });
+if (!contentChecks) {
 for (const indexed of [true, false]) for (const size of [0, 1, 3]) {
   test(`normal: indexed=${indexed} batch=${size}`, () => scenario(`normal-${indexed}-${size}`, { indexed, size, count: 5, timeout: 1 }, async study => {
     const page = await pageFor(study); await complete(page); const sid = await page.evaluate(() => globalThis.window.JSPSYCH_SESSION_ID);
@@ -241,6 +243,7 @@ for (const provider of ['googledrive', 'dropbox', 'osf']) test(`provider write a
     const captures = [], name = 'controlled-' + JSON.stringify(options);
     for (let repetition = 0; repetition < 2; repetition++) {
       await scenario(name, { ...options, size: 1, timeout: 1, count: 3 }, async study => {
+        controller.setNativeDelay(repetition ? 20 : 0);
         const start = h.requests.length, page = await pageFor(study);
         if (options.visual) {
           for (let trial = 0; trial < 3; trial++) {
@@ -259,10 +262,20 @@ for (const provider of ['googledrive', 'dropbox', 'osf']) test(`provider write a
         await page.context().close(); await controller.pump();
         return { passed: true, events: result.rows.length, csvHash: createHash('sha256').update(JSON.stringify(result.rows)).digest('hex') };
       });
+      const measured = scenarios.at(-1), idle = scenarios.find(item=>item.name==='idle');
+      const budget = referenceBudgets({scenarios:[idle,measured]},costProfile).scenarios[0];
+      for (const variant of ['low','nominal','high']) {
+        assert.equal(budget[variant].status, 'complete');
+        assert.ok(budget[variant].projections.every(row=>row.total !== null), 'Equal incomplete subtotals must never pass as equal modeled costs');
+      }
+      captures.at(-1).storageTimeline = measured.storageTimeline;
+      captures.at(-1).timing = measured.storageTiming;
+      captures.at(-1).money = Object.fromEntries(['low','nominal','high'].map(variant=>[variant,{projections:budget[variant].projections, quantities:budget[variant].items.map(item=>({id:item.id,quantity:item.quantity.value,unit:item.quantity.unit}))}]));
+      if (repetition) assert.ok(measured.overhead.injectedDelayMs > 0, 'The second execution must actually include native delays');
     }
     try {
-      assert.deepEqual(captures[1], captures[0], 'Actual submitted envelopes and complete CSV rows must repeat, without stripping fields');
-      contentComparisons.push({ name, passed: true });
+      assert.deepEqual(captures[1], captures[0], 'Submitted envelopes, CSV, controlled storage and modeled costs must repeat despite native IO delays');
+      contentComparisons.push({ name, passed: true, completeBudgets:true, pricedVariants:['low','nominal','high'], nativeDelayMs:20 });
     } catch (error) { contentComparisons.push({ name, passed: false, reason: error.message }); throw error; }
   });
 }

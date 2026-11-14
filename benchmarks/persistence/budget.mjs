@@ -126,7 +126,8 @@ export function referenceBudgets(reference, profile, { windowSeconds = 2592000, 
       // Initial inventory at time zero, then observed changes. Equal-time commits use their final state.
       const timeline = [{ atSeconds: 0, bytes: 0 }, ...samples];
       const unique = [...new Map(timeline.map(sample => [sample.atSeconds, sample])).values()].filter(sample => sample.atSeconds < windowSeconds);
-      const storage = storageUsage({ samples: unique, windowSeconds, billingPeriodSeconds: 2592000, representation: 'stored-including-indexes', provenance: 'assumed', source: conditions.retention });
+      const storage = storageUsage({ samples: unique, windowSeconds, billingPeriodSeconds: 2592000, representation: 'stored-including-indexes', provenance: 'assumed',
+        source: 'Observed stored bytes integrated over the capture timeline and declared retention horizon: ' + conditions.retention, timing:scenario.storageTiming });
       items.push({ id: 'session-firestore-storage', rate: 'firestore-storage', scope: 'per-session', service: 'firestore', location: 'nam5', quantity: storage });
       items.push({ id: 'session-rtdb-storage', rate: 'rtdb-storage', scope: 'per-session', service: 'rtdb', location: 'us-central1', quantity: assumed(scenario.retainedRtdbJsonBytes * conditions[variant].rtdbStoredFactor / 1e9 * windowSeconds / 2592000, 'GB-month', 'Retained RTDB JSON times declared metadata/index uplift, retained throughout window') });
       result[variant] = calculateBudget({ name: scenario.name + ' / ' + variant, scope: 'Public runtime Google Cloud consumption under declared resources, network and retention; excludes provider plan and publishing/deployment', profile, windowSeconds, volumes, items,

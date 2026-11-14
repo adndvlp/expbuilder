@@ -37,15 +37,15 @@ export function createDispatcher({ meter, definitions, queue, now = Date.now }) 
   }
   return { event,
     async pump() {
-      for (const [name, due] of schedules) {
-        let next = due;
-        while (next <= now()) { events.push({ name, due: next, data: {}, attempt: 0 }); next += handlers.get(name).intervalMs; }
-        schedules.set(name, next);
-      }
       // New events produced by a commit are drained in order before delivering the next task.
       let iterations = 0;
       while (true) {
         if (++iterations > 10000) throw new Error('Dispatcher did not reach quiescence');
+        for (const [name, due] of schedules) {
+          let next = due;
+          while (next <= now()) { events.push({ name, due: next, data: {}, attempt: 0 }); next += handlers.get(name).intervalMs; }
+          schedules.set(name, next);
+        }
         const index = events.findIndex(item => item.due <= now());
         if (index >= 0) { await deliver(events.splice(index, 1)[0], false); continue; }
         const task = queue.findIndex(item => item.due <= now());

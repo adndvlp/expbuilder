@@ -61,7 +61,7 @@ test('stopping Node input selection restores ordinary values without patching Da
   assert.notEqual(nodeInputs.id('event'), inputs.id('event'));
   assert.equal(Date, date); assert.equal(Date.now, now); assert.equal(globalThis.crypto, crypto); assert.equal(Math.random, math);
 });
-test('source instrumentation controls identities/calendar and synthetic data, while leaving real timeout clocks alone', () => {
+test('source instrumentation controls public calendar/deadlines through the private facade', () => {
   const code = `function _publicEventId() { return crypto.randomUUID(); }
     const writer = { connectionId: crypto.randomUUID(), token: crypto.randomUUID() };
     const startedAt = new Date().toISOString();
@@ -70,7 +70,7 @@ test('source instrumentation controls identities/calendar and synthetic data, wh
   const output = instrumentInputs(code, { scope: 'public', browser: true });
   assert.match(output, /__costInputs\.id\(/); assert.match(output, /__costInputs\.date\(/);
   assert.match(output, /__costInputs\.initJsPsych\(/);
-  assert.match(output, /remaining = Date\.now\(\)/);
+  assert.match(output, /remaining = window\.__costInputs\.now\(\)/);
   assert.match(output, /clientTimestamp = .*__costInputs\.number\(/);
 });
 test('Date.now used as a calendar value is controlled, but an actual deadline remains native', () => {

@@ -1,6 +1,6 @@
 # SDD: repetibilidad del benchmark de costos
 
-Estado: entrega 1 implementada; entregas 2 a 4 pendientes.
+Estado: entregas 1 y 2 implementadas; entregas 3 y 4 pendientes.
 
 Fecha: 2026-11-13. Código revisado: 5835f16, rama bug-fix.
 
@@ -181,4 +181,33 @@ Resultados: 126 unitarias aprobadas (13 nuevas), seis comparaciones de dos parti
 
 ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules. Las evidencias locales se conservan en las rutas indicadas. content-checks.json identifica que valida contenido, no la igualdad monetaria completa.
 
-La implementación se detiene al cerrar la entrega 1. Siguen pendientes la línea temporal de almacenamiento de la entrega 2, el contrato de comparación de la entrega 3 y las tres capturas completas con referencia/CI de la entrega 4. La referencia y la política estricta existentes permanecen intactas.
+Al cerrar la entrega 1 quedaban pendientes la línea temporal de almacenamiento de la entrega 2, el contrato de comparación de la entrega 3 y las tres capturas completas con referencia/CI de la entrega 4. La referencia y la política estricta existentes permanecían intactas.
+
+## 11. Entrega 2: resultado y validación
+
+Se implementó el [calendario del escenario](../benchmarks/persistence/clock.mjs) con fecha inicial fija, avances explícitos y duraciones declaradas de operaciones. [persistence-timing.json](../benchmarks/profiles/persistence-timing.json) declara 20 ms por invocación, 20 ms por lectura Firestore, 35 ms por intento de commit, 30 ms por operación de RTDB y 300 ms por solicitud de proveedor. Las respuestas sintéticas conservan sus 125 ms y la desconexión se programa 10 segundos después del registro de esa conexión. Son condiciones de una carga serial; el modelo de CPU/RAM mantiene sus hipótesis low/nominal/high.
+
+recordStorage dejó de sumar performance.now() a la línea temporal. Los tamaños se calculan desde el inventario observado con sus índices, y los intervalos proceden exclusivamente del calendario controlado. storageTimeline conserva las muestras; storageTiming registra época, duraciones, contadores y avances. Las cantidades de almacenamiento derivadas conservan esa procedencia en el presupuesto. Los documentos retenidos siguen costeándose hasta el fin del horizonte, sin crear un TTL.
+
+Los relojes reales de los SDK y los temporizadores del navegador permanecen operativos. Las llamadas y referencias Date.now del código bajo prueba usan la fachada privada del benchmark. Los intervalos reales de ejecución, inspección y demoras inyectadas quedan en los diagnósticos. El harness ordinario conserva su mecanismo previo.
+
+RTDB conserva ServerValue.TIMESTAMP y las reglas reales, incluida la validación changedAt == now. El observador cuenta el contenido original del SDK y de los eventos. Después, una [vista privada de presencia](../benchmarks/persistence/clock-database.mjs) entrega a los handlers una copia con la fecha del calendario controlado; los valores almacenados y las reglas no se reescriben. La desconexión real y la cancelación siguen ejecutándose en el emulador. La captura declara esta proyección en realtimeCalendar.
+
+La activación espera a que el listener haya observado la presencia correspondiente, y la entrega HTTP espera a que el dispatcher complete las entregas disponibles. Las tareas futuras permanecen en cola. El dispatcher comprueba también los ticks que vencen mientras procesa trabajo, conservando las invocaciones sin cambios y los reintentos. Estas reglas de coordinación quedan declaradas en las condiciones del calendario.
+
+El participante sintético entrega la respuesta siguiente cuando termina la llamada on_data_update anterior. Esa carga serial evita que una variación de velocidad del host cambie el orden de las respuestas y los commits. La barrera privada se libera al entrar en el callback original: el runtime puede avanzar después del respaldo local mientras se termina de enviar un lote. Las pruebas comprueban esa distinción expresamente.
+
+TDD reprodujo el tick perdido durante un handler y la barrera que retenía el avance durante un envío. La comparación real con demoras detectó también un orden variable entre una respuesta y un commit; se corrigió la coordinación del participante sintético sin cambiar la persistencia del producto. No se añadieron tolerancias ni se eliminaron campos para aprobar la igualdad.
+
+Comandos ejecutados:
+
+    npm run test:cost:unit
+    npm run test:cost:content -- --output /tmp/cost-clock-point2-verified
+    npm run benchmark:cost:persistence -- --output /tmp/cost-clock-point2-matrix-final
+    node --test api/persistence-e2e/runtime.test.mjs api/persistence-e2e/provider-contract.test.mjs
+
+Validación: 137 unitarias aprobadas (11 nuevas), los 23 escenarios de la matriz completa y las nueve comprobaciones existentes de runtime/proveedores. test:cost:content aprobó la observación independiente de inactividad y seis comparaciones, cada una con dos ejecuciones; la segunda introduce demoras reales de 20 ms en proveedor e inspecciones. Exige igualdad exacta de envelopes, CSV, línea temporal, cantidades presupuestadas e importes low/nominal/high para 1/1.000/10.000 sesiones, con presupuestos completos. La demora real inyectada queda identificada en overhead y no se transforma en duración de nube.
+
+Las unitarias verifican además los 200/300 bytes·segundo del ejemplo, intervalos positivos de commits, retención hasta el horizonte, fronteras de reintento, identidad del evento y relojes nativos sin modificaciones globales. ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules.
+
+La implementación se detiene en la entrega 2. El contrato de compatibilidad de capturas y las tres repeticiones completas con nueva referencia/CI corresponden a las entregas 3 y 4. Esta validación de seis casos no sustituye ese cierre completo. Las tarifas, reglas, funciones del producto, referencia existente y política estricta permanecen intactas.

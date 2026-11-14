@@ -1,0 +1,8 @@
+{
+  "source": "Controlled serial scenario calendar. Operation durations and disconnect delay are declared test inputs, not emulator wall time or measured Google Cloud duration. CPU/RAM pricing retains its separate low/nominal/high model.",
+  "operationMs": { "function": 20, "firestoreRead": 20, "firestoreCommit": 35, "realtime": 30, "provider": 300 },
+  "disconnectAfterMs": 10000,
+  "participantSchedule": "Serial synthetic responses, each after the previous on_data_update submission settles. Runtime advancement after local backup remains allowed while that submission flushes.",
+  "realtimeCalendar": "RTDB writes and rule validation retain native server timestamps. Raw SDK/event bytes are counted before exposing a copied presence calendar view to handlers; planned disconnect actions provide their scenario timestamp.",
+  "httpDelivery": "After the registered event/task dispatcher reaches quiescence; retries at future deadlines remain queued."
+}

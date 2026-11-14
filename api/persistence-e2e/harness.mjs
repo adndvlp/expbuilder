@@ -23,7 +23,8 @@ export async function startHarness({ benchmark } = {}) {
   if (process.env.PERSISTENCE_E2E !== '1' || process.env.GCLOUD_PROJECT !== 'demo-public-persistence'
       || !process.env.FIRESTORE_EMULATOR_HOST?.startsWith('127.0.0.1:') || !process.env.FIREBASE_DATABASE_EMULATOR_HOST?.startsWith('127.0.0.1:')) throw new Error('This harness requires isolated demo emulators');
   const servers = [], faults = [], errors = [], root = process.env.PERSISTENCE_E2E_ROOT, temp = process.env.PERSISTENCE_E2E_TEMP;
-  const nativeNow = Date.now; let offset = 0; Date.now = () => benchmark?.now?.() ?? nativeNow() + offset;
+  const nativeNow = Date.now; let offset = 0;
+  if (!benchmark) Date.now = () => nativeNow() + offset;
   const listen = async handler => {
     const server = http.createServer(handler); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     servers.push(server); return `http://127.0.0.1:${server.address().port}`;

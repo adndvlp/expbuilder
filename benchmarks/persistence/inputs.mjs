@@ -1,5 +1,5 @@
 // Synthetic fixture data only. No browser, SDK or process globals are replaced.
-export function createScenarioInputs({ scenario, seed = 'persistence-content-1', epoch = 1794528000000, responseMs = 125, counters = new Map() } = {}) {
+export function createScenarioInputs({ scenario, seed = 'persistence-content-1', epoch = 1794528000000, responseMs = 125, counters = new Map(), now } = {}) {
   if (typeof scenario !== 'string' || !scenario.trim() || typeof seed !== 'string' || !seed.trim()
       || !Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(responseMs) || responseMs < 1) throw new Error('Invalid controlled scenario inputs');
   const next = actor => {
@@ -27,7 +27,8 @@ export function createScenarioInputs({ scenario, seed = 'persistence-content-1',
       const value = Number.parseInt(prefix(actor).slice(0, 8), 16) ^ next('random:' + actor);
       return (Math.imul(value ^ (value >>> 16), 2246822519) >>> 0) / 0x100000000;
     },
-    date(...args) { return args.length ? new Date(...args) : new Date(epoch); },
+    now: () => now ? now() : Date.now(),
+    date(...args) { return args.length ? new Date(...args) : new Date(now ? now() : epoch); },
     conditions() { return { scenario, seed, epoch, responseMs }; },
   };
 }

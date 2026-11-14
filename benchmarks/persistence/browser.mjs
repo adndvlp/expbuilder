@@ -1,5 +1,6 @@
 import { observeRealtimeDatabase } from '../core/adapters.mjs';
 import { quantity } from '../core/quantity.mjs';
+import { controlDatabaseTimestamps } from './clock-database.mjs';
 const { window } = globalThis;
 const pending = new Set();
 function emit(method, ...args) {
@@ -20,7 +21,9 @@ const native = window.firebase.database;
 const databases = new WeakMap();
 function observedDatabase(...args) {
   const database = native(...args);
-  if (!databases.has(database)) databases.set(database, observeRealtimeDatabase(database, meter, { transferBytes }));
+  if (!databases.has(database)) databases.set(database, observeRealtimeDatabase(controlDatabaseTimestamps(database, {
+    now:window.__costInputs.now, disconnectAt:window.__costInputs.disconnectAt, cancelled:window.__costInputs.cancelDisconnect,
+  }), meter, { transferBytes }));
   return databases.get(database);
 }
 Object.setPrototypeOf(observedDatabase, native);

@@ -18,8 +18,11 @@ import { instrumentInputs } from './instrument-inputs.mjs';
 import { selectNodeInputs } from './node-inputs.mjs';
 import { createProviderTransport } from './input-transport.mjs';
 import { withProviderInputs, resetStore, store } from '../../api/mock-providers/store.mjs';
+import { createScenarioClock, timeMeter } from './clock.mjs';
+import { controlDatabaseTimestamps } from './clock-database.mjs';
+import { setTimeout, clearTimeout } from 'node:timers';
+import { setTimeout as delay } from 'node:timers/promises';
 
-const nativeNow = Date.now;
 const count = (object, key) => Number(object?.[key]?.value || 0);
 const assumedBytes = value => quantity(value, 'byte', { provenance: 'assumed', source: 'RTDB JSON/protocol model: 512 response bytes and 256 request bytes per SDK exchange; TLS separate' });
 export async function createController() {
@@ -28,10 +31,34 @@ export async function createController() {
   const inputBundle = await build({ entryPoints: [new URL('./browser-inputs.mjs', import.meta.url).pathname], bundle: true, platform: 'browser', format: 'iife', globalName: 'CostFixtureInputs', write: false });
   const transport = createProviderTransport(), providerOrigins = new Map();
   let inputs = createScenarioInputs({ scenario: 'setup' }), providerInputs = new Map(), participants = 0;
-  state.transport = transport; selectNodeInputs(inputs);
+  let clock = createScenarioClock({epoch:inputs.epoch}), nativeDelayMs = 0, injectedDelayMs = 0;
+  const nativeDelay = async () => { if (nativeDelayMs) { injectedDelayMs += nativeDelayMs; await delay(nativeDelayMs); } };
+  state.transport = transport; state.clock = clock; selectNodeInputs(inputs, clock);
   const indexConfig = JSON.parse(await readFile(new URL('../../api/firestore.indexes.json', import.meta.url)));
-  let tail = Promise.resolve(), active = false, definitions = [], cached = new Map(), timeline = [], currentTime = nativeNow(), overheadMs = 0;
-  let realtimeCache = new Map(), diagnosticReads = 0, httpRequests = 0, virtualStart = 0, wallStart = 0, stopListener = () => {};
+  let tail = Promise.resolve(), active = false, definitions = [], cached = new Map(), overheadMs = 0;
+  let realtimeCache = new Map(), diagnosticReads = 0, httpRequests = 0, stopListener = () => {};
+  const presenceWaiters = new Set();
+  let presenceTimes = new Map(), disconnectPlans = new Map();
+  const presenceKey = (path, data) => JSON.stringify([path, data.generation, data.connected, data.changedAt]);
+  function presenceView(path, data) {
+    if (!path.startsWith('/session_connections/') || !data) return data;
+    const at = presenceTimes.get(presenceKey(path.slice('/session_connections/'.length), data));
+    if (at === undefined) throw new Error('RTDB presence has not reached the controlled event boundary');
+    return {...data, changedAt:at};
+  }
+  const presenceMatches = data => {
+    const value = realtimeCache.get(`${data.experimentID}/${data.sessionId}/${data.connectionId}`);
+    return value?.connected === true && value.generation === data.connectionGeneration;
+  };
+  function waitForPresence(data) {
+    if (presenceMatches(data)) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const waiter = { data, resolve: () => { clearTimeout(timer); presenceWaiters.delete(waiter); resolve(); },
+        reject: error => { clearTimeout(timer); presenceWaiters.delete(waiter); reject(error); } };
+      const timer = setTimeout(() => waiter.reject(new Error('Controlled presence was not observed before activation')), 10000);
+      presenceWaiters.add(waiter);
+    });
+  }
   const exclusive = operation => {
     const result = tail.then(operation); tail = result.catch(() => {}); return result;
   };
@@ -39,13 +66,14 @@ export async function createController() {
     return exclusive(async () => {
       const previous = state.active; state.active = null;
       const start = performance.now();
-      try { return await operation(); }
+      try { await nativeDelay(); return await operation(); }
       finally { overheadMs += performance.now() - start; state.active = previous; }
     });
   }
   async function committed(operations) {
     const start = performance.now();
     try {
+      await nativeDelay();
       const refs = [...new Map(operations.map(({ ref }) => [ref.path, ref])).values()];
       const snapshots = await state.nativeDb.getAll(...refs); diagnosticReads += refs.length;
       const changes = changedDocuments(cached, snapshots.map(doc => ({ path: doc.ref.path, data: doc.exists ? doc.data() : null })));
@@ -75,31 +103,35 @@ export async function createController() {
   }
   function recordStorage() {
     const groups = inventory(), bytes = Object.entries(groups).filter(([key]) => !['experiments', 'logs', 'users'].includes(key)).reduce((sum, [, value]) => sum + value.storedBytes, 0);
-    timeline.push({ atSeconds: (currentTime - virtualStart + performance.now() - wallStart) / 1000, bytes });
+    clock.sample(bytes);
   }
   const controller = {
     browserScript: bundle.outputFiles[0].text,
     contextOptions: { locale: 'en-US', timezoneId: 'UTC', viewport: { width: 1280, height: 720 }, screen: { width: 1280, height: 720 },
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 CostBenchmarkFixture/1' },
-    inputConditions: () => ({ ...inputs.conditions(), participantEnvironment: controller.contextOptions }),
+    inputConditions: () => ({ ...inputs.conditions(), participantEnvironment: controller.contextOptions, timing:clock.conditions() }),
     async prepare(name, conditions = {}) {
       await tail; if (active) throw new Error('Cannot replace active scenario inputs');
       inputs = createScenarioInputs({ ...conditions, scenario: name }); providerInputs = new Map(); participants = 0;
-      selectNodeInputs(inputs); resetStore();
+      clock = createScenarioClock({epoch:inputs.epoch}); state.clock = clock; nativeDelayMs = 0; injectedDelayMs = 0;
+      presenceTimes = new Map(); disconnectPlans = new Map();
+      selectNodeInputs(inputs, clock); resetStore();
       store.drive.tokens.set('token', {}); store.dropbox.tokens.set('token', {}); store.osf.tokens.set('token', {});
     },
     studyId: () => inputs.id('experiment'),
-    publicCode: source => instrumentInputs(source, { scope: 'public', browser: true }),
+    publicCode: source => '(async () => { await window.__costInputs.ready;\n' + instrumentInputs(source, { scope: 'public', browser: true }) + '\n})();',
     providerUrl(name, actual) {
       const logical = transport.register(name, actual); providerOrigins.set(name, logical); return logical;
     },
-    provider(name, handler, req, res, url, body, contentType) {
-      if (!providerInputs.has(name)) providerInputs.set(name, createScenarioInputs({ ...inputs.conditions(), scenario: inputs.scenario + '/provider-' + name }));
+    async provider(name, handler, req, res, url, body, contentType) {
+      if (!providerInputs.has(name)) providerInputs.set(name, createScenarioInputs({ ...inputs.conditions(), scenario: inputs.scenario + '/provider-' + name, now:clock.now }));
+      await nativeDelay();
       const logical = new URL(url.pathname + url.search, providerOrigins.get(name));
       return withProviderInputs(providerInputs.get(name), () => handler(req, res, logical, body, contentType));
     },
-    now: () => active ? currentTime : nativeNow(),
-    advance(ms) { if (!Number.isSafeInteger(ms) || ms < 0) throw new Error('Invalid virtual advance'); currentTime += ms; },
+    now: () => clock.now(),
+    advance: ms => clock.advance(ms),
+    setNativeDelay(ms) { if (!Number.isSafeInteger(ms) || ms < 0 || ms > 1000) throw new Error('Invalid diagnostic delay'); nativeDelayMs = ms; },
     inspect, exclusive,
     async initialize() {
       const modules = await Promise.all([
@@ -124,16 +156,15 @@ export async function createController() {
     },
     async begin(name, h, study) {
       await tail; if (active) throw new Error('Scenario already active');
-      deliveries.length = 0; cached = new Map(); timeline = []; realtimeCache = new Map(); diagnosticReads = 0; overheadMs = 0; httpRequests = 0;
-      currentTime = nativeNow(); virtualStart = currentTime; wallStart = performance.now();
+      deliveries.length = 0; cached = new Map(); realtimeCache = new Map(); diagnosticReads = 0; overheadMs = 0; httpRequests = 0;
       if (study) {
         const ref = state.nativeDb.doc('experiments/' + study.id), snapshot = await ref.get();
         cached.set(ref.path, snapshot.data());
       }
       const owner = await state.nativeDb.doc('users/owner').get(); cached.set(owner.ref.path, owner.data());
-      controller.meter = createMeter({ scenario: name, environment: 'Node 22 + Firestore/RTDB emulators + system Chromium + local provider HTTP', clock: () => performance.now() - overheadMs, maxEvidencePerMetric: 128 });
+      controller.meter = timeMeter(createMeter({ scenario: name, environment: 'Node 22 + Firestore/RTDB emulators + system Chromium + local provider HTTP', clock: () => performance.now() - overheadMs, maxEvidencePerMetric: 128 }), clock);
       controller.observedDb = observeFirestore(state.nativeDb, controller.meter, { queryIndexReads: indexReadUnits, onCommitted: committed });
-      controller.dispatcher = createDispatcher({ meter: controller.meter, definitions, queue: deliveries, now: () => currentTime });
+      controller.dispatcher = createDispatcher({ meter: controller.meter, definitions, queue: deliveries, now:clock.now });
       controller.rtdbWrappers = new WeakMap();
       const root = h.realtime.ref();
       await root.set(null); // Preparation, deliberately outside workload observation.
@@ -146,33 +177,49 @@ export async function createController() {
         for (const path of realtimeCache.keys()) if (!documents.some(item => item.path === path)) documents.push({ path, data: null });
         const changes = changedDocuments(realtimeCache, documents);
         for (const change of changes) {
+          if (change.after) {
+            const planned = change.after.connected === false ? disconnectPlans.get('/session_connections/' + change.path) : undefined;
+            presenceTimes.set(presenceKey(change.path, change.after), planned ?? clock.now());
+          }
           const [experimentID, sessionId, connectionId] = change.path.split('/');
           controller.meter.add('rtdb.presenceChanges', 1, { source: 'RTDB emulator change observed by benchmark infrastructure; not an extra application read' });
           controller.dispatcher.event('onSessionConnectionWritten', { params: { experimentID, sessionId, connectionId }, data: {
-            before: { val: () => change.before }, after: { val: () => change.after },
+            before: { val: () => presenceView('/session_connections/' + change.path, change.before) }, after: { val: () => presenceView('/session_connections/' + change.path, change.after) },
           } }, Buffer.byteLength(JSON.stringify(change)));
         }
         if (all.sessions && Object.keys(all.sessions).length) controller.meter.unknown('rtdb.legacyCoverage', 'count', 'Unexpected legacy /sessions writes need trigger replay');
+        for (const waiter of presenceWaiters) if (presenceMatches(waiter.data)) waiter.resolve();
       };
       root.on('value', listener); stopListener = () => root.off('value', listener);
       active = true; state.active = controller; recordStorage();
     },
     realtime(database) {
-      if (!controller.rtdbWrappers.has(database)) controller.rtdbWrappers.set(database, observeRealtimeDatabase(database, controller.meter, {
+      if (!controller.rtdbWrappers.has(database)) controller.rtdbWrappers.set(database, controlDatabaseTimestamps(observeRealtimeDatabase(database, controller.meter, {
         transferBytes: ({ direction, payloadJsonBytes = 0 }) => ({ download: assumedBytes((direction === 'read' ? payloadJsonBytes : 0) + 512), upload: assumedBytes((direction === 'write' ? payloadJsonBytes : 0) + 256) }),
-      }));
+      }), {readPresence:presenceView}));
       return controller.rtdbWrappers.get(database);
     },
     async attach(context) {
       const conditions = { ...inputs.conditions(), participant: ++participants };
+      conditions.timing = clock.conditions();
+      await context.exposeBinding('__benchmarkTime', async (_source, action, data) => {
+        if (action === 'presence') await waitForPresence(data);
+        return exclusive(async () => {
+          if (!active) throw new Error('Clock action outside active scenario');
+          if (action === 'response') clock.advance(inputs.responseMs, 'synthetic-response');
+          else if (action === 'disconnect') { clock.advanceTo(data.at, 'declared-disconnect'); disconnectPlans.set(data.path, data.at); }
+          else if (!['sync','presence'].includes(action)) throw new Error('Unknown scenario clock action');
+          await controller.dispatcher.pump(); return clock.now();
+        });
+      });
       await context.addInitScript(inputBundle.outputFiles[0].text + '\nCostFixtureInputs.installBrowserInputs(window, ' + JSON.stringify(conditions) + ');');
-      await context.exposeBinding('__benchmarkMetric', (_source, method, args) => {
+      await context.exposeBinding('__benchmarkMetric', (_source, method, args) => exclusive(() => {
         if (!active) return;
         if (!['add', 'addQuantity', 'unknown'].includes(method)) throw new Error('Invalid browser observation');
         // Add environment explicitly; browser operations never inherit a function invocation.
         if (method === 'add') args[2] = { environment: 'Chromium Firebase compat SDK', ...args[2] };
         controller.meter[method](...args);
-      });
+      }));
     },
     http(handler, req, res) {
       return exclusive(async () => {
@@ -181,13 +228,15 @@ export async function createController() {
         controller.meter.add('http.requests', 1);
         controller.meter.add('http.requestContentBytes', Buffer.byteLength(JSON.stringify(req.body)), { unit: 'byte', source: 'HTTP JSON entity, excludes wire overhead' });
         const nativeJson = res.json;
+        let responseBody, responseReady = false;
         res.json = function (value) {
           if (res.statusCode >= 400) controller.meter.add('http.errorResponses', 1);
           controller.meter.add('http.responseContentBytes', Buffer.byteLength(JSON.stringify(value)), { unit: 'byte', source: 'HTTP JSON entity, excludes wire overhead' });
-          return nativeJson.call(this, value);
+          responseBody = value; responseReady = true; return this;
         };
         await controller.meter.wrapFunction('apiData', handler, { origin: 'http' })(req, res);
         await controller.dispatcher.pump();
+        if (responseReady) { res.json = nativeJson; nativeJson.call(res, responseBody); }
       }).catch(error => { controller.failure = error; if (!res.headersSent && !res.destroyed) res.status(500).end(); });
     },
     async pump() { return exclusive(async () => { if (active) { if (controller.failure) throw controller.failure; await controller.dispatcher.pump(); } }); },
@@ -209,15 +258,16 @@ export async function createController() {
         if (!isDeepStrictEqual(retainedInventory, inventory(nativeInventory))) controller.meter.unknown('inventory.coverage', 'count', 'Observed retained inventory differs from native emulator inventory');
         overheadMs += performance.now() - measurementStart;
         const nativeTree = await h.realtime.ref().once('value'); diagnosticReads++;
-        const result = { ...controller.meter.snapshot(), inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: timeline,
+        const result = { ...controller.meter.snapshot(), inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: clock.samples(), storageTiming:clock.snapshot(),
           retainedRtdbJsonBytes: Buffer.byteLength(JSON.stringify(nativeTree.val() || {})),
-          pending: controller.dispatcher.pending(), virtualSeconds: (currentTime - virtualStart) / 1000,
-          overhead: { diagnosticReads, localInspectionMs: overheadMs, note: 'Unpriced benchmark-only snapshot reads, setup, validation, browser instrumentation and emulator traffic; inspection time excluded from local function samples' }, httpRequests,
+          pending: controller.dispatcher.pending(), virtualSeconds: clock.elapsedMs() / 1000,
+          overhead: { diagnosticReads, localInspectionMs: overheadMs, injectedDelayMs, note: 'Unpriced benchmark-only snapshot reads, setup, validation, browser instrumentation and emulator traffic; inspection time excluded from local function samples' }, httpRequests,
           registrations: definitions.map(({ handler, ...definition }) => { void handler; return definition; }) };
         active = false; state.active = null; controller.failure = null; return result;
       });
     },
-    stop() { active = false; state.active = null; state.transport = null; selectNodeInputs(null); stopListener(); },
+    stop() { active = false; state.active = null; state.transport = null; state.clock = null; selectNodeInputs(null); stopListener();
+      for (const waiter of presenceWaiters) waiter.reject(new Error('Scenario stopped')); },
     metric(name) { return count(controller.meter.snapshot().metrics, name); },
   };
   return controller;

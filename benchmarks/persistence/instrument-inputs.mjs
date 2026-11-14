@@ -26,14 +26,17 @@ export function instrumentInputs(source, { scope, browser = false } = {}) {
       if (member(callee, 'crypto', 'randomUUID') || uuidNames.has(callee.name)) edits.push([node.start, node.end, `${target}.id(${identity})`]);
       else if (member(callee, 'Math', 'random')) edits.push([node.start, node.end, `${target}.random(${identity})`]);
       else if (browser && callee.type === 'Identifier' && callee.name === 'initJsPsych') edits.push([callee.start, callee.end, `${target}.initJsPsych`]);
+      else if (browser && callee.type === 'Identifier' && callee.name === 'fetch') edits.push([callee.start, callee.end, `${target}.fetch`]);
       else if (member(callee, 'Date', 'now')) {
         const parent = ancestors.at(-2);
         if (parent?.type === 'NewExpression' && parent.callee.name === 'Date' && parent.arguments[0] === node) return;
         const dataField = parent?.type === 'AssignmentExpression' ? key(parent.left?.property)
           : parent?.type === 'Property' ? key(parent.key) : null;
-        if (scope.startsWith('server/') || ['clientTimestamp', 'timestamp', 'createdAt'].includes(dataField)) edits.push([node.start, node.end, `${target}.number(${identity})`]);
+        const numeric = scope.startsWith('server/') || ['clientTimestamp', 'timestamp', 'createdAt'].includes(dataField);
+        edits.push([node.start, node.end, numeric ? `${target}.number(${identity})` : `${target}.now()`]);
       }
     }
+    if (member(node, 'Date', 'now') && !(ancestors.at(-2)?.type === 'CallExpression' && ancestors.at(-2).callee === node)) edits.push([node.start, node.end, `${target}.now`]);
     if (node.type === 'NewExpression' && node.callee.name === 'Date'
         && (node.arguments.length === 0 || (node.arguments.length === 1 && member(node.arguments[0].callee, 'Date', 'now')))) edits.push([node.start, node.end, `${target}.date()`]);
   });
