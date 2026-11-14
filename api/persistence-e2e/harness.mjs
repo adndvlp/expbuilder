@@ -18,6 +18,7 @@ import { handleDropbox } from '../mock-providers/providers/dropbox.mjs';
 import { handleOsf } from '../mock-providers/providers/osf.mjs';
 import { handleGithub } from '../mock-providers/providers/github.mjs';
 import { deliveries } from './task-queue.mjs';
+import { createDefaultPublicSettings } from '../functions/experiment/settings.js';
 
 export async function startHarness({ benchmark } = {}) {
   if (process.env.PERSISTENCE_E2E !== '1' || process.env.GCLOUD_PROJECT !== 'demo-public-persistence'
@@ -108,12 +109,11 @@ export async function startHarness({ benchmark } = {}) {
     const folder = `folder-${id}`;
     store.osf.nodes.set(folder, { id: folder, kind: 'nodes', attributes: {} });
     const exists = (await db.collection('experiments').doc(id).get()).exists;
-    await db.collection('experiments').doc(id).set({ active: true, owner: 'owner', ...(!exists && { sessions: 0, currentCondition: 0, nConditions: 1 }),
+    await db.collection('experiments').doc(id).set({ ...createDefaultPublicSettings(), active: true, owner: 'owner', ...(!exists && { sessions: 0, currentCondition: 0, nConditions: 1 }),
       storageProvider, driveFolderId: folder, dropboxFolder: '/' + folder, osfUploadLink: `${osfOrigin}/v2/nodes/${folder}/files/osfstorage/`, batchConfig }, { merge: true });
     const code = buildPublicExperimentCode({ DATA_API_URL: origin + '/apiData', FIREBASE_DATABASE_URL: 'https://demo-public-persistence-default-rtdb.firebaseio.com',
       firebaseWebConfig: { apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com', authDomain: 'demo', storageBucket: 'demo', messagingSenderId: 'demo', appId: 'demo' },
-      experimentID: id, useStorage: storageProvider, batchConfig, recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
-      captchaConfig: { enabled: false, siteKey: '', provider: 'hcaptcha' }, sessionNameTokens: [], sessionNameSeparator: '_', currentUid: 'owner',
+      experimentID: id, useStorage: storageProvider, sessionNameTokens: [], sessionNameSeparator: '_', currentUid: 'owner',
       evaluateCondition: '', branchingEvaluation: branchingEvaluationRuntimeCode, customPreInitCode: {}, publicParams: {}, extensions: '', progressBar: false,
       baseCode: baseCode ?? `const branchParameters = null; if (branchParameters) Object.entries(branchParameters);
         class Trial { static info = { name: 'test', version: '1', parameters: {}, data: {} }; constructor(instance) { this.instance = instance; }

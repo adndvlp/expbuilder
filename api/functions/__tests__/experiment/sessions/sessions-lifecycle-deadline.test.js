@@ -8,7 +8,7 @@ const append = (generation = 1, id = 'C1', sequence = 0) => request({ action: 'a
 async function connected() { const result = await create(); presence('C1', 1, true, time); await activate(); return result; }
 const timeout = async payload => (await import('../../../experiment/sessions/timeout/tasks.js')).handleSessionTimeoutTask(payload);
 describe('one authoritative session deadline and writer generation', () => {
-  test('freezes published batching, destination and validation at creation', async () => {
+  test('freezes saved batching with the published destination and validation at creation', async () => {
     const result = await create();
     expect(result.statusCode).toBe(201);
     expect(store.records.get(base)).toMatchObject({ sessionProtocolVersion: 3,

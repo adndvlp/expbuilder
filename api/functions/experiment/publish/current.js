@@ -4,21 +4,13 @@ import { uploadFileGithub } from '../hosting/services.js';
 import { uploadMediaFiles } from './media.js';
 import { resolveFolderIdentifier } from '../sessions/finalization/storage-file.js';
 
-export function readPublicationConfiguration(html) {
-  const match = html.match(/const _PUBLIC_PUBLICATION_CONFIG = (\{[^\n]*\});/);
-  if (!match) return null;
-  const config = JSON.parse(match[1]), batch = config.batchConfig;
-  if (!batch || typeof batch.useIndexedDB !== 'boolean' || !Number.isSafeInteger(batch.batchSize) || batch.batchSize < 0
-      || !Number.isSafeInteger(batch.resumeTimeoutMinutes) || batch.resumeTimeoutMinutes < 1 || batch.resumeTimeoutMinutes > 1440) {
-    throw Object.assign(new Error('Batch size must be a nonnegative integer and Resume Timeout an integer from 1 to 1440 minutes'), { status: 400 });
+export function validatePublicationIdentity(experimentID) {
+  if (typeof experimentID !== 'string' || !/^[\w-]{1,128}$/.test(experimentID)) {
+    throw Object.assign(new Error('Invalid experiment identity'), { status: 400 });
   }
-  return { batchConfig: batch,
-    ...(config.recruitmentConfig !== undefined && { recruitmentConfig: config.recruitmentConfig }),
-    ...(config.captchaConfig !== undefined && { captchaConfig: config.captchaConfig }) };
 }
 export async function publishCurrentExperiment({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles = [] }) {
-  const generated = readPublicationConfiguration(htmlContent);
-  if (!generated || !experimentID) throw new Error('Missing publication configuration');
+  validatePublicationIdentity(experimentID);
   if (mediaFiles.some(file => !['img', 'vid', 'aud'].includes(file.type) || !file.filename || /[\\/]/.test(file.filename) || ['.', '..'].includes(file.filename))) {
     throw Object.assign(new Error('Invalid publication media path'), { status: 400 });
   }
@@ -34,7 +26,7 @@ export async function publishCurrentExperiment({ accessToken, owner, repoName, e
   });
   try {
     const provider = experiment.storageProvider || 'googledrive';
-    const configuration = { ...generated, storageProvider: provider, exportDestination: { provider, owner: experiment.owner,
+    const configuration = { storageProvider: provider, exportDestination: { provider, owner: experiment.owner,
       folder: resolveFolderIdentifier(provider, experiment) }, validation: { useValidation: experiment.useValidation === true,
       allowJSON: experiment.allowJSON !== false, allowCSV: experiment.allowCSV !== false, requiredFields: experiment.requiredFields || [] } };
     const mediaUploadResults = await uploadMediaFiles(accessToken, owner, repoName, mediaFiles);

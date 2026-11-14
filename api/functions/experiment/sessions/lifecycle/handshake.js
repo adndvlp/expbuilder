@@ -1,5 +1,6 @@
 import { getDatabase } from 'firebase-admin/database';
 import { app, db } from '../../../app.js';
+import { validatePublicSettings } from '../../settings.js';
 import { deserializeFromFirestore } from '../validation/serialize.js';
 import { validateExportIdentity, exportError } from '../export/contract.js';
 import { closedSession, resolveLifecycle, tokenHash, timeoutPatch, writerMatches } from './state.js';
@@ -44,11 +45,16 @@ export async function handleSessionHandshake(req, res) {
         if (config.limitSessions && (config.sessions || 0) >= config.maxSessions) throw exportError('Maximum sessions reached', { status: 409 });
         if (config.publicationLeaseUntil > Date.now()) throw exportError('Publication in progress; retry when it finishes', { status: 409 });
         const published = config.publishedConfiguration;
-        if (!published?.batchConfig || !published.exportDestination) throw exportError('Published experiment configuration unavailable', { status: 409 });
+        if (!published?.storageProvider || !published.exportDestination || !published.validation) throw exportError('Published experiment configuration unavailable', { status: 409 });
+        let settings;
+        try { settings = validatePublicSettings(config); }
+        catch (error) { throw exportError('Save valid experiment settings before starting a new session. ' + error.message, { status: 400 }); }
+        const configuration = { ...settings, storageProvider: published.storageProvider,
+          exportDestination: published.exportDestination, validation: published.validation };
         const participantNumber = config.currentCondition || 0;
         const data = { experimentID, sessionId, participantNumber, condition: participantNumber, sessionProtocolVersion: 3,
           eventProtocolVersion: 1, createdAt: new Date(Date.now()).toISOString(), lifecycle: 'active', trialCount: 0, receivedEventCount: 0,
-          configuration: published,
+          configuration,
           exportDestination: { ...published.exportDestination, name: `${experimentID}_${sessionId}.csv` },
           metadata: body.metadata || {},
           ...(body.sessionName && { sessionName: body.sessionName }), ...grant({}, body) };

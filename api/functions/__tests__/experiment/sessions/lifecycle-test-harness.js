@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { makeTransactionalFirestore } from '../../helpers/transactional-firestore.js';
 import { makeReq, makeRes } from '../../helpers/firestore-mock.js';
 import { createHash } from 'node:crypto';
+import { createDefaultPublicSettings } from '../../../experiment/settings.js';
 
 export const store = makeTransactionalFirestore(), realtime = new Map(), realtimeWrites = [];
 export const base = 'experiments/EID/sessions/S1';
@@ -39,9 +40,9 @@ export function event(sequence, response = String(sequence)) {
 }
 export function setup(indexed = true, provider = 'googledrive') {
   store.reset(); realtime.clear(); realtimeWrites.length = 0; enqueue.mockClear();
-  store.records.set('experiments/EID', { active: true, owner: 'owner', sessions: 0, currentCondition: 0, nConditions: 1,
+  store.records.set('experiments/EID', { ...createDefaultPublicSettings(), active: true, owner: 'owner', sessions: 0, currentCondition: 0, nConditions: 1,
     sessionExportProtocolVersion: 1, batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
     driveFolderId: 'new-folder', dropboxFolder: '/new-folder', osfUploadLink: 'https://files.osf.io/new-folder/',
-    publishedConfiguration: { batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 }, storageProvider: provider,
+    publishedConfiguration: { storageProvider: provider,
       exportDestination: { provider, owner: 'owner', folder: 'original-folder' }, validation: { useValidation: true, allowJSON: true, requiredFields: ['trial_type'] } } });
 }

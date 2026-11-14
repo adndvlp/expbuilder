@@ -1,4 +1,4 @@
-import { readPublicationConfiguration, publishCurrentExperiment } from "./current.js";
+import { validatePublicationIdentity, publishCurrentExperiment } from "./current.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { db } from "../../app.js";
 import { uploadFileGithub } from "../hosting/services.js";
@@ -64,7 +64,7 @@ export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, ma
       });
     }
 
-    const publicationConfiguration = readPublicationConfiguration(htmlContent);
+    if (experimentID !== undefined) validatePublicationIdentity(experimentID);
 
     console.log(
       "Publishing experiment to GitHub for user:",
@@ -171,7 +171,7 @@ export const publishExperiment = onRequest({ cors: true, timeoutSeconds: 300, ma
     const repoExists = provision.repoExists;
 
     let currentPublication = null;
-    if (publicationConfiguration) {
+    if (experimentID !== undefined) {
       currentPublication = await publishCurrentExperiment({ accessToken, owner, repoName, experimentID, htmlContent, mediaFiles });
     }
     // Subir/actualizar el archivo HTML

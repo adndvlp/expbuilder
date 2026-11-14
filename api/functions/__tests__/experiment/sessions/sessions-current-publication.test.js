@@ -1,14 +1,17 @@
 import { jest } from '@jest/globals';
+import { createDefaultPublicSettings } from '../../../experiment/settings.js';
 import { store, base, setup, request, connection, realtimeWrites } from './lifecycle-test-harness.js';
 
-const configuration = () => ({ batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 },
+const published = () => ({
   storageProvider: 'googledrive', exportDestination: { provider: 'googledrive', owner: 'owner', folder: 'published-folder' },
   validation: { useValidation: true, allowJSON: true, requiredFields: ['trial_type'] } });
+const settings = () => ({ ...createDefaultPublicSettings(), batchConfig: { useIndexedDB: false, batchSize: 9, resumeTimeoutMinutes: 30 } });
+const configuration = () => ({ ...published(), ...settings() });
 const create = extra => request({ action: 'createSession', sessionProtocolVersion: 3, ...connection(), ...extra });
 beforeEach(() => {
   setup(); store.records.clear();
   store.records.set('experiments/EID', { active: true, owner: 'owner', sessions: 0, currentCondition: 0, nConditions: 1,
-    publishedConfiguration: configuration(), batchConfig: { useIndexedDB: false, batchSize: 9, resumeTimeoutMinutes: 30 } });
+    publishedConfiguration: published(), ...settings() });
   jest.spyOn(Date, 'now').mockReturnValue(100000);
 });
 afterEach(() => jest.restoreAllMocks());
@@ -29,7 +32,8 @@ test('starts from the one published configuration without any publication ID or 
 test('registration retry preserves identity and frozen settings after another publication', async () => {
   expect((await create()).statusCode).toBe(201);
   const experiment = store.records.get('experiments/EID');
-  experiment.publishedConfiguration = { ...configuration(), batchConfig: { useIndexedDB: false, batchSize: 9, resumeTimeoutMinutes: 30 } };
+  experiment.publishedConfiguration = { ...published(), exportDestination: { ...published().exportDestination, folder: 'republished' } };
+  Object.assign(experiment, createDefaultPublicSettings());
   const response = await create();
   expect(response.statusCode).toBe(200);
   expect(response.jsonBody).toMatchObject({ participantNumber: 0, configuration: configuration(), connection: { generation: 1 } });
@@ -55,7 +59,7 @@ test('the handshake returns the current public contract instead of forwarding pr
   expect(store.records.get(base)).toEqual(before);
 });
 
-test('client configuration and unpublished editor settings cannot replace the server published configuration', async () => {
+test('client configuration cannot replace the saved settings or the published destination', async () => {
   const response = await create({ configuration: { ...configuration(), batchConfig: { useIndexedDB: false, batchSize: 1, resumeTimeoutMinutes: 100 } } });
   expect(response.statusCode).toBe(201);
   expect(response.jsonBody.configuration).toEqual(configuration());
