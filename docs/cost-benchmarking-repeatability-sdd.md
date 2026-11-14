@@ -1,6 +1,6 @@
 # SDD: repetibilidad del benchmark de costos
 
-Estado: entregas 1 y 2 implementadas; entregas 3 y 4 pendientes.
+Estado: entregas 1, 2 y 3 implementadas; entrega 4 pendiente.
 
 Fecha: 2026-11-13. Código revisado: 5835f16, rama bug-fix.
 
@@ -211,3 +211,28 @@ Validación: 137 unitarias aprobadas (11 nuevas), los 23 escenarios de la matriz
 Las unitarias verifican además los 200/300 bytes·segundo del ejemplo, intervalos positivos de commits, retención hasta el horizonte, fronteras de reintento, identidad del evento y relojes nativos sin modificaciones globales. ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules.
 
 La implementación se detiene en la entrega 2. El contrato de compatibilidad de capturas y las tres repeticiones completas con nueva referencia/CI corresponden a las entregas 3 y 4. Esta validación de seis casos no sustituye ese cierre completo. Las tarifas, reglas, funciones del producto, referencia existente y política estricta permanecen intactas.
+
+## 12. Entrega 3: resultado y validación
+
+Se implementó el [contrato de repetición](../benchmarks/core/repeatability.mjs). Cada captura nueva registra version:1, las condiciones por escenario y una huella SHA-256 de su JSON canónico. La [integración de persistencia](../benchmarks/persistence/repeatability.mjs) incorpora las huellas de fuentes de fixtures, proveedores y coordinación. La semilla, entradas/configuración, entorno sintético, fecha inicial y reglas del calendario quedan incluidos; las operaciones observadas, muestras de almacenamiento, RSS, duración local y revisión del producto quedan fuera de la receta. Los hashes del producto y del cálculo permanecen registrados aparte.
+
+La comparación vuelve a construir la receta desde las condiciones guardadas, valida su huella y señala rutas concretas cuando falta o difiere un campo. Una captura sin contrato, con huella incoherente o con otras condiciones devuelve código 4. La normalización de máquina no evita esa comprobación. Cambiar la revisión del producto o añadirle una lectura conserva la compatibilidad de carga; el consumo adicional se evalúa como regresión.
+
+Se añadió la proyección quantities: enumera todas las partidas recalculadas, sus cantidades originales y las cantidades en unidad de tarifa para cada volumen low/nominal/high y cada ventana de inactividad. Los límites se aplican con aritmética racional antes del formato decimal. Un byte adicional sigue fallando aunque el importe permanezca igual por tarifa cero o redondeo. Las cantidades y los importes se recalculan desde mediciones; no se confía en resultados monetarios guardados.
+
+La lista explícita de dependencias de costo exige las mediciones aplicables, incluidos los ceros observados. Quitar una métrica de ambas capturas ya no puede producir un cero implícito aprobado. La ausencia de evidencia de almacenamiento devuelve incompletitud y un CSV fallido conserva el código 5.
+
+comparison.json conserva fecha, duración local y RSS para diagnóstico. equality declara por separado igualdad de mediciones, almacenamiento/calendario ejecutado, cantidades costeadas, importes y evidencia funcional. Una reducción permitida no equivale a una repetición idéntica; diferencias temporales con la misma integral tampoco se ocultan. Una comparación sin cobertura completa no declara igualdad.
+
+TDD: las pruebas iniciales reprodujeron la aceptación de capturas sin contrato y el cero implícito cuando faltaba una medición en ambos lados. Se verificaron después BR09–BR12, calendario incompleto, huellas canónicas entre procesos, aislamiento de resultados, cobertura de todas las partidas/volúmenes, regresión con tarifa cero, retención adicional y conservación de diagnósticos del CLI. La CLI rechaza registrar capturas sin contrato y no las convierte.
+
+Comandos ejecutados:
+
+    npm run test:cost:unit
+    npm run benchmark:cost:persistence -- --scenario 'idle:|normal: indexed=(true|false) batch=1$' --output /tmp/cost-contract-point3-smoke
+    npm run benchmark:cost:compare -- --baseline /tmp/cost-contract-point3-smoke --candidate /tmp/cost-contract-point3-smoke --output /tmp/cost-contract-point3-comparison-final
+    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-2026-11-13 --candidate /tmp/cost-contract-point3-smoke --output /tmp/cost-contract-point3-old-rejected
+
+Validación: 158 unitarias aprobadas (21 nuevas), tres escenarios locales con emuladores/Chromium aprobados —inactividad y lote 1 con ambos modos— y comparación de esa captura con sí misma aprobada, con cantidades e importes idénticos. Esa autocomparación verifica el contrato y el informe; no se presenta como una repetición independiente. La referencia anterior se rechazó con código 4 por ausencia de contrato, conservando sus archivos y su prueba aritmética. ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules.
+
+La entrega se detiene en el punto 3. No se ejecutaron las tres matrices independientes ni se registró una referencia nueva. El check/CI sigue apuntando a la referencia anterior y devuelve incompatibilidad hasta completar la entrega 4. La política no-increases, tarifas, fórmulas monetarias, reglas y persistencia del producto permanecen intactas.

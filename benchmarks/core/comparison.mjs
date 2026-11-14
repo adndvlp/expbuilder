@@ -4,6 +4,7 @@ import { convertQuantity, quantity, quantityValue } from './quantity.mjs';
 import { validateProfile } from './budget.mjs';
 import { applyCalibration, validateConditions } from './calibration.mjs';
 import { referenceBudgets } from '../persistence/budget.mjs';
+import { conditionDifferences, repeatabilityIssues } from './repeatability.mjs';
 
 export const exitCodes = Object.freeze({ passed: 0, regression: 2, incomplete: 3, incompatible: 4, functional_failure: 5, invalid_input: 6 });
 const priority = ['passed', 'regression', 'incomplete', 'incompatible', 'functional_failure', 'invalid_input'];
@@ -108,14 +109,35 @@ export function compareReferences(options) {
     policy: clone(options.policy || { format: 1 }), normalization: {},
     scope: 'Regression check of measured quantities and modeled runtime cost; passing does not approve the captured consumption as a target' };
   const issue = (status, code, reason, context = {}) => { report.issues.push({ status, code, reason, ...context }); if (priority.indexOf(status) > priority.indexOf(report.status)) report.status = status; };
-  function finish() { report.exitCode = exitCodes[report.status]; return report; }
+  function finish() {
+    // A permitted decrease is different from exact repetition. Preserve both
+    // conclusions so repeated runs cannot pass equality just by costing less.
+    report.equality = report.scenarios.length && report.scenarios.every(s => s.quantities.length && s.money.length) ? {
+      measurements: report.scenarios.every(s => s.metrics.filter(row => row.kind !== 'performance').every(row => row.state === 'unchanged')),
+      storage: report.scenarios.every(s => same(s.storage.baseline, s.storage.candidate)),
+      quantities: report.scenarios.every(s => s.quantities.every(row => row.state === 'unchanged')),
+      money: report.scenarios.every(s => s.money.every(row => row.state === 'unchanged')),
+      functional: report.scenarios.every(s => same(s.functional.baseline, s.functional.candidate)),
+    } : null;
+    report.exitCode = exitCodes[report.status]; return report;
+  }
   try {
     const { baseline, candidate } = options;
     if (!validateBundle(baseline) || !validateBundle(candidate)) { issue('incompatible', 'unsupported_format', 'Only captured reference format 1 is supported'); return finish(); }
     report.captures = Object.fromEntries([['baseline', baseline], ['candidate', candidate]].map(([name, bundle]) => [name, {
       revision: bundle.reference.revision, measuredCode: clone(bundle.reference.measuredCode || null),
       createdAt: bundle.reference.createdAt, machine: clone(bundle.reference.machine),
+      benchmarkRuntimeMs: bundle.reference.benchmarkRuntimeMs,
+      repeatability: clone(bundle.reference.repeatability || null),
     }]));
+    for (const [capture, bundle] of [['baseline', baseline], ['candidate', candidate]]) {
+      for (const detail of repeatabilityIssues(bundle.reference)) issue('incompatible', 'repeatability', detail.reason, { ...detail, capture });
+    }
+    if (report.status === 'incompatible') return finish();
+    for (const detail of conditionDifferences(baseline.reference.repeatability.conditions, candidate.reference.repeatability.conditions)) {
+      issue('incompatible', 'repeatability', 'Repetition conditions differ; machine normalization does not change the workload', detail);
+    }
+    if (report.status === 'incompatible') return finish();
     const baselineNames = baseline.reference.scenarios.map(s => s.name).sort(), candidateNames = candidate.reference.scenarios.map(s => s.name).sort();
     if (!same(baselineNames, candidateNames)) { issue('incompatible', 'scenario_set', 'Scenario additions/omissions require an explicitly reviewed common workload', { baseline: baselineNames, candidate: candidateNames }); return finish(); }
     const rules = policyRules(options.policy), left = configuration(baseline), right = configuration(candidate);
@@ -144,7 +166,7 @@ export function compareReferences(options) {
     report.pricing = { profile: clone(selectedProfile), sourcePricesDiffer: !same(tariffValues(left.profile), tariffValues(right.profile)), sourceProfilesDiffer: !same(left.profile, right.profile),
       baselineProfile: { id: left.profile.id, currency: left.profile.currency }, candidateProfile: { id: right.profile.id, currency: right.profile.currency }, recalculatedFromMeasurements: true };
     report.conditions = clone(conditions);
-    function assess(row, name, group) {
+    function assess(row, name, group, pricedQuantity = false, exact = row) {
       const matching = rules.filter(entry => entry.group === group && [name, '*'].includes(entry.rule.scenario) && [row.path, '*'].includes(entry.rule.path)
         && (entry.rule.path !== '*' || (group === 'money' ? entry.rule.currency === row.unit : entry.rule.unit === row.unit)));
       if (matching.length > 1) throw new Error('Overlapping policy rules: ' + name + row.path);
@@ -157,19 +179,24 @@ export function compareReferences(options) {
           issue('incompatible', 'performance_conditions', 'Performance tolerance has incompatible machine/sample conditions', { scenario: name, path: row.path }); return;
         }
       }
-      const applies = group === 'money' || (group === 'metrics' && row.unit === 'count') || Boolean(rule);
+      const applies = pricedQuantity || group === 'money' || (group === 'metrics' && row.unit === 'count') || Boolean(rule);
       row.gated = applies; if (rule) row.review = clone(rule);
-      if (!applies || row.after === null) return;
-      const base = row.before ?? '0', absolute = nonnegative(rule?.maxIncreaseAbsolute || 0), relative = multiply(base, divide(rule?.maxIncreasePercent || 0, 100));
+      if (!applies || exact.after === null) return;
+      const base = exact.before ?? '0', absolute = nonnegative(rule?.maxIncreaseAbsolute || 0), relative = multiply(base, divide(rule?.maxIncreasePercent || 0, 100));
       const allowance = compare(absolute, relative) > 0 ? absolute : relative;
       row.allowedIncrease = decimal(allowance);
-      if (compare(row.after, add(base, allowance)) > 0 || (rule?.max !== undefined && compare(row.after, rule.max) > 0)) {
+      if (compare(exact.after, add(base, allowance)) > 0 || (rule?.max !== undefined && compare(exact.after, rule.max) > 0)) {
         issue('regression', 'limit_exceeded', 'Candidate exceeds the reviewed quantity/cost limit', { scenario: name, path: row.path, unit: row.unit, before: row.before, after: row.after });
       }
     }
     for (const before of baseline.reference.scenarios) {
       const after = candidate.reference.scenarios.find(s => s.name === before.name), name = before.name;
-      const result = { name, inputs: { baseline: clone(before.inputs), candidate: clone(after.inputs) }, metrics: [], money: [], implementationChanges: [] }; report.scenarios.push(result);
+      const result = { name, inputs: { baseline: clone(before.inputs), candidate: clone(after.inputs) }, metrics: [], quantities: [], money: [], implementationChanges: [] }; report.scenarios.push(result);
+      result.functional = { baseline: clone(before.functional), candidate: clone(after.functional) };
+      const storage = scenario => ({ timeline: clone(scenario.storageTimeline ?? null), timing: scenario.storageTiming ? {
+        elapsedMs: scenario.storageTiming.elapsedMs, operations: clone(scenario.storageTiming.operations), actions: clone(scenario.storageTiming.actions),
+      } : null });
+      result.storage = { baseline: storage(before), candidate: storage(after) };
       if (!same(before.inputs, after.inputs)) issue('incompatible', 'workload', 'Scenario inputs differ', { scenario: name });
       if (before.environment !== after.environment) {
         if (!normalization.allowMachineDifference) issue('incompatible', 'environment', 'Measurement environments differ', { scenario: name });
@@ -183,6 +210,19 @@ export function compareReferences(options) {
       for (const scenario of [before, after]) {
         if (!scenario.functional.passed) issue('functional_failure', 'functional_check', 'Functional CSV check failed', { scenario: name });
         if (scenario.coverageIssues.length || !scenario.inventoryVerifiedAgainstEmulator || !scenario.pending || Object.values(scenario.pending).some(value => value !== 0)) issue('incomplete', 'coverage', 'Coverage, verified inventory or pending work is incomplete', { scenario: name });
+        const requiredMetrics = ['functions.invocations', 'firestore.readUnits', 'firestore.indexReadUnits', 'firestore.writes', 'firestore.deletes',
+          'firestore.readCalls', 'firestore.transactionAttempts', 'firestore.batchAttempts', 'firestore.directWriteCalls'];
+        // Persistence workload: idle has no participant transport. Other scenarios
+        // exercise these observers even when an applicable operation measures zero.
+        if (name !== 'idle') requiredMetrics.push('tasks.billableUnits', 'events.published', 'events.publishedPayloadBytes', 'events.deliveredPayloadBytes',
+          'rtdb.downloadBytes', 'rtdb.disconnectRegistrations', 'rtdb.readCalls', 'rtdb.writeAttempts', 'http.requests', 'http.responseContentBytes',
+          `provider.${scenario.inputs.provider || 'googledrive'}.requests`, `provider.${scenario.inputs.provider || 'googledrive'}.requestContentBytes`);
+        for (const metric of requiredMetrics) {
+          if (!Object.hasOwn(scenario.metrics, metric)) issue('incomplete', 'metric_missing', 'Required cost measurement is absent, not a measured zero', { scenario: name, path: '/metrics/' + metric });
+        }
+        for (const field of ['storageTimeline', 'retainedRtdbJsonBytes']) {
+          if (scenario[field] === undefined || (field === 'storageTimeline' && (!Array.isArray(scenario[field]) || !scenario[field].length))) issue('incomplete', 'storage_missing', 'Storage measurement is missing', { scenario: name, path: '/' + field });
+        }
       }
       for (const reg of before.registrations) {
         const next = after.registrations.find(entry => entry.name === reg.name);
@@ -214,6 +254,32 @@ export function compareReferences(options) {
     }
     const settings = { windowSeconds, volumes, conditions, calibration: report.calibration };
     const a = referenceBudgets(baseline.reference, selectedProfile, settings), b = referenceBudgets(candidate.reference, selectedProfile, settings);
+    const quantityRows = (target, before, after, prefix, name) => {
+      const firstItems = new Map(before.items.map(item => [item.id, item])), nextItems = new Map(after.items.map(item => [item.id, item]));
+      for (const id of new Set([...firstItems.keys(), ...nextItems.keys()])) {
+        const first = firstItems.get(id), second = nextItems.get(id);
+        if (!second?.quantity || (first && !first.quantity)) { issue('incomplete', 'cost_quantity_missing', 'Missing applicable cost quantity', { scenario: name, path: `${prefix}/quantities/${escape(id)}` }); continue; }
+        const unit = first?.quantity.unit || second.quantity.unit;
+        const next = convertQuantity(second.quantity, unit), previous = first ? convertQuantity(first.quantity, unit) : null;
+        const put = (path, unit, before, after) => {
+          const row = { path, unit, ...delta(before, after) };
+          if (row.state === 'unknown') issue('incomplete', 'cost_quantity_unknown', 'Unknown applicable cost quantity', { scenario: name, path });
+          assess(row, name, 'metrics', true, { before, after }); target.push(row);
+        };
+        put(`${prefix}/quantities/${escape(id)}`, unit, previous ? previous.value === null ? null : quantityValue(previous) : '0', next.value === null ? null : quantityValue(next));
+        for (const projection of before.projections) {
+          // Explicitly cover every projected input to priceQuantity, including zero
+          // rates and minimum/rounding blocks which can hide increased quantities.
+          const rate = selectedProfile.rates[second.rate], rateUnit = rate?.unit || unit;
+          const projected = item => {
+            if (!item) return '0';
+            const q = convertQuantity(item.quantity, rateUnit);
+            return q.value === null ? null : multiply(quantityValue(q), item.scope === 'per-session' ? projection.sessions : 1);
+          };
+          put(`${prefix}/${projection.sessions}/quantities/${escape(id)}`, rateUnit, projected(first), projected(second));
+        }
+      }
+    };
     const moneyRows = (target, before, after, prefix, name) => {
       if (before.status !== 'complete' || after.status !== 'complete') issue('incomplete', 'budget_incomplete', 'A normalized budget has unresolved applicable costs', { scenario: name });
       for (const previous of before.projections) {
@@ -234,8 +300,15 @@ export function compareReferences(options) {
     };
     for (const result of report.scenarios) {
       if (result.name === 'idle') {
-        for (const [index, budget] of a.idle.entries()) moneyRows(result.money, budget, b.idle[index], '/idle-' + budget.windowSeconds, 'idle');
-      } else for (const variant of variants) moneyRows(result.money, a.scenarios.find(s => s.name === result.name)[variant], b.scenarios.find(s => s.name === result.name)[variant], '/' + variant, result.name);
+        for (const [index, budget] of a.idle.entries()) {
+          quantityRows(result.quantities, budget, b.idle[index], '/idle-' + budget.windowSeconds, 'idle');
+          moneyRows(result.money, budget, b.idle[index], '/idle-' + budget.windowSeconds, 'idle');
+        }
+      } else for (const variant of variants) {
+        const before = a.scenarios.find(s => s.name === result.name)[variant], after = b.scenarios.find(s => s.name === result.name)[variant];
+        quantityRows(result.quantities, before, after, '/' + variant, result.name);
+        moneyRows(result.money, before, after, '/' + variant, result.name);
+      }
     }
     for (const entry of rules) if (!entry.matched) throw new Error('Unused policy selector: ' + entry.rule.scenario + entry.rule.path);
     return finish();
@@ -250,11 +323,11 @@ export function renderComparison(report) {
   const lines = ['# Comparación de consumo y costo', '', `Estado: ${report.status}. Código: ${report.exitCode}.`, '', report.scope, '',
     ...(report.captures ? [`Referencia: ${safe(report.captures.baseline.revision)}; candidata: ${safe(report.captures.candidate.revision)}. Las huellas del código medido y del cálculo están en comparison.json.`, ''] : []),
     '| Escenario | Cantidad/partida | Antes | Ahora | Cambio | % |', '|---|---|---:|---:|---:|---:|'];
-  for (const scenario of report.scenarios) for (const row of [...scenario.metrics, ...scenario.money]) if (row.state !== 'unchanged') {
+  for (const scenario of report.scenarios) for (const row of [...scenario.metrics, ...(scenario.quantities || []), ...scenario.money]) if (row.state !== 'unchanged') {
     lines.push('| ' + [scenario.name, row.path, row.before, row.after, row.delta, row.percent === null ? row.state : row.percent].map(safe).join(' | ') + ' |');
   }
   lines.push('', '## Incidencias', '', ...(report.issues.length ? report.issues.map(issue => '- ' + safe([issue.code, issue.scenario, issue.path, issue.reason].filter(Boolean).join(': '))) : ['Sin aumentos no revisados ni cobertura perdida.']), '',
     'Los presupuestos se recalculan desde las mediciones con las mismas tarifas y condiciones. Los tiempos/RSS locales son descriptivos salvo tolerancia explícita. Una captura conserva evidencia; no convierte su consumo en un objetivo aprobado.', '',
-    '## Condiciones y revisión', '', '```json', JSON.stringify({ pricing: report.pricing, normalization: report.normalization, calibration: report.calibration, policy: report.policy }, null, 2), '```', '');
+    '## Condiciones y revisión', '', '```json', JSON.stringify({ equality: report.equality, pricing: report.pricing, normalization: report.normalization, calibration: report.calibration, policy: report.policy }, null, 2), '```', '');
   return lines.join('\n');
 }

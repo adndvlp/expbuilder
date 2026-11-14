@@ -31,11 +31,11 @@ Genera reference.json (métricas e inventario), budget.json (partidas, cantidade
 
 La matriz contiene 23 escenarios: inactividad; ambos modos y lotes 0/1/3; volúmenes 3/30/300 con padding definido; tres ensayos visuales con tres componentes; retoma antes del minuto; expiración y recuperación con ambos modos; confirmación HTTP perdida; fallo al encolar y confirmación de proveedor perdida en Drive, Dropbox y OSF. Comprueba contenido, orden, cantidad y unicidad del CSV, además del inventario final contra lecturas independientes del emulador.
 
-### Datos y calendario controlados: entregas 1 y 2 de repetibilidad
+### Datos, calendario y contrato: entregas 1 a 3 de repetibilidad
 
-La [SDD de repetibilidad](../docs/cost-benchmarking-repeatability-sdd.md) tiene implementadas sus dos primeras entregas. El benchmark usa identidades aisladas por escenario/actor, calendario sintético y respuestas de proveedor controladas. Los valores se generan antes de enviar/medir; no se recortan ni reemplazan cantidades en los informes. Las URLs lógicas de proveedores se resuelven hacia puertos libres locales. Los proveedores y el harness ordinarios mantienen su comportamiento cuando no reciben estos controles.
+La [SDD de repetibilidad](../docs/cost-benchmarking-repeatability-sdd.md) tiene implementadas sus tres primeras entregas. El benchmark usa identidades aisladas por escenario/actor, calendario sintético y respuestas de proveedor controladas. Los valores se generan antes de enviar/medir; no se recortan ni reemplazan cantidades en los informes. Las URLs lógicas de proveedores se resuelven hacia puertos libres locales. Los proveedores y el harness ordinarios mantienen su comportamiento cuando no reciben estos controles.
 
-El participante sintético usa tiempos de respuesta declarados de 125 ms y un contexto Chromium con locale en-US, UTC, pantalla/viewport 1280×720 y user-agent CostBenchmarkFixture/1. La versión real del navegador sigue apareciendo en machine.browser. Los temporizadores del SDK y las duraciones locales de diagnóstico continúan usando sus relojes ordinarios. controlledInputs identifica las condiciones de contenido y calendario; la validación de su contrato y huella corresponde a la tercera entrega.
+El participante sintético usa tiempos de respuesta declarados de 125 ms y un contexto Chromium con locale en-US, UTC, pantalla/viewport 1280×720 y user-agent CostBenchmarkFixture/1. La versión real del navegador sigue apareciendo en machine.browser. Los temporizadores del SDK y las duraciones locales de diagnóstico continúan usando sus relojes ordinarios. controlledInputs identifica las condiciones de contenido y calendario; repeatability registra su contrato y huella.
 
 [persistence-timing.json](profiles/persistence-timing.json) declara los intervalos del escenario: invocación 20 ms, lectura Firestore 20 ms, intento de commit 35 ms, RTDB 30 ms y solicitud al proveedor 300 ms. El calendario avanza con los contadores reales de esos intentos y las acciones declaradas. storageTimeline contiene el inventario en esos instantes y storageTiming su procedencia. El tiempo que tarda el emulador o una inspección deja de formar parte del presupuesto de almacenamiento; los documentos retenidos siguen ocupando el resto del horizonte. CPU/RAM conserva su modelo low/nominal/high separado.
 
@@ -47,7 +47,19 @@ Para comprobar contenido repetido:
 
 Ejecuta la medición de inactividad y seis casos con dos participaciones cada uno. La segunda ejecución introduce demoras reales de 20 ms en proveedor e inspecciones. Comprueba igualdad exacta de envelopes, CSV, calendario de almacenamiento, cantidades e importes low/nominal/high para 1/1.000/10.000 sesiones; exige presupuestos completos. Cubre ambos modos, tres proveedores y ensayos visuales. Conserva content-checks.json con condiciones, demoras, hashes y resultados, también ante una comparación fallida. El código de salida conserva el fallo; rechaza un destino que ya contiene un informe. No genera una referencia ni triplica las suites de CI.
 
-La igualdad bajo demoras se verificó en esos seis casos. El cierre general de repetibilidad aún requiere las entregas 3 y 4: contrato de comparación y tres ejecuciones completas con registro explícito de referencia/CI. No se cambian tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto.
+La igualdad bajo demoras se verificó en esos seis casos. El cierre general de repetibilidad aún requiere la entrega 4: tres ejecuciones completas con registro explícito de referencia/CI. No se cambian tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto.
+
+### Contrato y comparación exacta
+
+Las capturas nuevas contienen repeatability.version:1, conditions y sha256. La huella usa JSON canónico con claves ordenadas y escenarios ordenados por nombre. Incluye entradas/configuración, semilla, época, respuesta sintética, entorno del participante y reglas del calendario. Identifica además las fuentes de fixtures, proveedores y coordinación que generan solicitudes, respuestas y fechas; guarda sus hashes con rutas relativas. Los hashes del producto y del cálculo siguen separados. Añadir una operación al producto cambia las mediciones y sigue siendo comparable bajo la misma carga.
+
+La comparación valida la huella contra las condiciones y contra controlledInputs de cada escenario. Condiciones distintas, ausentes o incoherentes devuelven código 4 e identifican la captura y las rutas concretas. allowMachineDifference permite cambiar el host real, sin omitir el contrato ni cambiar la carga. No hay conversión de capturas anteriores.
+
+comparison.json conserva metrics, quantities y money por escenario. quantities enumera cada partida recalculada en su unidad original y cada cantidad proyectada en la unidad de tarifa, para low/nominal/high y todos los volúmenes, incluido el fijo de inactividad. Sus aumentos se rechazan incluso si una tarifa cero, mínimo o bloque de redondeo mantiene el mismo importe. La política estricta no cambia. Las dependencias de medición aplicables y el almacenamiento requieren evidencia explícita; su ausencia devuelve incompletitud.
+
+El campo equality distingue igualdad exacta de una reducción permitida: measurements (sin tiempo/RSS locales), storage (muestras y calendario ejecutado), quantities, money y functional. Una repetición debe obtener todos en true. Si falta cobertura o la comparación no puede completarse, equality queda en null. Las fechas reales, revisión, duración local y muestras RSS permanecen visibles sin alterar esa igualdad monetaria.
+
+La referencia persistence-2026-11-13 se conserva como evidencia aritmética anterior. Carece del contrato y ahora se rechaza con código 4. El check y CI todavía apuntan a esa referencia: su actualización corresponde a la entrega 4, después de validar las tres ejecuciones completas. No se considera aprobado ese check durante este estado intermedio.
 
 ## Integración del guardado actual
 
@@ -164,7 +176,7 @@ La política estricta puede señalar diferencias muy pequeñas entre repeticione
 
 Las cifras del ejemplo ilustran el formato. max limita el valor final; maxIncreaseAbsolute y maxIncreasePercent fijan el margen respecto a la referencia. Se utiliza el mayor de los dos márgenes. La política comprueba totales, fijo, variable y cada partida: una regla sobre el total no permite automáticamente aumentos en las partidas. Las rutas y escenarios deben coincidir con el informe, o ser exactamente `*`; una regla sin coincidencias, reglas superpuestas o unidades incorrectas fallan.
 
-Las rutas de dinero tienen forma /nominal/1000/total, /high/1000/items/ID o /idle-2592000/0/total. Las rutas de métricas siguen /metrics/NOMBRE, /functions/FUNCION/metrics/NOMBRE y /inventory/COLECCION/CAMPO. La comparación con referencia cero conserva el cambio absoluto y marca un concepto nuevo; no produce infinito.
+Las rutas de dinero tienen forma /nominal/1000/total, /high/1000/items/ID o /idle-2592000/0/total. Las rutas de métricas siguen /metrics/NOMBRE, /functions/FUNCION/metrics/NOMBRE y /inventory/COLECCION/CAMPO. Las cantidades costeadas usan /nominal/quantities/ID y /nominal/1000/quantities/ID; las reglas metrics se aplican con su unidad. Autorizar un margen monetario no autoriza automáticamente aumentar esas cantidades. La comparación con referencia cero conserva el cambio absoluto y marca un concepto nuevo; no produce infinito.
 
 Para tiempo/RSS se necesita una regla en performance con path, unit, motivo, margen, el objeto machine de ambas capturas y minimumSamples. Sin esa regla son datos descriptivos. La captura actual tiene una muestra por escenario. Una regla que exige más muestras o usa otra máquina no se aprueba.
 
@@ -242,7 +254,7 @@ La suite de Functions ya está en [Builder contracts](../.github/workflows/build
 
 El check de costos puede ejecutarse aunque falle la suite funcional previa. Verificar el informe y subirlo usan [condiciones de estado de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions). Si falló la preparación y falta un informe, ensure-report.mjs guarda un diagnóstico y devuelve error. [upload-artifact](https://github.com/actions/upload-artifact/tree/v4#retention-period) conserva las evidencias siete días y falla si no encuentra archivos. Esto configura su ejecución al subir cambios; no afirma que ya haya corrido en GitHub.
 
-CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con la referencia capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. **La política estricta puede dejar el check rojo con los mismos contadores**, por diferencias pequeñas en bytes o permanencia temporal. Se conserva ese resultado. Aceptar un margen exige revisar una política explícita con sus motivos; ni CI ni el ejecutor lo añaden para obtener verde.
+CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con una referencia capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. Durante la entrega 3 de repetibilidad, su referencia inicial carece del contrato y devuelve código 4; la entrega 4 debe registrar y seleccionar una nueva tras validar las tres repeticiones. La política estricta conserva los aumentos de bytes o permanencia temporal como fallos, aunque coincidan los contadores. Ni CI ni el ejecutor convierten la referencia o añaden márgenes para obtener verde.
 
 ## Añadir medición de otra funcionalidad
 

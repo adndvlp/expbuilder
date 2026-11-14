@@ -62,3 +62,16 @@ test('CLI writes an incompatible-format report and rejects inputs as output dest
   assert.equal(JSON.parse(await readFile(path.join(output, 'comparison.json'))).status, 'incompatible');
   assert.equal(run(['compare', '--baseline', baseline, '--candidate', baseline, '--output', baseline]).status, 6);
 }));
+test('CLI retains missing-condition diagnostics and refuses to register an uncontrolled capture', () => isolated(async directory => {
+  const baseline = path.join(directory, 'baseline'), candidate = path.join(directory, 'candidate'), output = path.join(directory, 'comparison');
+  const uncontrolled = fixture(); delete uncontrolled.reference.repeatability;
+  await captured(baseline, fixture()); await captured(candidate, uncontrolled);
+  const before = await readFile(path.join(candidate, 'reference.json'));
+  assert.equal(run(['compare', '--baseline', baseline, '--candidate', candidate, '--output', output]).status, 4);
+  const report = JSON.parse(await readFile(path.join(output, 'comparison.json')));
+  assert.ok(report.issues.some(issue => issue.capture === 'candidate' && issue.path === '/repeatability'));
+  assert.ok(report.sources.calculation.files['core/repeatability.mjs'].sha256);
+  assert.match(await readFile(path.join(output, 'README.md'), 'utf8'), /repeatability/);
+  assert.equal(run(['reference', '--source', candidate, '--output', path.join(directory, 'rejected'), '--reason', 'Must not convert absent conditions']).status, 6);
+  assert.deepEqual(await readFile(path.join(candidate, 'reference.json')), before);
+}));

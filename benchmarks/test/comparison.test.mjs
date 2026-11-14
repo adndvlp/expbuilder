@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compareReferences } from '../core/comparison.mjs';
-import { fixture, profile, q } from './comparison-fixtures.mjs';
+import { fixture, profile, q, sealFixture } from './comparison-fixtures.mjs';
 import { referenceBudgets } from '../persistence/budget.mjs';
 const compare = (baseline, candidate, options = {}) => compareReferences({ baseline, candidate, ...options });
 const normal = bundle => bundle.reference.scenarios.find(s => s.name === 'normal');
@@ -141,7 +141,8 @@ test('a collection removed after independently verified cleanup is a measured ze
 });
 test('scenario execution order is not a workload change', () => {
   const baseline = fixture();
-  baseline.reference.scenarios.push({ ...globalThis.structuredClone(normal(baseline)), name: 'another' });
+  const another = globalThis.structuredClone(normal(baseline)); another.name = 'another'; another.controlledInputs.scenario = 'another';
+  baseline.reference.scenarios.push(another); sealFixture(baseline.reference);
   baseline.budgets = referenceBudgets(baseline.reference, profile);
   const candidate = globalThis.structuredClone(baseline);
   candidate.reference.scenarios.reverse(); candidate.budgets.scenarios.reverse();
@@ -165,10 +166,13 @@ test('a fixed scheduled function may be retired with explicit zero measurements'
   }
   assert.equal(compare(baseline, candidate).status, 'passed');
 });
-test('a reviewed monetary allowance can cover an intentional CPU change without altering either capture', () => {
+test('an intentional CPU increase needs reviewed quantity and monetary allowances without altering either capture', () => {
   const baseline = fixture(), candidate = fixture(); normal(candidate).registrations.find(reg => reg.name === 'apiData').cpu = 2;
   const before = JSON.stringify({ baseline, candidate });
-  const result = compare(baseline, candidate, { policy: { format: 1, money: [{ scenario: 'normal', path: '*', currency: 'USD', maxIncreaseAbsolute: '1', reason: 'Explicit fixture allowance for the CPU change' }] } });
+  const money = [{ scenario: 'normal', path: '*', currency: 'USD', maxIncreaseAbsolute: '1', reason: 'Explicit fixture allowance for the CPU change' }];
+  assert.equal(compare(baseline, candidate, { policy: { format: 1, money } }).status, 'regression');
+  const result = compare(baseline, candidate, { policy: { format: 1, money,
+    metrics: [{ scenario: 'normal', path: '*', unit: 'vCPU-second', maxIncreaseAbsolute: '1000000', reason: 'Explicit CPU quantity allowance for this arithmetic test' }] } });
   assert.equal(result.status, 'passed'); assert.equal(JSON.stringify({ baseline, candidate }), before);
 });
 test('profile identity changes alone are not reported as a tariff change', () => {

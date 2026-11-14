@@ -15,7 +15,7 @@ const usage = `Cost benchmarks (local files only):
 No command replaces an existing reference or contacts cloud services.`;
 const json = value => JSON.stringify(value, null, 2) + '\n';
 async function calculationSource() {
-  const names = ['cli.mjs', 'core/comparison.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs'];
+  const names = ['cli.mjs', 'core/comparison.mjs', 'core/repeatability.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs'];
   const files = await Promise.all(names.map(async name => {
     const bytes = await readFile(new URL(name, import.meta.url));
     return [name, { bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') }];

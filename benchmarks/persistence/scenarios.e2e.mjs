@@ -13,6 +13,7 @@ import { startHarness } from '../../api/persistence-e2e/harness.mjs';
 import { createController } from './controller.mjs';
 import { state } from './bridge.mjs';
 import { referenceBudgets, renderReference } from './budget.mjs';
+import { persistenceRepeatability } from './repeatability.mjs';
 import { readFile } from 'node:fs/promises';
 let h, controller, editor, currentPage;
 const contentChecks = process.env.COST_CONTENT_CHECKS === '1';
@@ -41,7 +42,8 @@ after(async () => {
         revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: process.env.PERSISTENCE_E2E_ROOT, encoding: 'utf8' }).trim(),
         workingTree: execFileSync('git', ['diff', '--stat'], { cwd: process.env.PERSISTENCE_E2E_ROOT, encoding: 'utf8' }).trim(),
         createdAt: new Date().toISOString(), machine: { node: process.version, platform: process.platform, arch: process.arch, browser: h.browser.version() },
-        benchmarkRuntimeMs: performance.now() - executionStart, scenarios };
+        benchmarkRuntimeMs: performance.now() - executionStart, scenarios,
+        repeatability: await persistenceRepeatability(scenarios) };
       const profile = JSON.parse(await readFile(new URL('../profiles/google-cloud-usd-2026-11-13.json', import.meta.url)));
       const budgets = referenceBudgets(reference, profile);
       const artifacts = { 'reference.json': JSON.stringify(reference, null, 2) + '\n', 'budget.json': JSON.stringify(budgets, null, 2) + '\n', 'README.md': renderReference(reference, budgets) };
