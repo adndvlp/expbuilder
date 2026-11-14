@@ -6,8 +6,8 @@ import { readCapture } from '../core/artifacts.mjs';
 import { compareReferences } from '../core/comparison.mjs';
 import { validateFunctionCoverage } from '../persistence/function-inventory.mjs';
 
-test('CO04: B0 preserves three independent matrices, strict pairwise equality and the separated method correction', async () => {
-  const directory = new URL('../references/persistence-b0-2026-11-14/', import.meta.url);
+for (const name of ['persistence-b0-2026-11-14', 'persistence-b0-2026-11-14-r2']) test('CO04: ' + name + ' preserves three independent matrices, strict pairwise equality and the separated method correction', async () => {
+  const directory = new URL('../references/' + name + '/', import.meta.url);
   const { bundle, source } = await readCapture(fileURLToPath(directory));
   const read = async name => JSON.parse(await readFile(new URL(name, directory)));
   const proof = await read('repeatability-validation.json'), record = await read('reference-record.json'), correction = await read('method-change.json');
@@ -45,6 +45,14 @@ test('CO04: B0 preserves three independent matrices, strict pairwise equality an
   assert.deepEqual(correction.productFilesChanged, []); assert.deepEqual(correction.nonPerformanceMetricChanges, []);
   assert.equal(correction.unchangedFunctionalScenarios, 23); assert.equal(correction.unchangedDocumentSizes, true);
   assert.ok(correction.storage.some(row => row.delta.indexBytes > 0));
+  if (name.endsWith('-r2')) {
+    const original = await readCapture(fileURLToPath(new URL('../references/persistence-b0-2026-11-14/', import.meta.url)));
+    assert.deepEqual(bundle.budgets, original.bundle.budgets, 'Revalidating the idle assertion cannot alter B0 consumption or costs');
+    for (const scenario of bundle.reference.scenarios) {
+      const previous = original.bundle.reference.scenarios.find(entry => entry.name === scenario.name);
+      for (const key of ['inventory', 'storageTimeline', 'storageTiming', 'functional']) assert.deepEqual(scenario[key], previous[key]);
+    }
+  }
   const result = compareReferences({ baseline: bundle, candidate: bundle });
   assert.equal(result.exitCode, 0); assert.ok(Object.values(result.equality).every(value => value === true));
 });

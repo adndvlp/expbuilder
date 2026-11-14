@@ -6,7 +6,7 @@ requiredAPIs:
   - api: cloudtasks.googleapis.com
     reason: Needed for task queue functions
   - api: cloudscheduler.googleapis.com
-    reason: Redispatch persisted session exports after enqueue or worker failures
+    reason: Reconcile pending session deadlines and exports every minute
 endpoints:
   apiData:
     platform: gcfv2
@@ -84,9 +84,9 @@ endpoints:
       eventFilterPathPatterns:
         document: experiments/{experimentID}/sessions/{sessionId}
       retry: true
-  reconcilePendingSessionTimeouts:
+  reconcilePendingSessions:
     platform: gcfv2
-    entryPoint: reconcilePendingSessionTimeouts
+    entryPoint: reconcilePendingSessions
     region: [us-central1]
     maxInstances: 5
     timeoutSeconds: 120
@@ -122,15 +122,6 @@ endpoints:
       rateLimits:
         maxConcurrentDispatches: 5
         maxDispatchesPerSecond: 5
-  reconcilePendingSessionExports:
-    platform: gcfv2
-    entryPoint: reconcilePendingSessionExports
-    region: [us-central1]
-    maxInstances: 5
-    timeoutSeconds: 120
-    scheduleTrigger:
-      schedule: every 1 minutes
-      timeZone: UTC
   dropboxOAuthCallback:
     platform: gcfv2
     entryPoint: dropboxOAuthCallback

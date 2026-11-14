@@ -1,0 +1,14 @@
+{
+  "artifactBytes": {
+    "README.md": 3007,
+    "budget.json": 11012942,
+    "check-validation.json": 5193,
+    "method-change.json": 89994,
+    "reference-record.json": 2913,
+    "reference.json": 4819479,
+    "repeatability-validation.json": 9315,
+    "artifact-sizes.json": 435
+  },
+  "limitBytes": 16777216,
+  "retention": "Local repository reference and bounded CI artifacts; no hosted telemetry or additional Firebase data."
+}

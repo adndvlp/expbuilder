@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: entregas 1 y 2 implementadas y verificadas; entregas 3–5 pendientes.
+Estado: entregas 1 y 2 verificadas; entrega 3 implementada y funcionalmente verificada, con aceptación monetaria pendiente; entregas 4–5 pendientes.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -267,3 +267,17 @@ El check local y CI apuntan explícitamente a persistence-b0-2026-11-14. El JSON
 La entrega termina con B0 y el check preparados. La consolidación del backend corresponde a la entrega 3.
 
 Verificación de cierre: 191 pruebas del benchmark, ESLint de los archivos modificados y git diff --check pasaron. El comando local del check aprobó con su referencia B0 predeterminada, la normalización de CI y la tercera captura mediante --candidate. La [evidencia del check](../benchmarks/references/persistence-b0-2026-11-14/check-validation.json) conserva etapas, códigos, identidades y resultados; las matrices se ejecutaron por separado y no se ejecutó GitHub Actions remoto desde esta entrega.
+
+## 15. Resultado de la entrega 3 — 2026-11-14
+
+CO07–CO08 implementados mediante TDD. [reconcilePendingSessions](../api/functions/experiment/sessions/reconciliation/functions.js) sustituye los dos exports programados, ejecuta ambas ramas con un corte común y comunica sus fallos después de esperar las dos. La evaluación de presencia conserva ese corte aunque una lectura de RTDB atraviese el vencimiento. Los demás consumidores del servicio mantienen su reloj vigente.
+
+Las pruebas cubren vacío, pendientes simultáneos, ramas lentas, fallos de lectura/encolado, reparación al minuto siguiente y tareas obsoletas tras retomar en ambos modos. Pasaron los 700 tests del backend y 192 del benchmark, además de los 23 escenarios con emuladores y Chromium. Se midieron un job, una invocación y tres lecturas por minuto: 43.200 invocaciones, 129.600 lecturas y 30 job-días por 30 días. El fijo disminuye en las tres variantes.
+
+La comprobación de inactividad aún exigía los dos nombres anteriores. Se corrigió para comprobar los registros reales y se revalidó [B0 R2](../benchmarks/references/persistence-b0-2026-11-14-r2/README.md) mediante tres matrices independientes del backend sin optimizar de 437a305. Sus tres comparaciones fueron exactas; mediciones, inventarios, calendarios e importes coinciden con B0 original y budget.json es idéntico byte por byte. El check selecciona explícitamente R2; las referencias anteriores permanecen intactas.
+
+**La aceptación monetaria sigue pendiente.** La comparación estricta y el check local de la candidata devuelven código 2: 90 filas aumentadas de almacenamiento/subtotal variable, originadas en tres escenarios de expiración. Una invocación menos adelanta 20 ms los mismos estados de almacenamiento, que se integran hasta el mismo horizonte. El aumento nominal máximo es USD 0,000000000159609286735455 por 1.000 sesiones; el fijo nominal disminuye aproximadamente USD 0,3474. La sección 10 impide compensar ese aumento con el ahorro fijo o introducir una excepción sin otra definición.
+
+El [informe de la entrega](investigaciones/session-reconciliation-cost-2026-11-14.md) y su [evidencia exacta](investigaciones/session-reconciliation-cost-2026-11-14.json) conservan ambos resultados, las cronologías, fuentes, identidades y códigos. No se modificó la política, el calendario, tarifas, coeficientes ni índices para obtener aprobación. Las reducciones de operaciones de la entrega 4 no se implementaron.
+
+No hubo despliegue. Un despliegue futuro deberá sustituir reconcilePendingSessionTimeouts y reconcilePendingSessionExports por reconcilePendingSessions, sin dejar los jobs anteriores activos; el informe documenta esa condición.

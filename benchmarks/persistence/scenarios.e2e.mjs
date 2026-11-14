@@ -154,8 +154,10 @@ test('idle: registered schedules execute once per minute', async () => {
   await controller.begin('idle', h);
   h.advance(60000); await controller.pump();
   const report = await controller.finish(h);
-  assert.equal(report.functions.reconcilePendingSessionTimeouts.metrics['functions.invocations'].value, '1');
-  assert.equal(report.functions.reconcilePendingSessionExports.metrics['functions.invocations'].value, '1');
+  const schedules = report.registrations.filter(entry => entry.origin === 'schedule');
+  assert.ok(schedules.length > 0, 'The endpoint inventory must include the registered schedule');
+  for (const schedule of schedules) assert.equal(report.functions[schedule.name].metrics['functions.invocations'].value, '1');
+  assert.equal(Number(report.metrics['functions.invocations'].value), schedules.length);
   assert.equal(report.metrics['firestore.readUnits'].value, '3');
   assert.deepEqual(report.coverageIssues, []);
   scenarios.push({ name: 'idle', inputs: { seconds: 60, sessions: 0 }, controlledInputs: controller.inputConditions(), ...report, functional: { passed: true } });

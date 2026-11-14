@@ -1,12 +1,13 @@
 import { onSessionConnectionWritten } from './experiment/sessions/lifecycle/presence.js';
-import { enqueueSessionTimeout, reconcilePendingSessionTimeouts } from './experiment/sessions/timeout/functions.js';
+import { enqueueSessionTimeout } from './experiment/sessions/timeout/functions.js';
+import { reconcilePendingSessions } from './experiment/sessions/reconciliation/functions.js';
 import {
   apiData,
   apiDataComplete,
   finalizeDisconnectedSessions,
 } from "./experiment/sessions/index.js";
 import { processSessionTimeout } from "./experiment/sessions/timeout/tasks.js";
-import { enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports } from './experiment/sessions/export/functions.js';
+import { enqueueSessionExport, processSessionExportTask } from './experiment/sessions/export/functions.js';
 import { publishExperiment } from "./experiment/index.js";
 import { apiDeleteExperiment } from "./experiment/index.js";
 import { apiCondition } from "./experiment/api/condition.js";
@@ -31,8 +32,8 @@ export {
   apiCondition,
   finalizeDisconnectedSessions,
   processSessionTimeout,
-  onSessionConnectionWritten, enqueueSessionTimeout, reconcilePendingSessionTimeouts,
-  enqueueSessionExport, processSessionExportTask, reconcilePendingSessionExports,
+  onSessionConnectionWritten, enqueueSessionTimeout, reconcilePendingSessions,
+  enqueueSessionExport, processSessionExportTask,
   dropboxOAuthCallback,
   githubOAuthCallback,
   publishExperiment,

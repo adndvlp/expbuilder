@@ -30,7 +30,7 @@ export async function reconcileSessionTimeouts(now = Date.now()) {
   const connections = await db.collectionGroup('sessions').where('presenceCheckPending', '==', true)
     .where('presenceCheckAt', '<=', now).orderBy('presenceCheckAt').limit(100).get();
   const checked = await Promise.allSettled(connections.docs.map(doc => {
-    const data = doc.data(); return refreshLifecycle(data.experimentID, data.sessionId);
+    const data = doc.data(); return refreshLifecycle(data.experimentID, data.sessionId, undefined, () => now);
   }));
   const snapshot = await db.collectionGroup('sessions').where('timeoutPending', '==', true)
     .where('timeoutNextDispatchAt', '<=', now).orderBy('timeoutNextDispatchAt').limit(100).get();

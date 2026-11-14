@@ -17,13 +17,13 @@ export function timeoutPatch(data, kind, expiresAt) {
 
 // This read is shared by HTTP, presence and timeout paths. Buffer writes only
 // after the caller has finished all Firestore reads in its transaction.
-export async function resolveLifecycle(transaction, ref, previous, experiment) {
+export async function resolveLifecycle(transaction, ref, previous, experiment, now = Date.now) {
   let data = { ...previous }, patch = {}, receipts = null, trials = null;
   if (data.sessionProtocolVersion !== 3) return { data, commit() {} };
   if (closedSession(data)) return { data, commit() {
     if (data.presenceCheckPending) transaction.set(ref, { presenceCheckPending: false }, { merge: true });
   } };
-  patch = { presenceCheckPending: true, presenceCheckAt: Date.now() + 60000 };
+  patch = { presenceCheckPending: true, presenceCheckAt: now() + 60000 };
   const presence = (await getDatabase(app).ref(`session_connections/${data.experimentID}/${data.sessionId}/${data.connectionId}`).once('value')).val();
   const matches = presence?.generation === data.connectionGeneration && tokenHash(presence?.token) === data.writeTokenHash;
   if (matches && presence.connected === false && Number.isFinite(presence.changedAt) && data.connectionPhase !== 'disconnected') {
@@ -31,14 +31,14 @@ export async function resolveLifecycle(transaction, ref, previous, experiment) {
     const resumeExpiresAt = disconnectedAt + data.configuration.batchConfig.resumeTimeoutMinutes * 60000;
     patch = { ...patch, lifecycle: 'disconnected', connectionPhase: 'disconnected', disconnectedAt, resumeExpiresAt,
       ...timeoutPatch(data, 'deadline', resumeExpiresAt) };
-  } else if (data.connectionPhase === 'connecting' && Date.now() >= data.connectionSetupExpiresAt && !matches) {
+  } else if (data.connectionPhase === 'connecting' && now() >= data.connectionSetupExpiresAt && !matches) {
     const disconnectedAt = data.connectionSetupExpiresAt;
     const resumeExpiresAt = disconnectedAt + data.configuration.batchConfig.resumeTimeoutMinutes * 60000;
     patch = { ...patch, lifecycle: 'disconnected', connectionPhase: 'disconnected', disconnectedAt, resumeExpiresAt,
       ...timeoutPatch(data, 'deadline', resumeExpiresAt) };
   }
   data = { ...data, ...patch };
-  if (data.lifecycle === 'disconnected' && Date.now() >= data.resumeExpiresAt) {
+  if (data.lifecycle === 'disconnected' && now() >= data.resumeExpiresAt) {
     patch = { ...patch, lifecycle: 'expired', closedAt: new Date(data.resumeExpiresAt).toISOString(),
       closeReason: 'timeout', timeoutPending: false, presenceCheckPending: false };
     receipts = await transaction.get(ref.collection('event_receipts'));
@@ -54,7 +54,7 @@ export async function resolveLifecycle(transaction, ref, previous, experiment) {
   } };
 }
 
-export async function refreshLifecycle(experimentID, sessionId, expected) {
+export async function refreshLifecycle(experimentID, sessionId, expected, now = Date.now) {
   const ref = sessionReference(experimentID, sessionId);
   return db.runTransaction(async transaction => {
     const session = await transaction.get(ref);
@@ -65,7 +65,7 @@ export async function refreshLifecycle(experimentID, sessionId, expected) {
     if (previous.deleting || !experiment.exists || experiment.data().deleting) {
       transaction.set(ref, { presenceCheckPending: false, timeoutPending: false }, { merge: true }); return previous;
     }
-    const resolution = await resolveLifecycle(transaction, ref, previous, experiment.data());
+    const resolution = await resolveLifecycle(transaction, ref, previous, experiment.data(), now);
     resolution.commit(); return resolution.data;
   });
 }
