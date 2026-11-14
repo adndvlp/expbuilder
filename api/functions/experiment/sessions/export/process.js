@@ -1,7 +1,7 @@
 import { sessionReference } from './references.js';
 import { EXPORT_MAX_ATTEMPTS, exportError, exportHash, validateExportIdentity } from './contract.js';
 import { acquireExportLease, fencedExportUpdate } from './lease.js';
-import { buildExportCsv, loadExportChunks, saveExportChunks, targetReceipts } from './snapshot.js';
+import { buildExportCsv, loadExportChunks, saveExportChunks } from './snapshot.js';
 import { cleanupExport, confirmExport } from './confirmation.js';
 
 export async function processSessionExport(payload, options = {}) {
@@ -46,8 +46,7 @@ export async function processSessionExport(payload, options = {}) {
       if (previous?.eventCount) {
         if (!remote.exists || exportHash(remote.csv) !== previous.csvHash) throw exportError('Confirmed resource is missing or changed', { attention: true });
       } else if (remote.exists) throw exportError('Existing resource has no verified export receipt', { attention: true });
-      const receipts = await targetReceipts(ref, job);
-      csv = await buildExportCsv(ref, job, receipts, remote.exists ? remote.csv : '');
+      csv = buildExportCsv(job, lease.snapshot, remote.exists ? remote.csv : '');
       const chunks = await saveExportChunks(jobRef, csv);
       const intent = { ...chunks, base: { exists: remote.exists, version: remote.version || null,
         csvHash: remote.exists ? exportHash(remote.csv) : null, resource } };

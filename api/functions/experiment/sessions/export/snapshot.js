@@ -1,18 +1,31 @@
 import CSV from 'csv-string';
 import { Parser } from 'json2csv';
+import { Buffer } from 'node:buffer';
 import { db } from '../../../app.js';
 import { deserializeFromFirestore } from '../validation/serialize.js';
 import { exportError, exportHash, summarizeEvents } from './contract.js';
 
-export async function targetReceipts(ref, job) {
-  const snapshot = await ref.collection('event_receipts').get();
-  const receipts = snapshot.docs.map(doc => doc.data()).filter(item => (item.receiptRevision || 0) <= job.targetReceiptRevision);
+function selectTargetReceipts(allReceipts, job) {
+  const receipts = allReceipts.filter(item => (item.receiptRevision || 0) <= job.targetReceiptRevision);
   const target = summarizeEvents(receipts);
   if (target.eventsHash !== job.eventsHash || target.eventCount !== job.eventCount) throw exportError('Export target changed', { attention: true });
   return receipts;
 }
 
-export async function buildExportCsv(ref, job, receipts, existingCsv) {
+export async function targetReceipts(ref, job) {
+  const snapshot = await ref.collection('event_receipts').get();
+  return selectTargetReceipts(snapshot.docs.map(doc => doc.data()), job);
+}
+
+export async function readExportSnapshot(transaction, ref) {
+  const receipts = await transaction.get(ref.collection('event_receipts'));
+  const trials = await transaction.get(ref.collection('trials'));
+  return { receipts: receipts.docs.map(doc => ({ id: doc.id, data: doc.data() })),
+    trials: trials.docs.map(doc => ({ id: doc.id, data: doc.data() })) };
+}
+
+export function buildExportCsv(job, snapshot, existingCsv) {
+  const receipts = selectTargetReceipts(snapshot.receipts.map(doc => doc.data), job);
   const table = existingCsv ? CSV.parse(existingCsv) : [];
   const rows = new Map();
   for (const values of table.slice(1)) {
@@ -20,11 +33,9 @@ export async function buildExportCsv(ref, job, receipts, existingCsv) {
     if (!row.event_id || rows.has(row.event_id)) throw exportError('Unaccounted or duplicate rows in confirmed file', { attention: true });
     rows.set(row.event_id, row);
   }
-  const snapshot = await ref.collection('trials').get();
-  const pending = new Map(snapshot.docs.map(doc => [doc.id, doc.data()]));
-  const allReceipts = await ref.collection('event_receipts').get();
-  const knownIds = new Set(allReceipts.docs.map(doc => doc.id));
-  if (snapshot.docs.some(doc => !knownIds.has(doc.id))) throw exportError('Legacy rows require explicit reconciliation', { attention: true });
+  const pending = new Map(snapshot.trials.map(doc => [doc.id, doc.data]));
+  const knownIds = new Set(snapshot.receipts.map(doc => doc.id));
+  if (snapshot.trials.some(doc => !knownIds.has(doc.id))) throw exportError('Legacy rows require explicit reconciliation', { attention: true });
   const targetIds = new Set(receipts.map(item => item.eventId));
   if ([...rows.keys()].some(id => !targetIds.has(id))) throw exportError('Confirmed file contains events outside this revision', { attention: true });
   const metadata = job.session.metadata;

@@ -6,7 +6,17 @@ import { processSessionExport } from './process.js';
 export const enqueueSessionExport = onDocumentWritten({ region: 'us-central1', maxInstances: 5, retry: true,
   document: 'experiments/{experimentID}/sessions/{sessionId}/export_jobs/{revision}',
 }, async event => {
-  if (!event.data?.after.exists || !event.data.after.data()?.dispatchDue) return;
+  if (!event.data?.after.exists) return;
+  const after = event.data.after.data(), before = event.data.before?.exists ? event.data.before.data() : null;
+  if (!after?.dispatchDue || after.nextDispatchAt > Date.now()) return;
+  const retryable = ['pending', 'retry_wait', 'reconciling'].includes(after.status);
+  const cleanup = after.status === 'confirmed' && after.cleanupPending;
+  if (!retryable && !cleanup) return;
+  const requested = !before?.dispatchDue || before.revision !== after.revision
+    || after.nextDispatchAt < before.nextDispatchAt
+    || (retryable && ((before.status !== after.status && after.attempts <= before.attempts) || after.attempts < before.attempts))
+    || (cleanup && !before.cleanupPending);
+  if (!requested) return;
   const { experimentID, sessionId, revision } = event.params;
   await dispatchSessionExport({ experimentID, sessionId, revision: Number(revision) });
 });

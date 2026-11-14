@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: entregas 1 y 2 verificadas; entrega 3 implementada y funcionalmente verificada, con aceptación monetaria pendiente; entregas 4–5 pendientes.
+Estado: entregas 1 y 2 verificadas; entregas 3 y 4 implementadas y funcionalmente verificadas, con aceptación monetaria estricta pendiente; entrega 5 pendiente.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -281,3 +281,15 @@ La comprobación de inactividad aún exigía los dos nombres anteriores. Se corr
 El [informe de la entrega](investigaciones/session-reconciliation-cost-2026-11-14.md) y su [evidencia exacta](investigaciones/session-reconciliation-cost-2026-11-14.json) conservan ambos resultados, las cronologías, fuentes, identidades y códigos. No se modificó la política, el calendario, tarifas, coeficientes ni índices para obtener aprobación. Las reducciones de operaciones de la entrega 4 no se implementaron.
 
 No hubo despliegue. Un despliegue futuro deberá sustituir reconcilePendingSessionTimeouts y reconcilePendingSessionExports por reconcilePendingSessions, sin dejar los jobs anteriores activos; el informe documenta esa condición.
+
+## 16. Resultado de la entrega 4 — 2026-11-14
+
+CO09–CO13 implementados mediante TDD. Las guardas de los triggers distinguen intenciones elegibles de escrituras de progreso; conservan entregas repetidas, cambios de generación/deadline, reintentos y limpieza pendiente. fencedExportUpdate omite solo el set de jobPatch vacío, después de validar propiedad/fence/borrado. La preparación del CSV reutiliza la vista de recibos y payloads leída en la transacción del lease; la validación de errores ocurre dentro del manejo duradero del worker. La confirmación del proveedor, los chunks y la limpieza posterior mantienen sus comprobaciones independientes.
+
+Pasaron 50 pruebas nuevas, la suite completa del backend con 750 tests y las 192 pruebas del benchmark. La matriz completa de 23 escenarios pasó con emuladores/Chromium y conserva los inventarios finales de B0. Se alcanzaron los límites: seis lecturas del trigger de exportación, 55 escrituras totales en cinco eventos/lote 1 y 31/139/1.219 lecturas del worker para 3/30/300 eventos. Las ocho invocaciones del trigger siguen contadas. La suite cubre revisiones concurrentes, callback transaccional repetido sin efectos de proveedor, errores duraderos, chunks y consultas sin truncar a 500 eventos.
+
+El variable disminuye en los 22 escenarios con sesiones para low/nominal/high y todos los volúmenes registrados. En cinco eventos/lote 1, el nominal por 1.000 sesiones baja de USD 0,555932622533 a 0,520032495442: −6,4576 %. El fijo permanece igual al de la entrega 3.
+
+**La aceptación monetaria estricta permanece pendiente.** Las comparaciones contra B0 R2 y contra la entrega 3, así como el check local, devuelven código 2. Cada comparación conserva 441 filas aumentadas de cantidades/partidas de almacenamiento temporal en 21 escenarios; los inventarios finales son iguales y todos los subtotales variables disminuyen. El mayor incremento nominal de esa partida es USD 0,000000003391914651729167 por 1.000 sesiones. Se mantuvieron la política y la prohibición de compensaciones de la sección 10.
+
+El [informe de la entrega 4](investigaciones/session-export-cost-2026-11-14.md) y su [evidencia numérica](investigaciones/session-export-cost-2026-11-14.json) separan el ahorro de esta entrega del fijo obtenido en la anterior, identifican los fallos estrictos y conservan las cronologías. Las referencias, tarifas, calendario, índices e hipótesis siguen iguales. No hubo despliegue ni registro de candidata como referencia. Las tres matrices independientes de cierre corresponden a la entrega 5.
