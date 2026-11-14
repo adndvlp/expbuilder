@@ -1,9 +1,10 @@
+import { getPublicSettingsError } from '../../../../../../lib/publicSettings';
 import type { PublicExperimentCodeOptions } from './publicCodeTypes';
 
 export function publicHandshakeCode(options: PublicExperimentCodeOptions): string {
-  const { DATA_API_URL, experimentID, batchConfig, recruitmentConfig, captchaConfig } = options;
+  const { DATA_API_URL, experimentID } = options;
   return `
-  const _PUBLIC_PUBLICATION_CONFIG = ${JSON.stringify({ batchConfig, recruitmentConfig, captchaConfig })};
+  const _publicSettingsError = ${getPublicSettingsError.toString()};
   const _publicWriter = { connectionId: crypto.randomUUID(), writeToken: crypto.randomUUID() + crypto.randomUUID(), connectionGeneration: 0 };
   async function createSession(action = 'createSession', renewConnection = false) {
     const sessionName = !_sessionNameHasDynamic() ? _generateSessionName(null) : null;
@@ -14,7 +15,11 @@ export function publicHandshakeCode(options: PublicExperimentCodeOptions): strin
         ..._publicWriter, renewConnection, metadata, ...(sessionName && { sessionName }) })
     });
     const result = await response.json();
-    if (result?.decision && result.sessionProtocolVersion === 3) return result;
+    if (result?.decision && result.sessionProtocolVersion === 3) {
+      const settingsError = _publicSettingsError(result.configuration);
+      if (settingsError) throw new Error('Invalid session settings: ' + settingsError);
+      return result;
+    }
     throw new Error(result?.message || 'This publication requires the current session service');
   }
 `;

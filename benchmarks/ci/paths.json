@@ -2,6 +2,7 @@
   "persistence": [
     "api/**",
     "client/src/pages/ExperimentBuilder/**",
+    "client/src/lib/publicSettings.ts",
     "client/runtime-e2e/authoring/**",
     "client/package*.json",
     "server/dynamicplugin/**",

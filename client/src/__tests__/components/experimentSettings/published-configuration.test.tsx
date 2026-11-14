@@ -13,7 +13,7 @@ import ExperimentSettings from "../../../pages/ExperimentPanel/ExperimentSetting
 describe("ExperimentSettings", () => {
   registerExperimentsettingsHooks();
 
-  it("loads published experiment settings and saves batch, recruitment, captcha, and session naming config", async () => {
+  it("loads settings and saves only batch, recruitment and captcha in one write", async () => {
     firestoreMocks.getDoc.mockResolvedValueOnce(
       existingExperiment({
         batchConfig: {
@@ -101,14 +101,7 @@ describe("ExperimentSettings", () => {
       );
     });
 
-    const [url, options] = fetchMock().mock.calls[1];
-    expect(url).toBe(
-      "http://localhost:3000/api/session-name-config/exp-published",
-    );
-    expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
-      separator: "-",
-      tokens: [expect.objectContaining({ type: "counter" })],
-    });
+    expect(fetchMock()).toHaveBeenCalledTimes(1);
     expect(
       await screen.findByText("Configuration saved successfully!"),
     ).toBeInTheDocument();

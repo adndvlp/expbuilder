@@ -56,7 +56,7 @@ describe("ExperimentSettings", () => {
     expect(screen.getByText(/the timeout cannot save responses that have never reached the server/)).toBeInTheDocument();
   });
 
-  it("blocks combined save when session naming tokens are not unique", async () => {
+  it("AC01: saves settings independently of an invalid session name", async () => {
     firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
     fetchMock().mockResolvedValueOnce(
       okJson({
@@ -71,13 +71,14 @@ describe("ExperimentSettings", () => {
     fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(
-      await screen.findByText("Session name configuration is invalid."),
+      await screen.findByText("Configuration saved successfully!"),
     ).toBeInTheDocument();
     expect(fetchMock()).toHaveBeenCalledTimes(1);
-    expect(firestoreMocks.setDoc).not.toHaveBeenCalled();
+    expect(firestoreMocks.setDoc).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Session name configuration is invalid.")).not.toBeInTheDocument();
   });
 
-  it("surfaces errors from the session-name API during combined save", async () => {
+  it("AC01: a failing name endpoint cannot turn a confirmed settings save into an error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));
     fetchMock()
@@ -95,9 +96,10 @@ describe("ExperimentSettings", () => {
     fireEvent.click(screen.getAllByText("Save Configuration")[0]);
 
     expect(
-      await screen.findByText("Error saving configuration"),
+      await screen.findByText("Configuration saved successfully!"),
     ).toBeInTheDocument();
     expect(firestoreMocks.setDoc).toHaveBeenCalledTimes(1);
+    expect(fetchMock()).toHaveBeenCalledTimes(1);
   });
   it.each(['0', '1.5', '1441'])('rejects an invalid resume timeout %s before saving', async value => {
     firestoreMocks.getDoc.mockResolvedValueOnce(existingExperiment({}));

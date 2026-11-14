@@ -6,9 +6,6 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -25,9 +22,6 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -97,7 +91,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
 
         publicFinished = true;
         // --- Recruitment platform redirect ---
-        const recruitment = _publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)};
+        const recruitment = _publicSessionState.configuration.recruitmentConfig;
         if (recruitment.platform === 'prolific') {
         if (_prolificPID && recruitment.prolificCompletionCode) {
           _setLoadingMsg('Redirecting to Prolific\u2026');
@@ -156,7 +150,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
 
-    if (['prolific', 'mturk'].includes((_publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)}).platform)) {
+    if (['prolific', 'mturk'].includes(_publicSessionState.configuration.recruitmentConfig.platform)) {
     // Add platform IDs to all trials automatically (after initJsPsych)
     jsPsych.data.addProperties({
       prolific_pid: _prolificPID || "",

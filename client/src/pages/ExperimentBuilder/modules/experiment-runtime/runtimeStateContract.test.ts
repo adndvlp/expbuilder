@@ -33,20 +33,6 @@ const publicOptions = {
   FIREBASE_DATABASE_URL: "https://example.invalid",
   experimentID: "contract-experiment",
   useStorage: "firebase",
-  batchConfig: {
-    useIndexedDB: false,
-    batchSize: 0,
-    resumeTimeoutMinutes: 30,
-  },
-  recruitmentConfig: {
-    platform: "none" as const,
-    prolificCompletionCode: "",
-  },
-  captchaConfig: {
-    enabled: false,
-    provider: "hcaptcha" as const,
-    siteKey: "",
-  },
   sessionNameTokens: [],
   sessionNameSeparator: "_",
   currentUid: "test-user",

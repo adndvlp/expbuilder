@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { publicHandshakeCode } from '../publicHandshakeCode';
 import type { PublicExperimentCodeOptions } from '../publicCodeTypes';
 
-const configuration = { batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 } };
+const configuration = { batchConfig: { useIndexedDB: true, batchSize: 1, resumeTimeoutMinutes: 1 },
+  recruitmentConfig: { platform: 'none', prolificCompletionCode: '' }, captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' } };
 function fixture() {
   const fetch = vi.fn(async () => ({ json: async () => ({ success: true, decision: 'resume_allowed',
     sessionProtocolVersion: 3, sessionId: 'S1', participantNumber: 23, configuration }) }));
-  const code = publicHandshakeCode({ DATA_API_URL: 'https://test.invalid/apiData', experimentID: 'EID',
-    batchConfig: configuration.batchConfig } as PublicExperimentCodeOptions);
+  const code = publicHandshakeCode({ DATA_API_URL: 'https://test.invalid/apiData', experimentID: 'EID' } as PublicExperimentCodeOptions);
   const create = new Function('fetch', 'crypto', `
     let trialSessionId = 'S1';
     const metadata = { test: 'current' };

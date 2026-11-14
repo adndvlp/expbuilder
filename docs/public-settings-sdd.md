@@ -1,6 +1,6 @@
 # SDD: guardar ajustes públicos sin republicar
 
-Estado: especificada; implementación pendiente.
+Estado: puntos 1–3 implementados y verificados localmente; punto 4 pendiente. La comparación de costos requiere revisar la referencia por el cambio del fixture indicado en la entrega 2.
 
 Fecha: 2026-11-13. Código revisado: `2b7b0bf`, rama `bug-fix`.
 
@@ -197,3 +197,93 @@ Los puntos son entregas separadas. Cuando se autorice implementar, se trabaja me
 ## 10. Condición de cierre
 
 La implementación termina cuando guardar los cinco ajustes cambia únicamente las sesiones nuevas sin modificar el HTML publicado; retomar conserva los ajustes y datos originales; nombre y apariencia continúan requiriendo republicación; el guardado ya no depende del nombre; y pasan los criterios de aceptación con evidencia registrada.
+
+## 11. Entrega del punto 1 — 2026-11-14
+
+Se implementaron el guardado independiente, los valores predeterminados de creación y la validación del contrato y permisos, mediante TDD. El trabajo se detiene antes del punto 2.
+
+`Save Configuration` realiza una sola escritura de batchConfig, recruitmentConfig y captchaConfig en Firestore. No valida el nombre de sesión ni llama a su endpoint HTTP. Un nombre inválido o un fallo de ese servicio no convierten una escritura confirmada en error. La interfaz espera la confirmación, conserva los valores editados si falla y permite reintentar. `Save Session Name` mantiene su validación y petición propias; apariencia conserva su operación independiente.
+
+El formulario comprueba tipos, rangos, plataformas/proveedores admitidos y clave pública no vacía con CAPTCHA activado. La creación del experimento usa valores predeterminados completos y una validación reutilizable en el backend, antes de escribir o crear carpetas. Los ajustes explícitos válidos se conservan y una creación repetida no restablece documentos, contadores ni configuración existentes.
+
+Las reglas de Firestore validan los tres mapas y sus campos al crear o modificar ajustes, conservan el acceso del propietario y rechazan cambios de propietario o de campos publicados mediante el guardado de ajustes. Se comprobaron permisos y valores contra el emulador real mediante peticiones autenticadas, usando exclusivamente demo-public-persistence y documentos temporales. Las pruebas nuevas se incorporan al runner de persistencia existente.
+
+### TDD y verificación
+
+Antes de implementar, las regresiones reprodujeron 15 fallos del cliente, la ausencia de los ajustes predeterminados al crear un experimento y 19 rechazos que las reglas anteriores no aplicaban. Después:
+
+| Comprobación | Resultado |
+|---|---|
+| Cliente: formulario/hook reales con servicios simulados y apariencia | 40 pruebas aprobadas en 6 archivos. |
+| Functions completas | 782 pruebas aprobadas en 140 suites. Incluye el validador, valores predeterminados, ajustes explícitos, rechazo antes de efectos y protección de documentos existentes. |
+| Firestore real en emulador | 26 pruebas aprobadas: propietario, otro usuario, participante sin autenticar, tipos, límites, CAPTCHA, creación y atomicidad de rechazos. |
+| TypeScript del cliente | Aprobado con el target ES2020 existente. |
+| Lint de archivos modificados/nuevos | Sin errores. El lint JavaScript conserva cuatro advertencias previas del test de creación y el aviso del plugin sobre FileEnumerator en ESLint 10. |
+| Límite de líneas del cliente y git diff --check | Aprobados. |
+
+Los límites incluyen lote 0/1/N y el máximo entero seguro, y timeout 1–1440; no se fuerza el lote a 1. Las pruebas de nombre y apariencia conservan sus operaciones independientes. Los mocks del formulario no se presentan como verificación de servicios desplegados.
+
+Al cerrar el punto 1, la creación de sesiones todavía usaba la configuración publicada existente y la interfaz conservaba su texto sobre publicación. Esa coordinación y la retirada de los valores incrustados se implementan en la entrega siguiente. No se desplegó, republicó, migró ni modificó información real.
+
+## 12. Entrega del punto 2 — 2026-11-14
+
+La transacción de creación valida los tres mapas guardados en el documento del experimento y los combina exclusivamente con proveedor, destino y validación publicados. Conserva las comprobaciones de actividad, publicación disponible, límites y lease de publicación. La configuración enviada por el participante no sustituye esos valores. Los ajustes ausentes o inválidos producen un error que pide guardarlos antes de iniciar, sin crear sesión, asignar participante, incrementar contadores ni conceder una conexión.
+
+Un reintento de registro, la activación y la retoma usan la configuración ya confirmada de la sesión, incluso si después se guardaron otros ajustes o el documento del experimento quedó incompleto. Las pruebas conservan participante, checkpoint y deadline original; una sesión posterior recibe el nuevo conjunto completo.
+
+El generador deja de leer estos ajustes de Firestore y de recibirlos como parámetros. El HTML consume únicamente la configuración de sesión y rechaza respuestas incompletas antes de continuar el arranque. El formulario y el HTML comparten el validador autocontenido de [publicSettings.ts](../client/src/lib/publicSettings.ts). Se eliminaron `_PUBLIC_PUBLICATION_CONFIG`, `readPublicationConfiguration` y sus consumidores de producto, sin añadir otro transporte de ajustes incrustados.
+
+El publicador selecciona la publicación confirmada mediante `experimentID`, valida esa identidad y mantiene lease, autenticación, comprobaciones de recursos y confirmación de subida. El mapa publicado nuevo contiene solo `storageProvider`, `exportDestination` y `validation`. Guardar mientras se sube HTML conserva los ajustes tanto si la publicación termina correctamente como si falla. No se amplió aquí la retirada de los otros contratos de publicación.
+
+La interfaz indica que guardar aplica los ajustes a sesiones nuevas sin republicar y que las ya iniciadas conservan su configuración. Nombre y apariencia indican que requieren guardar y republicar. El fixture existente de persistencia inicializa los tres mapas del experimento y deja de transportarlos al generador. Los filtros de CI incluyen el validador compartido; sus pruebas verifican tanto el selector como los eventos push y pull_request.
+
+### TDD y verificaciones de esta entrega
+
+Las pruebas RED reprodujeron la selección de ajustes publicados anteriores, la creación pese a ajustes inválidos, el arranque con respuestas incompletas y la omisión de la confirmación al publicar HTML sin la constante retirada. También fallaron los filtros de CI para el nuevo validador antes de incorporarlo. Después de implementar:
+
+| Comprobación | Resultado |
+|---|---|
+| Functions completas | 797 pruebas aprobadas en 141 suites. Incluye guardado/registro solapados, reintento, activación, retoma, checkpoint, timeout congelado y publicaciones concurrentes o fallidas. |
+| Cliente, suite completa sin archivos de navegador | 1807 pruebas aprobadas en 426 archivos. Los archivos públicos de navegador se comprobaron por separado en la fila siguiente. |
+| Runtime público en Chrome con jsPsych e IndexedDB reales y HTTP simulado | 37 pruebas aprobadas en 5 archivos. |
+| Firestore/RTDB en emuladores, HTML generado y proveedores simulados | 19 casos funcionales seleccionados aprobados, además de 9 comprobaciones previas del runner. Incluyen retoma, cambios publicados, lotes 0/1/N, ambos modos, vencimiento y CSV verificado. Esta selección no sustituye la matriz sin republicación del punto 3. |
+| Filtros y selección de CI | 9 pruebas aprobadas. |
+| TypeScript, lint de archivos modificados, límite de líneas y `git diff --check` | Aprobados; el plugin de lint JavaScript mantiene su aviso previo sobre FileEnumerator en ESLint 10. |
+
+### Pendiente de comparación de costos
+
+Se comprobó el contrato de repetibilidad contra `persistence-b0-2026-11-14-r3`: la única diferencia de condiciones es la huella de `api/persistence-e2e/harness.mjs`, actualizado para inicializar los ajustes guardados. El comparador exige igualdad de esas condiciones, por lo que la referencia anterior queda incompatible con una captura que use este fixture. Esto no demuestra una regresión ni un ahorro de costos.
+
+No se ejecutó una nueva captura de costos ni se cambiaron referencias, políticas, tolerancias o el comparador para ocultar esa diferencia. Resolver la comparabilidad y verificar el check de costos sigue pendiente para la revisión de integración; esta entrega no lo declara aprobado.
+
+Al cerrar esta entrega, el trabajo se detuvo en el punto 2 sin desplegar, republicar ni modificar información real. La matriz de guardados sin republicar y la documentación operativa quedaron para los puntos 3 y 4.
+
+## 13. Entrega del punto 3 — 2026-11-14
+
+Se añadieron 19 regresiones mantenidas al runner de persistencia existente. Usan el HTML generado, el servicio de sesiones y los handlers de exportación reales, con navegador e IndexedDB reales, Firestore/RTDB en emuladores y entregas de tareas y proveedores controlados. Los guardados de ajustes pasan por REST y las reglas de Firestore con una identidad de propietario simulada exclusivamente para el emulador.
+
+Cada caso sin republicación conserva y compara el contenido y el SHA originales del HTML. Los archivos CSV se verifican por contenido completo, orden, IDs únicos, participante, sesión, destino, confirmación de revisión, vaciado de pendientes del servidor y un solo archivo del proveedor.
+
+| Archivo / criterios | Cobertura añadida |
+|---|---|
+| [settings-data.e2e.mjs](../api/persistence-e2e/settings-data.e2e.mjs), AC11/AC12/AC19 | Drive, Dropbox y OSF con una publicación y guardados ON/lote 0 → OFF/lote 9 → ON/lote 1 → ON/lote 3. Sesiones nuevas aplican los ajustes; una anterior conserva su lote 0 y sus dos respuestas pendientes al retomar. Timeout de 1 a 3 minutos: se conserva el plazo anterior, la sesión nueva usa el nuevo y la recuperación tras vencer mantiene la identidad original. |
+| [settings-gates.e2e.mjs](../api/persistence-e2e/settings-gates.e2e.mjs), AC13/AC14 | Ambos modos de IndexedDB: activar CAPTCHA, cambiar clave, cambiar hCaptcha por reCAPTCHA y desactivarlo sin publicar. La presencia queda activa antes del desafío. La retoma en otra pestaña pide el desafío con los valores originales de esa sesión. Prolific conserva el código anterior al retomar y aplica el nuevo a sesiones nuevas; `none` muestra el cierre normal; MTurk bloquea la vista previa y envía la asignación aceptada. Las salidas externas se observan después de confirmar la exportación. |
+| [settings-connections.e2e.mjs](../api/persistence-e2e/settings-connections.e2e.mjs), AC09/AC10/AC18 | Ambos modos: perder la respuesta de registro y guardar otra configuración; guardar entre registro y activación; recibir una configuración incompleta del servicio. Se comprueban un solo participante, configuración original completa, bloqueo de ensayos ante respuesta inválida, identidad/checkpoint/pendientes conservados y CSV correcto al volver a intentar. |
+| [settings-publication.e2e.mjs](../api/persistence-e2e/settings-publication.e2e.mjs), AC15/AC16 | Publicar un HTML generado antes de guardar, guardar durante su subida y fallar al subir HTML o multimedia. Los ajustes guardados permanecen, una publicación fallida conserva la anterior y las sesiones nuevas exportan usando el destino y la validación que sí quedaron publicados. |
+
+El CAPTCHA y los destinos de Prolific/MTurk se interceptan en el navegador; no se contactan esos servicios. Las comprobaciones de timeout avanzan el reloj del harness. Estas pruebas no acreditan un despliegue ni los permisos de infraestructura de un proyecto real.
+
+### TDD y verificación
+
+La cobertura nueva se comprobó con dos controles RED temporales: reutilizar los ajustes de la primera sesión al crear las siguientes y volver a incluir ajustes dinámicos en la configuración publicada. Los casos AC12 y AC15 fallaron por sus diferencias de configuración, respectivamente. Se restauraron byte por byte los archivos de producción antes de la ejecución final. Esta entrega añade pruebas y helpers de pruebas; no requirió cambios adicionales de producción.
+
+| Comprobación final | Resultado |
+|---|---|
+| Suite completa de persistencia: `node scripts/run-persistence-e2e.mjs` | 106 pruebas aprobadas, cero fallos y cero omitidas: 19 nuevas y 87 existentes. |
+| Comprobaciones previas del runner | 9 aprobadas. |
+| Controles RED | 2 fallos de comportamiento detectados y archivos originales restaurados. |
+| Lint de los archivos de pruebas y `git diff --check` | Aprobados. Se mantiene el aviso previo de FileEnumerator del plugin de ESLint 10. |
+
+La suite completa incluye además red interrumpida, acuses perdidos, reintentos de proveedor, retoma, vencimiento, multimedia y reglas de acceso. Se ejecutó con el navegador ya instalado en caché después de que el Chrome del sistema se cerrara durante una ejecución inicial.
+
+El trabajo se detiene al completar el punto 3. La revisión final, las instrucciones operativas y la comparabilidad de la referencia de costos indicada en la entrega 2 siguen pendientes. No se modificaron referencias, políticas o tolerancias de costos, ni se desplegó o alteró información real.

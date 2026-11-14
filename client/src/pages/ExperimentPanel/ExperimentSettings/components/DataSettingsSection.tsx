@@ -165,7 +165,7 @@ export function DataSettingsSection({
           )}
           <li>The same resume deadline applies to every storage provider and both IndexedDB modes.</li>
           <li>Return before {config.resumeTimeoutMinutes} minutes to continue the same session. After expiry, earlier pending responses stay with that session; starting another participation requires your choice.</li>
-          <li>New publications affect new sessions. Existing sessions retain their published configuration.</li>
+          <li>Saved settings apply to new sessions without republishing. Existing sessions retain their original configuration.</li>
         </ul>
       </div>
 

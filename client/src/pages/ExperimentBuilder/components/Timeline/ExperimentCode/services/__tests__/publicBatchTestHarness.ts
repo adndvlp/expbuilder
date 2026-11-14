@@ -20,12 +20,10 @@ type Runtime = {
 declare global { interface Window { publicBatchTest: Runtime } }
 
 export async function startPublicRuntime(page: Page, size = 1, indexed = true, initialState: Row = { receivedEvents: [] }) {
+  initialState = { configuration: { recruitmentConfig: { platform: 'none', prolificCompletionCode: '' } }, ...initialState };
   const options = {
     DATA_API_URL: "/apiData", FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID: "batch-test", useStorage: "googledrive",
-    batchConfig: { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: 1 },
-    recruitmentConfig: { platform: "none", prolificCompletionCode: "" },
-    captchaConfig: { enabled: false, provider: "hcaptcha", siteKey: "" },
     sessionNameTokens: [], sessionNameSeparator: "_", currentUid: "owner",
     evaluateCondition: "", branchingEvaluation: "", customPreInitCode: { local: "", public: "" },
     publicParams: {}, extensions: "", progressBar: false, baseCode: "",

@@ -9,20 +9,6 @@ function options(experimentID: string): PublicExperimentCodeOptions {
     FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID,
     useStorage: "firebase",
-    batchConfig: {
-      useIndexedDB: true,
-      batchSize: 10,
-      resumeTimeoutMinutes: 30,
-    },
-    recruitmentConfig: {
-      platform: "none",
-      prolificCompletionCode: "",
-    },
-    captchaConfig: {
-      enabled: true,
-      provider: "hcaptcha",
-      siteKey: "test-site-key",
-    },
     sessionNameTokens: [],
     sessionNameSeparator: "_",
     currentUid: "test-user",

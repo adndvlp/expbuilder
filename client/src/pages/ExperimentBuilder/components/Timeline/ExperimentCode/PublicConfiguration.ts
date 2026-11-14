@@ -69,62 +69,6 @@ export default function PublicConfiguration({
   const generateExperiment = async (storageOverride?: string) => {
     const useStorage = storageOverride || storage;
 
-    // Cargar configuración de batching desde Firestore
-    let batchConfig = {
-      useIndexedDB: true,
-      batchSize: 0,
-      resumeTimeoutMinutes: 30,
-    };
-
-    let recruitmentConfig = {
-      platform: "none" as "none" | "prolific" | "mturk",
-      prolificCompletionCode: "",
-    };
-
-    let captchaConfig = {
-      enabled: false,
-      provider: "hcaptcha" as "hcaptcha" | "recaptcha",
-      siteKey: "",
-    };
-
-    try {
-      const { doc, getDoc } = await import("firebase/firestore");
-      const { db } = await import("../../../../../lib/firebase");
-
-      if (experimentID && db) {
-        const docRef = doc(db, "experiments", experimentID);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.batchConfig) {
-            batchConfig = {
-              useIndexedDB: data.batchConfig.useIndexedDB ?? true,
-              batchSize: data.batchConfig.batchSize ?? 0,
-              resumeTimeoutMinutes: data.batchConfig.resumeTimeoutMinutes ?? 30,
-            };
-          }
-          if (data.recruitmentConfig) {
-            recruitmentConfig = {
-              platform: data.recruitmentConfig.platform ?? "none",
-              prolificCompletionCode:
-                data.recruitmentConfig.prolificCompletionCode ?? "",
-            };
-          }
-          if (data.captchaConfig) {
-            captchaConfig = {
-              enabled: data.captchaConfig.enabled ?? false,
-              provider: data.captchaConfig.provider ?? "hcaptcha",
-              siteKey: data.captchaConfig.siteKey ?? "",
-            };
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("Error loading batch config; using defaults:", error);
-      // Continuar con valores por defecto
-    }
-
     // Fetch session name config from local API (baked in at code-generation time)
     let sessionNameTokens: SessionNameToken[] = [];
     let sessionNameSeparator = "_";
@@ -185,9 +129,6 @@ export default function PublicConfiguration({
       firebaseWebConfig,
       experimentID,
       useStorage,
-      batchConfig,
-      recruitmentConfig,
-      captchaConfig,
       sessionNameTokens,
       sessionNameSeparator,
       currentUid,

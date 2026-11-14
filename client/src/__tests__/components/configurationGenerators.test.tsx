@@ -222,7 +222,7 @@ describe("experiment configuration generators", () => {
     expect(code).toContain("const _SESSION_NAME_TOKENS = [];");
   });
 
-  it("builds public experiment HTML with Firestore-backed batch, captcha and recruitment settings", async () => {
+  it("builds public experiment HTML without embedding mutable settings", async () => {
     mocks.firestoreData = {
       batchConfig: {
         useIndexedDB: false,
@@ -264,11 +264,9 @@ describe("experiment configuration generators", () => {
       "window.JSPSYCH_FILE_UPLOAD_ENDPOINT = 'http://localhost:3000/api/data'.replace('/apiData', '/uploadParticipantFile');",
     );
     expect(() => new Function(code)).not.toThrow();
-    const publishedConfiguration = code.match(
-      /const _PUBLIC_PUBLICATION_CONFIG = (\{[^\n]+\});/,
-    );
-    expect(publishedConfiguration).not.toBeNull();
-    expect(JSON.parse(publishedConfiguration![1])).toEqual(mocks.firestoreData);
+    expect(code).not.toContain('_PUBLIC_PUBLICATION_CONFIG');
+    expect(code).not.toContain('site-key-123');
+    expect(code).not.toContain('COMPLETE123');
     expect(code).toContain(
       "await _showCaptchaGate(effectiveCaptcha.siteKey, effectiveCaptcha.provider)",
     );

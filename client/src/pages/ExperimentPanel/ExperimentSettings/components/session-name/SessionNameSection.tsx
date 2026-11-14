@@ -52,7 +52,7 @@ export function SessionNameSection(props: SessionNameSectionProps) {
         }}
       >
         Define how session names are automatically composed for each participant
-        run.
+        run. Save and republish to apply changes to the public experiment.
       </p>
       <SessionTokenCatalog
         tokenCount={props.tokens.length}

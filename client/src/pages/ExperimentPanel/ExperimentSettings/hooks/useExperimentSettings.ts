@@ -10,6 +10,7 @@ import type {
   StatusMessage,
 } from "../types";
 import { getApiBaseUrl } from "../../../../lib/apiBaseUrl";
+import { getPublicSettingsError } from '../../../../lib/publicSettings';
 import {
   getSessionNameUniquenessError,
   makeSessionToken,
@@ -153,19 +154,9 @@ export function useExperimentSettings(experimentID: string | undefined) {
 
   const handleSave = async () => {
     if (!experimentID) return;
-    if (!Number.isSafeInteger(config.resumeTimeoutMinutes) || config.resumeTimeoutMinutes < 1 || config.resumeTimeoutMinutes > 1440) {
-      setMessage({ type: 'error', text: 'Resume Timeout must be an integer from 1 to 1440 minutes.' }); return;
-    }
-    if (!Number.isSafeInteger(config.batchSize) || config.batchSize < 0) {
-      setMessage({ type: 'error', text: 'Batch Size must be a nonnegative integer.' }); return;
-    }
-    const uniquenessError = getSessionNameUniquenessError(sessionNameTokens);
-    if (uniquenessError) {
-      setSessionNameMessage({ type: "error", text: uniquenessError });
-      setMessage({
-        type: "error",
-        text: "Session name configuration is invalid.",
-      });
+    const settingsError = getPublicSettingsError({ batchConfig: config, recruitmentConfig, captchaConfig });
+    if (settingsError) {
+      setMessage({ type: 'error', text: settingsError });
       return;
     }
     setSaving(true);
@@ -177,20 +168,6 @@ export function useExperimentSettings(experimentID: string | undefined) {
         { batchConfig: config, recruitmentConfig, captchaConfig },
         { merge: true },
       );
-      const response = await fetch(
-        `${API_URL}/api/session-name-config/${experimentID}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tokens: sessionNameTokens,
-            separator: sessionNameSeparator,
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to save session name configuration");
-      }
       setMessage({
         type: "success",
         text: "Configuration saved successfully!",

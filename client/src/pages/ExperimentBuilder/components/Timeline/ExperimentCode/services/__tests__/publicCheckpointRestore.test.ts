@@ -9,9 +9,9 @@ const checkpoint = (completed: string, target = completed) => ({ completed, curs
 async function restore(indexed: boolean, serverCheckpoint: unknown, localCheckpoint: unknown = null, cached: unknown = null,
   localSequence = 1, serverSequence = 0) {
   if (cached) localStorage.setItem(keys.resumeTrial, JSON.stringify(cached));
-  const options = { experimentID: "restore-test", useStorage: "googledrive", captchaConfig: { enabled: false, siteKey: "" },
-    batchConfig: { useIndexedDB: indexed, batchSize: 0, resumeTimeoutMinutes: 1 }, recruitmentConfig: { platform: "none" },
-    evaluateCondition: "" } as PublicExperimentCodeOptions;
+  const settings = { batchConfig: { useIndexedDB: indexed, batchSize: 0, resumeTimeoutMinutes: 1 },
+    recruitmentConfig: { platform: 'none', prolificCompletionCode: '' }, captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' } };
+  const options = { experimentID: "restore-test", useStorage: "googledrive", evaluateCondition: "" } as PublicExperimentCodeOptions;
   const code = publicBootstrapCode(options);
   return new Function("serverCheckpoint", "localCheckpoint", "localSequence", "serverSequence", `
     ${publicEventStorageCode()}
@@ -21,7 +21,7 @@ async function restore(indexed: boolean, serverCheckpoint: unknown, localCheckpo
     const TrialDB = { init: async () => {}, getAll: async () => [], clear: async () => {},
       syncManifest: async () => {}, getState: async () => ({ checkpoint: localCheckpoint, checkpointSequence: localSequence, nextSequence: 3, events: [] }) };
     const createSession = async () => ({ success: true, sessionId: 'S1', participantNumber: 23,
-      receivedEvents: [], resumeCheckpoint: serverCheckpoint, resumeCheckpointSequence: serverSequence });
+      configuration: ${JSON.stringify(settings)}, receivedEvents: [], resumeCheckpoint: serverCheckpoint, resumeCheckpointSequence: serverSequence });
     const _setLoadingMsg = () => {}, _hideLoading = () => {}, waitForFirebase = async () => {};
     const _sessionNameHasDynamic = () => false;
     const _resolveResumeBranch = value => JSON.parse(value);

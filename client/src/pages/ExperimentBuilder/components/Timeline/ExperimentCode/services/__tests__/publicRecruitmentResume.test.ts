@@ -6,10 +6,10 @@ import type { PublicExperimentCodeOptions } from '../publicCodeTypes';
 
 const none = { platform: 'none', prolificCompletionCode: '' };
 const prolific = (code: string) => ({ platform: 'prolific', prolificCompletionCode: code });
-it.each([[none, prolific('OLD')], [prolific('NEW'), none], [prolific('NEW'), prolific('OLD')]])(
-  'completion uses the session recruitment settings after republishing %#', async (published, saved) => {
+it.each([none, prolific('OLD')])(
+  'completion uses the session recruitment settings after another save %#', async saved => {
     const success = vi.fn(), complete = vi.fn(async () => {}), location = { href: '' };
-    const options = { experimentID: 'EID', customPreInitCode: {}, publicParams: {}, extensions: '', recruitmentConfig: published } as PublicExperimentCodeOptions;
+    const options = { experimentID: 'EID', customPreInitCode: {}, publicParams: {}, extensions: '' } as PublicExperimentCodeOptions;
     const code = (publicInitCode(options) + publicFinishCode(options)).split('// __INIT_JSPSYCH_END__')[0];
     const callback = new Function('saved', 'success', 'complete', 'location', `
       let publicFinished = false, publicFinishInFlight = null, publicClosing = false, publicFinishHandler;
@@ -29,16 +29,15 @@ it.each([[none, prolific('OLD')], [prolific('NEW'), none], [prolific('NEW'), pro
     else { expect(location.href).toBe('https://app.prolific.com/submissions/complete?cc=OLD'); expect(success).not.toHaveBeenCalled(); }
   });
 
-it.each([['mturk', 'none'], ['none', 'mturk']])('the preview gate uses saved recruitment settings: published %s, saved %s', async (published, saved) => {
+it.each(['none', 'mturk'])('the preview gate uses session recruitment settings: %s', async saved => {
   const panel = document.createElement('div');
-  const options = { experimentID: 'EID', batchConfig: { useIndexedDB: false, batchSize: 1, resumeTimeoutMinutes: 1 },
-    captchaConfig: { enabled: false }, recruitmentConfig: { platform: published }, evaluateCondition: '' } as PublicExperimentCodeOptions;
+  const options = { experimentID: 'EID', evaluateCondition: '' } as PublicExperimentCodeOptions;
   const continued = await new Function('panel', 'saved', `
     const _publicStorageKeys = {}, _publicWriter = { connectionId: 'C1', writeToken: 'secret' }, trialSessionId = 'S1', isResuming = false;
     let participantNumber;
     const localStorage = { getItem: () => null, setItem() {}, removeItem() {} }, sessionStorage = { getItem: () => null };
     const createSession = async action => ({ decision: 'resume_allowed', sessionProtocolVersion: 3, lifecycle: 'active', participantNumber: 0,
-      configuration: { recruitmentConfig: { platform: saved } },
+      configuration: { batchConfig: { useIndexedDB: false, batchSize: 1, resumeTimeoutMinutes: 1 }, captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' }, recruitmentConfig: { platform: saved, prolificCompletionCode: '' } },
       connection: { id: 'C1', generation: 1, phase: action === 'activateConnection' ? 'active' : 'connecting' } });
     const _sessionNameHasDynamic = () => false, _setLoadingMsg = () => {}, _hideLoading = () => {};
     const _resolveResumeBranch = () => null, _canonicalPublicEvent = JSON.stringify;

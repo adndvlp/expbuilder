@@ -21,6 +21,7 @@ test('production persistence, runtime generation, dynamic components and shared 
   }
 });
 test('the workflow and its activation tests select checks; unrelated docs do not', () => {
+  assert.deepEqual(selectChecks(['client/src/lib/publicSettings.ts']), { persistence: true, benchmark: true });
   assert.deepEqual(selectChecks(['.github/workflows/public-persistence.yml']), { persistence: true, benchmark: true });
   assert.equal(selectChecks(['benchmarks/test/ci-selection.test.mjs']).benchmark, true);
   assert.deepEqual(selectChecks(['docs/12-PUBLISH_FLOW.md']), { persistence: false, benchmark: false });

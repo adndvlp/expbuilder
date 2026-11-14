@@ -15,9 +15,6 @@ export function publicBootstrapCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -34,9 +31,6 @@ export function publicBootstrapCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -56,7 +50,7 @@ export function publicBootstrapCode(
     if (_publicSessionState.decision && !['resume_allowed', 'session_expired', 'session_completed'].includes(_publicSessionState.decision)) {
       throw new Error('Session cannot resume: ' + _publicSessionState.decision + '. Your pending responses are preserved.');
     }
-    const effectiveBatch = _publicSessionState.configuration?.batchConfig || ${JSON.stringify(batchConfig)};
+    const effectiveBatch = _publicSessionState.configuration.batchConfig;
     const BATCH_CONFIG = { size: effectiveBatch.batchSize, useIndexedDB: effectiveBatch.useIndexedDB,
       resumeTimeoutMinutes: effectiveBatch.resumeTimeoutMinutes, currentBatchNumber: 0 };
     // Esperar e inicializar Firebase
@@ -72,7 +66,7 @@ ${publicPresenceCode(options)}
     if (_publicSessionState.sessionProtocolVersion === 3) await _connectPublicSession();
 
 
-    const effectiveCaptcha = _publicSessionState.configuration?.captchaConfig || ${JSON.stringify(captchaConfig)};
+    const effectiveCaptcha = _publicSessionState.configuration.captchaConfig;
     if (!['completed', 'expired'].includes(_publicSessionState.lifecycle) && effectiveCaptcha.enabled && effectiveCaptcha.siteKey
         && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
       const loading = document.getElementById('jspsych-loading-overlay');
@@ -136,7 +130,7 @@ ${activateResumeRouteDecisionCode()}
     const _mturkTurkSubmitTo = _urlParams.get('turkSubmitTo');
     const _mturkIsPreview = _mturkAssignmentID === 'ASSIGNMENT_ID_NOT_AVAILABLE';
 
-    const effectiveRecruitment = _publicSessionState.configuration?.recruitmentConfig || ${JSON.stringify(recruitmentConfig)};
+    const effectiveRecruitment = _publicSessionState.configuration.recruitmentConfig;
     // MTurk preview mode: block experiment from starting
     if (effectiveRecruitment.platform === 'mturk' && _mturkIsPreview) {
       document.getElementById('jspsych-container').innerHTML =

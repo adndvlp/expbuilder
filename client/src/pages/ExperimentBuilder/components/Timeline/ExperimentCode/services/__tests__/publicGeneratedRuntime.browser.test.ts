@@ -7,13 +7,15 @@ import type { PublicExperimentCodeOptions } from "../publicCodeTypes";
 import { receipt, type Upload } from "./publicBatchTestHarness";
 
 let browser: Browser;
-function code(indexed: boolean, closed = false) {
+const configuration = (indexed = false) => ({
+  batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 },
+  recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+  captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' },
+});
+function code(closed = false) {
   return buildPublicExperimentCode({
     DATA_API_URL: "/apiData", FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID: "generated-runtime", useStorage: "googledrive",
-    batchConfig: { useIndexedDB: indexed, batchSize: 1, resumeTimeoutMinutes: 1 },
-    recruitmentConfig: { platform: "none", prolificCompletionCode: "" },
-    captchaConfig: { enabled: false, provider: "hcaptcha", siteKey: "" },
     sessionNameTokens: [], sessionNameSeparator: "_", currentUid: "owner",
     evaluateCondition: "", branchingEvaluation: "", customPreInitCode: { local: "", public: "" },
     publicParams: { on_finish: "window.__complete = true;" }, extensions: "", progressBar: false,
@@ -63,7 +65,7 @@ describe("generated public runtime with real jsPsych", () => {
       await page.route("**/apiData", async route => {
         const body = route.request().postDataJSON() as Upload;
         if (['createSession', 'resumeSession', 'activateConnection'].includes(body.action || '')) {
-          await route.fulfill({ json: { success: true, decision: 'resume_allowed', sessionProtocolVersion: 3,
+          await route.fulfill({ json: { success: true, decision: 'resume_allowed', sessionProtocolVersion: 3, configuration: configuration(indexed),
             participantNumber: 0, receivedEvents: [], resumeCheckpoint: null, lifecycle: 'active',
             connection: { id: 'C1', generation: 1, phase: body.action === 'activateConnection' ? 'active' : 'connecting' } } }); return;
         }
@@ -71,7 +73,7 @@ describe("generated public runtime with real jsPsych", () => {
         if (uploads.length === 1) { arrived(); await blocked; }
         await route.fulfill({ json: receipt(body) });
       });
-      await page.addScriptTag({ content: code(indexed) }); await entered;
+      await page.addScriptTag({ content: code() }); await entered;
       if (indexed) await page.waitForFunction(() => (window as unknown as { __started: number[] }).__started.length === 2);
       const state = await page.evaluate(() => {
         const target = window as unknown as { __started: number[]; __complete: boolean; __updates: Record<string, unknown>[] };
@@ -96,10 +98,10 @@ describe("generated public runtime with real jsPsych", () => {
         await route.fulfill({ json: !['createSession', 'resumeSession'].includes(body.action || '') ? { success: true, experimentID: body.experimentID, sessionId: body.sessionId,
           export: { status: 'confirmed', confirmed: true, revision: 1, requestedRevision: 1, confirmedRevision: 1, eventCount: 2, eventsHash },
         } : {
-          success: true, decision: 'session_completed', sessionProtocolVersion: 3, participantNumber: 23, receivedEvents, resumeCheckpoint: null, lifecycle: "completed",
+          success: true, decision: 'session_completed', sessionProtocolVersion: 3, configuration: configuration(), participantNumber: 23, receivedEvents, resumeCheckpoint: null, lifecycle: "completed",
         } });
       });
-      await page.addScriptTag({ content: code(false, true) });
+      await page.addScriptTag({ content: code(true) });
       await page.waitForFunction(() => (window as unknown as { __complete: boolean }).__complete);
       expect(await page.evaluate(() => (window as unknown as { __started: number[] }).__started)).toEqual([]);
       expect(uploads.at(-1)).toMatchObject({ action: 'sessionStatus' });
@@ -114,7 +116,7 @@ describe("generated public runtime with real jsPsych", () => {
       await page.route('**/apiData', async route => {
         const body = route.request().postDataJSON() as Upload; uploads.push(body); sessionId ||= body.sessionId;
         if (['createSession', 'activateConnection'].includes(body.action || '')) {
-          await route.fulfill({ json: { success: true, sessionProtocolVersion: 3, decision: 'resume_allowed', lifecycle: 'active', participantNumber: 0,
+          await route.fulfill({ json: { success: true, sessionProtocolVersion: 3, configuration: configuration(), decision: 'resume_allowed', lifecycle: 'active', participantNumber: 0,
             receivedEvents: [], connection: { id: 'C1', generation: 1, phase: body.action === 'activateConnection' ? 'active' : 'connecting' } } }); return;
         }
         if (body.action === 'appendEvents') {
@@ -126,7 +128,7 @@ describe("generated public runtime with real jsPsych", () => {
         await route.fulfill({ json: { success: true, experimentID: body.experimentID, sessionId: body.sessionId, lifecycle: 'expired',
           export: { confirmed: true, status: 'confirmed', eventCount: 1, eventsHash, requestedRevision: 1, confirmedRevision: 1 } } });
       });
-      await page.addScriptTag({ content: code(false) });
+      await page.addScriptTag({ content: code() });
       await page.locator('#expbuilder-expired-session').waitFor();
       expect(await page.getByRole('button', { name: 'Start a new participation' }).count()).toBe(1);
       await page.locator('[data-new-session]:not([disabled])').waitFor();
@@ -148,13 +150,13 @@ describe("generated public runtime with real jsPsych", () => {
       await page.route('**/apiData', async route => {
         const body = route.request().postDataJSON() as Upload;
         if (body.action === 'createSession') {
-          await route.fulfill({ json: { success: true, decision: 'session_expired', sessionProtocolVersion: 3, lifecycle: 'expired', participantNumber: 0, receivedEvents } }); return;
+          await route.fulfill({ json: { success: true, decision: 'session_expired', sessionProtocolVersion: 3, configuration: configuration(), lifecycle: 'expired', participantNumber: 0, receivedEvents } }); return;
         }
         await blocked;
         await route.fulfill({ json: { success: true, experimentID: body.experimentID, sessionId: body.sessionId, lifecycle: 'expired',
           export: { confirmed: true, status: 'confirmed', eventCount: 1, eventsHash, requestedRevision: 1, confirmedRevision: 1 } } });
       });
-      await page.addScriptTag({ content: code(false, true) });
+      await page.addScriptTag({ content: code(true) });
       const choice = page.getByRole('button', { name: 'Start a new participation' });
       await choice.waitFor(); expect(await choice.isEnabled()).toBe(true);
       expect(await page.evaluate(() => (window as unknown as { __started: number[] }).__started)).toEqual([]);
