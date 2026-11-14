@@ -97,7 +97,7 @@ jobs:
           PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0
       - name: Measure and compare costs
         if: ${{ !cancelled() && needs.changes.outputs.benchmark == 'true' }}
-        run: npm run benchmark:cost:check -- --output "$COST_CHECK_OUTPUT" --normalization benchmarks/ci/normalization.json
+        run: npm run benchmark:cost:check -- --output "$COST_CHECK_OUTPUT" --policy benchmarks/policies/persistence-temporal-storage.json --normalization benchmarks/ci/normalization.json
         env:
           COST_CHECK_OUTPUT: ${{ runner.temp }}/cost-check
           PERSISTENCE_SDK_DIR: ${{ runner.temp }}/firebase-sdk-9.23.0

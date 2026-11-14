@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: implementaciones y validación final previas ejecutadas. Revisión de aceptación de almacenamiento temporal definida en la sección 18; implementación pendiente. El check vigente conserva el rechazo documentado.
+Estado: implementación y validación local completadas, incluida la revisión de aceptación de almacenamiento temporal de la sección 18. El check devuelve código 0 bajo la política revisada; los resultados estrictos anteriores se conservan.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -317,7 +317,7 @@ El [informe final](investigaciones/persistence-cost-final-validation-2026-11-14.
 
 ## 18. Revisión de aceptación: almacenamiento temporal acotado
 
-Fecha de la revisión: 2026-11-14. Estado: entregas 1–2 implementadas; integración del check y cierre pendientes. La SDD se redactó antes de implementar por indicación del usuario. La política activa del check conserva el comportamiento estricto.
+Fecha de la revisión: 2026-11-14. Estado: entregas 1–3 implementadas y validadas localmente. La SDD se redactó antes de implementar por indicación del usuario. El check selecciona la política revisada; el comparador por defecto conserva el comportamiento estricto.
 
 ### 18.1 Resultado solicitado y alcance
 
@@ -418,7 +418,7 @@ Se implementan por indicación del usuario, mediante TDD, y se detiene el trabaj
 2. **Evaluación acotada e informes.** Integrar guardas de recursos/inventario/ahorro, conversión exacta y presentación de autorizaciones. Pasar los casos positivos y negativos CO16–CO21, conservando el comportamiento estricto por defecto y sin tocar las mediciones.
 3. **Integración del check y cierre.** Seleccionar explícitamente la política específica para la comparación B0/candidata en el check. Ejecutar las pruebas del benchmark, comparar las tres capturas existentes con ambas políticas, verificar sus tres parejas estrictas y ejecutar una matriz ordinaria mediante el check completo. Guardar el informe actualizado y el estado final de aceptación, conservando B0 R3 y la evidencia anterior.
 
-La revisión queda implementada cuando la comparación acotada pasa, todas las regresiones introducidas por las pruebas siguen rechazándose, la repetibilidad permanece exacta y el check completo conserva sus evidencias y límites. La evaluación está implementada; las comprobaciones con las matrices reales y el check completo de la entrega 3 siguen pendientes.
+La revisión queda implementada cuando la comparación acotada pasa, todas las regresiones introducidas por las pruebas siguen rechazándose, la repetibilidad permanece exacta y el check completo conserva sus evidencias y límites. Estas condiciones se cumplieron en la validación local de la entrega 3, documentada en la sección 18.10.
 
 ### 18.8 Resultado de la primera entrega de la revisión — 2026-11-14
 
@@ -441,3 +441,17 @@ Los informes JSON y Markdown mantienen los aumentos y añaden el incremento fís
 TDD: 45 de las 46 primeras pruebas nuevas fallaron antes de integrar la evaluación. Dos pruebas adicionales detectaron la autorización parcial tras otro fallo y la repetición más barata sin igualdad; ambas se corrigieron después de reproducirlas. Pasaron las 51 pruebas nuevas y las 296 pruebas completas del benchmark con Node 22.23.2, incluidos los tests de la política, atribución, comparación y CLI. El caso manual de 80 bytes durante 0,25 segundos adicionales acepta exactamente 20 byte-segundos y rechaza 20,001; cubre low/nominal/high, 1/1.000/10.000 sesiones, tarifa cero y conversión de unidades. También pasan las regresiones de operaciones, bytes finales, cobertura, CSV, ahorro independiente, repetición e informes. ESLint sobre los archivos JavaScript modificados terminó con código 0 y el aviso existente de FileEnumerator en ESLint 10.
 
 El check y su política por defecto continúan siendo estrictos. La selección explícita de la política revisada en el check, las comparaciones de las tres capturas reales y la matriz de cierre quedan para la entrega 3. No se ejecutó una nueva matriz, no se registró una referencia posterior ni se desplegaron recursos. El trabajo se detiene al terminar esta entrega.
+
+### 18.10 Resultado de la tercera entrega y cierre de la revisión — 2026-11-14
+
+CO22 ejecutado mediante TDD. Tres pruebas de selección fallaron antes de cambiar el check y el workflow; después pasaron las 20 pruebas específicas, incluidos los casos que ejecutan el comparador real desde el check y propagan el rechazo al exceder el tope. El check selecciona persistence-temporal-storage.json junto con B0 R3 y registra la política en run.json. El workflow la pasa explícitamente. El comparador por defecto sigue siendo estricto y el check conserva la opción explícita de usar no-increases.json.
+
+Las tres capturas verificadas anteriores devuelven código 0 con la política revisada y código 2 con la estricta. Cada comparación revisada mantiene visibles y autorizadas las 441 filas aumentadas de los 21 escenarios declarados. Las tres parejas 1–2, 1–3 y 2–3 pasan bajo política estricta con las cinco igualdades en true. Una copia adversarial con 0,001 byte-segundos adicionales sobre el tope devuelve código 2, sin autorizaciones confirmadas; las capturas originales no se modificaron.
+
+El check completo ejecutó una sola etapa unitaria de 298 pruebas, una matriz nueva de 23 escenarios y una comparación con B0 R3: las tres etapas y ensure-report devolvieron 0. La captura nueva mantiene las cinco igualdades exactas al compararla con la anterior, y conserva código 2 al compararla con B0 bajo la política estricta. El primer intento del check falló por EPERM al escuchar en 127.0.0.1 dentro del sandbox; se conserva como fallo ambiental. El reintento autorizado terminó y cerró los emuladores.
+
+La captura completa ocupa 14.637.186 bytes y la comparación revisada 16.275.665, ambas dentro de 16 MiB. El conjunto del check ocupa 30.989.373 bytes, dentro de 40 MiB; JUnit ocupa 40.389 bytes, dentro de 2 MiB. Los logs no omitieron bytes. ESLint de los archivos JavaScript modificados terminó con código 0 y el aviso existente de FileEnumerator en ESLint 10; git diff --check pasó.
+
+**La revisión queda completada localmente bajo la política explícita de aceptación acotada.** Se conservan B0 R3, las políticas, tarifas, índices, hipótesis, calendario y evidencias anteriores. El código del producto permanece igual. Los importes coinciden con la validación previa: normal-true-1, 1.000 sesiones y 30 días pasa de USD 1,328522775521 a 0,945209089647 nominales. No se registró una candidata como referencia ni se desplegaron recursos. La ejecución remota de GitHub no se afirma como realizada.
+
+El [informe de cierre](investigaciones/persistence-temporal-storage-acceptance-2026-11-14.md) y la [evidencia numérica con hashes](investigaciones/persistence-temporal-storage-acceptance-2026-11-14.json) registran las comparaciones con ambas políticas, las parejas exactas, el rechazo adversarial y el check nuevo. El trabajo se detiene al terminar esta entrega.

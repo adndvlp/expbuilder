@@ -69,13 +69,14 @@ export async function checkCosts(options, { run = runCommand, signal } = {}) {
   if (!options.output) throw new Error('Required --output NEW_DIRECTORY');
   const output = await canonical(path.resolve(options.output)), baseline = await canonical(path.resolve(options.baseline || path.join(root, 'benchmarks/references/persistence-b0-2026-11-14-r3')));
   const candidate = options.candidate ? await canonical(path.resolve(options.candidate)) : path.join(output, 'capture');
+  const policy = path.resolve(options.policy || path.join(root, 'benchmarks/policies/persistence-temporal-storage.json'));
   for (const input of [baseline, ...(options.candidate ? [candidate] : [])]) {
     if (output === input || output.startsWith(input + path.sep) || input.startsWith(output + path.sep)) throw new Error('Output must be separate from captured inputs');
   }
   await mkdir(path.dirname(output), { recursive: true });
   await mkdir(output); // Exclusive directory: no implicit replacement of a report/reference.
   const report = { format: 1, startedAt: new Date().toISOString(), finished: false, status: 'incomplete', exitCode: 3,
-    baseline, candidate, reusedCapture: Boolean(options.candidate), stages: [] };
+    baseline, candidate, policy, reusedCapture: Boolean(options.candidate), stages: [] };
   const save = async () => {
     await writeFile(path.join(output, 'run.json.tmp'), json(report));
     await rename(path.join(output, 'run.json.tmp'), path.join(output, 'run.json'));
@@ -112,7 +113,7 @@ export async function checkCosts(options, { run = runCommand, signal } = {}) {
     catch (error) { throw Object.assign(new Error('Missing/invalid capture: ' + error.message), { exitCode: 3 }); }
     current = 'comparison';
     const args = [path.join(root, 'benchmarks/cli.mjs'), 'compare', '--baseline', baseline, '--candidate', candidate,
-      '--output', path.join(output, 'comparison'), '--policy', path.resolve(options.policy || path.join(root, 'benchmarks/policies/no-increases.json'))];
+      '--output', path.join(output, 'comparison'), '--policy', policy];
     if (options.normalization) args.push('--normalization', path.resolve(options.normalization));
     const code = await stage('comparison', args);
     let comparison;

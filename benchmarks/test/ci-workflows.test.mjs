@@ -43,6 +43,7 @@ test('cost checks run once, reuse installed dependencies and preserve failure ar
   const check = steps.find(step => step.run?.includes('npm run benchmark:cost:check'));
   assert.match(check.if, /!cancelled\(\)/); assert.match(check.if, /outputs\.benchmark/);
   assert.ok(!check['continue-on-error']); assert.match(check.run, /ci\/normalization\.json/);
+  assert.match(check.run, /--policy benchmarks\/policies\/persistence-temporal-storage\.json/);
   const upload = steps.find(step => step.uses === 'actions/upload-artifact@v4');
   assert.match(upload.if, /always\(\)/); assert.match(upload.if, /outputs\.benchmark/);
   assert.ok(upload.with['retention-days'] > 0 && upload.with['retention-days'] <= 14);

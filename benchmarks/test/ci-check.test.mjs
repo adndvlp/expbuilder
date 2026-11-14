@@ -7,6 +7,7 @@ import process from 'node:process';
 import { setTimeout, clearTimeout } from 'node:timers';
 import { checkCosts, runCommand } from '../ci/check.mjs';
 import { ensureReport } from '../ci/ensure-report.mjs';
+import { temporalFixture } from './temporal-storage-fixtures.mjs';
 
 const json = value => JSON.stringify(value) + '\n';
 async function fixture(t) {
@@ -44,14 +45,17 @@ test('one check runs unit, measurement and comparison once, keeps evidence and n
   assert.equal(saved.finished, true); assert.ok(saved.artifactBytes > 0);
   assert.equal(await ensureReport(f.output), 0);
 });
-test('the default check selects the explicitly registered corrected B0 without regenerating it', async t => {
+test('CO22: the default check selects corrected B0 and the reviewed policy without regenerating the reference', async t => {
   const f = await fixture(t);
   const result = await checkCosts({ output: f.output }, { run: f.run });
   assert.equal(path.basename(result.baseline), 'persistence-b0-2026-11-14-r3');
   assert.equal(result.exitCode, 0);
   assert.deepEqual(f.calls.map(job => job.name), ['unit','measurement','comparison']);
   assert.ok(f.calls[2].args.includes(result.baseline));
-  assert.equal(path.basename(f.calls[2].args[f.calls[2].args.indexOf('--policy') + 1]), 'no-increases.json');
+  const selectedPolicy = f.calls[2].args[f.calls[2].args.indexOf('--policy') + 1];
+  assert.equal(path.basename(selectedPolicy), 'persistence-temporal-storage.json');
+  assert.equal(result.policy, selectedPolicy);
+  assert.equal(JSON.parse(await readFile(path.join(f.output, 'run.json'))).policy, selectedPolicy);
   assert.ok(!JSON.stringify(f.calls).includes("'reference'"));
 });
 test('a failing unit suite preserves its JUnit/log and skips expensive measurement', async t => {
@@ -91,9 +95,42 @@ test('every comparison error code is propagated with the failure report intact',
 });
 test('reusing an explicit capture skips measurement and forwards the chosen policy/normalization', async t => {
   const f = await fixture(t);
-  const result = await checkCosts({ ...f, candidate: f.baseline, normalization: 'benchmarks/ci/normalization.json' }, { run: f.run });
+  const policy = path.resolve('benchmarks/policies/no-increases.json');
+  const result = await checkCosts({ ...f, candidate: f.baseline, policy, normalization: 'benchmarks/ci/normalization.json' }, { run: f.run });
   assert.equal(result.exitCode, 0); assert.deepEqual(f.calls.map(job => job.name), ['unit','comparison']);
   assert.ok(f.calls[1].args.includes('--normalization')); assert.ok(f.calls[1].args.includes('--policy'));
+  assert.equal(f.calls[1].args[f.calls[1].args.indexOf('--policy') + 1], policy);
+  assert.equal(result.policy, policy);
+});
+for (const [end, expected] of [['2.25', 0], ['2.2500125', 2]]) test('CO22: the check preserves the real CLI receipt at ' + end + ' seconds, without a second measurement', async t => {
+  const f = await fixture(t), data = temporalFixture({ end });
+  const candidate = path.join(path.dirname(f.output), 'candidate'), policy = path.join(path.dirname(f.output), 'policy.json');
+  await mkdir(candidate);
+  for (const [directory, capture] of [[f.baseline, data.baseline], [candidate, data.candidate]]) {
+    for (const [name, bytes] of Object.entries(capture.files)) await writeFile(path.join(directory, name), bytes);
+  }
+  await writeFile(policy, json(data.policy));
+  const stages = [];
+  const result = await checkCosts({ baseline: f.baseline, candidate, policy, output: f.output }, { run: async job => {
+    stages.push(job.name);
+    // This test isolates the runner/CLI boundary; the full suite runs once in the actual check.
+    if (job.name === 'unit') {
+      await writeFile(job.log, 'Unit stage isolated by this integration test\n');
+      await writeFile(path.join(f.output, 'unit.xml'), '<testsuites/>');
+      return { code: 0 };
+    }
+    return runCommand({ ...job, quiet: true });
+  } });
+  assert.equal(result.exitCode, expected); assert.equal(await ensureReport(f.output), expected);
+  assert.deepEqual(stages, ['unit', 'comparison']); assert.equal(result.reusedCapture, true);
+  assert.equal(result.policy, policy);
+  const comparison = JSON.parse(await readFile(path.join(f.output, 'comparison/comparison.json')));
+  assert.equal(comparison.exitCode, expected);
+  const reviewed = comparison.scenarios.find(s => s.name === 'normal').temporalStorage;
+  assert.equal(reviewed.authorized, expected === 0);
+  if (expected) assert.ok(comparison.issues.some(i => i.code === 'temporal_storage_limit'));
+  assert.deepEqual(await readFile(path.join(f.baseline, 'reference.json')), data.baseline.files['reference.json']);
+  assert.ok(result.artifactBytes < 40 * 1024 * 1024);
 });
 test('spawn errors, mismatched comparison receipts and cancellations cannot become success', async t => {
   for (const failure of ['spawn', 'receipt', 'cancel']) {

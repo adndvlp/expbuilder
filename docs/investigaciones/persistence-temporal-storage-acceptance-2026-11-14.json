@@ -1,0 +1,2261 @@
+{
+  "format": 1,
+  "date": "2026-11-14",
+  "delivery": "18.7.3",
+  "status": "passed under the explicitly reviewed temporal-storage policy",
+  "specification": "docs/public-session-cost-optimization-sdd.md, section 18",
+  "scope": "Modeled gross runtime USD, frozen price profile and assumptions, 30-day window; acceptance of bounded temporary storage only",
+  "previousEvidence": {
+    "file": "docs/investigaciones/persistence-cost-final-validation-2026-11-14.json",
+    "bytes": 370350,
+    "sha256": "f1ed379184482223187e230ac6c99a4ad6fddcd3862b0c355ffa758d5bab7a18"
+  },
+  "baseline": {
+    "id": "persistence-b0-2026-11-14-r3",
+    "source": {
+      "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+      "files": {
+        "reference.json": {
+          "bytes": 4811692,
+          "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+        },
+        "budget.json": {
+          "bytes": 11012165,
+          "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+        }
+      }
+    },
+    "measuredCodeSha256": "e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac"
+  },
+  "policies": {
+    "strict": {
+      "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+      "bytes": 71,
+      "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+    },
+    "reviewed": {
+      "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+      "bytes": 6586,
+      "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+    }
+  },
+  "calculation": {
+    "runtime": "v22.23.2",
+    "files": {
+      "cli.mjs": {
+        "bytes": 6193,
+        "sha256": "3cc97c7eaaee6fe4fd0a11323232dfa970e5ca6beccaf6d687c6dbacbe947dc7"
+      },
+      "core/comparison.mjs": {
+        "bytes": 37401,
+        "sha256": "7e6ff16d1ef9cd31c5b3cc0e8b3e7b799b5e9a824f3442af8d1038b738c021ae"
+      },
+      "core/temporal-storage-policy.mjs": {
+        "bytes": 13970,
+        "sha256": "b60f0f390e3cc1b98d828ed4c7c4c9286385c9df72625562201740c445e0c332"
+      },
+      "core/temporal-storage-evaluation.mjs": {
+        "bytes": 8434,
+        "sha256": "523741cf40f81d568d85ca9ae0c83db1068dce98eb1d3caebd5994e980815f1d"
+      },
+      "core/repeatability.mjs": {
+        "bytes": 5332,
+        "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+      },
+      "core/attribution.mjs": {
+        "bytes": 3486,
+        "sha256": "80333a7e0ea9085606965cdb72fb5388cadb9b5767e9129c97889bbc46dc0c88"
+      },
+      "core/calibration.mjs": {
+        "bytes": 3143,
+        "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+      },
+      "core/budget.mjs": {
+        "bytes": 7060,
+        "sha256": "a4973e285bc4bb0302f7e0edf50e2b324329484ee813e8f44566b563a9e78930"
+      },
+      "core/models.mjs": {
+        "bytes": 5237,
+        "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+      },
+      "core/quantity.mjs": {
+        "bytes": 2985,
+        "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+      },
+      "core/decimal.mjs": {
+        "bytes": 2920,
+        "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+      },
+      "persistence/budget.mjs": {
+        "bytes": 17894,
+        "sha256": "e2062c22f1f5f0a5bfb536ecffb503b67e8d1ca16c89c079994c78562384e5f5"
+      },
+      "persistence/function-inventory.mjs": {
+        "bytes": 11326,
+        "sha256": "cab4b8dee3799b59468858c1d3fdab6f24da777f5936a6860cabf8eda78997c1"
+      },
+      "persistence/storage.mjs": {
+        "bytes": 11631,
+        "sha256": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+      },
+      "persistence/storage-measurement.mjs": {
+        "bytes": 2411,
+        "sha256": "913235ee60edf866f4c309d1c6e2fe93f5d8193b2886742fe2af0cfc42ce6332"
+      }
+    }
+  },
+  "normalization": {
+    "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+    "bytes": 250,
+    "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+  },
+  "selectionTdd": {
+    "red": {
+      "file": "/tmp/temporal-step3-selection-red.log",
+      "bytes": 7091,
+      "sha256": "cdb5ea27e8dbbb2332b91a8b02cff8d96cd1d14db13b78600786574e4f299550"
+    },
+    "green": {
+      "file": "/tmp/temporal-step3-selection-green.log",
+      "bytes": 4916,
+      "sha256": "9a54702ff7cf1f0e778c1b38b49ae2657ec82f2c5151ea1453adf536ee05c867"
+    },
+    "initialFailures": 3,
+    "greenPassed": 20
+  },
+  "capturedRuns": [
+    {
+      "run": 1,
+      "source": {
+        "directory": "/tmp/cost-step5-final-run-1-20261114",
+        "files": {
+          "reference.json": {
+            "bytes": 4548067,
+            "sha256": "be1e8615fc59db7d27dfb6eb7d8e26788cf4cb6a34cd2ccc7f7efd4a62bf00ca"
+          },
+          "budget.json": {
+            "bytes": 10082318,
+            "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+          }
+        }
+      },
+      "measuredCode": {
+        "sha256": "8bd317c16cd57ebaef9ff360985fda8f3ec2973615ab1c03c7a582028f3d7609",
+        "files": 1550,
+        "scope": "Tracked and new runtime, benchmark, harness, source and package files; excludes generated reference artifacts"
+      },
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2"
+    },
+    {
+      "run": 2,
+      "source": {
+        "directory": "/tmp/cost-step5-final-run-2-20261114",
+        "files": {
+          "reference.json": {
+            "bytes": 4548012,
+            "sha256": "796eefaaa98d0b7b858190647e2b7f95bb517a7fb1eafff21c97023ed55c42bc"
+          },
+          "budget.json": {
+            "bytes": 10082318,
+            "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+          }
+        }
+      },
+      "measuredCode": {
+        "sha256": "8bd317c16cd57ebaef9ff360985fda8f3ec2973615ab1c03c7a582028f3d7609",
+        "files": 1550,
+        "scope": "Tracked and new runtime, benchmark, harness, source and package files; excludes generated reference artifacts"
+      },
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2"
+    },
+    {
+      "run": 3,
+      "source": {
+        "directory": "/tmp/cost-step5-final-check-20261114/capture",
+        "files": {
+          "reference.json": {
+            "bytes": 4547987,
+            "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+          },
+          "budget.json": {
+            "bytes": 10082318,
+            "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+          }
+        }
+      },
+      "measuredCode": {
+        "sha256": "8bd317c16cd57ebaef9ff360985fda8f3ec2973615ab1c03c7a582028f3d7609",
+        "files": 1550,
+        "scope": "Tracked and new runtime, benchmark, harness, source and package files; excludes generated reference artifacts"
+      },
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2"
+    }
+  ],
+  "comparisons": [
+    {
+      "label": "run-1-strict",
+      "policy": "strict",
+      "expectedExitCode": 2,
+      "exitCode": 2,
+      "status": "regression",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 441,
+      "issueCodes": [
+        "limit_exceeded"
+      ],
+      "authorized": 0,
+      "increasedStorageRows": 441,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548067,
+              "sha256": "be1e8615fc59db7d27dfb6eb7d8e26788cf4cb6a34cd2ccc7f7efd4a62bf00ca"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-1-strict/comparison.json",
+        "bytes": 14606586,
+        "sha256": "45b53055f89483bbe868884046a304f7205130264d957b172c04ca3b542a0a42"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-1-strict/README.md",
+        "bytes": 1600457,
+        "sha256": "326f567019e75000f5289b505a95e160852f7a4144dc3a21d4a35a0a997cf895"
+      }
+    },
+    {
+      "label": "run-1-reviewed",
+      "policy": "reviewed",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 21,
+      "increasedStorageRows": 441,
+      "authorizedRows": 441,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548067,
+              "sha256": "be1e8615fc59db7d27dfb6eb7d8e26788cf4cb6a34cd2ccc7f7efd4a62bf00ca"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+          "bytes": 6586,
+          "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-1-reviewed/comparison.json",
+        "bytes": 14695694,
+        "sha256": "c3fb943d53f0f24a0f91e14759802c8f7d017b83b85befdd6c90e916686c3818"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-1-reviewed/README.md",
+        "bytes": 1579532,
+        "sha256": "990b43ad47718c968a34bde5c3aa676cea08a3433a0a3836d85fcbfa26a0fb22"
+      }
+    },
+    {
+      "label": "run-2-strict",
+      "policy": "strict",
+      "expectedExitCode": 2,
+      "exitCode": 2,
+      "status": "regression",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 441,
+      "issueCodes": [
+        "limit_exceeded"
+      ],
+      "authorized": 0,
+      "increasedStorageRows": 441,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548012,
+              "sha256": "796eefaaa98d0b7b858190647e2b7f95bb517a7fb1eafff21c97023ed55c42bc"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-2-strict/comparison.json",
+        "bytes": 14606635,
+        "sha256": "0fb2665b2ab34a73eac579d7c581e72043cd8f9d189041de33f9fcd54a8b8bd0"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-2-strict/README.md",
+        "bytes": 1600504,
+        "sha256": "b8ccc78c6476f96ac2465c14dc1cd355926231d5136ed2c35f6b91f07932d9fb"
+      }
+    },
+    {
+      "label": "run-2-reviewed",
+      "policy": "reviewed",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 21,
+      "increasedStorageRows": 441,
+      "authorizedRows": 441,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548012,
+              "sha256": "796eefaaa98d0b7b858190647e2b7f95bb517a7fb1eafff21c97023ed55c42bc"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+          "bytes": 6586,
+          "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-2-reviewed/comparison.json",
+        "bytes": 14695743,
+        "sha256": "977fca214e84ca7bec58b196a4233f9744b9e913d03282b01d4f763f4707b902"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-2-reviewed/README.md",
+        "bytes": 1579579,
+        "sha256": "a8ad90bad276eb682bbcd92fc679f3ccc237f045f13a36e3e07ef6b965fba0db"
+      }
+    },
+    {
+      "label": "run-3-strict",
+      "policy": "strict",
+      "expectedExitCode": 2,
+      "exitCode": 2,
+      "status": "regression",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 441,
+      "issueCodes": [
+        "limit_exceeded"
+      ],
+      "authorized": 0,
+      "increasedStorageRows": 441,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-check-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547987,
+              "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-3-strict/comparison.json",
+        "bytes": 14606541,
+        "sha256": "287bf2672804303f944dd58ac63b26f3d0e03db2581f95ccefe0c906f0498d0a"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-3-strict/README.md",
+        "bytes": 1600402,
+        "sha256": "0ecad09d9d39b61a0ce1867c42842a6254f62ace5163237cb8aafef879ff581f"
+      }
+    },
+    {
+      "label": "run-3-reviewed",
+      "policy": "reviewed",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 21,
+      "increasedStorageRows": 441,
+      "authorizedRows": 441,
+      "source": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-check-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547987,
+              "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+          "bytes": 6586,
+          "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-3-reviewed/comparison.json",
+        "bytes": 14695649,
+        "sha256": "cd93294a00208cd612c4107b52a4e2250f6a5e2cf51f6986d99a43add2d9a9b9"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/run-3-reviewed/README.md",
+        "bytes": 1579477,
+        "sha256": "081477557c543bd94ecd666f868725758effa80b6be86d5424354683b75033f1"
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "runs": [
+        1,
+        2
+      ],
+      "label": "pair-1-2",
+      "policy": "strict",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 0,
+      "increasedStorageRows": 0,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-final-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548067,
+              "sha256": "be1e8615fc59db7d27dfb6eb7d8e26788cf4cb6a34cd2ccc7f7efd4a62bf00ca"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548012,
+              "sha256": "796eefaaa98d0b7b858190647e2b7f95bb517a7fb1eafff21c97023ed55c42bc"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-1-2/comparison.json",
+        "bytes": 12022801,
+        "sha256": "cefad0deee25d15762a13bfb34592abea4586668ccdf8cd4fc053b91cdfd81ad"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-1-2/README.md",
+        "bytes": 61897,
+        "sha256": "4e6a5a30e1e190a936ee31ce2eb9dcac7d7a7f8f3d1ac00b2576605443247f5d"
+      }
+    },
+    {
+      "runs": [
+        1,
+        3
+      ],
+      "label": "pair-1-3",
+      "policy": "strict",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 0,
+      "increasedStorageRows": 0,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-final-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548067,
+              "sha256": "be1e8615fc59db7d27dfb6eb7d8e26788cf4cb6a34cd2ccc7f7efd4a62bf00ca"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-check-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547987,
+              "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-1-3/comparison.json",
+        "bytes": 12022675,
+        "sha256": "59e5c05252afc0d7481c507d2e4292f8e9666d92043c2da2973ce309b5033b7d"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-1-3/README.md",
+        "bytes": 61763,
+        "sha256": "126c3649cef0ea1b7331dbd23538e1502954ca9be39598165cdf16961576eaf3"
+      }
+    },
+    {
+      "runs": [
+        2,
+        3
+      ],
+      "label": "pair-2-3",
+      "policy": "strict",
+      "expectedExitCode": 0,
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "scenarios": 23,
+      "issues": 0,
+      "issueCodes": [],
+      "authorized": 0,
+      "increasedStorageRows": 0,
+      "authorizedRows": 0,
+      "source": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-final-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4548012,
+              "sha256": "796eefaaa98d0b7b858190647e2b7f95bb517a7fb1eafff21c97023ed55c42bc"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-final-check-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547987,
+              "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-2-3/comparison.json",
+        "bytes": 12022830,
+        "sha256": "520a0921cabda15aa847114c7cdfd2a59c92e00f6af8602c524817fa195c1f41"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/pair-2-3/README.md",
+        "bytes": 61916,
+        "sha256": "a155263d3c83135392054b1cc7c96f39e0950ee2f4ce3e33362021ed36bc21b8"
+      }
+    }
+  ],
+  "overCap": {
+    "scenario": "normal-true-1",
+    "addedByteSeconds": "0.001",
+    "mutation": "One extra stored byte during the final 0.001 seconds, with captured budget left intact to verify recalculation",
+    "label": "over-cap",
+    "policy": "reviewed",
+    "expectedExitCode": 2,
+    "exitCode": 2,
+    "status": "regression",
+    "equality": {
+      "measurements": false,
+      "storage": false,
+      "quantities": false,
+      "money": false,
+      "functional": true
+    },
+    "scenarios": 23,
+    "issues": 22,
+    "issueCodes": [
+      "temporal_storage_limit",
+      "limit_exceeded"
+    ],
+    "authorized": 0,
+    "increasedStorageRows": 441,
+    "authorizedRows": 0,
+    "source": {
+      "baseline": {
+        "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+        "files": {
+          "reference.json": {
+            "bytes": 4811692,
+            "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+          },
+          "budget.json": {
+            "bytes": 11012165,
+            "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+          }
+        }
+      },
+      "candidate": {
+        "directory": "/tmp/temporal-step3-validation-20261114-UA41pr/over-cap-capture",
+        "files": {
+          "reference.json": {
+            "bytes": 2816442,
+            "sha256": "a7b4ecd6cbd4f47f03a44e8328bffa6502676ba5a992dbadf78877680767c877"
+          },
+          "budget.json": {
+            "bytes": 10082318,
+            "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+          }
+        }
+      },
+      "policy": {
+        "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+        "bytes": 6586,
+        "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+      },
+      "normalization": {
+        "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+        "bytes": 250,
+        "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+      },
+      "calculation": "calculation"
+    },
+    "artifact": {
+      "file": "/tmp/temporal-step3-validation-20261114-UA41pr/over-cap/comparison.json",
+      "bytes": 14698494,
+      "sha256": "b1612a8fb526c6fd1ffdc253d37a87f12ed0b5674a1157691415575b99242fe8"
+    },
+    "markdown": {
+      "file": "/tmp/temporal-step3-validation-20261114-UA41pr/over-cap/README.md",
+      "bytes": 1582266,
+      "sha256": "d12354f9eb296eea76af1ebb028fbd29a062edb02ec95567281dacfbf3b5cb08"
+    }
+  },
+  "initialSandboxAttempt": {
+    "report": {
+      "format": 1,
+      "startedAt": "2026-11-14T10:37:02.007Z",
+      "finished": true,
+      "status": "functional_failure",
+      "exitCode": 5,
+      "baseline": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+      "candidate": "/private/tmp/temporal-step3-final-check-20261114/capture",
+      "policy": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+      "reusedCapture": false,
+      "stages": [
+        {
+          "name": "unit",
+          "startedAt": "2026-11-14T10:37:02.010Z",
+          "log": "unit.log",
+          "code": 0,
+          "signal": null,
+          "loggedBytes": 29160,
+          "omittedBytes": 0,
+          "finishedAt": "2026-11-14T10:37:19.500Z"
+        },
+        {
+          "name": "measurement",
+          "startedAt": "2026-11-14T10:37:19.501Z",
+          "log": "measurement.log",
+          "code": 1,
+          "signal": null,
+          "loggedBytes": 597,
+          "omittedBytes": 0,
+          "finishedAt": "2026-11-14T10:37:19.557Z"
+        }
+      ],
+      "failedStage": "measurement",
+      "error": "Benchmark measurement failed",
+      "finishedAt": "2026-11-14T10:37:19.557Z",
+      "artifactBytes": 71146
+    },
+    "log": {
+      "file": "/tmp/temporal-step3-final-check-20261114/measurement.log",
+      "bytes": 597,
+      "sha256": "c6327c532bb13d3f4878e92abc2bd61ecf1b2b1b119356882c9640830cc07067"
+    },
+    "reason": "Sandbox denied listening on 127.0.0.1 (EPERM); rerun with local execution permission without changing the matrix."
+  },
+  "finalCheck": {
+    "directory": "/tmp/temporal-step3-final-check-unrestricted-20261114",
+    "report": {
+      "format": 1,
+      "startedAt": "2026-11-14T10:38:18.739Z",
+      "finished": true,
+      "status": "passed",
+      "exitCode": 0,
+      "baseline": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+      "candidate": "/private/tmp/temporal-step3-final-check-unrestricted-20261114/capture",
+      "policy": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+      "reusedCapture": false,
+      "stages": [
+        {
+          "name": "unit",
+          "startedAt": "2026-11-14T10:38:18.744Z",
+          "log": "unit.log",
+          "code": 0,
+          "signal": null,
+          "loggedBytes": 29170,
+          "omittedBytes": 0,
+          "finishedAt": "2026-11-14T10:38:37.961Z"
+        },
+        {
+          "name": "measurement",
+          "startedAt": "2026-11-14T10:38:37.962Z",
+          "log": "measurement.log",
+          "code": 0,
+          "signal": null,
+          "loggedBytes": 5523,
+          "omittedBytes": 0,
+          "finishedAt": "2026-11-14T10:41:51.920Z"
+        },
+        {
+          "name": "comparison",
+          "startedAt": "2026-11-14T10:41:52.021Z",
+          "log": "comparison.log",
+          "code": 0,
+          "signal": null,
+          "loggedBytes": 101,
+          "omittedBytes": 0,
+          "finishedAt": "2026-11-14T10:41:57.731Z"
+        }
+      ],
+      "finishedAt": "2026-11-14T10:41:57.858Z",
+      "artifactBytes": 30989305
+    },
+    "ensureReportExitCode": 0,
+    "actualArtifactBytes": 30989373,
+    "unit": {
+      "passed": 298,
+      "failed": 0,
+      "log": {
+        "file": "/tmp/temporal-step3-final-check-unrestricted-20261114/unit.log",
+        "bytes": 29170,
+        "sha256": "669bc07fe180b212342c49c9e17a3de311da38099e151c03d60f7a36ecb91490"
+      },
+      "junit": {
+        "file": "/tmp/temporal-step3-final-check-unrestricted-20261114/unit.xml",
+        "bytes": 40389,
+        "sha256": "2a7a96b63d54b262dfb406da26f77182805f05553e23b7d518328d9d0ce5d1fb"
+      }
+    },
+    "matrix": {
+      "cases": 23,
+      "passed": 23,
+      "log": {
+        "file": "/tmp/temporal-step3-final-check-unrestricted-20261114/measurement.log",
+        "bytes": 5523,
+        "sha256": "f852b816ea6a2211949c1319a357cc09b930bd6295f785e5346ddf8b80c4569a"
+      },
+      "source": {
+        "directory": "/private/tmp/temporal-step3-final-check-unrestricted-20261114/capture",
+        "files": {
+          "reference.json": {
+            "bytes": 4547967,
+            "sha256": "44521245fda84a10f492eb78e8b56ef14688a598d7c51f5fbdc18dab0a849897"
+          },
+          "budget.json": {
+            "bytes": 10082318,
+            "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+          }
+        }
+      },
+      "measuredCode": {
+        "sha256": "c8190cab8a2c668e96878fd75607c6912e9b8a1521e9535f39681d02f875cfe9",
+        "files": 1556,
+        "scope": "Tracked and new runtime, benchmark, harness, source and package files; excludes generated reference artifacts"
+      },
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2"
+    },
+    "comparison": {
+      "artifact": {
+        "file": "/tmp/temporal-step3-final-check-unrestricted-20261114/comparison/comparison.json",
+        "bytes": 14695931,
+        "sha256": "500ebcf475605de838e7cb738ca7aacf9be6505533484d098466e95ba249e802"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-final-check-unrestricted-20261114/comparison/README.md",
+        "bytes": 1579734,
+        "sha256": "ddfd77534ac117c0513ebb0acfe0b136dacd26943131d5fe1386f723a4605701"
+      },
+      "sources": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/private/tmp/temporal-step3-final-check-unrestricted-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547967,
+              "sha256": "44521245fda84a10f492eb78e8b56ef14688a598d7c51f5fbdc18dab0a849897"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/persistence-temporal-storage.json",
+          "bytes": 6586,
+          "sha256": "54de2ced6bdc6665feeb2ecdb2e56812f3b8fdf78db9623e1fc53bd9cc3592ba"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "authorizedScenarios": 21,
+      "authorizedRows": 441,
+      "storage": [
+        {
+          "name": "normal-true-0",
+          "baselineByteSeconds": "443099530445.535",
+          "candidateByteSeconds": "443099552580.24",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "normal-true-1",
+          "baselineByteSeconds": "443099492610.41",
+          "candidateByteSeconds": "443099514745.115",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "normal-true-3",
+          "baselineByteSeconds": "443099530641.135",
+          "candidateByteSeconds": "443099552775.84",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "normal-false-0",
+          "baselineByteSeconds": "443099492610.41",
+          "candidateByteSeconds": "443099514745.115",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "normal-false-1",
+          "baselineByteSeconds": "443099492610.41",
+          "candidateByteSeconds": "443099514745.115",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "normal-false-3",
+          "baselineByteSeconds": "443099492610.41",
+          "candidateByteSeconds": "443099514745.115",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "volume-3",
+          "baselineByteSeconds": "411757088463.405",
+          "candidateByteSeconds": "411757110023.94",
+          "increaseByteSeconds": "21560.535",
+          "maxIncreaseByteSeconds": "21560.535",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007746841422179",
+              "exact": {
+                "numerator": "479123",
+                "denominator": "61847529062400000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007746841422178679",
+              "exact": {
+                "numerator": "479123",
+                "denominator": "61847529062400"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001394431455992162",
+              "exact": {
+                "numerator": "479123",
+                "denominator": "343597383680000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "volume-30",
+          "baselineByteSeconds": "815769676802.925",
+          "candidateByteSeconds": "815769696880.55",
+          "increaseByteSeconds": "20077.625",
+          "maxIncreaseByteSeconds": "20077.625",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007214022147826",
+              "exact": {
+                "numerator": "160621",
+                "denominator": "22265110462464000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007214022147825655",
+              "exact": {
+                "numerator": "160621",
+                "denominator": "22265110462464"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001298523986608618",
+              "exact": {
+                "numerator": "160621",
+                "denominator": "123695058124800"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "visual-true",
+          "baselineByteSeconds": "414216994876.83",
+          "candidateByteSeconds": "414217012619.315",
+          "increaseByteSeconds": "17742.485",
+          "maxIncreaseByteSeconds": "17742.485",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000006374991053347",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "556627761561600000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000006374991053347418",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "556627761561600"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001147498389602535",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "3092376453120000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "visual-false",
+          "baselineByteSeconds": "414216994876.83",
+          "candidateByteSeconds": "414217012619.315",
+          "increaseByteSeconds": "17742.485",
+          "maxIncreaseByteSeconds": "17742.485",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000006374991053347",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "556627761561600000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000006374991053347418",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "556627761561600"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001147498389602535",
+              "exact": {
+                "numerator": "3548497",
+                "denominator": "3092376453120000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "resume-true",
+          "baselineByteSeconds": "440467398609.095",
+          "candidateByteSeconds": "440467441878.5",
+          "increaseByteSeconds": "43269.405",
+          "maxIncreaseByteSeconds": "43269.405",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000015546980581281",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.00000001554698058128081",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000002798456504630546",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "resume-false",
+          "baselineByteSeconds": "440467398609.095",
+          "candidateByteSeconds": "440467441878.5",
+          "increaseByteSeconds": "43269.405",
+          "maxIncreaseByteSeconds": "43269.405",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000015546980581281",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.00000001554698058128081",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000002798456504630546",
+              "exact": {
+                "numerator": "2884627",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "expiry-true-0",
+          "baselineByteSeconds": "414099471661.932",
+          "candidateByteSeconds": "414099487214.867",
+          "increaseByteSeconds": "15552.935",
+          "maxIncreaseByteSeconds": "15552.935",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000005588271399316",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "556627761561600000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000005588271399316045",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "556627761561600"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001005888851876888",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "3092376453120000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "expiry-true-3",
+          "baselineByteSeconds": "414099471661.932",
+          "candidateByteSeconds": "414099487214.867",
+          "increaseByteSeconds": "15552.935",
+          "maxIncreaseByteSeconds": "15552.935",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000005588271399316",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "556627761561600000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000005588271399316045",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "556627761561600"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001005888851876888",
+              "exact": {
+                "numerator": "3110587",
+                "denominator": "3092376453120000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "expiry-false-1",
+          "baselineByteSeconds": "386542208007.787",
+          "candidateByteSeconds": "386542225147.537",
+          "increaseByteSeconds": "17139.75",
+          "maxIncreaseByteSeconds": "17139.75",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000006158424420627",
+              "exact": {
+                "numerator": "22853",
+                "denominator": "3710851743744000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000006158424420627179",
+              "exact": {
+                "numerator": "22853",
+                "denominator": "3710851743744"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001108516395712892",
+              "exact": {
+                "numerator": "22853",
+                "denominator": "20615843020800"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "lost-ack-true",
+          "baselineByteSeconds": "443099470870.81",
+          "candidateByteSeconds": "443099493005.515",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "lost-ack-false",
+          "baselineByteSeconds": "443099470870.81",
+          "candidateByteSeconds": "443099493005.515",
+          "increaseByteSeconds": "22134.705",
+          "maxIncreaseByteSeconds": "22134.705",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007953144463331",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007953144463331059",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001431566003399591",
+              "exact": {
+                "numerator": "1475647",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "enqueue-failure",
+          "baselineByteSeconds": "444783644431.995",
+          "candidateByteSeconds": "444783670562.43",
+          "increaseByteSeconds": "26130.435",
+          "maxIncreaseByteSeconds": "26130.435",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000009388836419762",
+              "exact": {
+                "numerator": "1742029",
+                "denominator": "185542587187200000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000009388836419761733",
+              "exact": {
+                "numerator": "1742029",
+                "denominator": "185542587187200"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001689990555557112",
+              "exact": {
+                "numerator": "1742029",
+                "denominator": "1030792151040000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "provider-lost-googledrive",
+          "baselineByteSeconds": "434380341918.41",
+          "candidateByteSeconds": "434380359202.575",
+          "increaseByteSeconds": "17284.165",
+          "maxIncreaseByteSeconds": "17284.165",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000006210313675879",
+              "exact": {
+                "numerator": "3456833",
+                "denominator": "556627761561600000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000006210313675879144",
+              "exact": {
+                "numerator": "3456833",
+                "denominator": "556627761561600"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001117856461658246",
+              "exact": {
+                "numerator": "3456833",
+                "denominator": "3092376453120000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "provider-lost-dropbox",
+          "baselineByteSeconds": "427133164577.61",
+          "candidateByteSeconds": "427133180723.32",
+          "increaseByteSeconds": "16145.71",
+          "maxIncreaseByteSeconds": "16145.71",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.00000000000580125933881",
+              "exact": {
+                "numerator": "1614571",
+                "denominator": "278313880780800000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000005801259338809752",
+              "exact": {
+                "numerator": "1614571",
+                "denominator": "278313880780800"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001044226680985755",
+              "exact": {
+                "numerator": "1614571",
+                "denominator": "1546188226560000"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        },
+        {
+          "name": "provider-lost-osf",
+          "baselineByteSeconds": "452708126055.065",
+          "candidateByteSeconds": "452708147754.815",
+          "increaseByteSeconds": "21699.75",
+          "maxIncreaseByteSeconds": "21699.75",
+          "authorized": true,
+          "quantity": {
+            "unit": "GiB-month",
+            "maximumIncrease": {
+              "value": "0.000000000007796862283377",
+              "exact": {
+                "numerator": "28933",
+                "denominator": "3710851743744000"
+              }
+            }
+          },
+          "nominal1000": {
+            "variant": "nominal",
+            "sessions": 1000,
+            "quantityUnit": "GiB-month",
+            "quantity": {
+              "value": "0.000000007796862283376632",
+              "exact": {
+                "numerator": "28933",
+                "denominator": "3710851743744"
+              }
+            },
+            "currency": "USD",
+            "money": {
+              "value": "0.000000001403435211007794",
+              "exact": {
+                "numerator": "28933",
+                "denominator": "20615843020800"
+              }
+            },
+            "rate": {
+              "service": "firestore",
+              "location": "nam5",
+              "unit": "GiB-month",
+              "per": 1,
+              "price": "0.18",
+              "source": "storage"
+            }
+          }
+        }
+      ]
+    },
+    "strict": {
+      "label": "fresh-strict",
+      "exitCode": 2,
+      "status": "regression",
+      "equality": {
+        "measurements": false,
+        "storage": false,
+        "quantities": false,
+        "money": false,
+        "functional": true
+      },
+      "issues": 441,
+      "directory": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-strict",
+      "sources": {
+        "baseline": {
+          "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/private/tmp/temporal-step3-final-check-unrestricted-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547967,
+              "sha256": "44521245fda84a10f492eb78e8b56ef14688a598d7c51f5fbdc18dab0a849897"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-strict/comparison.json",
+        "bytes": 14606823,
+        "sha256": "9f90104b64df8275c3df3e1bfbfb9c0ea81c026a16233726da860db99283ee48"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-strict/README.md",
+        "bytes": 1600659,
+        "sha256": "aa7e90d5679550dd00eabc1e6b4c1baf23c97d6300f13c0aa098f40bf8f7044d"
+      }
+    },
+    "equivalentToPrevious": {
+      "label": "fresh-versus-previous",
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "issues": 0,
+      "directory": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-versus-previous",
+      "sources": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-final-check-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547987,
+              "sha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/private/tmp/temporal-step3-final-check-unrestricted-20261114/capture",
+          "files": {
+            "reference.json": {
+              "bytes": 4547967,
+              "sha256": "44521245fda84a10f492eb78e8b56ef14688a598d7c51f5fbdc18dab0a849897"
+            },
+            "budget.json": {
+              "bytes": 10082318,
+              "sha256": "efe03b889e77fc802f3b4fc9024bda5dc2ed7240de810d2c8514ae332f325868"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        },
+        "normalization": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+          "bytes": 250,
+          "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+        },
+        "calculation": "calculation"
+      },
+      "artifact": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-versus-previous/comparison.json",
+        "bytes": 12023157,
+        "sha256": "69d056f8668a2e49c1edba59429380847f20fa951a856aef596a4f540cbaa1e5"
+      },
+      "markdown": {
+        "file": "/tmp/temporal-step3-validation-20261114-UA41pr/fresh-versus-previous/README.md",
+        "bytes": 62210,
+        "sha256": "117f591bd41c22db3191b0e5021d01199afdd9a83c04ce39ea115739241154e9"
+      }
+    },
+    "emulatorsShutDown": true,
+    "normalNominal1000": [
+      {
+        "path": "/nominal/1000/total",
+        "unit": "USD",
+        "before": "1.328522775521193375797722",
+        "after": "0.945209089647481985487084",
+        "delta": "-0.383313685873711390310638",
+        "percent": "-28.852624353642219150940371",
+        "state": "decreased",
+        "gated": true,
+        "allowedIncrease": "0"
+      },
+      {
+        "path": "/nominal/1000/fixed",
+        "unit": "USD",
+        "before": "0.772590152987938734792987",
+        "after": "0.425176594205176638018794",
+        "delta": "-0.347413558782762096774193",
+        "percent": "-44.967381144991855969297971",
+        "state": "decreased",
+        "gated": true,
+        "allowedIncrease": "0"
+      },
+      {
+        "path": "/nominal/1000/variable",
+        "unit": "USD",
+        "before": "0.555932622533254641004735",
+        "after": "0.52003249544230534746829",
+        "delta": "-0.035900127090949293536445",
+        "percent": "-6.457639943373142948792844",
+        "state": "decreased",
+        "gated": true,
+        "allowedIncrease": "0"
+      }
+    ]
+  },
+  "limits": {
+    "captureAndComparisonBytes": 16777216,
+    "combinedCheckBytes": 41943040,
+    "unitReportBytes": 2097152
+  },
+  "acceptance": {
+    "boundedComparison": true,
+    "strictComparison": false,
+    "repeatability": true,
+    "newMatrix": true,
+    "benchmarkUnit": true,
+    "overCapRejected": true,
+    "baselineUnchanged": true,
+    "productChanged": false,
+    "candidateRegisteredAsReference": false,
+    "deployed": false,
+    "remoteGitHubExecution": false
+  },
+  "functional": true,
+  "artifactTotals": {
+    "capture": 14637186,
+    "reviewedComparison": 16275665,
+    "check": 30989373
+  },
+  "profile": {
+    "id": "google-cloud-usd-2026-11-13",
+    "currency": "USD",
+    "basis": "gross"
+  }
+}
