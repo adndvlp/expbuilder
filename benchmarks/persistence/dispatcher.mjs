@@ -1,5 +1,6 @@
 import { observeTaskHandler, payloadJsonBytes } from '../core/adapters.mjs';
 import { quantity } from '../core/quantity.mjs';
+import { matchBinding, allocationMetricUnits, reconciliationMetricUnits, memberOfReconciliation } from './function-inventory.mjs';
 export const taskOptions = {
   blockBytes: 32768,
   billableBytes: ({ payload }) => quantity(payloadJsonBytes(payload) + 1024, 'byte', {
@@ -9,6 +10,9 @@ export const taskOptions = {
 export function createDispatcher({ meter, definitions, queue, now = Date.now }) {
   const events = [], start = now(), schedules = new Map(), handlers = new Map();
   for (const definition of definitions) {
+    if (handlers.has(definition.name)) throw new Error('Duplicate registered handler: ' + definition.name);
+    meter.declareFunction(definition.name, { origin: definition.origin,
+      metricUnits: definition.endpoint ? memberOfReconciliation(definition.name) ? reconciliationMetricUnits : allocationMetricUnits : {} });
     handlers.set(definition.name, { ...definition, observed: definition.origin === 'task'
       ? observeTaskHandler(definition.handler, meter, { ...taskOptions, name: definition.name })
       : meter.wrapFunction(definition.name, definition.handler, { origin: definition.origin }) });
@@ -36,6 +40,14 @@ export function createDispatcher({ meter, definitions, queue, now = Date.now }) 
     }
   }
   return { event,
+    publish(origin, path, data, payloadBytes) {
+      let delivered = 0;
+      for (const definition of definitions) {
+        const params = matchBinding(definition, origin, path);
+        if (params) { event(definition.name, { ...data, params }, payloadBytes); delivered++; }
+      }
+      return delivered;
+    },
     async pump() {
       // New events produced by a commit are drained in order before delivering the next task.
       let iterations = 0;

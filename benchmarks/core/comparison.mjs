@@ -5,6 +5,8 @@ import { validateProfile } from './budget.mjs';
 import { applyCalibration, validateConditions } from './calibration.mjs';
 import { referenceBudgets } from '../persistence/budget.mjs';
 import { conditionDifferences, repeatabilityIssues } from './repeatability.mjs';
+import { validateFunctionCoverage, functionMeasurements } from '../persistence/function-inventory.mjs';
+import { reconciliationMembers, responsibilityMetrics, physicalMember, attributeBudget } from './attribution.mjs';
 
 export const exitCodes = Object.freeze({ passed: 0, regression: 2, incomplete: 3, incompatible: 4, functional_failure: 5, invalid_input: 6 });
 const priority = ['passed', 'regression', 'incomplete', 'incompatible', 'functional_failure', 'invalid_input'];
@@ -68,7 +70,7 @@ function metricsFor(scenario) {
   const put = (path, input, kind = 'metric') => result.set(path, { input, kind });
   for (const [name, input] of Object.entries(scenario.metrics)) put('/metrics/' + escape(name), input, name.includes('localDuration') || name.includes('sampledRss') ? 'performance' : 'metric');
   for (const [name, fn] of Object.entries(scenario.functions)) {
-    for (const [metric, input] of Object.entries(fn.metrics)) put(`/functions/${escape(name)}/metrics/${escape(metric)}`, input, metric.includes('localDuration') || metric.includes('sampledRss') ? 'performance' : 'metric');
+    for (const [metric, input] of Object.entries(functionMeasurements(fn))) put(`/functions/${escape(name)}/metrics/${escape(metric)}`, input, metric.includes('localDuration') || metric.includes('sampledRss') ? 'performance' : 'metric');
     if (fn.sampledRssMaxBytes !== undefined) put(`/functions/${escape(name)}/sampledRssMaxBytes`, quantity(fn.sampledRssMaxBytes, 'byte', {
       provenance: 'observed', source: fn.memoryScope || 'Local process RSS sample', environment: scenario.environment }), 'performance');
   }
@@ -124,6 +126,14 @@ export function compareReferences(options) {
   try {
     const { baseline, candidate } = options;
     if (!validateBundle(baseline) || !validateBundle(candidate)) { issue('incompatible', 'unsupported_format', 'Only captured reference format 1 is supported'); return finish(); }
+    const inventoryRequired = [baseline.reference, candidate.reference].some(reference =>
+      reference.repeatability?.conditions?.fixture?.sources?.['benchmarks/persistence/function-inventory.mjs']
+      || reference.scenarios.some(scenario => scenario.functionInventory));
+    if (inventoryRequired) for (const [capture, bundle] of [['baseline', baseline], ['candidate', candidate]]) for (const scenario of bundle.reference.scenarios) {
+      if (!scenario.functionInventory) issue('incomplete', 'function_inventory_missing', 'Missing registered endpoint inventory', { capture, scenario: scenario.name });
+      for (const detail of validateFunctionCoverage(scenario)) issue('incomplete', 'function_coverage', detail.reason, { ...detail, capture, scenario: scenario.name });
+    }
+    if (report.status === 'incomplete') return finish();
     report.captures = Object.fromEntries([['baseline', baseline], ['candidate', candidate]].map(([name, bundle]) => [name, {
       revision: bundle.reference.revision, measuredCode: clone(bundle.reference.measuredCode || null),
       createdAt: bundle.reference.createdAt, machine: clone(bundle.reference.machine),
@@ -192,6 +202,11 @@ export function compareReferences(options) {
     for (const before of baseline.reference.scenarios) {
       const after = candidate.reference.scenarios.find(s => s.name === before.name), name = before.name;
       const result = { name, inputs: { baseline: clone(before.inputs), candidate: clone(after.inputs) }, metrics: [], quantities: [], money: [], implementationChanges: [] }; report.scenarios.push(result);
+      const members = { baseline: reconciliationMembers(before), candidate: reconciliationMembers(after) };
+      if (members.baseline.length) {
+        result.attribution = { responsibility: 'session-reconciliation', members, inventories: { baseline: clone(before.functionInventory), candidate: clone(after.functionInventory) } };
+        result.physicalQuantities = []; result.physicalMoney = [];
+      }
       result.functional = { baseline: clone(before.functional), candidate: clone(after.functional) };
       const storage = scenario => ({ model: clone(scenario.storageModel ?? null), timeline: clone(scenario.storageTimeline ?? null), timing: scenario.storageTiming ? {
         elapsedMs: scenario.storageTiming.elapsedMs, operations: clone(scenario.storageTiming.operations), actions: clone(scenario.storageTiming.actions),
@@ -230,8 +245,14 @@ export function compareReferences(options) {
       }
       for (const reg of after.registrations) if (!before.registrations.some(entry => entry.name === reg.name)) result.implementationChanges.push({ path: '/registrations/' + escape(reg.name), before: null, after: clone(reg) });
       const a = metricsFor(before), b = metricsFor(after);
+      for (const [path, entry] of responsibilityMetrics(before)) a.set(path, entry);
+      for (const [path, entry] of responsibilityMetrics(after)) b.set(path, entry);
       for (const path of new Set([...a.keys(), ...b.keys()])) {
         let first = a.get(path), second = b.get(path);
+        const member = physicalMember(path), attributed = member && [...members.baseline, ...members.candidate].includes(member);
+        const absentZero = input => ({ input: quantity(0, input.unit, { provenance: 'not-applicable', source: 'Complete registered endpoint inventory proves the reconciliation member is absent' }), kind: input.unit === 'millisecond' ? 'performance' : 'metric' });
+        if (attributed && !second && !members.candidate.includes(member)) second = absentZero(first.input);
+        if (attributed && !first && !members.baseline.includes(member)) first = absentZero(second.input);
         const collection = path.startsWith('/inventory/') ? path.split('/')[2].replaceAll('~1', '/').replaceAll('~0', '~') : null;
         if (!second && collection && !Object.hasOwn(after.inventory, collection) && after.inventoryVerifiedAgainstEmulator) second = { ...first, input: quantity(0, first.input.unit, { provenance: 'not-applicable', source: 'Collection absent in independently verified retained inventory' }) };
         if (!first && collection && !Object.hasOwn(before.inventory, collection) && before.inventoryVerifiedAgainstEmulator) first = { ...second, input: quantity(0, second.input.unit, { provenance: 'not-applicable', source: 'Collection absent in independently verified retained inventory' }) };
@@ -245,7 +266,9 @@ export function compareReferences(options) {
         if (!first) { row.state = next.value === null ? 'unknown' : 'new'; row.percent = null; }
         if (row.state === 'unknown') issue('incomplete', 'quantity_unknown', 'A comparison quantity is unknown', { scenario: name, path });
         if (previous && next.value !== null && previous.value !== null) Object.assign(row, delta(quantityValue(previous), quantityValue(next)));
-        assess(row, name, second.kind === 'performance' ? 'performance' : 'metrics'); result.metrics.push(row);
+        if (attributed) { row.gated = false; row.attribution = 'session-reconciliation'; }
+        else assess(row, name, second.kind === 'performance' ? 'performance' : 'metrics', second.kind === 'responsibility');
+        result.metrics.push(row);
       }
     }
     if (report.status !== 'passed') {
@@ -298,22 +321,37 @@ export function compareReferences(options) {
         }
       }
     };
+    function compareBudgets(result, before, after, prefix) {
+      const a = attributeBudget(before), b = attributeBudget(after);
+      if (result.attribution) {
+        const physical = (items, projections) => new Map(items.map(item => [item.id, { item,
+          amounts: projections.map(projection => ({ sessions: projection.sessions, ...projection.lineItems.find(row => row.id === item.id) })) }]));
+        const first = physical(a.physical, before.projections), second = physical(b.physical, after.projections);
+        for (const id of new Set([...first.keys(), ...second.keys()])) {
+          const previous = first.get(id), next = second.get(id), item = next?.item || previous.item;
+          result.physicalQuantities.push({ path: `${prefix}/quantities/${escape(id)}`, unit: item.quantity.unit, gated: false,
+            ...delta(previous ? quantityValue(previous.item.quantity) : '0', next ? quantityValue(next.item.quantity) : '0') });
+          for (const projection of before.projections) result.physicalMoney.push({ path: `${prefix}/${projection.sessions}/items/${escape(id)}`, unit: selectedProfile.currency, gated: false,
+            ...delta(previous?.amounts.find(row => row.sessions === projection.sessions)?.amount ?? '0', next?.amounts.find(row => row.sessions === projection.sessions)?.amount ?? '0') });
+        }
+      }
+      quantityRows(result.quantities, a.budget, b.budget, prefix, result.name);
+      moneyRows(result.money, a.budget, b.budget, prefix, result.name);
+    }
     for (const result of report.scenarios) {
       if (result.name === 'idle') {
         for (const [index, budget] of a.idle.entries()) {
-          quantityRows(result.quantities, budget, b.idle[index], '/idle-' + budget.windowSeconds, 'idle');
-          moneyRows(result.money, budget, b.idle[index], '/idle-' + budget.windowSeconds, 'idle');
+          compareBudgets(result, budget, b.idle[index], '/idle-' + budget.windowSeconds);
         }
       } else for (const variant of variants) {
         const before = a.scenarios.find(s => s.name === result.name)[variant], after = b.scenarios.find(s => s.name === result.name)[variant];
-        quantityRows(result.quantities, before, after, '/' + variant, result.name);
-        moneyRows(result.money, before, after, '/' + variant, result.name);
+        compareBudgets(result, before, after, '/' + variant);
       }
     }
     for (const entry of rules) if (!entry.matched) throw new Error('Unused policy selector: ' + entry.rule.scenario + entry.rule.path);
     return finish();
   } catch (error) {
-    const status = /[Ii]ncompatible (rate|quantity units|model placement)|unsupported resource configuration/.test(error.message) ? 'incompatible' : 'invalid_input';
+    const status = error.coverage ? 'incomplete' : /[Ii]ncompatible (rate|quantity units|model placement)|unsupported resource configuration/.test(error.message) ? 'incompatible' : 'invalid_input';
     issue(status, status === 'incompatible' ? 'profile_incompatible' : 'invalid_input', error.message); return finish();
   }
 }
@@ -323,7 +361,7 @@ export function renderComparison(report) {
   const lines = ['# Comparación de consumo y costo', '', `Estado: ${report.status}. Código: ${report.exitCode}.`, '', report.scope, '',
     ...(report.captures ? [`Referencia: ${safe(report.captures.baseline.revision)}; candidata: ${safe(report.captures.candidate.revision)}. Las huellas del código medido y del cálculo están en comparison.json.`, ''] : []),
     '| Escenario | Cantidad/partida | Antes | Ahora | Cambio | % |', '|---|---|---:|---:|---:|---:|'];
-  for (const scenario of report.scenarios) for (const row of [...scenario.metrics, ...(scenario.quantities || []), ...scenario.money]) if (row.state !== 'unchanged') {
+  for (const scenario of report.scenarios) for (const row of [...scenario.metrics, ...(scenario.quantities || []), ...scenario.money, ...(scenario.physicalQuantities || []), ...(scenario.physicalMoney || [])]) if (row.state !== 'unchanged') {
     lines.push('| ' + [scenario.name, row.path, row.before, row.after, row.delta, row.percent === null ? row.state : row.percent].map(safe).join(' | ') + ' |');
   }
   lines.push('', '## Incidencias', '', ...(report.issues.length ? report.issues.map(issue => '- ' + safe([issue.code, issue.scenario, issue.path, issue.reason].filter(Boolean).join(': '))) : ['Sin aumentos no revisados ni cobertura perdida.']), '',

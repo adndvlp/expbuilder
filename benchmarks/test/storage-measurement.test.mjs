@@ -49,7 +49,13 @@ test('algorithm changes are incompatible; product index changes remain comparabl
   const candidateStorage = await measurement.storageMeasurement({ indexes: [], fieldOverrides: [{ collectionGroup: 'tasks', fieldPath: '*', indexes: [] }] });
   for (const [bundle, storage] of [[baseline, baseStorage], [candidate, candidateStorage]]) {
     for (const scenario of bundle.reference.scenarios) scenario.storageModel = storage;
-    bundle.reference.repeatability = await persistenceRepeatability(bundle.reference.scenarios);
+    const runtimeMethod = (await persistenceRepeatability(bundle.reference.scenarios)).conditions.fixture.storageMethod;
+    assert.deepEqual(runtimeMethod, storage.method);
+    // This arithmetic fixture measures storage identity, without claiming an
+    // inventory of public backend endpoints it does not execute.
+    bundle.reference.repeatability = createRepeatabilityContract(bundle.reference.scenarios, {
+      id: 'storage-identity-arithmetic/1', sources: runtimeMethod.sources, storageMethod: runtimeMethod,
+    });
   }
   assert.deepEqual(baseline.reference.repeatability.conditions.fixture.storageMethod, baseStorage.method);
   assert.equal(baseline.reference.repeatability.sha256, candidate.reference.repeatability.sha256);

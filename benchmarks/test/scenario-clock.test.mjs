@@ -156,3 +156,24 @@ test('the next synthetic response waits for the previous submission while runtim
   assert.equal(calls,1,'The second synthetic response must respect the declared serial submission schedule');
   flush(); await Promise.all([first,second]); assert.equal(calls,2); assert.equal(tokens.size,0);
 });
+
+test('CO04: the declared page close waits for an initiated flush after local backup, without forcing another batch or advancing time', async () => {
+  const clock = createScenarioClock(), tokens = new Set();
+  let flush, entered, closed = false, calls = 0;
+  const network = new Promise(resolve => { flush = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  const window = { Date, __benchmarkTime: async () => clock.now(),
+    ExpBuilderPersistence: { start() { const token = {}; tokens.add(token); return token; }, finish(token) { tokens.delete(token); } },
+    initJsPsych: options => ({ options, pauseExperiment() {} }),
+  };
+  const inputs = installBrowserInputs(window, { scenario: 'close-boundary', epoch: clock.conditions().epoch, timing: clock.conditions() });
+  await inputs.ready;
+  const instance = inputs.initJsPsych({ async on_data_update() { calls++; entered(); await network; } });
+  const response = instance.options.on_data_update({ time_elapsed: 0 });
+  await started; assert.equal(tokens.size, 0, 'The local backup barrier has already been released');
+  assert.equal(typeof inputs.whenResponsesSettled, 'function');
+  const closing = inputs.whenResponsesSettled().then(() => { closed = true; });
+  await Promise.resolve(); assert.equal(closed, false, 'Closing while the upload receipt is pending changes the workload');
+  const before = clock.snapshot(); flush(); await Promise.all([response, closing]);
+  assert.equal(closed, true); assert.equal(calls, 1); assert.deepEqual(clock.snapshot(), before);
+});

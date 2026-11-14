@@ -3,6 +3,7 @@ import { createScenarioInputs } from './inputs.mjs';
 export function installBrowserInputs(window, conditions) {
   const timed = typeof window.__benchmarkTime === 'function';
   let currentTime;
+  let responsesSettled = () => Promise.resolve();
   const now = () => timed ? currentTime : (window.Date || Date).now();
   const synchronize = async (action, data) => {
     if (!timed) return;
@@ -22,6 +23,7 @@ export function installBrowserInputs(window, conditions) {
     now,
     number: actor => timed ? now() : inputs.number(actor),
     ready: synchronize('sync'),
+    whenResponsesSettled: () => responsesSettled(),
     disconnectAt(path) { if (!disconnects.has(path)) disconnects.set(path, now() + conditions.timing.disconnectAfterMs); return disconnects.get(path); },
     cancelDisconnect: path => disconnects.delete(path),
     async prepareDisconnect() {
@@ -41,6 +43,7 @@ export function installBrowserInputs(window, conditions) {
     initJsPsych(options) {
       const update = options.on_data_update;
       let instance, previousUpdate = Promise.resolve();
+      responsesSettled = () => previousUpdate;
       instance = window.initJsPsych({ ...options, on_data_update(data) {
         // Declared synthetic participant timing, before the public callback hashes/sends.
         // Runtime/SDK timers and performance diagnostics continue using native clocks.

@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: entrega 1 implementada y verificada; entregas 2–5 pendientes.
+Estado: entregas 1 y 2 implementadas y verificadas; entregas 3–5 pendientes.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -246,4 +246,24 @@ Los artefactos de esa ejecución quedan en ese directorio temporal; no constituy
 
 El método cubre las exenciones y modalidades de índices Standard definidas en la sección 4. TTL, índices vectoriales/de texto/geoespaciales, configuración explícita de __name__ y tipos desconocidos producen error de cobertura; no se simula su tamaño. Las consultas multi-rango mantienen su rechazo previo cuando faltan entradas escaneadas.
 
-La referencia predeterminada del check todavía usa el método anterior. Una nueva captura con este método se rechaza como incompatible frente a ella. Registrar la referencia corregida y actualizar el check pertenece a la entrega 2. Esta entrega termina aquí.
+La entrega 1 dejó el registro de la referencia corregida y la actualización del check para la entrega 2, documentada a continuación.
+
+## 14. Resultado de la entrega 2 — 2026-11-14
+
+CO04–CO06 implementados mediante TDD. [B0 quedó registrada](../benchmarks/references/persistence-b0-2026-11-14/README.md) con tres matrices independientes de 23 escenarios. Sus tres comparaciones por pares pasaron la política estricta con igualdad exacta de mediciones, almacenamiento, cantidades, importes y resultados funcionales. La [prueba de repetibilidad](../benchmarks/references/persistence-b0-2026-11-14/repeatability-validation.json) conserva fuentes, huellas y resultados.
+
+[function-inventory.mjs](../benchmarks/persistence/function-inventory.mjs) examina los exports reales de index.js y valida bindings, orígenes, recursos, frecuencia y reintentos. En B0 registra 21 exports: nueve de runtime observados y doce HTTP fuera de la carga con motivos explícitos. Acepta la forma de partida y la consolidada definidas por esta SDD; rechaza registros desconocidos, faltantes o superpuestos. El dispatcher reproduce los bindings registrados y declara los ceros de sus observadores; una declaración ausente o una cantidad desconocida impide aprobar.
+
+[attribution.mjs](../benchmarks/core/attribution.mjs) aplica únicamente la correspondencia de conciliación. Conserva las mediciones físicas y compara sus sumas exactas. Las asignaciones de CPU/RAM se costean por función antes de atribuirlas; fase, servicio, ubicación, scope y volumen siguen separados. Las pruebas detectan una lectura, invocación o byte adicional, miembros omitidos/repetidos/desconocidos y pérdida de cobertura, incluso al quitar ambos inventarios. La comparación conserva las filas físicas y las atribuidas.
+
+El escenario de cierre ordinario espera la finalización de los callbacks de respuestas, incluidos los envíos ya iniciados. Esto fija el límite de desconexión sin forzar lotes incompletos ni introducir otra duración monetaria. Una prueba con confirmación aplazada comprueba ese límite; los casos de confirmación perdida siguen separados. Las reglas quedaron fijadas antes de las tres capturas registradas.
+
+Cada comparación verificó 10.035 filas de mediciones, 24.564 de cantidades y 18.957 de importes, además de 1.080 cantidades físicas y 3.192 importes físicos de los miembros atribuidos. Todas las diferencias cuantitativas fueron cero.
+
+La [evidencia del cambio de método](../benchmarks/references/persistence-b0-2026-11-14/method-change.json) comprueba que las operaciones y bytes transmitidos comunes, los resultados funcionales, los documentos y sus tamaños coinciden con la referencia anterior. El calendario virtual conserva operaciones, acciones y duración. Las diferencias de índices se explican por entradas del mapa/array completo, sin reconstruir documentos históricos ausentes. En cinco eventos/lote 1 se mantienen 125 lecturas, 56 escrituras, seis borrados y 39 invocaciones. No se ha optimizado el producto.
+
+El check local y CI apuntan explícitamente a persistence-b0-2026-11-14. El JSON de comparación usa codificación compacta conservando todas sus filas y valores. Permanecen los límites de 16 MiB por captura/informe y 40 MiB para el check combinado, la política sin márgenes, las tarifas, las hipótesis monetarias, los índices y las funciones del producto. Las referencias anteriores permanecen intactas.
+
+La entrega termina con B0 y el check preparados. La consolidación del backend corresponde a la entrega 3.
+
+Verificación de cierre: 191 pruebas del benchmark, ESLint de los archivos modificados y git diff --check pasaron. El comando local del check aprobó con su referencia B0 predeterminada, la normalización de CI y la tercera captura mediante --candidate. La [evidencia del check](../benchmarks/references/persistence-b0-2026-11-14/check-validation.json) conserva etapas, códigos, identidades y resultados; las matrices se ejecutaron por separado y no se ejecutó GitHub Actions remoto desde esta entrega.

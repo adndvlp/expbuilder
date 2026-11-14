@@ -40,7 +40,10 @@ export function createMeter({ scenario, environment, clock = () => performance.n
       quantity(decimal(amount), descriptor.unit, descriptor);
       accumulate(metrics, name, amount, descriptor);
       const active = context.getStore();
-      if (active) accumulate(functions.get(active).metrics, name, amount, descriptor);
+      if (active) {
+        accumulate(functions.get(active).metrics, name, amount, descriptor);
+        if (functions.get(active).observer) delete functions.get(active).observer.zeroMetrics[name];
+      }
     },
     addQuantity(name, input) {
       const validated = quantity(input.value, input.unit, input);
@@ -48,6 +51,17 @@ export function createMeter({ scenario, environment, clock = () => performance.n
       else meter.add(name, validated.value, validated);
     },
     declare(names) { for (const name of names) if (!metrics.has(name)) meter.add(name, 0); },
+    declareFunction(name, { origin, metricUnits = {} } = {}) {
+      if (!name?.trim() || !['http', 'firestore', 'database', 'schedule', 'task', 'other'].includes(origin)) throw new Error('Function identity/origin required');
+      if (functions.has(name)) return;
+      const entry = { metrics: new Map(), origins: new Set([origin]), sampledRssMaxBytes: 0,
+        observer: { source: 'Registered handler observers initialized before scenario delivery', environment, zeroMetrics: { ...metricUnits } } };
+      functions.set(name, entry);
+      for (const metric of ['functions.invocations', 'functions.failures']) {
+        delete entry.observer.zeroMetrics[metric];
+        accumulate(entry.metrics, metric, 0, { unit: 'count', provenance: 'observed', source: entry.observer.source, environment });
+      }
+    },
     unknown(name, unit, reason) {
       if (!metrics.has(name)) meter.add(name, 0, { unit, source: reason });
       if (metrics.get(name).unit !== unit) throw new Error('Unknown metric unit changed');
@@ -100,6 +114,7 @@ export function createMeter({ scenario, environment, clock = () => performance.n
         functions: Object.fromEntries([...functions].map(([name, entry]) => [name, {
           metrics: view(entry.metrics), origins: [...entry.origins], sampledRssMaxBytes: entry.sampledRssMaxBytes,
           memoryScope: 'Local benchmark process RSS at handler start/end; not allocated cloud memory',
+          ...(entry.observer && { observer: entry.observer }),
         }])) });
     },
   };

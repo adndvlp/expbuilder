@@ -67,7 +67,7 @@ async function canonical(file) {
 }
 export async function checkCosts(options, { run = runCommand, signal } = {}) {
   if (!options.output) throw new Error('Required --output NEW_DIRECTORY');
-  const output = await canonical(path.resolve(options.output)), baseline = await canonical(path.resolve(options.baseline || path.join(root, 'benchmarks/references/persistence-controlled-2026-11-13')));
+  const output = await canonical(path.resolve(options.output)), baseline = await canonical(path.resolve(options.baseline || path.join(root, 'benchmarks/references/persistence-b0-2026-11-14')));
   const candidate = options.candidate ? await canonical(path.resolve(options.candidate)) : path.join(output, 'capture');
   for (const input of [baseline, ...(options.candidate ? [candidate] : [])]) {
     if (output === input || output.startsWith(input + path.sep) || input.startsWith(output + path.sep)) throw new Error('Output must be separate from captured inputs');

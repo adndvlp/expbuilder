@@ -2,7 +2,7 @@
 
 Implementa los contratos, observadores y cálculo de la [SDD](../docs/cost-benchmarking-sdd.md). Funciona con Node 22 o posterior, sin dependencias nuevas ni credenciales de nube.
 
-El benchmark conecta el guardado público actual con emuladores y proveedores locales. Su [referencia controlada](references/persistence-controlled-2026-11-13/README.md) describe consumo y presupuesto bajo condiciones declaradas, tras validar tres ejecuciones independientes; no aprueba ese consumo como objetivo. El ejemplo aritmético sigue siendo independiente de esa medición.
+El benchmark conecta el guardado público actual con emuladores y proveedores locales. Su [referencia B0 corregida](references/persistence-b0-2026-11-14/README.md) describe consumo y presupuesto bajo condiciones declaradas, tras validar tres ejecuciones independientes; no aprueba ese consumo como objetivo. El ejemplo aritmético sigue siendo independiente de esa medición.
 
 ## Ejecutar
 
@@ -47,7 +47,7 @@ Para comprobar contenido repetido:
 
 Ejecuta la medición de inactividad y seis casos con dos participaciones cada uno. La segunda ejecución introduce demoras reales de 20 ms en proveedor e inspecciones. Comprueba igualdad exacta de envelopes, CSV, calendario de almacenamiento, cantidades e importes low/nominal/high para 1/1.000/10.000 sesiones; exige presupuestos completos. Cubre ambos modos, tres proveedores y ensayos visuales. Conserva content-checks.json con condiciones, demoras, hashes y resultados, también ante una comparación fallida. El código de salida conserva el fallo; rechaza un destino que ya contiene un informe. No genera una referencia ni triplica las suites de CI.
 
-La igualdad bajo demoras se verificó en esos seis casos. El cierre general aprobó tres ejecuciones completas independientes de 23 escenarios y sus tres comparaciones por pares, con todas las igualdades en true y diferencias de cero. No se cambiaron tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto. [repeatability-validation.json](references/persistence-controlled-2026-11-13/repeatability-validation.json) identifica las capturas y los informes por hash; la SDD documenta comandos y resultados.
+La igualdad bajo demoras se verificó en esos seis casos. B0 conserva tres ejecuciones completas independientes de 23 escenarios y sus tres comparaciones por pares, con todas las igualdades en true y diferencias de cero. No se cambiaron tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto. [repeatability-validation.json](references/persistence-b0-2026-11-14/repeatability-validation.json) identifica las capturas y los informes por hash; la SDD documenta comandos y resultados. El cierre ordinario de la página espera los callbacks y sus flushes ya iniciados, sin forzar lotes incompletos. Los fallos de confirmación mantienen sus escenarios propios.
 
 La validación inicial detectó que los escenarios de expiración podían cerrar el navegador antes de su consulta final de confirmación. Ahora esperan el mensaje final de recuperación y conservan browserRecoveryConfirmed como evidencia. Se contabilizan todas esas consultas; no se suprimen ni se ajustan sus contadores.
 
@@ -61,11 +61,13 @@ comparison.json conserva metrics, quantities y money por escenario. quantities e
 
 El campo equality distingue igualdad exacta de una reducción permitida: measurements (sin tiempo/RSS locales), storage (muestras y calendario ejecutado), quantities, money y functional. Una repetición debe obtener todos en true. Si falta cobertura o la comparación no puede completarse, equality queda en null. Las fechas reales, revisión, duración local y muestras RSS permanecen visibles sin alterar esa igualdad monetaria.
 
-La referencia persistence-2026-11-13 se conserva como evidencia aritmética anterior. Carece del contrato y se rechaza con código 4. El check local y CI utilizan ahora persistence-controlled-2026-11-13, registrada mediante benchmark:cost:reference con motivo explícito después de validar las tres ejecuciones. La medición original permanece intacta; reference-record.json documenta su registro.
+La referencia persistence-2026-11-13 se conserva como evidencia aritmética anterior. Carece del contrato y se rechaza con código 4. persistence-controlled-2026-11-13 conserva la prueba del método previo. El check local y CI utilizan persistence-b0-2026-11-14, registrada mediante benchmark:cost:reference con motivo explícito después de validar las tres ejecuciones del método corregido. Las referencias anteriores permanecen intactas; reference-record.json documenta cada registro.
 
 ## Integración del guardado actual
 
 [loader.mjs](persistence/loader.mjs) conecta los observadores solo en el proceso de benchmark. [controller.mjs](persistence/controller.mjs) usa los handlers registrados y comprueba sus paths, recursos y frecuencias. [dispatcher.mjs](persistence/dispatcher.mjs) reproduce cambios confirmados, funciones sin trabajo, encolado, entregas y reintentos; entrega también tareas obsoletas. Las revisiones se ejecutan cada minuto virtual según su configuración, en vez de cada 200 ms del harness funcional.
+
+[function-inventory.mjs](persistence/function-inventory.mjs) valida todos los exports reales del backend y conserva sus endpoints. Los HTTP fuera de la carga tienen motivos explícitos. Para el runtime acepta la forma de partida o consolidada de conciliación, comprueba bindings/orígenes/recursos/reintentos y rechaza miembros desconocidos, faltantes o superpuestos. Las declaraciones de cero se registran de forma compacta por observador y unidad; al ocurrir una operación, su medición sustituye esa declaración. Quitar la evidencia de cero o una medición impide aprobar. El contrato identifica el método de inventario, de modo que quitar ambos inventarios también produce falta de cobertura.
 
 Se separan preparación/publicación, carga medida y comprobaciones. Las inspecciones para reproducir eventos y verificar inventario son infraestructura del benchmark: se contabilizan como sobrecarga local y se excluyen del consumo del producto. Se mantienen los agregados; no se guardan datos de las respuestas, tokens ni identidades reales.
 
@@ -75,7 +77,7 @@ El inventario conserva documentBytes, automaticIndexBytes, compositeBytes, index
 
 El alcance soportado es Firestore Standard: números, booleanos, null, strings UTF-8, bytes, Date/Timestamp, GeoPoint, referencias, mapas y arrays válidos. Se rechazan explícitamente tipos desconocidos, ciclos, arrays directamente anidados, configuraciones inválidas, TTL, índices vectoriales/de texto/geoespaciales y configuración explícita de __name__; no se sustituyen por cero ni por tamaño JSON. Los paths de campo distinguen nombres literales entre backticks de subcampos con puntos. Las pruebas CO01–CO03 usan tamaños esperados calculados independientemente de la implementación.
 
-La entrega 1 de la [SDD de optimización](../docs/public-session-cost-optimization-sdd.md) corrige únicamente la medición. Las referencias existentes siguen intactas y pertenecen al método anterior. El check conserva su referencia actual: una captura con el método corregido resulta incompatible con ella. Registrar B0 y actualizar ese check corresponde a la entrega 2; todavía no hay ahorro de producto atribuido a esta corrección.
+Las entregas 1–2 de la [SDD de optimización](../docs/public-session-cost-optimization-sdd.md) completan la medición, registran B0 y actualizan el check. [method-change.json](references/persistence-b0-2026-11-14/method-change.json) comprueba que las operaciones, bytes transmitidos, documentos y resultados funcionales coinciden con la referencia anterior y detalla las diferencias de índices. El backend conserva su comportamiento de partida; la optimización de producto empieza en la entrega 3.
 
 Las consultas de hasta un campo de rango aplican la exención documentada; consultas no cubiertas quedan incompletas. Los registros retenidos se conservan hasta el final del horizonte presupuestado; el cálculo no inventa un TTL.
 
@@ -160,7 +162,7 @@ Las pruebas verifican el resultado conocido, fracciones que atraviesan una seria
 
 Después de medir una versión candidata, se comparan sus archivos con una referencia:
 
-    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-controlled-2026-11-13 --candidate /tmp/persistence-cost-run --output /tmp/persistence-cost-comparison
+    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-b0-2026-11-14 --candidate /tmp/persistence-cost-run --output /tmp/persistence-cost-comparison
 
 El destino debe ser nuevo y estar separado de las entradas. Se escriben comparison.json y README.md incluso si la comparación falla. Los hashes de las entradas y del código de cálculo identifican lo utilizado; el informe conserva las revisiones y condiciones de las capturas. No se ejecutan versiones anteriores del producto: se comparan sus mediciones guardadas.
 
@@ -187,6 +189,8 @@ La política estricta puede señalar diferencias muy pequeñas entre repeticione
 Las cifras del ejemplo ilustran el formato. max limita el valor final; maxIncreaseAbsolute y maxIncreasePercent fijan el margen respecto a la referencia. Se utiliza el mayor de los dos márgenes. La política comprueba totales, fijo, variable y cada partida: una regla sobre el total no permite automáticamente aumentos en las partidas. Las rutas y escenarios deben coincidir con el informe, o ser exactamente `*`; una regla sin coincidencias, reglas superpuestas o unidades incorrectas fallan.
 
 Las rutas de dinero tienen forma /nominal/1000/total, /high/1000/items/ID o /idle-2592000/0/total. Las rutas de métricas siguen /metrics/NOMBRE, /functions/FUNCION/metrics/NOMBRE y /inventory/COLECCION/CAMPO. Las cantidades costeadas usan /nominal/quantities/ID y /nominal/1000/quantities/ID; las reglas metrics se aplican con su unidad. Autorizar un margen monetario no autoriza automáticamente aumentar esas cantidades. La comparación con referencia cero conserva el cambio absoluto y marca un concepto nuevo; no produce infinito.
+
+La única atribución admitida es session-reconciliation: reconcilePendingSessionTimeouts + reconcilePendingSessionExports frente a reconcilePendingSessions. [attribution.mjs](core/attribution.mjs) suma sus mediciones en /responsibilities/session-reconciliation/metrics/NOMBRE y sus asignaciones ya costeadas en partidas responsibility-session-reconciliation. No combina fases, recursos, servicios, ubicaciones, scopes ni volúmenes. metrics conserva las diferencias por función y etiqueta las filas físicas atribuidas; physicalQuantities y physicalMoney conservan los valores físicos de sus partidas. Las filas atribuidas y todas las demás cantidades mantienen sus controles. Una lectura, invocación o byte adicional se rechaza incluso si la tarifa no cambia el importe. Los registros del backend quedan como configuración observada, fuera de la huella de carga; se conserva la misma regla de medición al consolidar los exports.
 
 Para tiempo/RSS se necesita una regla en performance con path, unit, motivo, margen, el objeto machine de ambas capturas y minimumSamples. Sin esa regla son datos descriptivos. La captura actual tiene una muestra por escenario. Una regla que exige más muestras o usa otra máquina no se aprueba.
 
@@ -266,7 +270,7 @@ El check de costos puede ejecutarse aunque falle la suite funcional previa. Veri
 
 CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con la referencia controlada capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. La validación de cierre ejecuta tres matrices, pero CI conserva una sola matriz por check. La política estricta conserva los aumentos de bytes o permanencia temporal como fallos, aunque coincidan los contadores. Ni CI ni el ejecutor convierten la referencia o añaden márgenes para obtener verde.
 
-El check local aprobó con la nueva referencia, la normalización de CI y la tercera captura independiente mediante --candidate. Ejecutó las 160 unitarias y la comparación; las matrices se habían ejecutado por separado. Esto verifica el comando y su referencia seleccionada, sin afirmar una ejecución remota de GitHub Actions.
+El check local aprobó con B0, la normalización de CI y la política estricta: 191 pruebas unitarias y la comparación pasaron. La verificación reutiliza la tercera captura independiente mediante --candidate; las tres matrices se ejecutaron por separado. [check-validation.json](references/persistence-b0-2026-11-14/check-validation.json) conserva resultado y fuentes. Esto verifica el comando y su referencia seleccionada, sin afirmar una ejecución remota de GitHub Actions.
 
 ## Añadir medición de otra funcionalidad
 

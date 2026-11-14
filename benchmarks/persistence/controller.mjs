@@ -9,7 +9,8 @@ import { createMeter } from '../core/meter.mjs';
 import { observeFirestore } from '../core/firestore.mjs';
 import { observeRealtimeDatabase } from '../core/adapters.mjs';
 import { quantity } from '../core/quantity.mjs';
-import { changedDocuments, indexReadUnits, registration } from './model.mjs';
+import { changedDocuments, indexReadUnits } from './model.mjs';
+import { functionInventory, validateFunctionCoverage } from './function-inventory.mjs';
 import { storageInventory, storageMeasurement } from './storage-measurement.mjs';
 import { createDispatcher } from './dispatcher.mjs';
 import { state } from './bridge.mjs';
@@ -38,7 +39,9 @@ export async function createController() {
   const indexConfig = JSON.parse(await readFile(new URL('../../api/firestore.indexes.json', import.meta.url)));
   const storageModel = await storageMeasurement(indexConfig);
   let tail = Promise.resolve(), active = false, definitions = [], cached = new Map(), overheadMs = 0;
+  let functionEvidence;
   let realtimeCache = new Map(), diagnosticReads = 0, httpRequests = 0, stopListener = () => {};
+  let otherRealtimeCache = new Map();
   const presenceWaiters = new Set();
   let presenceTimes = new Map(), disconnectPlans = new Map();
   const presenceKey = (path, data) => JSON.stringify([path, data.generation, data.connected, data.changedAt]);
@@ -84,12 +87,7 @@ export async function createController() {
         if (!['experiments', 'logs', 'users'].includes(parts[0])) throw new Error('Unclassified document trigger path');
         const after = { exists: change.after !== null, data: () => change.after };
         const before = { exists: change.before !== null, data: () => change.before };
-        if (parts[2] === 'sessions' && parts.length === 4) {
-          controller.dispatcher.event('enqueueSessionTimeout', { params: { experimentID: parts[1], sessionId: parts[3] }, data: { before, after } }, Buffer.byteLength(JSON.stringify(change)));
-        }
-        if (parts[4] === 'export_jobs' && parts.length === 6) {
-          controller.dispatcher.event('enqueueSessionExport', { params: { experimentID: parts[1], sessionId: parts[3], revision: parts[5] }, data: { before, after } }, Buffer.byteLength(JSON.stringify(change)));
-        }
+        controller.dispatcher.publish('firestore', change.path, { data: { before, after } }, Buffer.byteLength(JSON.stringify(change)));
       }
       recordStorage();
     } finally { overheadMs += performance.now() - start; }
@@ -130,29 +128,12 @@ export async function createController() {
     setNativeDelay(ms) { if (!Number.isSafeInteger(ms) || ms < 0 || ms > 1000) throw new Error('Invalid diagnostic delay'); nativeDelayMs = ms; },
     inspect, exclusive,
     async initialize() {
-      const modules = await Promise.all([
-        import('../../api/functions/experiment/sessions/api/data-router.js'),
-        import('../../api/functions/experiment/sessions/timeout/functions.js'),
-        import('../../api/functions/experiment/sessions/timeout/tasks.js'),
-        import('../../api/functions/experiment/sessions/export/functions.js'),
-        import('../../api/functions/experiment/sessions/lifecycle/presence.js'),
-        import('../../api/functions/experiment/sessions/finalization/triggers.js'),
-      ]);
-      definitions = modules.flatMap(module => Object.entries(module).filter(([, value]) => value?.__endpoint).map(([name, value]) => registration(name, value)));
-      const required = ['apiData', 'enqueueSessionTimeout', 'enqueueSessionExport', 'onSessionConnectionWritten', 'processSessionTimeout', 'processSessionExportTask', 'reconcilePendingSessionTimeouts', 'reconcilePendingSessionExports', 'finalizeDisconnectedSessions'];
-      if (definitions.length !== required.length || required.some(name => !definitions.some(definition => definition.name === name))) throw new Error('Function registration inventory changed; review coverage');
-      const bindings = { enqueueSessionTimeout: ['document', 'experiments/{experimentID}/sessions/{sessionId}'],
-        enqueueSessionExport: ['document', 'experiments/{experimentID}/sessions/{sessionId}/export_jobs/{revision}'],
-        onSessionConnectionWritten: ['ref', 'session_connections/{experimentID}/{sessionId}/{connectionId}'],
-        finalizeDisconnectedSessions: ['ref', 'sessions/{experimentID}/{sessionId}'] };
-      for (const [name, [kind, pattern]] of Object.entries(bindings)) {
-        const actual = definitions.find(entry => entry.name === name).endpoint.eventTrigger.eventFilterPathPatterns[kind];
-        if (actual?.replace(/^\//, '') !== pattern) throw new Error('Unsupported registered event path: ' + name);
-      }
+      const inventory = functionInventory(await import('../../api/functions/index.js'));
+      definitions = inventory.definitions; functionEvidence = inventory.evidence;
     },
     async begin(name, h, study) {
       await tail; if (active) throw new Error('Scenario already active');
-      deliveries.length = 0; cached = new Map(); realtimeCache = new Map(); diagnosticReads = 0; overheadMs = 0; httpRequests = 0;
+      deliveries.length = 0; cached = new Map(); realtimeCache = new Map(); otherRealtimeCache = new Map(); diagnosticReads = 0; overheadMs = 0; httpRequests = 0;
       if (study) {
         const ref = state.nativeDb.doc('experiments/' + study.id), snapshot = await ref.get();
         cached.set(ref.path, snapshot.data());
@@ -177,13 +158,20 @@ export async function createController() {
             const planned = change.after.connected === false ? disconnectPlans.get('/session_connections/' + change.path) : undefined;
             presenceTimes.set(presenceKey(change.path, change.after), planned ?? clock.now());
           }
-          const [experimentID, sessionId, connectionId] = change.path.split('/');
           controller.meter.add('rtdb.presenceChanges', 1, { source: 'RTDB emulator change observed by benchmark infrastructure; not an extra application read' });
-          controller.dispatcher.event('onSessionConnectionWritten', { params: { experimentID, sessionId, connectionId }, data: {
+          controller.dispatcher.publish('database', 'session_connections/' + change.path, { data: {
             before: { val: () => presenceView('/session_connections/' + change.path, change.before) }, after: { val: () => presenceView('/session_connections/' + change.path, change.after) },
           } }, Buffer.byteLength(JSON.stringify(change)));
         }
-        if (all.sessions && Object.keys(all.sessions).length) controller.meter.unknown('rtdb.legacyCoverage', 'count', 'Unexpected legacy /sessions writes need trigger replay');
+        const other = [];
+        for (const [experimentID, sessions] of Object.entries(all.sessions || {})) for (const [sessionId, data] of Object.entries(sessions)) other.push({ path: `sessions/${experimentID}/${sessionId}`, data });
+        for (const path of otherRealtimeCache.keys()) if (!other.some(item => item.path === path)) other.push({ path, data: null });
+        for (const change of changedDocuments(otherRealtimeCache, other)) controller.dispatcher.publish('database', change.path, { data: {
+          before: { val: () => change.before }, after: { val: () => change.after },
+        } }, Buffer.byteLength(JSON.stringify(change)));
+        // Lease writes are observed by the RTDB adapter; the registered trigger
+        // inventory has no binding on session_connection_leases.
+        if (Object.keys(all).some(key => !['sessions', 'session_connections', 'session_connection_leases'].includes(key))) controller.meter.unknown('rtdb.triggerCoverage', 'count', 'Unclassified RTDB producer path');
         for (const waiter of presenceWaiters) if (presenceMatches(waiter.data)) waiter.resolve();
       };
       root.on('value', listener); stopListener = () => root.off('value', listener);
@@ -254,11 +242,12 @@ export async function createController() {
         if (!isDeepStrictEqual(retainedInventory, inventory(nativeInventory))) controller.meter.unknown('inventory.coverage', 'count', 'Observed retained inventory differs from native emulator inventory');
         overheadMs += performance.now() - measurementStart;
         const nativeTree = await h.realtime.ref().once('value'); diagnosticReads++;
-        const result = { ...controller.meter.snapshot(), storageModel, inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: clock.samples(), storageTiming:clock.snapshot(),
+        const result = { ...controller.meter.snapshot(), functionInventory: functionEvidence, storageModel, inventory: retainedInventory, inventoryVerifiedAgainstEmulator: isDeepStrictEqual(retainedInventory, inventory(nativeInventory)), storageTimeline: clock.samples(), storageTiming:clock.snapshot(),
           retainedRtdbJsonBytes: Buffer.byteLength(JSON.stringify(nativeTree.val() || {})),
           pending: controller.dispatcher.pending(), virtualSeconds: clock.elapsedMs() / 1000,
           overhead: { diagnosticReads, localInspectionMs: overheadMs, injectedDelayMs, note: 'Unpriced benchmark-only snapshot reads, setup, validation, browser instrumentation and emulator traffic; inspection time excluded from local function samples' }, httpRequests,
           registrations: definitions.map(({ handler, ...definition }) => { void handler; return definition; }) };
+        for (const issue of validateFunctionCoverage(result)) result.coverageIssues.push(issue.reason + ': ' + issue.path);
         active = false; state.active = null; controller.failure = null; return result;
       });
     },

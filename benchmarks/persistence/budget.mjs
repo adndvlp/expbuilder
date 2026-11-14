@@ -3,6 +3,7 @@ import { quantity } from '../core/quantity.mjs';
 import { functionUsage, scheduledExecutions, storageUsage } from '../core/models.mjs';
 import workload from '../profiles/persistence-30d.json' with { type: 'json' };
 import { validateConditions } from '../core/calibration.mjs';
+import { reconciliationMembers } from '../core/attribution.mjs';
 
 export const assumptions = workload;
 const number = (metrics, name) => Number(metrics?.[name]?.value || 0);
@@ -43,7 +44,8 @@ function subtractBackground(scenario, idle) {
   }));
   return { metrics, functions };
 }
-function itemsFor({ metrics, functions, registrations }, variant, scope, multiplier = 1, conditions = assumptions) {
+function itemsFor(scenario, variant, scope, multiplier = 1, conditions = assumptions) {
+  const { metrics, functions, registrations } = scenario;
   const model = conditions[variant], items = [];
   if (registrations.some(config => config.minInstances !== 0)) throw new Error('Review unsupported resource configuration: minimum instances need an idle allocation model');
   function item(id, rate, service, location, value, unit, source, category) {
@@ -54,10 +56,13 @@ function itemsFor({ metrics, functions, registrations }, variant, scope, multipl
   }
   item('requests', 'requests', 'functions', 'us-central1', number(metrics, 'functions.invocations'), 'count', 'Every HTTP/event/task/scheduled invocation, including no-op handlers and retries');
   for (const [name, entry] of Object.entries(functions)) {
+    const allocation = (phase, resource) => scenario.functionInventory ? { functionAllocation: { name, phase, resource,
+      ...(reconciliationMembers(scenario).includes(name) && { responsibility: 'session-reconciliation' }) } } : {};
     const invocations = number(entry.metrics, 'functions.invocations');
     if (!invocations) {
       for (const phase of ['active', 'startup']) for (const suffix of ['cpu', 'memory']) items.push({
         id: `${scope}-${name}-${phase}-${suffix}`, rate: suffix, scope, service: 'functions', location: 'us-central1', category: 'active',
+        ...allocation(phase, suffix),
         quantity: quantity(0, suffix === 'cpu' ? 'vCPU-second' : 'GiB-second', { provenance: 'not-applicable', source: 'Explicit zero function invocations; no active/startup allocation' }),
       });
       continue;
@@ -79,6 +84,7 @@ function itemsFor({ metrics, functions, registrations }, variant, scope, multipl
     for (const phase of ['active', 'startup']) for (const [suffix, resource] of [['cpu', 'cpuSeconds'], ['memory', 'memoryGiBSeconds']]) {
       const q = usage[phase][resource];
       items.push({ id: `${scope}-${name}-${phase}-${suffix}`, rate: suffix, scope, service: 'functions', location: 'us-central1', category: 'active',
+        ...allocation(phase, suffix),
         quantity: derived(String(Number(q.value) * multiplier), q.unit, 'Operation-latency cloud allocation model: ' + name + '/' + phase, {
           variant, referenceFunction: name, operationCountsInReferenceJson: true,
           totalWorkMs, averageWorkMsRoundedPerInvocation: perInvocation, invocations,

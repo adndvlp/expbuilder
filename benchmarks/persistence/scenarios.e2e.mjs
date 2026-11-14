@@ -121,6 +121,9 @@ async function verified(study, sid, expected) {
   return result;
 }
 async function closePage(page, study, sid) {
+  // Ordinary disconnects have a declared boundary. Lost acknowledgements are
+  // separate fault scenarios; native scheduling must not randomly inject one.
+  await page.evaluate(() => globalThis.window.__costInputs.whenResponsesSettled());
   await page.evaluate(() => globalThis.window.__benchmarkDrain());
   await page.evaluate(() => globalThis.window.__costInputs.prepareDisconnect());
   await page.close();

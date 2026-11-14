@@ -15,7 +15,7 @@ const usage = `Cost benchmarks (local files only):
 No command replaces an existing reference or contacts cloud services.`;
 const json = value => JSON.stringify(value, null, 2) + '\n';
 async function calculationSource() {
-  const names = ['cli.mjs', 'core/comparison.mjs', 'core/repeatability.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs'];
+  const names = ['cli.mjs', 'core/comparison.mjs', 'core/repeatability.mjs', 'core/attribution.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs', 'persistence/function-inventory.mjs', 'persistence/storage.mjs', 'persistence/storage-measurement.mjs'];
   const files = await Promise.all(names.map(async name => {
     const bytes = await readFile(new URL(name, import.meta.url));
     return [name, { bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') }];
@@ -77,7 +77,9 @@ async function execute() {
     report = { format: 1, status: 'invalid_input', exitCode: exitCodes.invalid_input, scope: 'Comparison could not validate its input files', scenarios: [], issues: [{ code: 'invalid_input', reason: error.message }] };
   }
   report.sources = sources;
-  await writeArtifacts(output, { 'comparison.json': json(report), 'README.md': renderComparison(report) });
+  // Keep every physical/logical row within the existing artifact limit. The
+  // Markdown report remains readable; compact JSON changes no evidence values.
+  await writeArtifacts(output, { 'comparison.json': JSON.stringify(report) + '\n', 'README.md': renderComparison(report) });
   console.log(`Comparison: ${report.status}; report: ${output}`); process.exitCode = report.exitCode;
 }
 try { await execute(); }

@@ -17,6 +17,7 @@ export async function persistenceRepeatability(scenarios) {
     ...['inputs', 'browser-inputs', 'node-inputs', 'instrument-inputs', 'input-transport', 'loader', 'clock', 'clock-database', 'controller', 'dispatcher', 'scenarios.e2e', 'storage-measurement']
       .map(name => 'benchmarks/persistence/' + name + '.mjs'),
     'api/persistence-e2e/harness.mjs', 'api/persistence-e2e/authoring.mjs',
+    'benchmarks/persistence/function-inventory.mjs', 'benchmarks/persistence/model.mjs', 'benchmarks/core/attribution.mjs', 'benchmarks/core/meter.mjs',
     ...await sourcesIn('api/mock-providers/'),
   ].sort();
   const sources = Object.fromEntries(await Promise.all(names.map(async name => [name, createHash('sha256').update(await readFile(new URL(name, root))).digest('hex')])));
