@@ -227,8 +227,8 @@ for (const indexed of [true, false]) test(`lost append acknowledgement / ${index
   await answer(page, 4); await complete(page); const sid = await page.evaluate(() => globalThis.window.JSPSYCH_SESSION_ID);
   await verified(study, sid, 5); await page.context().close(); await controller.pump(); return { events: 5, unique: true };
 }));
-test('task enqueue failure uses the registered trigger retry', () => scenario('enqueue-failure', { indexed: true, size: 1, count: 5 }, async study => {
-  state.failEnqueue = true; const page = await pageFor(study);
+test('task enqueue failure uses the registered trigger retry', () => scenario('enqueue-failure', { indexed: true, size: 1, count: 5, failedQueue: 'processSessionExportTask' }, async study => {
+  state.failEnqueue = 'processSessionExportTask'; const page = await pageFor(study);
   await h.wait(() => controller.metric('tasks.enqueueFailures') >= 1);
   await controller.pump();
   h.advance(31000); await controller.pump(); await complete(page); const sid = await page.evaluate(() => globalThis.window.JSPSYCH_SESSION_ID);

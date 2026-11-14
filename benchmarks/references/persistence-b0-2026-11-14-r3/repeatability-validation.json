@@ -1,0 +1,443 @@
+{
+  "format": 1,
+  "purpose": "Three independent unoptimized matrices under the corrected fault recipe; not approval of consumption",
+  "runs": [
+    {
+      "run": 1,
+      "source": {
+        "directory": "/tmp/cost-step5-b0-r3-run-1-20261114",
+        "files": {
+          "reference.json": {
+            "bytes": 4811660,
+            "sha256": "5c27ad19033154e133ad58086995797bc3530a5889564ef13e029a7b5fbcac55"
+          },
+          "budget.json": {
+            "bytes": 11012165,
+            "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+          }
+        }
+      },
+      "revision": "437a3051189a1f0fd6ac6c7b3e03775b5564f341",
+      "measuredCode": "e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac",
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2",
+      "scenarios": 23,
+      "functionalPassed": 23
+    },
+    {
+      "run": 2,
+      "source": {
+        "directory": "/tmp/cost-step5-b0-r3-run-2-20261114",
+        "files": {
+          "reference.json": {
+            "bytes": 4811690,
+            "sha256": "d1b49ea79cdc106b89ffbebfa6fa425c7fcdac55bd5223146aec4fb0778ab76b"
+          },
+          "budget.json": {
+            "bytes": 11012165,
+            "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+          }
+        }
+      },
+      "revision": "437a3051189a1f0fd6ac6c7b3e03775b5564f341",
+      "measuredCode": "e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac",
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2",
+      "scenarios": 23,
+      "functionalPassed": 23
+    },
+    {
+      "run": 3,
+      "source": {
+        "directory": "/tmp/cost-step5-b0-r3-run-3-20261114",
+        "files": {
+          "reference.json": {
+            "bytes": 4811692,
+            "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+          },
+          "budget.json": {
+            "bytes": 11012165,
+            "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+          }
+        }
+      },
+      "revision": "437a3051189a1f0fd6ac6c7b3e03775b5564f341",
+      "measuredCode": "e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac",
+      "conditions": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2",
+      "scenarios": 23,
+      "functionalPassed": 23
+    }
+  ],
+  "comparisons": [
+    {
+      "runs": [
+        1,
+        2
+      ],
+      "source": {
+        "file": "/tmp/cost-step5-b0-r3-pair-1-2-strict-20261114/comparison.json",
+        "bytes": 12752045,
+        "sha256": "90f28b6f89d3db7366140768e069f71de98439e3b8246ef0282a82adf869deff"
+      },
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "metrics": 10030,
+        "quantities": 24564,
+        "money": 18957,
+        "physicalQuantities": 1080,
+        "physicalMoney": 3192
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-b0-r3-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811660,
+              "sha256": "5c27ad19033154e133ad58086995797bc3530a5889564ef13e029a7b5fbcac55"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-b0-r3-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811690,
+              "sha256": "d1b49ea79cdc106b89ffbebfa6fa425c7fcdac55bd5223146aec4fb0778ab76b"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "calculation": {
+          "runtime": "v22.23.2",
+          "files": {
+            "cli.mjs": {
+              "bytes": 6045,
+              "sha256": "ff3454921b4790db8ed057b969eed5e3a962906d581e28658295a530f77375e2"
+            },
+            "core/comparison.mjs": {
+              "bytes": 34453,
+              "sha256": "dbd9a1f23347f8858c2bc5c3e75bf4c9f509464f851900df2b3f66597c5eef09"
+            },
+            "core/repeatability.mjs": {
+              "bytes": 5332,
+              "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+            },
+            "core/attribution.mjs": {
+              "bytes": 3486,
+              "sha256": "80333a7e0ea9085606965cdb72fb5388cadb9b5767e9129c97889bbc46dc0c88"
+            },
+            "core/calibration.mjs": {
+              "bytes": 3143,
+              "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+            },
+            "core/budget.mjs": {
+              "bytes": 7053,
+              "sha256": "3e7e3101c60b3ee45f550005224f23c30961d6e086915ab050f0bce5de86839e"
+            },
+            "core/models.mjs": {
+              "bytes": 5237,
+              "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+            },
+            "core/quantity.mjs": {
+              "bytes": 2985,
+              "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+            },
+            "core/decimal.mjs": {
+              "bytes": 2920,
+              "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+            },
+            "persistence/budget.mjs": {
+              "bytes": 17894,
+              "sha256": "e2062c22f1f5f0a5bfb536ecffb503b67e8d1ca16c89c079994c78562384e5f5"
+            },
+            "persistence/function-inventory.mjs": {
+              "bytes": 11326,
+              "sha256": "cab4b8dee3799b59468858c1d3fdab6f24da777f5936a6860cabf8eda78997c1"
+            },
+            "persistence/storage.mjs": {
+              "bytes": 11631,
+              "sha256": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+            },
+            "persistence/storage-measurement.mjs": {
+              "bytes": 2411,
+              "sha256": "913235ee60edf866f4c309d1c6e2fe93f5d8193b2886742fe2af0cfc42ce6332"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        }
+      }
+    },
+    {
+      "runs": [
+        1,
+        3
+      ],
+      "source": {
+        "file": "/tmp/cost-step5-b0-r3-pair-1-3-strict-20261114/comparison.json",
+        "bytes": 12751723,
+        "sha256": "36cc4500f31fb34d0fbb64f62efec12d1ba4d71a6fc19797a6275d7485344f37"
+      },
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "metrics": 10030,
+        "quantities": 24564,
+        "money": 18957,
+        "physicalQuantities": 1080,
+        "physicalMoney": 3192
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-b0-r3-run-1-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811660,
+              "sha256": "5c27ad19033154e133ad58086995797bc3530a5889564ef13e029a7b5fbcac55"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-b0-r3-run-3-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "calculation": {
+          "runtime": "v22.23.2",
+          "files": {
+            "cli.mjs": {
+              "bytes": 6045,
+              "sha256": "ff3454921b4790db8ed057b969eed5e3a962906d581e28658295a530f77375e2"
+            },
+            "core/comparison.mjs": {
+              "bytes": 34453,
+              "sha256": "dbd9a1f23347f8858c2bc5c3e75bf4c9f509464f851900df2b3f66597c5eef09"
+            },
+            "core/repeatability.mjs": {
+              "bytes": 5332,
+              "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+            },
+            "core/attribution.mjs": {
+              "bytes": 3486,
+              "sha256": "80333a7e0ea9085606965cdb72fb5388cadb9b5767e9129c97889bbc46dc0c88"
+            },
+            "core/calibration.mjs": {
+              "bytes": 3143,
+              "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+            },
+            "core/budget.mjs": {
+              "bytes": 7053,
+              "sha256": "3e7e3101c60b3ee45f550005224f23c30961d6e086915ab050f0bce5de86839e"
+            },
+            "core/models.mjs": {
+              "bytes": 5237,
+              "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+            },
+            "core/quantity.mjs": {
+              "bytes": 2985,
+              "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+            },
+            "core/decimal.mjs": {
+              "bytes": 2920,
+              "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+            },
+            "persistence/budget.mjs": {
+              "bytes": 17894,
+              "sha256": "e2062c22f1f5f0a5bfb536ecffb503b67e8d1ca16c89c079994c78562384e5f5"
+            },
+            "persistence/function-inventory.mjs": {
+              "bytes": 11326,
+              "sha256": "cab4b8dee3799b59468858c1d3fdab6f24da777f5936a6860cabf8eda78997c1"
+            },
+            "persistence/storage.mjs": {
+              "bytes": 11631,
+              "sha256": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+            },
+            "persistence/storage-measurement.mjs": {
+              "bytes": 2411,
+              "sha256": "913235ee60edf866f4c309d1c6e2fe93f5d8193b2886742fe2af0cfc42ce6332"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        }
+      }
+    },
+    {
+      "runs": [
+        2,
+        3
+      ],
+      "source": {
+        "file": "/tmp/cost-step5-b0-r3-pair-2-3-strict-20261114/comparison.json",
+        "bytes": 12751810,
+        "sha256": "35f7d6c196dd8e21b082c6703ed3077adf9011d0ac264a3dde79601cc2cde9a9"
+      },
+      "exitCode": 0,
+      "status": "passed",
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "metrics": 10030,
+        "quantities": 24564,
+        "money": 18957,
+        "physicalQuantities": 1080,
+        "physicalMoney": 3192
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-step5-b0-r3-run-2-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811690,
+              "sha256": "d1b49ea79cdc106b89ffbebfa6fa425c7fcdac55bd5223146aec4fb0778ab76b"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-step5-b0-r3-run-3-20261114",
+          "files": {
+            "reference.json": {
+              "bytes": 4811692,
+              "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+            },
+            "budget.json": {
+              "bytes": 11012165,
+              "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+            }
+          }
+        },
+        "calculation": {
+          "runtime": "v22.23.2",
+          "files": {
+            "cli.mjs": {
+              "bytes": 6045,
+              "sha256": "ff3454921b4790db8ed057b969eed5e3a962906d581e28658295a530f77375e2"
+            },
+            "core/comparison.mjs": {
+              "bytes": 34453,
+              "sha256": "dbd9a1f23347f8858c2bc5c3e75bf4c9f509464f851900df2b3f66597c5eef09"
+            },
+            "core/repeatability.mjs": {
+              "bytes": 5332,
+              "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+            },
+            "core/attribution.mjs": {
+              "bytes": 3486,
+              "sha256": "80333a7e0ea9085606965cdb72fb5388cadb9b5767e9129c97889bbc46dc0c88"
+            },
+            "core/calibration.mjs": {
+              "bytes": 3143,
+              "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+            },
+            "core/budget.mjs": {
+              "bytes": 7053,
+              "sha256": "3e7e3101c60b3ee45f550005224f23c30961d6e086915ab050f0bce5de86839e"
+            },
+            "core/models.mjs": {
+              "bytes": 5237,
+              "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+            },
+            "core/quantity.mjs": {
+              "bytes": 2985,
+              "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+            },
+            "core/decimal.mjs": {
+              "bytes": 2920,
+              "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+            },
+            "persistence/budget.mjs": {
+              "bytes": 17894,
+              "sha256": "e2062c22f1f5f0a5bfb536ecffb503b67e8d1ca16c89c079994c78562384e5f5"
+            },
+            "persistence/function-inventory.mjs": {
+              "bytes": 11326,
+              "sha256": "cab4b8dee3799b59468858c1d3fdab6f24da777f5936a6860cabf8eda78997c1"
+            },
+            "persistence/storage.mjs": {
+              "bytes": 11631,
+              "sha256": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+            },
+            "persistence/storage-measurement.mjs": {
+              "bytes": 2411,
+              "sha256": "913235ee60edf866f4c309d1c6e2fe93f5d8193b2886742fe2af0cfc42ce6332"
+            }
+          }
+        },
+        "policy": {
+          "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+          "bytes": 71,
+          "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+        }
+      }
+    }
+  ]
+}

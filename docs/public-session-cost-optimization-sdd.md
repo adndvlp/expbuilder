@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: entregas 1 y 2 verificadas; entregas 3 y 4 implementadas y funcionalmente verificadas, con aceptación monetaria estricta pendiente; entrega 5 pendiente.
+Estado: implementaciones y validación final ejecutadas; funcionalidad, objetivos de operaciones y repetibilidad verificados. Aceptación monetaria estricta pendiente por almacenamiento temporal.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -293,3 +293,17 @@ El variable disminuye en los 22 escenarios con sesiones para low/nominal/high y 
 **La aceptación monetaria estricta permanece pendiente.** Las comparaciones contra B0 R2 y contra la entrega 3, así como el check local, devuelven código 2. Cada comparación conserva 441 filas aumentadas de cantidades/partidas de almacenamiento temporal en 21 escenarios; los inventarios finales son iguales y todos los subtotales variables disminuyen. El mayor incremento nominal de esa partida es USD 0,000000003391914651729167 por 1.000 sesiones. Se mantuvieron la política y la prohibición de compensaciones de la sección 10.
 
 El [informe de la entrega 4](investigaciones/session-export-cost-2026-11-14.md) y su [evidencia numérica](investigaciones/session-export-cost-2026-11-14.json) separan el ahorro de esta entrega del fijo obtenido en la anterior, identifican los fallos estrictos y conservan las cronologías. Las referencias, tarifas, calendario, índices e hipótesis siguen iguales. No hubo despliegue ni registro de candidata como referencia. Las tres matrices independientes de cierre corresponden a la entrega 5.
+
+## 17. Resultado de la entrega 5 — 2026-11-14
+
+CO14–CO15 ejecutados. La primera repetición detectó una carrera en enqueue-failure: el avance de 31 segundos podía alcanzar el timeout de apertura antes de terminar la conexión. Aunque los archivos finales eran correctos, variaban contadores, almacenamiento e importes. Esas tres capturas no se aprobaron como prueba de repetición.
+
+Se corrigió la inyección mediante TDD para fallar una vez en processSessionExportTask y declarar su destino en la carga. Se revalidó [B0 R3](../benchmarks/references/persistence-b0-2026-11-14-r3/README.md) con tres matrices del backend sin optimizar de 437a305 y tres comparaciones exactas. Los otros 22 casos conservaron sus contadores, inventarios, cronologías e importes. Se conservan las referencias previas y se selecciona R3 explícitamente. El producto mantiene la implementación de 031af33; la corrección afecta el harness y la validación.
+
+Las tres matrices definitivas de la candidata pasaron sus 69 casos. Las comparaciones 1–2, 1–3 y 2–3 verificaron igualdad exacta de mediciones, almacenamiento, cantidades, importes y resultados funcionales bajo un único código medido y contrato. Pasaron 750 tests del backend y 195 del benchmark. La tercera matriz se ejecutó en el check completo: una etapa unitaria, una medición y una comparación. Las pruebas verifican el workflow, errores y cancelación; las evidencias cumplen los límites y los emuladores terminaron.
+
+Los objetivos de operaciones se mantienen: seis lecturas del trigger, 55 escrituras en cinco eventos/lote 1 y 31/139/1.219 lecturas del worker para 3/30/300 eventos. Disminuyen el fijo y los subtotales variables en las variantes y volúmenes previstos. En 1.000 sesiones normales y 30 días, el total nominal pasa de USD 1,328522775521 a 0,945209089647.
+
+**El cierre monetario de la SDD sigue pendiente.** El check conserva código 2 y 441 filas aumentadas de almacenamiento temporal en 21 escenarios. El mayor incremento nominal de esa partida es USD 0,000000002798456504630546 por 1.000 sesiones. Se mantiene íntegra la regla de la sección 10: la disminución de subtotales no compensa esos aumentos para aprobar.
+
+El [informe final](investigaciones/persistence-cost-final-validation-2026-11-14.md) y la [evidencia con hashes](investigaciones/persistence-cost-final-validation-2026-11-14.json) conservan los intentos iniciales rechazados, la corrección de carga, las tres comparaciones exactas, el ahorro y el fallo estricto. No se registró la candidata como referencia posterior ni se desplegaron recursos.

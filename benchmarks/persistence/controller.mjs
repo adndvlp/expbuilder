@@ -107,6 +107,7 @@ export async function createController() {
     async prepare(name, conditions = {}) {
       await tail; if (active) throw new Error('Cannot replace active scenario inputs');
       inputs = createScenarioInputs({ ...conditions, scenario: name }); providerInputs = new Map(); participants = 0;
+      state.failEnqueue = null;
       clock = createScenarioClock({epoch:inputs.epoch}); state.clock = clock; nativeDelayMs = 0; injectedDelayMs = 0;
       presenceTimes = new Map(); disconnectPlans = new Map();
       selectNodeInputs(inputs, clock); resetStore();

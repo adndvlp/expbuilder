@@ -1,0 +1,191 @@
+{
+  "format": 1,
+  "reason": "Generic first-enqueue failure raced the setup connection when advancing the clock. Target one export enqueue instead, after participant connection; explicit 31s wait and other actions remain unchanged.",
+  "changedScenario": "enqueue-failure",
+  "unchangedScenarios": 22,
+  "previousReference": {
+    "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r2",
+    "files": {
+      "reference.json": {
+        "bytes": 4819479,
+        "sha256": "05fd90e31a489d23d6c5cfff896cc3bf29b84f32726434e6759a8c695077ec4d"
+      },
+      "budget.json": {
+        "bytes": 11012942,
+        "sha256": "e3a7f986579b4f79f3341e4bd40da6a9402efd3d31aab200611aea2886d82955"
+      }
+    }
+  },
+  "currentReference": {
+    "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r3",
+    "files": {
+      "reference.json": {
+        "bytes": 4811692,
+        "sha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0"
+      },
+      "budget.json": {
+        "bytes": 11012165,
+        "sha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20"
+      }
+    }
+  },
+  "productRevision": "437a3051189a1f0fd6ac6c7b3e03775b5564f341",
+  "productOptimizationsIncluded": false,
+  "metricChanges": [
+    {
+      "scenario": "enqueue-failure",
+      "metric": "events.deliveredPayloadBytes",
+      "before": "110890",
+      "after": "99905"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "events.published",
+      "before": "27",
+      "after": "25"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "events.publishedPayloadBytes",
+      "before": "108953",
+      "after": "98704"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.documentsReturned",
+      "before": "123",
+      "after": "120"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.readCalls",
+      "before": "114",
+      "after": "111"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.readUnits",
+      "before": "138",
+      "after": "135"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.transactionAttempts",
+      "before": "37",
+      "after": "34"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.writeAttempts",
+      "before": "60",
+      "after": "58"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "firestore.writes",
+      "before": "60",
+      "after": "58"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "functions.invocations",
+      "before": "45",
+      "after": "42"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "http.requestContentBytes",
+      "before": "9089",
+      "after": "9084"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "http.responseContentBytes",
+      "before": "7023",
+      "after": "6987"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "provider.googledrive.requestContentBytes",
+      "before": "2493",
+      "after": "2488"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "provider.googledrive.responseContentBytes",
+      "before": "9408",
+      "after": "9388"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "rtdb.downloadBytes",
+      "before": "9478",
+      "after": "8962"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "rtdb.payloadReadBytes",
+      "before": "1286",
+      "after": "1282"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "rtdb.readCalls",
+      "before": "10",
+      "after": "9"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "rtdb.uploadBytes",
+      "before": "4659",
+      "after": "4403"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.billableUnits",
+      "before": "6",
+      "after": "4"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.deliveries",
+      "before": "3",
+      "after": "2"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.deliveryPayloadJsonBytes",
+      "before": "597",
+      "after": "368"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.enqueueAttempts",
+      "before": "4",
+      "after": "3"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.enqueued",
+      "before": "3",
+      "after": "2"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.modeledBytes",
+      "before": "7338",
+      "after": "4832"
+    },
+    {
+      "scenario": "enqueue-failure",
+      "metric": "tasks.payloadJsonBytes",
+      "before": "823",
+      "after": "510"
+    }
+  ],
+  "changedHarnessSources": [
+    "benchmarks/persistence/bridge.mjs",
+    "benchmarks/persistence/controller.mjs",
+    "benchmarks/persistence/scenarios.e2e.mjs"
+  ]
+}

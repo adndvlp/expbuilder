@@ -8,7 +8,7 @@ import { deliveries } from '../../api/persistence-e2e/task-queue.mjs';
 const require = createRequire(new URL('../../api/functions/package.json', import.meta.url));
 const nativeDatabase = require('firebase-admin/database').getDatabase;
 const fetchModule = require('node-fetch'), fetch = fetchModule.default || fetchModule;
-export const state = { active: null, nativeDb: null, failEnqueue: false, transport: null, clock: null };
+export const state = { active: null, nativeDb: null, failEnqueue: null, transport: null, clock: null };
 export function database(native) {
   state.nativeDb = native;
   return new Proxy(native, { get(target, key) {
@@ -23,7 +23,10 @@ export function getDatabase(...args) {
 }
 export const getFunctions = () => ({ taskQueue: name => {
   const queue = { async enqueue(data, options = {}) {
-    if (state.failEnqueue) { state.failEnqueue = false; throw Object.assign(new Error('Injected task service unavailable'), { code: 'BENCHMARK_TASK_PLATFORM_FAILURE' }); }
+    if (state.failEnqueue === name.split('/').at(-1)) {
+      state.failEnqueue = null;
+      throw Object.assign(new Error('Injected task service unavailable'), { code: 'BENCHMARK_TASK_PLATFORM_FAILURE' });
+    }
     deliveries.push({ name, data, due: options.scheduleTime?.getTime() ?? state.clock?.now() ?? Date.now() });
   } };
   return state.active ? observeTaskQueue(queue, state.active.meter, taskOptions) : queue;
