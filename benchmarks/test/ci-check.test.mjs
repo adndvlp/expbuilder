@@ -51,6 +51,7 @@ test('the default check selects the explicitly registered corrected B0 without r
   assert.equal(result.exitCode, 0);
   assert.deepEqual(f.calls.map(job => job.name), ['unit','measurement','comparison']);
   assert.ok(f.calls[2].args.includes(result.baseline));
+  assert.equal(path.basename(f.calls[2].args[f.calls[2].args.indexOf('--policy') + 1]), 'no-increases.json');
   assert.ok(!JSON.stringify(f.calls).includes("'reference'"));
 });
 test('a failing unit suite preserves its JUnit/log and skips expensive measurement', async t => {

@@ -272,6 +272,8 @@ CI usa [normalization.json](ci/normalization.json) para comparar contadores y co
 
 El check final seleccionó B0 R3 y ejecutó 195 pruebas unitarias, una matriz de 23 escenarios y la comparación con la normalización de CI. Unit y measurement devolvieron 0; comparison y ensure-report conservaron el código 2 por 441 filas aumentadas de almacenamiento temporal en 21 escenarios. Sus subtotales variables son menores, pero la política comprueba también cada partida. El [informe final](../docs/investigaciones/persistence-cost-final-validation-2026-11-14.md) conserva esa ejecución local y las tres comparaciones exactas de la candidata. Las tres matrices corresponden al cierre de validación; el check ordinario de CI sigue midiendo una sola vez. No se registró automáticamente otra referencia.
 
+La primera entrega de la [revisión de aceptación, sección 18](../docs/public-session-cost-optimization-sdd.md#18-revisión-de-aceptación-almacenamiento-temporal-acotado) declara los 21 topes exactos en [persistence-temporal-storage.json](policies/persistence-temporal-storage.json). [validateTemporalStoragePolicy](core/temporal-storage-policy.mjs) comprueba su formato y ámbito contra los bytes originales de ambas capturas, B0 R3, carga, método, índices, hipótesis, perfil, variantes y proyecciones. Devuelve una copia de la declaración; una entrada inválida tiene código 6 y un ámbito incompatible, 4. La evaluación de estos topes sigue pendiente: el comparador aún rechaza esta política como formato no integrado y el check mantiene no-increases.json.
+
 ## Añadir medición de otra funcionalidad
 
 La integración específica de persistencia está en persistence/; los contratos, observadores y aritmética compartidos están en core/. Para extender la herramienta:

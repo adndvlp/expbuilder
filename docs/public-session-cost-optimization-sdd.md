@@ -1,6 +1,6 @@
 # SDD: optimización del costo del guardado público
 
-Estado: implementaciones y validación final ejecutadas; funcionalidad, objetivos de operaciones y repetibilidad verificados. Aceptación monetaria estricta pendiente por almacenamiento temporal.
+Estado: implementaciones y validación final previas ejecutadas. Revisión de aceptación de almacenamiento temporal definida en la sección 18; implementación pendiente. El check vigente conserva el rechazo documentado.
 
 Fecha local: 2026-11-13. Revisión examinada: d714f70. Fundamento: [análisis de costos](investigaciones/persistence-cost-analysis-2026-11-13.md) y su [evidencia numérica](investigaciones/persistence-cost-analysis-2026-11-13.json).
 
@@ -86,7 +86,7 @@ Para esa responsabilidad se compararán sumas exactas de los contadores y cantid
 
 Las sumas se obtienen exclusivamente de observaciones e inventario completo. La ausencia de un endpoint retirado solo equivale a ausencia de ejecución cuando ese inventario la demuestra. Si un endpoint registrado no se invoca, sus ceros se declaran desde el observador del escenario; una medición desconocida sigue siendo desconocida.
 
-Fuera de esa correspondencia, la comparación por función mantiene sus controles actuales. Las cantidades globales por servicio, almacenamiento, red y todas las partidas monetarias siguen comprobándose. No se habilitan agrupaciones automáticas, márgenes numéricos ni compensación entre servicios o entre fijo y variable.
+Fuera de esa correspondencia, la comparación por función mantiene sus controles actuales. Las cantidades globales por servicio, almacenamiento, red y todas las partidas monetarias siguen comprobándose. No se habilitan agrupaciones automáticas ni márgenes generales. La única autorización adicional prevista es la de almacenamiento temporal de la sección 18; los demás conceptos y los subtotales fijo/variable conservan sus controles independientes.
 
 Las pruebas deben detectar una lectura, invocación, byte o intervalo adicional al comparar dos ejecuciones de la misma estructura, también dentro de la responsabilidad agrupada. Un miembro omitido, repetido, desconocido o sin medición devuelve incompletitud/incompatibilidad. Un cambio de nombre aislado no constituye ahorro.
 
@@ -184,6 +184,13 @@ Se conservan validación, columnas y respuestas esperadas del CSV, orden, unicid
 | CO13 | Ambos modos, lotes, retoma/expiración y fallos de los tres proveedores | Matriz completa y archivo final comprobados; el navegador termina la recuperación antes de cerrarse |
 | CO14 | Tres ejecuciones del código optimizado y comparación B0/candidata | Igualdad de repetición, costo estrictamente menor y controles de regresión conservados |
 | CO15 | Check/CI, fallo o cancelación | Una matriz ordinaria por check, códigos e informes conservados, límites y procesos detenidos |
+| CO16 | Política temporal sin límite, con escenario ambiguo o con condiciones distintas | Validación rechazada; ninguna excepción se aplica por defecto |
+| CO17 | Incremento temporal en el límite y por encima del límite | Aceptación exacta en el límite; rechazo del menor incremento representable por encima |
+| CO18 | Una lectura, escritura o invocación adicional, o un byte final adicional | Regresión aunque el incremento temporal esté dentro del tope y baje el total |
+| CO19 | Conversión del tope a variantes, volúmenes y USD | Una sola autorización física por escenario, conversiones exactas y resto de partidas intacto |
+| CO20 | Fijo o variable sin ahorro, cobertura perdida o archivo incorrecto | La autorización temporal no permite aprobar |
+| CO21 | Repetición del mismo código con una diferencia temporal dentro del tope | Sigue sin demostrar igualdad exacta; la política de repetición permanece estricta |
+| CO22 | Comparación y check con la política específica | Aumentos autorizados visibles, origen de límites conservado y aceptación solo si pasan todas las guardas |
 
 Las pruebas monetarias no deben copiar el precio final esperado del resultado del mismo motor. Las de modelo usarán ejemplos y operaciones conocidos; las de integración observarán los handlers, SDK, tareas, proveedor y CSV reales del entorno local de pruebas.
 
@@ -205,13 +212,13 @@ Se conservan contadores y cantidades por servicio/función, inventario e interva
 | Otros escenarios y cantidades | Sin aumentos no revisados, cobertura perdida o daño funcional |
 | Repetición de la candidata | Tres matrices independientes y las tres comparaciones por pares con igualdad exacta |
 
-La política no-increases sigue sin márgenes numéricos. La única sustitución de identidades es la correspondencia declarada de conciliación. Un aumento de otro concepto impide aprobar y obliga a explicar/corregir la entrega; esta SDD no autoriza excepciones monetarias ni reescribir una referencia para conseguir verde.
+La política no-increases conserva sus controles estrictos y se mantiene para diagnóstico y repetición. La única sustitución de identidades es la correspondencia declarada de conciliación. Para aceptar esta optimización frente a B0 se define una política específica en la sección 18, limitada a los incrementos temporales allí enumerados y sus importes derivados. Un aumento fuera de ese alcance impide aprobar. Las referencias y las mediciones permanecen intactas.
 
 El informe final identificará método, configuración de índices, revisión del producto, código/calendario de fixtures, B0, candidata, política y correspondencia utilizada. Mostrará cantidades y diferencias en USD y porcentaje, separando ahorro de corrección metodológica. Las cifras anteriores de 0.77258757 USD en vacío y 0.55023327 USD variables/1.000 sesiones normales sirven como contexto histórico, no como presupuestos corregidos inventados.
 
 ## 11. Entregas de implementación
 
-Son cinco entregas. Se trabaja una por indicación del usuario y se detiene la ejecución al finalizarla.
+Las cinco entregas originales se describen a continuación. La revisión de aceptación posterior tiene sus propias entregas en la sección 18.7. Se trabaja una por indicación del usuario y se detiene la ejecución al finalizarla.
 
 1. **Completar el modelo de índices.** CO01–CO03 mediante TDD. Añadir cobertura de mapas/arrays/exenciones e identidad del método, conservando tipos, unidades y errores explícitos. No cambiar índices ni comportamiento del producto.
 2. **Preparar la comparación y registrar B0.** CO04–CO06. Inventario real, correspondencia de conciliación y controles exactos de cantidades. Ejecutar tres matrices del producto sin optimizar, registrar B0 con motivo y actualizar el check explícitamente. Esta entrega no reclama ahorro de producto.
@@ -307,3 +314,118 @@ Los objetivos de operaciones se mantienen: seis lecturas del trigger, 55 escritu
 **El cierre monetario de la SDD sigue pendiente.** El check conserva código 2 y 441 filas aumentadas de almacenamiento temporal en 21 escenarios. El mayor incremento nominal de esa partida es USD 0,000000002798456504630546 por 1.000 sesiones. Se mantiene íntegra la regla de la sección 10: la disminución de subtotales no compensa esos aumentos para aprobar.
 
 El [informe final](investigaciones/persistence-cost-final-validation-2026-11-14.md) y la [evidencia con hashes](investigaciones/persistence-cost-final-validation-2026-11-14.json) conservan los intentos iniciales rechazados, la corrección de carga, las tres comparaciones exactas, el ahorro y el fallo estricto. No se registró la candidata como referencia posterior ni se desplegaron recursos.
+
+## 18. Revisión de aceptación: almacenamiento temporal acotado
+
+Fecha de la revisión: 2026-11-14. Estado: primera entrega implementada; evaluación e integración pendientes. La SDD se redactó antes de implementar por indicación del usuario. La política activa y el check conservan el comportamiento estricto.
+
+### 18.1 Resultado solicitado y alcance
+
+Aceptar el incremento temporal de almacenamiento identificado en la validación final, con límites explícitos por escenario, conservando las mediciones exactas y los controles de operaciones, inventario, ahorro y repetibilidad.
+
+Esta sección sustituye la prohibición general de excepciones de aceptación únicamente para el componente `session-firestore-storage` de los 21 escenarios de la tabla siguiente. Los estados y resultados de las entregas 1–5 se conservan como evidencia histórica de la política aplicada entonces.
+
+La revisión afecta la evaluación del benchmark. Se mantienen el producto, el modelo de cálculo, B0 R3, las capturas verificadas, el catálogo, las hipótesis, los índices, el calendario y la carga. Registrar la candidata como referencia y desplegar recursos siguen fuera de este trabajo.
+
+### 18.2 Unidad y procedencia del límite
+
+El límite primario se expresa en **byte-segundos adicionales por sesión**: bytes almacenados multiplicados por el tiempo que ocupan dentro del horizonte. Incluye los índices ya contabilizados por firestore-standard-storage/2. Es un presupuesto de permanencia temporal, no una cantidad adicional de bytes autorizada en el inventario final.
+
+Para cada captura se integra su cronología con el procedimiento vigente de [storageUsage](../benchmarks/core/models.mjs). Se calcula `incremento = integral(candidata) - integral(B0)`, usando fracciones exactas. Las muestras, cantidades, diferencias y costos siguen mostrando sus valores completos.
+
+Los topes siguientes son las diferencias exactas de las cronologías verificadas, sin agregar margen ni redondear los cálculos monetarios. Las cifras usan punto decimal para poder trasladarlas como strings a la política.
+
+| Escenario | Máximo incremento por sesión, byte-segundos |
+|---|---:|
+| normal-true-0 | `22134.705` |
+| normal-true-1 | `22134.705` |
+| normal-true-3 | `22134.705` |
+| normal-false-0 | `22134.705` |
+| normal-false-1 | `22134.705` |
+| normal-false-3 | `22134.705` |
+| volume-3 | `21560.535` |
+| volume-30 | `20077.625` |
+| visual-true | `17742.485` |
+| visual-false | `17742.485` |
+| resume-true | `43269.405` |
+| resume-false | `43269.405` |
+| expiry-true-0 | `15552.935` |
+| expiry-true-3 | `15552.935` |
+| expiry-false-1 | `17139.75` |
+| lost-ack-true | `22134.705` |
+| lost-ack-false | `22134.705` |
+| enqueue-failure | `26130.435` |
+| provider-lost-googledrive | `17284.165` |
+| provider-lost-dropbox | `16145.71` |
+| provider-lost-osf | `21699.75` |
+
+La procedencia es la [evidencia final](investigaciones/persistence-cost-final-validation-2026-11-14.json): B0 R3, código de partida `e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac`, y candidata verificada `8bd317c16cd57ebaef9ff360985fda8f3ec2973615ab1c03c7a582028f3d7609`. Comparten condiciones `5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2`. La identidad de la candidata documenta el origen de la revisión; no obliga a conservar para siempre ese código.
+
+El manifiesto de límites deberá conservar motivo, unidad, escenario, identidad exacta del archivo de referencia B0, condiciones, método de almacenamiento, configuración de índices, perfil y horizonte. Los límites quedan fijados como datos revisados: una ejecución futura no podrá obtener su propio tope a partir de su resultado.
+
+`idle`, `volume-300` y los escenarios no enumerados no reciben autorización temporal. Ampliar la tabla, modificar un tope o cambiar sus condiciones requiere una revisión explícita con nueva evidencia.
+
+### 18.3 Política específica y condiciones para aplicarla
+
+El archivo específico `benchmarks/policies/persistence-temporal-storage.json` declara los 21 límites y su procedencia. `no-increases.json` permanece intacto. No se usarán selectores comodín, porcentajes generales ni autorizaciones independientes para cada una de las 441 filas proyectadas.
+
+La autorización solo será aplicable si se cumplen todas estas condiciones:
+
+1. B0 es el archivo identificado de persistence-b0-2026-11-14-r3; el contrato de carga, método de almacenamiento, índices, perfil, moneda y horizonte coinciden con los de esta revisión. El horizonte y periodo de facturación declarados son 2.592.000 segundos. Las proyecciones iniciales siguen siendo 1/1.000/10.000 sesiones y low/nominal/high.
+2. Ambas capturas tienen cobertura completa, inventario verificado contra el emulador y resultado funcional correcto. Una medición ausente o desconocida conserva su rechazo.
+3. No aumentan operaciones ni otras cantidades sujetas al control estricto, incluidas lecturas, escrituras, borrados, tareas e invocaciones globales y por función/responsabilidad. La correspondencia de conciliación de la sección 5.1 se mantiene.
+4. No aumentan documentos ni bytes del inventario final, comprobados por colección y por componente: documentos, índices automáticos, compuestos, índices totales y bytes almacenados. El JSON retenido en RTDB también conserva su control. Estos son controles explícitos de bytes, independientes de que su costo resulte pequeño o gratuito.
+5. El incremento integrado de `session-firestore-storage` no supera el tope del escenario. Un incremento menor puede aceptarse; el límite no se eleva automáticamente. Un escenario sin tope conserva aumento permitido cero.
+6. En cada variante y volumen revisados, tanto el fijo como el variable del escenario que usa la autorización son estrictamente menores que B0. Un subtotal igual o mayor impide usarla, aunque disminuya el total combinado. En vacío se conserva el objetivo de menor fijo de la sección 6.
+
+La ausencia de campos de inventario no equivale a cero. No se suman aumentos de una colección con reducciones de otra para satisfacer la guarda. Los demás componentes de almacenamiento, recursos, red y servicios conservan sus límites anteriores.
+
+Una política mal formada, con límites negativos, duplicados, ambiguos, sin motivo o sin escenario correspondiente se rechaza como entrada inválida. Una autorización cuyo ámbito no coincide con las capturas se rechaza como incompatible. La autorización temporal no sustituye errores funcionales, de cobertura o de compatibilidad por éxito.
+
+### 18.4 Conversión exacta a cantidades e importes
+
+El tope se aplica una sola vez a la permanencia física por sesión. Su equivalente en GiB-mes es `tope / (1073741824 × 2592000)`. La cantidad proyectada se multiplica por el número de sesiones; el equivalente monetario se calcula con la tarifa vigente dentro del perfil congelado y la misma aritmética exacta del benchmark.
+
+Todas las filas que representan ese mismo componente —cantidad de partida, cantidad proyectada e importe— deben respetar el mismo presupuesto derivado. La repetición de la partida en variantes y proyecciones no multiplica el tope por sesión ni autoriza otro componente. Los subtotales fijo, variable y total se recalculan desde las mediciones y mantienen sus comprobaciones propias.
+
+No se añade un epsilon a cantidades ni USD, ni se redondea una diferencia para convertirla en cero. Tampoco se suma este tope con otra autorización genérica sobre la misma partida; una superposición de reglas se rechaza.
+
+### 18.5 Informes y repetición exacta
+
+Una fila autorizada conserva `state: increased`, sus valores before/after, diferencia, unidad, precio y volumen. El informe mostrará el incremento físico observado, el máximo revisado, sus equivalentes derivados, el motivo y la procedencia. Si pasa, debe quedar claro que cumplió un límite revisado; el aumento permanece visible.
+
+La comparación de repeticiones del mismo código utiliza la política estricta y exige los cinco indicadores de igualdad en true: mediciones, almacenamiento, cantidades, importes y resultado funcional. Esta revisión no modifica el cálculo de equality ni permite declarar igualdad a partir de un costo menor o de status passed. Una variación entre repeticiones sigue siendo un fallo de repetibilidad, aunque quepa dentro de un presupuesto temporal de optimización.
+
+Las comparaciones anteriores con código 2 se conservan. La implementación producirá informes nuevos con la identidad de la nueva política, sin sobrescribir referencias, capturas ni resultados históricos.
+
+### 18.6 Pruebas de aceptación mediante TDD
+
+Las pruebas empiezan fallando antes de integrar la autorización. Usarán ejemplos calculados independientemente y las tres capturas ya verificadas para la regresión real.
+
+- **CO16 — ámbito cerrado:** rechazar topes negativos, duplicados, sin motivo, comodines, selectores sin escenario correspondiente y cambios de B0, condiciones, método, índices, perfil u horizonte. Un caso no autorizado no hereda el tope de otro.
+- **CO17 — frontera exacta:** comprobar que el incremento igual al tope pasa y que el tope más `0.001` byte-segundos falla. Incluir un ejemplo manual, como 80 bytes durante 0,25 segundos adicionales, cuyo incremento es exactamente 20 byte-segundos. No copiar del motor el costo final esperado.
+- **CO18 — recursos y bytes finales:** añadir una lectura, escritura o invocación y comprobar que siga fallando aunque se ahorre en otra parte. Añadir un byte de documento o índice al inventario final casi al cierre del horizonte para demostrar que su pequeño costo temporal no evita el rechazo explícito de bytes. Cubrir también RTDB.
+- **CO19 — derivación única:** verificar cantidades y USD para low/nominal/high y 1/1.000/10.000 sesiones. Un exceso en la cantidad física falla aunque el precio sea cero o el importe mostrado parezca igual. RTDB, almacenamiento compartido y otras partidas no reciben el permiso.
+- **CO20 — ahorro y garantías:** con incremento temporal dentro del límite, hacer que el fijo o el variable sea igual/mayor, retirar evidencia o invalidar el CSV; en todos esos casos se rechaza. El ahorro del otro subtotal o del total no lo compensa.
+- **CO21 — repetibilidad:** comparar dos ejecuciones del mismo código con un intervalo adicional; deben seguir fallando los controles de igualdad exacta. Revalidar las tres parejas existentes con la política estricta y conservar sus cinco igualdades.
+- **CO22 — integración:** B0 R3 contra cada una de las tres capturas verificadas debe pasar con la política específica y mantener visibles los aumentos autorizados; con la política estricta debe conservar el rechazo. Alterar una captura para superar un límite debe devolver regresión. Verificar selección de política, códigos, JUnit, logs y límites del check.
+
+### 18.7 Entregas de esta revisión
+
+Se implementan por indicación del usuario, mediante TDD, y se detiene el trabajo al terminar cada entrega autorizada.
+
+1. **Límites y validación de la política.** Declarar los topes de la tabla, motivos e identidades, y probar su validación. La política activa del check continúa siendo la estricta mientras no esté integrada la evaluación completa.
+2. **Evaluación acotada e informes.** Integrar guardas de recursos/inventario/ahorro, conversión exacta y presentación de autorizaciones. Pasar los casos positivos y negativos CO16–CO21, conservando el comportamiento estricto por defecto y sin tocar las mediciones.
+3. **Integración del check y cierre.** Seleccionar explícitamente la política específica para la comparación B0/candidata en el check. Ejecutar las pruebas del benchmark, comparar las tres capturas existentes con ambas políticas, verificar sus tres parejas estrictas y ejecutar una matriz ordinaria mediante el check completo. Guardar el informe actualizado y el estado final de aceptación, conservando B0 R3 y la evidencia anterior.
+
+La revisión queda implementada cuando la comparación acotada pasa, todas las regresiones introducidas por las pruebas siguen rechazándose, la repetibilidad permanece exacta y el check completo conserva sus evidencias y límites. Las comprobaciones de evaluación e integración de las entregas 2–3 siguen pendientes.
+
+### 18.8 Resultado de la primera entrega de la revisión — 2026-11-14
+
+La entrega 1 de la sección 18.7 está implementada. El [manifiesto](../benchmarks/policies/persistence-temporal-storage.json) conserva los 21 topes como strings decimales exactos y documenta los hashes de B0 R3, la evidencia de origen, carga, hipótesis, método, índices y perfil. Incluye horizonte, periodo de facturación, variantes y volúmenes. Los hashes de la candidata documentan la revisión sin fijar para siempre su código.
+
+El [validador](../benchmarks/core/temporal-storage-policy.mjs) exige declaraciones completas, sin selectores ambiguos, duplicados ni reglas genéricas superpuestas. Verifica que los objetos de cada captura coincidan con sus archivos JSON originales, las identidades y el contrato de carga, y comprueba también las opciones efectivas de cálculo si se proporcionan. Devuelve una copia de la declaración, sin modificar capturas ni calcular autorizaciones. Los errores de entrada llevan código 6; las diferencias de ámbito, código 4.
+
+Se ejecutaron las pruebas negativas con el validador vacío antes de implementar las comprobaciones. Pasaron las 50 pruebas específicas y las 245 pruebas completas del benchmark con Node 22.23.2. Se verificaron además el manifiesto contra B0 R3 real y la evidencia de origen, la selección estricta del check, ESLint sobre los archivos JavaScript modificados y git diff --check. ESLint terminó con código 0 y el aviso existente del plugin sobre FileEnumerator en ESLint 10.
+
+El comparador todavía rechaza la política nueva como formato no integrado y el check sigue seleccionando no-increases.json. El resultado de aceptación monetaria anterior continúa pendiente. No se ejecutó una nueva matriz ni se modificaron el producto, las tarifas, las referencias o los informes históricos. El trabajo se detiene aquí; la entrega siguiente integra la evaluación y sus guardas.
