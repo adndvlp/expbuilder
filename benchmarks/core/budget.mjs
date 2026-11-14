@@ -34,7 +34,7 @@ export function validateProfile(profile) {
     } else checkPrice(rate);
   }
 }
-function priceQuantity(value, rate) {
+export function priceQuantity(value, rate) {
   if (compare(value, 0) === 0) return nonnegative(0);
   if (rate.minimum != null && compare(value, rate.minimum) < 0) value = nonnegative(rate.minimum);
   if (rate.roundTo != null) value = ceilMultiple(value, rate.roundTo);

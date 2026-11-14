@@ -317,7 +317,7 @@ El [informe final](investigaciones/persistence-cost-final-validation-2026-11-14.
 
 ## 18. Revisión de aceptación: almacenamiento temporal acotado
 
-Fecha de la revisión: 2026-11-14. Estado: primera entrega implementada; evaluación e integración pendientes. La SDD se redactó antes de implementar por indicación del usuario. La política activa y el check conservan el comportamiento estricto.
+Fecha de la revisión: 2026-11-14. Estado: entregas 1–2 implementadas; integración del check y cierre pendientes. La SDD se redactó antes de implementar por indicación del usuario. La política activa del check conserva el comportamiento estricto.
 
 ### 18.1 Resultado solicitado y alcance
 
@@ -418,7 +418,7 @@ Se implementan por indicación del usuario, mediante TDD, y se detiene el trabaj
 2. **Evaluación acotada e informes.** Integrar guardas de recursos/inventario/ahorro, conversión exacta y presentación de autorizaciones. Pasar los casos positivos y negativos CO16–CO21, conservando el comportamiento estricto por defecto y sin tocar las mediciones.
 3. **Integración del check y cierre.** Seleccionar explícitamente la política específica para la comparación B0/candidata en el check. Ejecutar las pruebas del benchmark, comparar las tres capturas existentes con ambas políticas, verificar sus tres parejas estrictas y ejecutar una matriz ordinaria mediante el check completo. Guardar el informe actualizado y el estado final de aceptación, conservando B0 R3 y la evidencia anterior.
 
-La revisión queda implementada cuando la comparación acotada pasa, todas las regresiones introducidas por las pruebas siguen rechazándose, la repetibilidad permanece exacta y el check completo conserva sus evidencias y límites. Las comprobaciones de evaluación e integración de las entregas 2–3 siguen pendientes.
+La revisión queda implementada cuando la comparación acotada pasa, todas las regresiones introducidas por las pruebas siguen rechazándose, la repetibilidad permanece exacta y el check completo conserva sus evidencias y límites. La evaluación está implementada; las comprobaciones con las matrices reales y el check completo de la entrega 3 siguen pendientes.
 
 ### 18.8 Resultado de la primera entrega de la revisión — 2026-11-14
 
@@ -429,3 +429,15 @@ El [validador](../benchmarks/core/temporal-storage-policy.mjs) exige declaracion
 Se ejecutaron las pruebas negativas con el validador vacío antes de implementar las comprobaciones. Pasaron las 50 pruebas específicas y las 245 pruebas completas del benchmark con Node 22.23.2. Se verificaron además el manifiesto contra B0 R3 real y la evidencia de origen, la selección estricta del check, ESLint sobre los archivos JavaScript modificados y git diff --check. ESLint terminó con código 0 y el aviso existente del plugin sobre FileEnumerator en ESLint 10.
 
 El comparador todavía rechaza la política nueva como formato no integrado y el check sigue seleccionando no-increases.json. El resultado de aceptación monetaria anterior continúa pendiente. No se ejecutó una nueva matriz ni se modificaron el producto, las tarifas, las referencias o los informes históricos. El trabajo se detiene aquí; la entrega siguiente integra la evaluación y sus guardas.
+
+### 18.9 Resultado de la segunda entrega de la revisión — 2026-11-14
+
+La entrega 2 de la sección 18.7 está implementada. El comparador valida la política específica con los bytes originales de ambas capturas y las opciones efectivas de cálculo. El [evaluador](../benchmarks/core/temporal-storage-evaluation.mjs) aplica un único tope físico por escenario, usando las fracciones exactas de las cantidades recalculadas. Deriva sus equivalentes de unidad, volumen y tarifa mediante el cálculo monetario existente; no introduce redondeos de aceptación ni cambia las mediciones o los precios.
+
+Las operaciones conservan sus controles globales, por función y por la responsabilidad de conciliación ya definida. Los nueve componentes de inventario de documentos/índices por colección y los bytes retenidos en RTDB tienen validación de cobertura y límites explícitos, sin compensaciones entre colecciones. Un aumento temporal solo se autoriza si el fijo y el variable disminuyen por separado en cada variante/volumen y la comparación no contiene incidencias. La inactividad mantiene el requisito de menor fijo. Las repeticiones del mismo código exigen las cinco igualdades, también cuando el costo disminuye.
+
+Los informes JSON y Markdown mantienen los aumentos y añaden el incremento físico, máximo revisado, equivalentes, motivo, referencia y evidencia. La marca de autorización se confirma al finalizar todos los controles; no queda aprobada si falla otro escenario. El CLI conserva las huellas de los módulos de validación/evaluación y entrega los archivos originales, sin recalcular sus identidades desde objetos.
+
+TDD: 45 de las 46 primeras pruebas nuevas fallaron antes de integrar la evaluación. Dos pruebas adicionales detectaron la autorización parcial tras otro fallo y la repetición más barata sin igualdad; ambas se corrigieron después de reproducirlas. Pasaron las 51 pruebas nuevas y las 296 pruebas completas del benchmark con Node 22.23.2, incluidos los tests de la política, atribución, comparación y CLI. El caso manual de 80 bytes durante 0,25 segundos adicionales acepta exactamente 20 byte-segundos y rechaza 20,001; cubre low/nominal/high, 1/1.000/10.000 sesiones, tarifa cero y conversión de unidades. También pasan las regresiones de operaciones, bytes finales, cobertura, CSV, ahorro independiente, repetición e informes. ESLint sobre los archivos JavaScript modificados terminó con código 0 y el aviso existente de FileEnumerator en ESLint 10.
+
+El check y su política por defecto continúan siendo estrictos. La selección explícita de la política revisada en el check, las comparaciones de las tres capturas reales y la matriz de cierre quedan para la entrega 3. No se ejecutó una nueva matriz, no se registró una referencia posterior ni se desplegaron recursos. El trabajo se detiene al terminar esta entrega.

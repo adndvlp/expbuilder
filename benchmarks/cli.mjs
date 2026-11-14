@@ -15,7 +15,7 @@ const usage = `Cost benchmarks (local files only):
 No command replaces an existing reference or contacts cloud services.`;
 const json = value => JSON.stringify(value, null, 2) + '\n';
 async function calculationSource() {
-  const names = ['cli.mjs', 'core/comparison.mjs', 'core/repeatability.mjs', 'core/attribution.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs', 'persistence/function-inventory.mjs', 'persistence/storage.mjs', 'persistence/storage-measurement.mjs'];
+  const names = ['cli.mjs', 'core/comparison.mjs', 'core/temporal-storage-policy.mjs', 'core/temporal-storage-evaluation.mjs', 'core/repeatability.mjs', 'core/attribution.mjs', 'core/calibration.mjs', 'core/budget.mjs', 'core/models.mjs', 'core/quantity.mjs', 'core/decimal.mjs', 'persistence/budget.mjs', 'persistence/function-inventory.mjs', 'persistence/storage.mjs', 'persistence/storage-measurement.mjs'];
   const files = await Promise.all(names.map(async name => {
     const bytes = await readFile(new URL(name, import.meta.url));
     return [name, { bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') }];
@@ -59,7 +59,7 @@ async function execute() {
   try {
     const baseline = await readCapture(options.baseline), candidate = await readCapture(options.candidate);
     sources = { baseline: baseline.source, candidate: candidate.source, calculation: await calculationSource() };
-    const input = { baseline: baseline.bundle, candidate: candidate.bundle };
+    const input = { baseline: baseline.bundle, candidate: candidate.bundle, captureFiles: { baseline: baseline.files, candidate: candidate.files } };
     for (const key of ['profile', 'conditions', 'calibration', 'policy', 'normalization']) if (options[key]) {
       const document = await readJson(options[key]); input[key] = document.value; sources[key] = { file: path.resolve(options[key]), ...document.identity };
     }

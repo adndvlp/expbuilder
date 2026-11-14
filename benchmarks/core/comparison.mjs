@@ -7,6 +7,8 @@ import { referenceBudgets } from '../persistence/budget.mjs';
 import { conditionDifferences, repeatabilityIssues } from './repeatability.mjs';
 import { validateFunctionCoverage, functionMeasurements } from '../persistence/function-inventory.mjs';
 import { reconciliationMembers, responsibilityMetrics, physicalMember, attributeBudget } from './attribution.mjs';
+import { validateTemporalStoragePolicy } from './temporal-storage-policy.mjs';
+import { createTemporalStorageEvaluation, temporalInventoryIssues } from './temporal-storage-evaluation.mjs';
 
 export const exitCodes = Object.freeze({ passed: 0, regression: 2, incomplete: 3, incompatible: 4, functional_failure: 5, invalid_input: 6 });
 const priority = ['passed', 'regression', 'incomplete', 'incompatible', 'functional_failure', 'invalid_input'];
@@ -110,6 +112,7 @@ export function compareReferences(options) {
   const report = { format: 1, status: 'passed', exitCode: 0, issues: [], scenarios: [],
     policy: clone(options.policy || { format: 1 }), normalization: {},
     scope: 'Regression check of measured quantities and modeled runtime cost; passing does not approve the captured consumption as a target' };
+  let temporalEvaluation;
   const issue = (status, code, reason, context = {}) => { report.issues.push({ status, code, reason, ...context }); if (priority.indexOf(status) > priority.indexOf(report.status)) report.status = status; };
   function finish() {
     // A permitted decrease is different from exact repetition. Preserve both
@@ -121,6 +124,7 @@ export function compareReferences(options) {
       money: report.scenarios.every(s => s.money.every(row => row.state === 'unchanged')),
       functional: report.scenarios.every(s => same(s.functional.baseline, s.functional.candidate)),
     } : null;
+    temporalEvaluation?.finalize(report.equality);
     report.exitCode = exitCodes[report.status]; return report;
   }
   try {
@@ -150,7 +154,8 @@ export function compareReferences(options) {
     if (report.status === 'incompatible') return finish();
     const baselineNames = baseline.reference.scenarios.map(s => s.name).sort(), candidateNames = candidate.reference.scenarios.map(s => s.name).sort();
     if (!same(baselineNames, candidateNames)) { issue('incompatible', 'scenario_set', 'Scenario additions/omissions require an explicitly reviewed common workload', { baseline: baselineNames, candidate: candidateNames }); return finish(); }
-    const rules = policyRules(options.policy), left = configuration(baseline), right = configuration(candidate);
+    const temporalPolicy = object(options.policy) && Object.hasOwn(options.policy, 'temporalStorage');
+    const rules = policyRules(temporalPolicy ? undefined : options.policy), left = configuration(baseline), right = configuration(candidate);
     const normalization = options.normalization === undefined ? {} : options.normalization;
     if (!object(normalization) || (normalization.allowMachineDifference !== undefined && typeof normalization.allowMachineDifference !== 'boolean')) throw new Error('Invalid normalization object/boolean');
     if (Object.keys(normalization).some(key => !['reason', 'allowMachineDifference'].includes(key))) throw new Error('Unsupported normalization option');
@@ -173,6 +178,10 @@ export function compareReferences(options) {
       const calibrated = applyCalibration(conditions, options.calibration); conditions = calibrated.conditions; report.calibration = calibrated.evidence;
     }
     const selectedProfile = options.profile || left.profile; validateProfile(selectedProfile);
+    const temporalDeclaration = temporalPolicy ? validateTemporalStoragePolicy(options.policy, {
+      baseline: { bundle: baseline, files: options.captureFiles?.baseline }, candidate: { bundle: candidate, files: options.captureFiles?.candidate },
+      profile: selectedProfile, conditions, windowSeconds, volumes,
+    }).temporalStorage : null;
     report.pricing = { profile: clone(selectedProfile), sourcePricesDiffer: !same(tariffValues(left.profile), tariffValues(right.profile)), sourceProfilesDiffer: !same(left.profile, right.profile),
       baselineProfile: { id: left.profile.id, currency: left.profile.currency }, candidateProfile: { id: right.profile.id, currency: right.profile.currency }, recalculatedFromMeasurements: true };
     report.conditions = clone(conditions);
@@ -189,11 +198,14 @@ export function compareReferences(options) {
           issue('incompatible', 'performance_conditions', 'Performance tolerance has incompatible machine/sample conditions', { scenario: name, path: row.path }); return;
         }
       }
-      const applies = pricedQuantity || group === 'money' || (group === 'metrics' && row.unit === 'count') || Boolean(rule);
+      const strictInventory = temporalPolicy && (row.path.startsWith('/inventory/') || row.path === '/retainedRtdbJsonBytes');
+      const applies = pricedQuantity || group === 'money' || (group === 'metrics' && row.unit === 'count') || strictInventory || Boolean(rule);
       row.gated = applies; if (rule) row.review = clone(rule);
       if (!applies || exact.after === null) return;
+      const temporal = temporalEvaluation?.allowance(name, row);
+      if (temporal?.before !== undefined) exact = temporal;
       const base = exact.before ?? '0', absolute = nonnegative(rule?.maxIncreaseAbsolute || 0), relative = multiply(base, divide(rule?.maxIncreasePercent || 0, 100));
-      const allowance = compare(absolute, relative) > 0 ? absolute : relative;
+      const allowance = temporal?.limit ?? (compare(absolute, relative) > 0 ? absolute : relative);
       row.allowedIncrease = decimal(allowance);
       if (compare(exact.after, add(base, allowance)) > 0 || (rule?.max !== undefined && compare(exact.after, rule.max) > 0)) {
         issue('regression', 'limit_exceeded', 'Candidate exceeds the reviewed quantity/cost limit', { scenario: name, path: row.path, unit: row.unit, before: row.before, after: row.after });
@@ -222,7 +234,8 @@ export function compareReferences(options) {
         if (!Object.hasOwn(after.functional, key)) issue('incomplete', 'functional_evidence_missing', 'Existing functional evidence disappeared', { scenario: name, path: '/functional/' + key });
         else if (!same(value, after.functional[key])) issue('functional_failure', 'functional_result', 'Functional result differs for the same workload', { scenario: name, path: '/functional/' + key });
       }
-      for (const scenario of [before, after]) {
+      for (const [capture, scenario] of [['baseline', before], ['candidate', after]]) {
+        if (temporalPolicy) for (const detail of temporalInventoryIssues(scenario)) issue('incomplete', detail.code, detail.reason, { capture, scenario: name, path: detail.path });
         if (!scenario.functional.passed) issue('functional_failure', 'functional_check', 'Functional CSV check failed', { scenario: name });
         if (scenario.coverageIssues.length || !scenario.inventoryVerifiedAgainstEmulator || !scenario.pending || Object.values(scenario.pending).some(value => value !== 0)) issue('incomplete', 'coverage', 'Coverage, verified inventory or pending work is incomplete', { scenario: name });
         const requiredMetrics = ['functions.invocations', 'firestore.readUnits', 'firestore.indexReadUnits', 'firestore.writes', 'firestore.deletes',
@@ -277,6 +290,7 @@ export function compareReferences(options) {
     }
     const settings = { windowSeconds, volumes, conditions, calibration: report.calibration };
     const a = referenceBudgets(baseline.reference, selectedProfile, settings), b = referenceBudgets(candidate.reference, selectedProfile, settings);
+    if (temporalDeclaration) temporalEvaluation = createTemporalStorageEvaluation({ declaration: temporalDeclaration, baseline, candidate, beforeBudgets: a, afterBudgets: b, report, issue });
     const quantityRows = (target, before, after, prefix, name) => {
       const firstItems = new Map(before.items.map(item => [item.id, item])), nextItems = new Map(after.items.map(item => [item.id, item]));
       for (const id of new Set([...firstItems.keys(), ...nextItems.keys()])) {
@@ -351,8 +365,8 @@ export function compareReferences(options) {
     for (const entry of rules) if (!entry.matched) throw new Error('Unused policy selector: ' + entry.rule.scenario + entry.rule.path);
     return finish();
   } catch (error) {
-    const status = error.coverage ? 'incomplete' : /[Ii]ncompatible (rate|quantity units|model placement)|unsupported resource configuration/.test(error.message) ? 'incompatible' : 'invalid_input';
-    issue(status, status === 'incompatible' ? 'profile_incompatible' : 'invalid_input', error.message); return finish();
+    const status = error.status || (error.coverage ? 'incomplete' : /[Ii]ncompatible (rate|quantity units|model placement)|unsupported resource configuration/.test(error.message) ? 'incompatible' : 'invalid_input');
+    issue(status, status === 'incompatible' ? 'profile_incompatible' : 'invalid_input', error.message, error.path ? { path: error.path } : {}); return finish();
   }
 }
 
@@ -363,6 +377,18 @@ export function renderComparison(report) {
     '| Escenario | Cantidad/partida | Antes | Ahora | Cambio | % |', '|---|---|---:|---:|---:|---:|'];
   for (const scenario of report.scenarios) for (const row of [...scenario.metrics, ...(scenario.quantities || []), ...scenario.money, ...(scenario.physicalQuantities || []), ...(scenario.physicalMoney || [])]) if (row.state !== 'unchanged') {
     lines.push('| ' + [scenario.name, row.path, row.before, row.after, row.delta, row.percent === null ? row.state : row.percent].map(safe).join(' | ') + ' |');
+  }
+  const reviewedStorage = report.scenarios.filter(s => s.temporalStorage);
+  if (reviewedStorage.length) {
+    lines.push('', '## Almacenamiento temporal revisado', '',
+      'Los aumentos conservan state: increased. Cada límite corresponde a byte-segundos adicionales por sesión; las proyecciones derivan del mismo tope físico.', '',
+      '| Escenario | Antes, byte-segundos | Ahora, byte-segundos | Incremento | Máximo revisado | Autorizado |', '|---|---:|---:|---:|---:|---|');
+    for (const { name, temporalStorage: review } of reviewedStorage) lines.push('| ' + [name, review.baselineByteSeconds, review.candidateByteSeconds, review.increaseByteSeconds, review.maxIncreaseByteSeconds, review.authorized ? 'Sí' : 'No'].map(safe).join(' | ') + ' |');
+    for (const { name, temporalStorage: review } of reviewedStorage) {
+      lines.push('', `${safe(name)}: ${safe(review.reason)} Referencia: ${safe(review.baseline.id)}. Revisión: ${safe(review.review.specification)}. Evidencia: ${safe(review.review.evidence.file)} (${safe(review.review.evidence.sha256)}).`, '',
+        '| Variante | Sesiones | Máximo adicional de cantidad | Unidad | Máximo adicional monetario | Moneda |', '|---|---:|---:|---|---:|---|');
+      for (const entry of review.equivalents) lines.push('| ' + [entry.variant, entry.sessions, entry.quantity.value, entry.quantityUnit, entry.money.value, entry.currency].map(safe).join(' | ') + ' |');
+    }
   }
   lines.push('', '## Incidencias', '', ...(report.issues.length ? report.issues.map(issue => '- ' + safe([issue.code, issue.scenario, issue.path, issue.reason].filter(Boolean).join(': '))) : ['Sin aumentos no revisados ni cobertura perdida.']), '',
     'Los presupuestos se recalculan desde las mediciones con las mismas tarifas y condiciones. Los tiempos/RSS locales son descriptivos salvo tolerancia explícita. Una captura conserva evidencia; no convierte su consumo en un objetivo aprobado.', '',
