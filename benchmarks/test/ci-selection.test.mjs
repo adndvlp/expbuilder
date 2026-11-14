@@ -10,7 +10,8 @@ import { fileURLToPath, URL } from 'node:url';
 import { selectChecks, changedFiles } from '../ci/select.mjs';
 
 test('benchmark sources, profiles, references, fixtures and policies select only the cost check', () => {
-  for (const file of ['benchmarks/core/meter.mjs', 'benchmarks/profiles/persistence-30d.json', 'benchmarks/references/run/reference.json', 'benchmarks/test/comparison.test.mjs', 'benchmarks/ci/normalization.json', 'benchmarks/fixtures/upload.csv']) {
+  for (const file of ['benchmarks/core/meter.mjs', 'benchmarks/profiles/persistence-30d.json', 'benchmarks/references/run/reference.json', 'benchmarks/test/comparison.test.mjs', 'benchmarks/ci/normalization.json', 'benchmarks/fixtures/upload.csv',
+    'benchmarks/core/repeatability.mjs', 'benchmarks/persistence/repeatability.mjs', 'benchmarks/profiles/persistence-timing.json', 'benchmarks/references/persistence-controlled-2026-11-13/repeatability-validation.json']) {
     assert.deepEqual(selectChecks([file]), { persistence: false, benchmark: true }, file);
   }
 });

@@ -15,6 +15,7 @@ test('actual push and PR filters cover every benchmark integration input', () =>
   const definition = workflow('public-persistence');
   for (const event of ['push', 'pull_request']) for (const file of [
     'benchmarks/core/meter.mjs','benchmarks/ci/paths.json','benchmarks/test/ci-workflows.test.mjs','benchmarks/profiles/prices.json','benchmarks/references/initial/reference.json','benchmarks/fixtures/upload.csv',
+    'benchmarks/core/repeatability.mjs','benchmarks/persistence/repeatability.mjs','benchmarks/profiles/persistence-timing.json','benchmarks/references/persistence-controlled-2026-11-13/repeatability-validation.json',
     'api/functions/index.js','api/firestore.indexes.json','api/persistence-e2e/task-queue.mjs','api/mock-providers/store.mjs','client/runtime-e2e/authoring/ScenarioAuthor.ts','client/src/pages/ExperimentBuilder/index.tsx',
     'server/dynamicplugin/renderer/CanvasStage.ts','server/jspsych-bundler/build.js','server/jspsych-bundle/index.js','shared/dynamic-layout/geometry.ts','scripts/run-persistence-e2e.mjs','package-lock.json','.github/workflows/public-persistence.yml',
   ]) assert.equal(selected(definition, event, file), true, event + ': ' + file);

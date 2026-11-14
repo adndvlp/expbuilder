@@ -1,0 +1,11 @@
+{
+  "artifactBytes": {
+    "README.md": 7848,
+    "budget.json": 7745697,
+    "reference-record.json": 2323,
+    "reference.json": 3629128,
+    "repeatability-validation.json": 9120
+  },
+  "totalBytes": 11394116,
+  "retention": "Registered evidence in the repository; raw independent runs remain in local directories. CI artifacts retain their existing seven-day policy."
+}

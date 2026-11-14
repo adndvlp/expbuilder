@@ -207,8 +207,11 @@ for (const { size, indexed } of [{ size: 0, indexed: true }, { size: 3, indexed:
   page = await context.newPage(); await page.goto(study.url);
   await page.getByRole('button', { name: 'Start a new participation' }).waitFor();
   await wait(async () => (await session(study, sid)).exportReceipt?.eventCount === 2);
+  await page.getByText('This session has ended. The available responses have been saved.').waitFor();
   await verified(study, sid, 2); assert.equal(await page.evaluate(() => globalThis.window.JSPSYCH_SESSION_ID), sid);
-  await context.close(); await controller.pump(); return { events: 2, sameSession: true, serverOnlyTimeoutCannotSaveBrowserData: indexed };
+  assert.equal(await page.getByText('This session has ended. The available responses have been saved.').isVisible(), true,
+    'Recovery must finish in the participant browser before closing its context');
+  await context.close(); await controller.pump(); return { events: 2, sameSession: true, browserRecoveryConfirmed: true, serverOnlyTimeoutCannotSaveBrowserData: indexed };
 }));
 for (const indexed of [true, false]) test(`lost append acknowledgement / ${indexed}`, () => scenario(`lost-ack-${indexed}`, { indexed, size: 1, count: 5, auto: false, timeout: 1 }, async study => {
   const page = await pageFor(study); h.loseNextAppend(); await answer(page, 1);

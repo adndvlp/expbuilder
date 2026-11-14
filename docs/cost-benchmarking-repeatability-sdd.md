@@ -1,6 +1,6 @@
 # SDD: repetibilidad del benchmark de costos
 
-Estado: entregas 1, 2 y 3 implementadas; entrega 4 pendiente.
+Estado: cuatro entregas implementadas y validación de cierre aprobada.
 
 Fecha: 2026-11-13. Código revisado: 5835f16, rama bug-fix.
 
@@ -235,4 +235,42 @@ Comandos ejecutados:
 
 Validación: 158 unitarias aprobadas (21 nuevas), tres escenarios locales con emuladores/Chromium aprobados —inactividad y lote 1 con ambos modos— y comparación de esa captura con sí misma aprobada, con cantidades e importes idénticos. Esa autocomparación verifica el contrato y el informe; no se presenta como una repetición independiente. La referencia anterior se rechazó con código 4 por ausencia de contrato, conservando sus archivos y su prueba aritmética. ESLint y git diff --check sin errores; persiste el aviso existente de ESLint sobre no-unused-modules.
 
-La entrega se detiene en el punto 3. No se ejecutaron las tres matrices independientes ni se registró una referencia nueva. El check/CI sigue apuntando a la referencia anterior y devuelve incompatibilidad hasta completar la entrega 4. La política no-increases, tarifas, fórmulas monetarias, reglas y persistencia del producto permanecen intactas.
+Al cerrar el punto 3 todavía no se habían ejecutado las tres matrices independientes ni registrado una referencia nueva. El check/CI seguía apuntando a la referencia anterior y devolvía incompatibilidad hasta completar la entrega 4. La política no-increases, tarifas, fórmulas monetarias, reglas y persistencia del producto permanecían intactas.
+
+## 13. Entrega 4: resultado y validación de cierre
+
+Se registró [persistence-controlled-2026-11-13](../benchmarks/references/persistence-controlled-2026-11-13/README.md) mediante benchmark:cost:reference con motivo explícito. El check local y, por la misma configuración, CI usan esa referencia. La anterior permanece intacta como evidencia histórica; no se convirtió ni se presenta el cambio de método como ahorro.
+
+TDD comenzó con dos fallos: el check todavía seleccionaba la referencia anterior y no existía una referencia controlada con evidencia de tres capturas independientes. Las pruebas nuevas validan la selección efectiva, los hashes del registro, las tres capturas distintas y las tres comparaciones por pares.
+
+La primera tanda completa aprobó funcionalmente sus tres matrices, pero la tercera no produjo igualdad. En expiry-true-0 se contabilizó una consulta HTTP y cuatro lecturas adicionales; en expiry-true-3 la diferencia fue inversa. La comparación devolvió código 2. Esas capturas y sus informes se conservan en /tmp/cost-repeatability-point4-a1, a2, a3 y a1-a2/a1-a3/a2-a3. No se registraron como referencia.
+
+La causa era el cierre del navegador del escenario: esperaba la confirmación del servidor y podía cerrarse antes de la consulta final del participante. Una aserción de confirmación final visible reprodujo el fallo en los dos casos con IndexedDB. Se añadió la espera de ese estado y browserRecoveryConfirmed como evidencia funcional. La prueba seleccionada pasó sus cuatro casos: inactividad y tres combinaciones de expiración/recuperación. No se omitieron consultas ni se modificó el producto, sus temporizadores o el cálculo de sus operaciones.
+
+Con el código final se ejecutaron tres procesos nuevos, cada uno con estado limpio, usando los emuladores y Chromium locales:
+
+    npm run benchmark:cost:persistence -- --output /tmp/cost-repeatability-point4-b1
+    npm run benchmark:cost:persistence -- --output /tmp/cost-repeatability-point4-b2
+    npm run benchmark:cost:persistence -- --output /tmp/cost-repeatability-point4-b3
+
+Cada uno aprobó los 23 escenarios. Comparten la huella de código medido 611961e7909aee0e668d963ea18af66e3c768623d360b62a01f674b505f444b4 y la huella de condiciones cfd45efe98e6f521e9797d9bf47c649893c91422613836eb61730210166b08e9. Las fechas y huellas de las capturas son distintas, y los valores locales de duración/RSS siguen registrados.
+
+Se ejecutó benchmark:cost:compare para los pares b1/b2, b1/b3 y b2/b3, con --policy benchmarks/policies/no-increases.json y destinos /tmp/cost-repeatability-point4-b1-b2, b1-b3 y b2-b3. En cada comparación:
+
+| Concepto | Filas revisadas | Diferencias no nulas |
+|---|---:|---:|
+| Mediciones, sin tiempo/RSS locales | 4.573 | 0 |
+| Cantidades costeadas, originales y proyectadas | 18.084 | 0 |
+| Partidas monetarias y totales | 14.133 | 0 |
+
+Los tres informes devolvieron código 0 con equality.measurements, storage, quantities, money y functional en true. Se comprobaron también inventario independiente, cobertura completa y colas vacías. [repeatability-validation.json](../benchmarks/references/persistence-controlled-2026-11-13/repeatability-validation.json) conserva las identidades y hashes de los archivos originales y de los tres informes; los informes completos permanecen en sus rutas locales. reference-record.json documenta el registro explícito y su motivo. reference.json mantiene los bytes de b1.
+
+El check se verificó mediante:
+
+    npm run benchmark:cost:check -- --candidate /tmp/cost-repeatability-point4-b3 --normalization benchmarks/ci/normalization.json --output /tmp/cost-repeatability-point4-ci-check
+
+Aprobó con código 0, seleccionó la nueva referencia por defecto y ejecutó las 160 unitarias y la comparación. --candidate reutilizó la tercera captura; no repitió la matriz ni se presenta como una ejecución remota de GitHub Actions. Las unitarias mantienen las regresiones deliberadas de lectura, bytes y retención, así como los rechazos por cobertura perdida. La ejecución ordinaria de CI conserva una matriz por check, sus filtros, códigos, límites y siete días de retención.
+
+Los nueve tests ordinarios de runtime/proveedores también aprobaron fuera del loader de benchmark. Las pruebas de interrupción verifican que se detengan los procesos descendientes y se conserven los informes. Los emuladores de las matrices terminaron normalmente. Las capturas, comparaciones y referencia registrada respetaron el máximo de 16 MiB; el check reutilizado conserva aproximadamente 12,6 MB de artefactos, dentro del máximo conjunto de 40 MiB. ESLint y git diff --check sin errores; permanece el aviso existente de ESLint sobre no-unused-modules.
+
+Se cierra la entrega 4. No se añadieron tolerancias ni se cambiaron tarifas, fórmulas monetarias, reglas o persistencia del producto. BR13–BR15 quedan cubiertos por las repeticiones, las pruebas de CI/cancelación y los controles de restauración existentes.

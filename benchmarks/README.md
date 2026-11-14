@@ -2,7 +2,7 @@
 
 Implementa los contratos, observadores y cálculo de la [SDD](../docs/cost-benchmarking-sdd.md). Funciona con Node 22 o posterior, sin dependencias nuevas ni credenciales de nube.
 
-La entrega 2 conecta el guardado público actual con emuladores y proveedores locales. Su [referencia](references/persistence-2026-11-13/README.md) describe consumo y presupuesto bajo condiciones declaradas; no aprueba ese consumo como objetivo. El ejemplo aritmético sigue siendo independiente de esa medición.
+El benchmark conecta el guardado público actual con emuladores y proveedores locales. Su [referencia controlada](references/persistence-controlled-2026-11-13/README.md) describe consumo y presupuesto bajo condiciones declaradas, tras validar tres ejecuciones independientes; no aprueba ese consumo como objetivo. El ejemplo aritmético sigue siendo independiente de esa medición.
 
 ## Ejecutar
 
@@ -31,9 +31,9 @@ Genera reference.json (métricas e inventario), budget.json (partidas, cantidade
 
 La matriz contiene 23 escenarios: inactividad; ambos modos y lotes 0/1/3; volúmenes 3/30/300 con padding definido; tres ensayos visuales con tres componentes; retoma antes del minuto; expiración y recuperación con ambos modos; confirmación HTTP perdida; fallo al encolar y confirmación de proveedor perdida en Drive, Dropbox y OSF. Comprueba contenido, orden, cantidad y unicidad del CSV, además del inventario final contra lecturas independientes del emulador.
 
-### Datos, calendario y contrato: entregas 1 a 3 de repetibilidad
+### Datos, calendario y contrato de repetibilidad
 
-La [SDD de repetibilidad](../docs/cost-benchmarking-repeatability-sdd.md) tiene implementadas sus tres primeras entregas. El benchmark usa identidades aisladas por escenario/actor, calendario sintético y respuestas de proveedor controladas. Los valores se generan antes de enviar/medir; no se recortan ni reemplazan cantidades en los informes. Las URLs lógicas de proveedores se resuelven hacia puertos libres locales. Los proveedores y el harness ordinarios mantienen su comportamiento cuando no reciben estos controles.
+La [SDD de repetibilidad](../docs/cost-benchmarking-repeatability-sdd.md) tiene implementadas sus cuatro entregas. El benchmark usa identidades aisladas por escenario/actor, calendario sintético y respuestas de proveedor controladas. Los valores se generan antes de enviar/medir; no se recortan ni reemplazan cantidades en los informes. Las URLs lógicas de proveedores se resuelven hacia puertos libres locales. Los proveedores y el harness ordinarios mantienen su comportamiento cuando no reciben estos controles.
 
 El participante sintético usa tiempos de respuesta declarados de 125 ms y un contexto Chromium con locale en-US, UTC, pantalla/viewport 1280×720 y user-agent CostBenchmarkFixture/1. La versión real del navegador sigue apareciendo en machine.browser. Los temporizadores del SDK y las duraciones locales de diagnóstico continúan usando sus relojes ordinarios. controlledInputs identifica las condiciones de contenido y calendario; repeatability registra su contrato y huella.
 
@@ -47,7 +47,9 @@ Para comprobar contenido repetido:
 
 Ejecuta la medición de inactividad y seis casos con dos participaciones cada uno. La segunda ejecución introduce demoras reales de 20 ms en proveedor e inspecciones. Comprueba igualdad exacta de envelopes, CSV, calendario de almacenamiento, cantidades e importes low/nominal/high para 1/1.000/10.000 sesiones; exige presupuestos completos. Cubre ambos modos, tres proveedores y ensayos visuales. Conserva content-checks.json con condiciones, demoras, hashes y resultados, también ante una comparación fallida. El código de salida conserva el fallo; rechaza un destino que ya contiene un informe. No genera una referencia ni triplica las suites de CI.
 
-La igualdad bajo demoras se verificó en esos seis casos. El cierre general de repetibilidad aún requiere la entrega 4: tres ejecuciones completas con registro explícito de referencia/CI. No se cambian tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto.
+La igualdad bajo demoras se verificó en esos seis casos. El cierre general aprobó tres ejecuciones completas independientes de 23 escenarios y sus tres comparaciones por pares, con todas las igualdades en true y diferencias de cero. No se cambiaron tarifas o tolerancias ni se presenta el cambio de método como ahorro del producto. [repeatability-validation.json](references/persistence-controlled-2026-11-13/repeatability-validation.json) identifica las capturas y los informes por hash; la SDD documenta comandos y resultados.
+
+La validación inicial detectó que los escenarios de expiración podían cerrar el navegador antes de su consulta final de confirmación. Ahora esperan el mensaje final de recuperación y conservan browserRecoveryConfirmed como evidencia. Se contabilizan todas esas consultas; no se suprimen ni se ajustan sus contadores.
 
 ### Contrato y comparación exacta
 
@@ -59,7 +61,7 @@ comparison.json conserva metrics, quantities y money por escenario. quantities e
 
 El campo equality distingue igualdad exacta de una reducción permitida: measurements (sin tiempo/RSS locales), storage (muestras y calendario ejecutado), quantities, money y functional. Una repetición debe obtener todos en true. Si falta cobertura o la comparación no puede completarse, equality queda en null. Las fechas reales, revisión, duración local y muestras RSS permanecen visibles sin alterar esa igualdad monetaria.
 
-La referencia persistence-2026-11-13 se conserva como evidencia aritmética anterior. Carece del contrato y ahora se rechaza con código 4. El check y CI todavía apuntan a esa referencia: su actualización corresponde a la entrega 4, después de validar las tres ejecuciones completas. No se considera aprobado ese check durante este estado intermedio.
+La referencia persistence-2026-11-13 se conserva como evidencia aritmética anterior. Carece del contrato y se rechaza con código 4. El check local y CI utilizan ahora persistence-controlled-2026-11-13, registrada mediante benchmark:cost:reference con motivo explícito después de validar las tres ejecuciones. La medición original permanece intacta; reference-record.json documenta su registro.
 
 ## Integración del guardado actual
 
@@ -150,7 +152,7 @@ Las pruebas verifican el resultado conocido, fracciones que atraviesan una seria
 
 Después de medir una versión candidata, se comparan sus archivos con una referencia:
 
-    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-2026-11-13 --candidate /tmp/persistence-cost-run --output /tmp/persistence-cost-comparison
+    npm run benchmark:cost:compare -- --baseline benchmarks/references/persistence-controlled-2026-11-13 --candidate /tmp/persistence-cost-run --output /tmp/persistence-cost-comparison
 
 El destino debe ser nuevo y estar separado de las entradas. Se escriben comparison.json y README.md incluso si la comparación falla. Los hashes de las entradas y del código de cálculo identifican lo utilizado; el informe conserva las revisiones y condiciones de las capturas. No se ejecutan versiones anteriores del producto: se comparan sus mediciones guardadas.
 
@@ -158,7 +160,7 @@ Los escenarios, inputs, resultados funcionales, entorno, moneda, alcance, ventan
 
 Ambos lados se recalculan desde sus mediciones con el mismo modelo y tarifas. Por defecto se usa el catálogo capturado en la referencia; --profile permite seleccionar otro catálogo común. Los importes precalculados de la versión candidata no se utilizan como prueba de ahorro. Cambiar el nombre/fecha de un catálogo no se presenta como cambio de sus tarifas.
 
-La [política inicial](policies/no-increases.json) no admite aumentos de contadores ni de partidas monetarias. Los bytes, tiempos y RSS locales se muestran; las cantidades de bytes también afectan a sus partidas monetarias. Una métrica desaparecida produce falta de cobertura, no un ahorro. Un cero medido o justificado sí permite mostrar una reducción, incluso al retirar una función de la implementación. El inventario de una colección ausente puede valer cero cuando se verificó de forma independiente contra el emulador.
+La [política estricta](policies/no-increases.json) no admite aumentos de contadores, cantidades costeadas ni partidas monetarias. Los tiempos y RSS locales se muestran como diagnóstico; las cantidades de bytes usadas para costear también se comparan aunque su tarifa sea cero. Una métrica desaparecida produce falta de cobertura, no un ahorro. Un cero medido o justificado sí permite mostrar una reducción, incluso al retirar una función de la implementación. El inventario de una colección ausente puede valer cero cuando se verificó de forma independiente contra el emulador.
 
 La política estricta puede señalar diferencias muy pequeñas entre repeticiones por bytes serializados o duración de almacenamiento temporal, aunque los contadores coincidan. No se redondean esas diferencias a cero ni se incorporan tolerancias implícitas. --policy permite dar márgenes y límites con motivo explícito:
 
@@ -229,7 +231,7 @@ Con las dependencias y bundles indicados arriba, Node 22.22.2 o posterior de la 
 
     npm run benchmark:cost:check -- --output /tmp/cost-check
 
-Ejecuta una vez las pruebas unitarias de benchmarking, los 23 escenarios y la comparación con la referencia inicial y la política estricta. Admite --baseline, --policy y --normalization; las tres entradas son archivos/directorios locales. El destino debe ser nuevo y estar separado de las capturas, también cuando hay enlaces simbólicos.
+Ejecuta una vez las pruebas unitarias de benchmarking, los 23 escenarios y la comparación con la referencia controlada y la política estricta. Admite --baseline, --policy y --normalization; las tres entradas son archivos/directorios locales. El destino debe ser nuevo y estar separado de las capturas, también cuando hay enlaces simbólicos.
 
 Para revisar otra política o verificar el ejecutor con una captura ya obtenida:
 
@@ -254,7 +256,9 @@ La suite de Functions ya está en [Builder contracts](../.github/workflows/build
 
 El check de costos puede ejecutarse aunque falle la suite funcional previa. Verificar el informe y subirlo usan [condiciones de estado de GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions). Si falló la preparación y falta un informe, ensure-report.mjs guarda un diagnóstico y devuelve error. [upload-artifact](https://github.com/actions/upload-artifact/tree/v4#retention-period) conserva las evidencias siete días y falla si no encuentra archivos. Esto configura su ejecución al subir cambios; no afirma que ya haya corrido en GitHub.
 
-CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con una referencia capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. Durante la entrega 3 de repetibilidad, su referencia inicial carece del contrato y devuelve código 4; la entrega 4 debe registrar y seleccionar una nueva tras validar las tres repeticiones. La política estricta conserva los aumentos de bytes o permanencia temporal como fallos, aunque coincidan los contadores. Ni CI ni el ejecutor convierten la referencia o añaden márgenes para obtener verde.
+CI usa [normalization.json](ci/normalization.json) para comparar contadores y costo modelado en Linux con la referencia controlada capturada en macOS. No habilita límites de rendimiento entre máquinas ni márgenes monetarios. La validación de cierre ejecuta tres matrices, pero CI conserva una sola matriz por check. La política estricta conserva los aumentos de bytes o permanencia temporal como fallos, aunque coincidan los contadores. Ni CI ni el ejecutor convierten la referencia o añaden márgenes para obtener verde.
+
+El check local aprobó con la nueva referencia, la normalización de CI y la tercera captura independiente mediante --candidate. Ejecutó las 160 unitarias y la comparación; las matrices se habían ejecutado por separado. Esto verifica el comando y su referencia seleccionada, sin afirmar una ejecución remota de GitHub Actions.
 
 ## Añadir medición de otra funcionalidad
 

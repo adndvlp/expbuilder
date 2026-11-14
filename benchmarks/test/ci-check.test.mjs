@@ -44,6 +44,15 @@ test('one check runs unit, measurement and comparison once, keeps evidence and n
   assert.equal(saved.finished, true); assert.ok(saved.artifactBytes > 0);
   assert.equal(await ensureReport(f.output), 0);
 });
+test('the default check selects the explicitly registered controlled reference without regenerating it', async t => {
+  const f = await fixture(t);
+  const result = await checkCosts({ output: f.output }, { run: f.run });
+  assert.equal(path.basename(result.baseline), 'persistence-controlled-2026-11-13');
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(f.calls.map(job => job.name), ['unit','measurement','comparison']);
+  assert.ok(f.calls[2].args.includes(result.baseline));
+  assert.ok(!JSON.stringify(f.calls).includes("'reference'"));
+});
 test('a failing unit suite preserves its JUnit/log and skips expensive measurement', async t => {
   const f = await fixture(t);
   const result = await checkCosts(f, { run: async job => { await f.run(job); return { code: 1 }; } });
