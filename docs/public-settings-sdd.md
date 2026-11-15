@@ -1,6 +1,6 @@
 # SDD: guardar ajustes públicos sin republicar
 
-Estado: puntos 1–3 implementados y verificados localmente; punto 4 pendiente. La comparación de costos requiere revisar la referencia por el cambio del fixture indicado en la entrega 2.
+Estado: puntos 1–3 implementados y verificados localmente; punto 4 pendiente. La comparación de costos quedó resuelta y verificada localmente en la sección 14.
 
 Fecha: 2026-11-13. Código revisado: `2b7b0bf`, rama `bug-fix`.
 
@@ -250,11 +250,11 @@ Las pruebas RED reprodujeron la selección de ajustes publicados anteriores, la 
 | Filtros y selección de CI | 9 pruebas aprobadas. |
 | TypeScript, lint de archivos modificados, límite de líneas y `git diff --check` | Aprobados; el plugin de lint JavaScript mantiene su aviso previo sobre FileEnumerator en ESLint 10. |
 
-### Pendiente de comparación de costos
+### Comparación de costos al cerrar el punto 2
 
 Se comprobó el contrato de repetibilidad contra `persistence-b0-2026-11-14-r3`: la única diferencia de condiciones es la huella de `api/persistence-e2e/harness.mjs`, actualizado para inicializar los ajustes guardados. El comparador exige igualdad de esas condiciones, por lo que la referencia anterior queda incompatible con una captura que use este fixture. Esto no demuestra una regresión ni un ahorro de costos.
 
-No se ejecutó una nueva captura de costos ni se cambiaron referencias, políticas, tolerancias o el comparador para ocultar esa diferencia. Resolver la comparabilidad y verificar el check de costos sigue pendiente para la revisión de integración; esta entrega no lo declara aprobado.
+En esa entrega no se ejecutó una nueva captura de costos ni se cambiaron referencias, políticas, tolerancias o el comparador para ocultar esa diferencia. La comparabilidad y el check quedaron pendientes entonces; su resolución posterior está en la sección 14.
 
 Al cerrar esta entrega, el trabajo se detuvo en el punto 2 sin desplegar, republicar ni modificar información real. La matriz de guardados sin republicar y la documentación operativa quedaron para los puntos 3 y 4.
 
@@ -286,4 +286,12 @@ La cobertura nueva se comprobó con dos controles RED temporales: reutilizar los
 
 La suite completa incluye además red interrumpida, acuses perdidos, reintentos de proveedor, retoma, vencimiento, multimedia y reglas de acceso. Se ejecutó con el navegador ya instalado en caché después de que el Chrome del sistema se cerrara durante una ejecución inicial.
 
-El trabajo se detiene al completar el punto 3. La revisión final, las instrucciones operativas y la comparabilidad de la referencia de costos indicada en la entrega 2 siguen pendientes. No se modificaron referencias, políticas o tolerancias de costos, ni se desplegó o alteró información real.
+Al completar el punto 3 quedaron pendientes la revisión final, las instrucciones operativas y la comparabilidad de costos indicada en la entrega 2. En ese punto no se modificaron referencias, políticas o tolerancias de costos, ni se desplegó o alteró información real.
+
+## 14. Integración de costos — 2026-11-14
+
+Se resolvió la incompatibilidad del fixture con una prueba común que llama al generador público real de cada versión. Se midió `b392e88`, anterior a esta funcionalidad, y el producto actual bajo las mismas condiciones: tres matrices de 23 escenarios por versión. Las repeticiones coinciden exactamente y las tres comparaciones entre versiones pasan con la política estricta, sin aumentos permitidos. Las operaciones y el costo variable por sesión permanecen iguales; disminuye ligeramente el almacenamiento de configuración compartida.
+
+El check y GitHub seleccionan la nueva referencia anterior a los ajustes sin republicar. Se conservan B0 R3 y las evidencias de optimización anteriores. `ensure-report` muestra el estado, el código y el archivo de diagnóstico sin alterar el resultado. Las regresiones comprueban también el rechazo de una lectura, una invocación o un byte retenido adicionales.
+
+El [informe de comparación](investigaciones/public-settings-cost-comparison-2026-11-14.md) registra TDD, resultados, cantidades e identidades. La revisión final de consumidores y las instrucciones operativas del punto 4 continúan pendientes. Esta integración no despliega ni modifica datos reales.

@@ -34,6 +34,7 @@ test('persistence captures attest to real fixture/response sources, not product 
   assert.deepEqual(repeatabilityIssues({scenarios,repeatability:contract}),[]);
   assert.ok(contract.conditions.fixture.sources['api/mock-providers/providers/google-drive.mjs']);
   assert.ok(contract.conditions.fixture.sources['api/persistence-e2e/harness.mjs']);
+  assert.ok(contract.conditions.fixture.sources['api/persistence-e2e/public-generator.mjs']);
   assert.ok(contract.conditions.fixture.sources['benchmarks/persistence/scenarios.e2e.mjs']);
   assert.ok(Object.keys(contract.conditions.fixture.sources).every(p=>!p.startsWith('api/functions/')&&!p.startsWith('client/src/')));
   const changed=globalThis.structuredClone(contract); changed.conditions.fixture.sources['api/persistence-e2e/harness.mjs']='b'.repeat(64);

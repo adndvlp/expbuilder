@@ -18,7 +18,7 @@ import { handleDropbox } from '../mock-providers/providers/dropbox.mjs';
 import { handleOsf } from '../mock-providers/providers/osf.mjs';
 import { handleGithub } from '../mock-providers/providers/github.mjs';
 import { deliveries } from './task-queue.mjs';
-import { createDefaultPublicSettings } from '../functions/experiment/settings.js';
+import { createPublicGenerator } from './public-generator.mjs';
 
 export async function startHarness({ benchmark } = {}) {
   if (process.env.PERSISTENCE_E2E !== '1' || process.env.GCLOUD_PROJECT !== 'demo-public-persistence'
@@ -75,15 +75,17 @@ export async function startHarness({ benchmark } = {}) {
   fixture.get('/vendor.js', async (_req, res) => res.type('js').send((await readFile(path.join(process.env.PERSISTENCE_SDK_DIR, 'firebase-app-compat.js'), 'utf8')) + '\n' + (await readFile(path.join(process.env.PERSISTENCE_SDK_DIR, 'firebase-database-compat.js'), 'utf8'))));
   fixture.get('/jspsych.js', (_req, res) => res.type('js').sendFile(path.join(root, 'server/jspsych-bundle/index.js')));
   fixture.get('/dynamic.js', (_req, res) => res.type('js').sendFile(path.join(root, 'server/dynamicplugin/dist/index.iife.js')));
+  fixture.get('/api/session-name-config/:id', (_req, res) => res.json({ tokens: [], separator: '_' }));
   fixture.get(/.*/, (req, res) => {
     const [, id, ...parts] = req.path.split('/'), filename = parts.join('/') || 'index.html', file = store.github.contents.get(`lab/${id}/${filename}`);
     if (!file) { res.status(404).end(); return; }
     res.type(path.extname(filename)).send(Buffer.from(file.content, 'base64'));
   });
   const origin = await listen(fixture);
-  await build({ stdin: { contents: `export { buildPublicExperimentCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/buildPublicExperimentCode.ts')}'; export { generateOnFinishCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator.ts')}'; export { branchingEvaluationRuntimeCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/branchingRuntimeCode.ts')}';`, resolveDir: root },
+  await build({ stdin: { contents: `export { generateOnFinishCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/ConfigurationPanel/TrialsConfiguration/TrialCode/TrialCodeGenerators/onFinishGenerator.ts')}'; export { branchingEvaluationRuntimeCode } from '${path.join(root, 'client/src/pages/ExperimentBuilder/components/Timeline/ExperimentCode/services/branchingRuntimeCode.ts')}';`, resolveDir: root },
     bundle: true, platform: 'node', format: 'esm', outfile: path.join(temp, 'generator.mjs') });
-  const { buildPublicExperimentCode, generateOnFinishCode, branchingEvaluationRuntimeCode } = await import(pathToFileURL(path.join(temp, 'generator.mjs')));
+  const { generateOnFinishCode, branchingEvaluationRuntimeCode } = await import(pathToFileURL(path.join(temp, 'generator.mjs')));
+  const generatePublic = await createPublicGenerator({ root, temp, origin });
   const launch = () => chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || (existsSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome') ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : undefined) });
   let browser = await launch();
   let sequence = 0, pumping = false;
@@ -106,15 +108,16 @@ export async function startHarness({ benchmark } = {}) {
     const ids = Array.from({ length: count }, (_, i) => i+1);
     const answers = count === 5 ? ['A,quoted', 'B\nline', 'C"quote', 'D', 'E'] : ids.map(id => 'answer ' + id);
     const batchConfig = { useIndexedDB: indexed, batchSize: size, resumeTimeoutMinutes: timeout };
+    const settings = { batchConfig, recruitmentConfig: { platform: 'none', prolificCompletionCode: '' },
+      captchaConfig: { enabled: false, provider: 'hcaptcha', siteKey: '' } };
     const folder = `folder-${id}`;
     store.osf.nodes.set(folder, { id: folder, kind: 'nodes', attributes: {} });
     const exists = (await db.collection('experiments').doc(id).get()).exists;
-    await db.collection('experiments').doc(id).set({ ...createDefaultPublicSettings(), active: true, owner: 'owner', ...(!exists && { sessions: 0, currentCondition: 0, nConditions: 1 }),
+    await db.collection('experiments').doc(id).set({ ...settings, active: true, owner: 'owner', ...(!exists && { sessions: 0, currentCondition: 0, nConditions: 1 }),
       storageProvider, driveFolderId: folder, dropboxFolder: '/' + folder, osfUploadLink: `${osfOrigin}/v2/nodes/${folder}/files/osfstorage/`, batchConfig }, { merge: true });
-    const code = buildPublicExperimentCode({ DATA_API_URL: origin + '/apiData', FIREBASE_DATABASE_URL: 'https://demo-public-persistence-default-rtdb.firebaseio.com',
+    const code = await generatePublic({ settings,
       firebaseWebConfig: { apiKey: 'demo', projectId: 'demo-public-persistence', databaseURL: 'https://demo-public-persistence-default-rtdb.firebaseio.com', authDomain: 'demo', storageBucket: 'demo', messagingSenderId: 'demo', appId: 'demo' },
-      experimentID: id, useStorage: storageProvider, sessionNameTokens: [], sessionNameSeparator: '_', currentUid: 'owner',
-      evaluateCondition: '', branchingEvaluation: branchingEvaluationRuntimeCode, customPreInitCode: {}, publicParams: {}, extensions: '', progressBar: false,
+      experimentID: id, useStorage: storageProvider, branchingEvaluation: branchingEvaluationRuntimeCode,
       baseCode: baseCode ?? `const branchParameters = null; if (branchParameters) Object.entries(branchParameters);
         class Trial { static info = { name: 'test', version: '1', parameters: {}, data: {} }; constructor(instance) { this.instance = instance; }
           trial(_display, trial) { window.__answer = () => this.instance.finishTrial({ response: trial.answer, ...(${payloadBytes} ? { benchmark_padding: 'x'.repeat(${payloadBytes}) } : {}) }); if (${auto}) window.__answer(); else { _display.innerHTML = '<button id="answer">Answer</button>'; _display.querySelector('button').onclick = window.__answer; } } }

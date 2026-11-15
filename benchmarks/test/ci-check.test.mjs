@@ -5,11 +5,22 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { setTimeout, clearTimeout } from 'node:timers';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, URL } from 'node:url';
 import { checkCosts, runCommand } from '../ci/check.mjs';
 import { ensureReport } from '../ci/ensure-report.mjs';
 import { temporalFixture } from './temporal-storage-fixtures.mjs';
 
 const json = value => JSON.stringify(value) + '\n';
+test('the report verification CLI names the result and diagnostic file while preserving its exit code', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'report-message-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(path.join(directory, 'run.json'), json({ format: 1, finished: true, status: 'incompatible', exitCode: 4 }));
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../ci/ensure-report.mjs', import.meta.url)), directory], { encoding: 'utf8' });
+  assert.equal(result.status, 4);
+  assert.match(result.stdout, /incompatible.*exit 4/);
+  assert.ok(result.stdout.includes(path.join(directory, 'run.json')));
+});
 async function fixture(t) {
   const directory = await mkdtemp(path.join(tmpdir(), 'cost-ci-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
@@ -45,15 +56,15 @@ test('one check runs unit, measurement and comparison once, keeps evidence and n
   assert.equal(saved.finished, true); assert.ok(saved.artifactBytes > 0);
   assert.equal(await ensureReport(f.output), 0);
 });
-test('CO22: the default check selects corrected B0 and the reviewed policy without regenerating the reference', async t => {
+test('the default check selects the measured pre-settings baseline and strict policy without regenerating the reference', async t => {
   const f = await fixture(t);
   const result = await checkCosts({ output: f.output }, { run: f.run });
-  assert.equal(path.basename(result.baseline), 'persistence-b0-2026-11-14-r3');
+  assert.equal(path.basename(result.baseline), 'persistence-before-public-settings-2026-11-14');
   assert.equal(result.exitCode, 0);
   assert.deepEqual(f.calls.map(job => job.name), ['unit','measurement','comparison']);
   assert.ok(f.calls[2].args.includes(result.baseline));
   const selectedPolicy = f.calls[2].args[f.calls[2].args.indexOf('--policy') + 1];
-  assert.equal(path.basename(selectedPolicy), 'persistence-temporal-storage.json');
+  assert.equal(path.basename(selectedPolicy), 'no-increases.json');
   assert.equal(result.policy, selectedPolicy);
   assert.equal(JSON.parse(await readFile(path.join(f.output, 'run.json'))).policy, selectedPolicy);
   assert.ok(!JSON.stringify(f.calls).includes("'reference'"));

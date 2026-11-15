@@ -1,0 +1,113 @@
+{
+  "format": 1,
+  "date": "2026-11-14",
+  "result": "passed",
+  "scope": "Public settings integration; modeled costs from actual local emulator operations and captured pricing, not a cloud bill",
+  "baseline": "benchmarks/references/persistence-before-public-settings-2026-11-14",
+  "policy": "benchmarks/policies/no-increases.json",
+  "before": {
+    "referenceSha256": "4cf6d7ac60bff56e5419615ce2d3067fff590e8bbdda27a868ceb38f0ef8eed6",
+    "budgetSha256": "17b2fc43ed7c060b3b8fdfa8026a4c0bca50cf41632840baa4941fdfb2bdbba1",
+    "revision": "b392e886457bb30c3738e54319c6dac0b6ce9f78",
+    "repeatabilitySha256": "600e1de42be2258ce3d0bd1d60be2bff54e4308a1cf4ed59d56e1c597a5b8f8b",
+    "windowSeconds": 2592000,
+    "scope": "Public runtime Google Cloud consumption under declared resources, network and retention; excludes provider plan and publishing/deployment",
+    "operations": {
+      "functions.invocations": "37",
+      "firestore.readUnits": "101",
+      "firestore.writes": "55",
+      "firestore.deletes": "6",
+      "tasks.billableUnits": "4",
+      "events.published": "23",
+      "http.requests": "10"
+    },
+    "experimentInventory": {
+      "documents": 1,
+      "documentBytes": 1380,
+      "automaticIndexBytes": 14786,
+      "automaticIndexEntries": 90,
+      "compositeBytes": 0,
+      "compositeIndexEntries": 0,
+      "indexBytes": 14786,
+      "indexEntries": 90,
+      "storedBytes": 16166
+    },
+    "nominal1000Sessions": {
+      "sessions": 1000,
+      "fixed": "0.425176958315050409686394",
+      "variable": "0.52003249544230534746829",
+      "total": "0.945209453757355757154684"
+    }
+  },
+  "after": {
+    "referenceSha256": "56412749918ee1b6c6daedd728836b02a7f0b20e9a96b5736dae6e7a080faf27",
+    "budgetSha256": "558be75f74ab8cf439248df38ba6ae8d2fc20522985847c32f25a65cc01ef6e3",
+    "revision": "e7e3a9886e202033e08d96a930ddb97daf31be9c",
+    "repeatabilitySha256": "600e1de42be2258ce3d0bd1d60be2bff54e4308a1cf4ed59d56e1c597a5b8f8b",
+    "windowSeconds": 2592000,
+    "scope": "Public runtime Google Cloud consumption under declared resources, network and retention; excludes provider plan and publishing/deployment",
+    "operations": {
+      "functions.invocations": "37",
+      "firestore.readUnits": "101",
+      "firestore.writes": "55",
+      "firestore.deletes": "6",
+      "tasks.billableUnits": "4",
+      "events.published": "23",
+      "http.requests": "10"
+    },
+    "experimentInventory": {
+      "documents": 1,
+      "documentBytes": 1105,
+      "automaticIndexBytes": 10548,
+      "automaticIndexEntries": 68,
+      "compositeBytes": 0,
+      "compositeIndexEntries": 0,
+      "indexBytes": 10548,
+      "indexEntries": 68,
+      "storedBytes": 11653
+    },
+    "nominal1000Sessions": {
+      "sessions": 1000,
+      "fixed": "0.425176201764470146548314",
+      "variable": "0.52003249544230534746829",
+      "total": "0.945208697206775494016604"
+    }
+  },
+  "deltaNominal1000Sessions": {
+    "fixed": "-7.56550580263138080E-7",
+    "variable": "0E-23",
+    "total": "-7.56550580263138080E-7"
+  },
+  "repeatabilityEvidence": {
+    "path": "benchmarks/references/persistence-before-public-settings-2026-11-14/repeatability-validation.json",
+    "sha256": "d1c11e5ee99be9239a2962796646de164c565183eda78fdda9d3535362afdcda",
+    "beforeRuns": 3,
+    "afterRuns": 3,
+    "equalRepetitionPairs": 6,
+    "passingVersionComparisons": 3
+  },
+  "finalCheck": {
+    "directory": "/tmp/public-settings-cost-check-verified",
+    "runSha256": "936defdf150c2062e8b2530087d54436ac8103dd8f0ee797017e08702a6ccaeb",
+    "comparisonSha256": "343b80fa0d82e0ba123c545f307d45483a54f246f49a78115f2618aaa21ae7f7",
+    "status": "passed",
+    "exitCode": 0,
+    "finished": true,
+    "comparisonStatus": "passed",
+    "issues": 0,
+    "equality": {
+      "measurements": false,
+      "storage": true,
+      "quantities": false,
+      "money": false,
+      "functional": true
+    },
+    "unitTestsPassed": 307,
+    "measurementScenariosPassed": 23,
+    "persistenceTestsPassed": 106,
+    "artifactBytes": 27007597
+  },
+  "historicalEvidenceUnchanged": true,
+  "runtimeProductChangesInThisFix": false,
+  "cloudExecution": false
+}

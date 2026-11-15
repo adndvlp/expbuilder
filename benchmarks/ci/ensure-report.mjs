@@ -4,6 +4,7 @@ import process from 'node:process';
 import console from 'node:console';
 import { fileURLToPath } from 'node:url';
 import { readJson } from '../core/artifacts.mjs';
+import { exitCodes } from '../core/comparison.mjs';
 
 export async function ensureReport(output) {
   if (!output) throw new Error('Required report directory');
@@ -21,6 +22,11 @@ export async function ensureReport(output) {
   }
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { process.exitCode = await ensureReport(process.argv[2]); }
+  try {
+    const code = await ensureReport(process.argv[2]);
+    const status = Object.keys(exitCodes).find(key => exitCodes[key] === code) || 'cancelled';
+    console.log(`Benchmark report: ${status} (exit ${code}); details: ${path.resolve(process.argv[2], 'run.json')}`);
+    process.exitCode = code;
+  }
   catch (error) { console.error(error.message); process.exitCode = 6; }
 }
