@@ -1,6 +1,6 @@
 # SDD: guardar ajustes públicos sin republicar
 
-Estado: puntos 1–3 implementados y verificados localmente; punto 4 pendiente. La comparación de costos quedó resuelta y verificada localmente en la sección 14.
+Estado: puntos 1–4 implementados y verificados localmente. La sección 14 registra la comparación de costos y la sección 15, la revisión final y la documentación. Esta SDD no acredita un despliegue remoto.
 
 Fecha: 2026-11-13. Código revisado: `2b7b0bf`, rama `bug-fix`.
 
@@ -21,15 +21,15 @@ Guardar la configuración aplica los cinco grupos de ajustes indicados abajo a l
 
 La primera publicación sigue siendo necesaria para disponer del HTML y del destino de resultados. Guardar ajustes no publica un experimento ni sustituye la publicación de ensayos, código o multimedia.
 
-## 2. Evidencia y cambio de contrato
+## 2. Evidencia anterior y cambio de contrato
 
-El código actual guarda los ajustes de edición en `batchConfig`, `recruitmentConfig` y `captchaConfig` del documento del experimento en Firestore. La publicación copia esos ajustes desde el código generado a `publishedConfiguration`, y la creación de sesiones usa esa copia publicada. Esa separación explica por qué hoy guardar no basta.
+Antes de este cambio, el código guardaba los ajustes de edición en `batchConfig`, `recruitmentConfig` y `captchaConfig` del documento del experimento en Firestore. La publicación copiaba esos ajustes desde el código generado a `publishedConfiguration`, y la creación de sesiones usaba esa copia publicada. Esa separación explicaba por qué guardar no bastaba.
 
-Se comprobó además un caso de guardado parcial ejecutando el hook real con servicios simulados: `handleSave` termina la escritura en Firestore y después intenta guardar el nombre de sesión por HTTP. Si falla la segunda operación, la interfaz recibe `Error saving configuration`, aunque la primera escritura ya terminó. Esta evidencia reproduce ese flujo de control; no acredita un incidente en datos reales.
+Se comprobó además un caso de guardado parcial ejecutando el hook real con servicios simulados: `handleSave` terminaba la escritura en Firestore y después intentaba guardar el nombre de sesión por HTTP. Si fallaba la segunda operación, la interfaz recibía `Error saving configuration`, aunque la primera escritura ya había terminado. Esta evidencia reprodujo ese flujo de control; no acredita un incidente en datos reales.
 
 Evitar que una publicación posterior reintroduzca valores anteriores y validar los ajustes aplicables sin publicación son requisitos de esta implementación. No se presentan como otros fallos de producción demostrados.
 
-Esta SDD sustituye exclusivamente la obligación de republicar esos cinco grupos en D03, D06 y las secciones de configuración de la [SDD de publicación única](publication-versioning-removal-sdd.md), y en la [documentación de configuración](10-EXPERIMENT_CONFIG.md). Conserva las garantías de la [SDD de persistencia](public-session-persistence-sdd.md). Los documentos operativos se actualizarán al completar la implementación; esta especificación no significa que el comportamiento ya esté disponible.
+Esta SDD sustituye exclusivamente la obligación de republicar esos cinco grupos en D03, D06 y las secciones de configuración de la [SDD de publicación única](publication-versioning-removal-sdd.md), y en la [documentación de configuración](10-EXPERIMENT_CONFIG.md). Conserva las garantías de la [SDD de persistencia](public-session-persistence-sdd.md). Los documentos operativos se actualizaron en el punto 4; el estado de implementación y verificación se registra en las entregas siguientes.
 
 ## 3. Fuente de los ajustes y configuración de sesión
 
@@ -294,4 +294,55 @@ Se resolvió la incompatibilidad del fixture con una prueba común que llama al 
 
 El check y GitHub seleccionan la nueva referencia anterior a los ajustes sin republicar. Se conservan B0 R3 y las evidencias de optimización anteriores. `ensure-report` muestra el estado, el código y el archivo de diagnóstico sin alterar el resultado. Las regresiones comprueban también el rechazo de una lectura, una invocación o un byte retenido adicionales.
 
-El [informe de comparación](investigaciones/public-settings-cost-comparison-2026-11-14.md) registra TDD, resultados, cantidades e identidades. La revisión final de consumidores y las instrucciones operativas del punto 4 continúan pendientes. Esta integración no despliega ni modifica datos reales.
+El [informe de comparación](investigaciones/public-settings-cost-comparison-2026-11-14.md) registra TDD, resultados, cantidades e identidades. Al terminar esa integración seguían pendientes la revisión de consumidores y las instrucciones operativas del punto 4, completadas en la sección siguiente. Esta integración no desplegó ni modificó datos reales.
+
+## 15. Revisión final y documentación — 2026-11-14
+
+Se completó el punto 4 sobre `98c6654`, después de integrar la comparación de costos. La revisión no encontró otra corrección funcional necesaria dentro del alcance de esta SDD. Esta entrega actualiza la documentación del repositorio y la ayuda del Builder; conserva el runtime, los protocolos, los fixtures de medición y las garantías comprobadas mediante TDD en los puntos 1–3.
+
+### Consumidores y contratos revisados
+
+| Área | Resultado de la revisión |
+|---|---|
+| Formulario y acciones | `useExperimentSettings.handleSave` valida y confirma una única escritura de los tres grupos en Firestore. No guarda ni valida nombres. Nombre y apariencia conservan sus acciones independientes y el aviso de republicación. `Batch Size` continúa visible solo con IndexedDB. |
+| Tipos y validadores | `ExperimentSettings/types.ts` mantiene los tipos de edición. `PublicExperimentCodeOptions` ya no transporta los tres grupos dinámicos. Los validadores del formulario/HTML y Functions concuerdan en campos completos, tipos, plataformas, proveedores, enteros seguros, timeout y clave de CAPTCHA. |
+| Creación y reglas | `create.js` inicializa valores completos sin reiniciar documentos existentes. `firestore.rules` valida mapas y permisos del propietario, protege identidad/publicación y permite el guardado independiente en experimentos publicados. |
+| Sesiones | `handshake.js` valida los ajustes guardados dentro de la transacción de creación y combina únicamente proveedor, destino y validación publicados. Reintentos, activación y retoma devuelven `session.configuration`. El cálculo del timeout usa esa configuración propia. |
+| Generación y ejecución | `PublicConfiguration` sigue incorporando nombre y apariencia, pero no lee ajustes dinámicos de Firestore. El handshake generado valida la respuesta antes de arrancar. Bootstrap, CAPTCHA, identificadores de plataforma y cierre usan la configuración de sesión sin alternativas incrustadas. No quedan consumidores de producto de `_PUBLIC_PUBLICATION_CONFIG` ni `readPublicationConfiguration`. |
+| Publicación | La identidad del experimento selecciona el publicador actual. `publish/current.js` reemplaza el mapa publicado por proveedor, destino y validación después de confirmar la subida. No escribe los tres grupos editables; mantiene lease, errores, controles de recursos y concurrencia. |
+| Fixtures y CI | El harness funcional guarda ajustes válidos y usa el generador público real. Las pruebas negativas que proporcionan valores antiguos comprueban que no se lean ni se incrusten. La huella del fixture común y su referencia verificada permanecen intactas. Los filtros de CI incluyen el validador y el harness. |
+
+### Cobertura de aceptación al cierre
+
+| Criterios | Evidencia mantenida |
+|---|---|
+| AC01–AC03 | Cliente: `experimentSettings/independent-save.test.tsx`, `validation-and-persistence.test.tsx`, `loading-and-session-save.test.tsx` y `appearanceSettings.test.tsx`. Guardado independiente, errores confirmados, nombre/apariencia y mensajes propios. |
+| AC04–AC05 | `public-settings.test.js`, `experiment/create/` y `settings-rules.e2e.mjs`: valores predeterminados, validación, permisos y escrituras atómicas. |
+| AC06–AC08 | `sessions-saved-settings.test.js`: ajustes vigentes junto con destino/validación publicados, rechazo de ajustes inválidos antes de asignar participante y conservación de configuración/checkpoint. |
+| AC09–AC10 | `settings-connections.e2e.mjs` y `sessions-saved-settings.test.js`: respuesta de registro perdida, guardados solapados y guardado entre registro/activación. |
+| AC11–AC12 | `settings-data.e2e.mjs`: plazo anterior, ON/lote 0 → OFF → ON/lotes 1/N, HTML invariable y respuestas pendientes en su sesión original. |
+| AC13–AC14 | `settings-gates.e2e.mjs`: activar/cambiar/desactivar CAPTCHA, presencia antes del desafío y reclutamiento propio de cada sesión después de confirmar el proveedor. |
+| AC15–AC17 | `settings-publication.e2e.mjs` y `publish-current.test.js`: guardados durante subida, publicación de HTML generado antes del guardado, fallos y selección del flujo actual sin la constante retirada. |
+| AC18 | `publicHandshakeSettings.test.ts` y `settings-connections.e2e.mjs`: respuesta incompleta bloquea ensayos sin cambiar identidad, checkpoint ni pendientes. |
+| AC19 | Suite de persistencia: tres proveedores, ambos modos y lotes aplicables, CSV completo/ordenado/único y éxito después de confirmar el archivo. |
+| AC20 | Generador y tipos revisados; manuales, SDD relacionadas y ayuda integrada actualizados con las acciones por campo y sin transporte de ajustes desde el HTML. |
+
+### Documentación actualizada
+
+- [Configuración](10-EXPERIMENT_CONFIG.md): acciones por ajuste, independencia de los guardados, validación, configuración de sesión, CAPTCHA y estructura de Firestore.
+- [Publicación](12-PUBLISH_FLOW.md) y [plan de verificación](public-session-release-plan.md): configuración obtenida al registrar, campos publicados y prueba de ajustes sin volver a generar HTML.
+- [SDD de publicación única](publication-versioning-removal-sdd.md), [SDD de persistencia](public-session-persistence-sdd.md) e [índice](INDEX.md): contrato vigente y referencias al cierre, conservando las entregas históricas.
+- Ayuda integrada en `03-session-public.ts`, `19-publish.ts` y `22-troubleshooting.ts`: guardar frente a republicar, configuración propia, presencia, IndexedDB sin caducidad por edad, timeout y confirmación del proveedor. Se retiraron las instrucciones antiguas que describían un TTL de tres días o un reinicio automático al fallar la retoma.
+
+### Verificación de esta entrega
+
+| Comprobación | Resultado |
+|---|---|
+| Cliente: ajustes, guardados, generador, handshake y apariencia | 64 pruebas aprobadas en 9 archivos. |
+| Functions: validación, creación, publicación y configuración de sesiones | 118 pruebas aprobadas en 21 suites. |
+| Ayuda integrada: navegación y búsqueda de documentación | 2 pruebas aprobadas en 1 archivo después de actualizar el contenido. |
+| TypeScript del cliente, lint de la ayuda modificada y máximo de 300 líneas | Aprobados. |
+
+Se reutiliza la verificación integral ya registrada con el mismo código de ejecución: 106 casos de persistencia, 37 pruebas de navegador público y la comparación final de costos con 307 unitarias, 23 escenarios y código 0. Esta entrega documental no vuelve a medir ni altera las cantidades del benchmark. No se añadieron tests que solo repitan el texto de los manuales; las pruebas de comportamiento de las entregas anteriores permanecen vigentes.
+
+Los cuatro puntos de esta SDD quedan completos. El cierre se refiere a implementación y verificación local. No ejecuta un despliegue, republicación, limpieza, migración ni cambios en datos reales, ni incorpora la retirada de retrocompatibilidad pendiente en su SDD independiente.

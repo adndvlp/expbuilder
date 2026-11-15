@@ -6,6 +6,8 @@ Cambio de alcance, 2026-11-12: la [spec de retirada de retrocompatibilidad](retr
 
 Cambio de publicación, 2026-11-12: la [SDD de publicación única](publication-versioning-removal-sdd.md) sustituye los requisitos de conservar HTML, multimedia y registros de publicaciones anteriores, sus IDs y sus redirecciones. La configuración por sesión, la retoma compatible y las garantías de guardado se conservan. Su implementación ya retiró el historial del código; la limpieza externa corresponde al usuario.
 
+Cambio de configuración, 2026-11-14: la [SDD de ajustes sin republicar](public-settings-sdd.md) aplica IndexedDB, lote, timeout, CAPTCHA y reclutamiento guardados a las sesiones nuevas sin publicar de nuevo. Proveedor, destino, validación, nombre y apariencia mantienen su dependencia de publicación. Las sesiones existentes conservan su configuración. Las secciones históricas de entrega no se reescriben como instrucciones vigentes.
+
 Fecha: 2026-11-05. Base de investigación: revisión `2ba29139aa8242b0fb53e2b8d33e09b807d5c1c3` y archivos locales examinados durante la conversación.
 
 ## 1. Objetivo y alcance
@@ -32,7 +34,7 @@ El runtime local aporta componentes reutilizables, pero su protocolo HTTP y su s
 | D08 | Los pendientes locales de una sesión expirada se recuperan para el archivo de esa sesión. Esa recuperación no reabre su ejecución, no cambia su participante y no traslada respuestas a una sesión nueva. |
 | D09 | Al completar normalmente se inicia el guardado final sin esperar el timeout. La confirmación al participante requiere verificar las respuestas y el guardado en el proveedor. |
 | D10 | Con lote `0`, el servidor no dispone de los ensayos que siguen únicamente en el navegador. Si se cierra la página antes de enviarlos, el timeout no puede guardarlos. Se acepta y se comunica esta limitación. |
-| D11 | Una republicación aplica su configuración a sesiones nuevas. Una sesión existente conserva su configuración y progreso; retoma sobre el HTML actual si sigue siendo compatible, según la [SDD de publicación única](publication-versioning-removal-sdd.md). |
+| D11 | Guardar IndexedDB/lote/timeout, CAPTCHA y reclutamiento aplica a sesiones nuevas sin republicar. Proveedor/destino/validación se confirman mediante publicación. Una sesión existente conserva su configuración y progreso; retoma sobre el HTML actual si sigue siendo compatible. |
 
 El timeout es una fecha límite de retoma. La tarea del proveedor puede terminar después debido a latencia o reintentos; esa demora no amplía el plazo para continuar el experimento.
 
@@ -77,7 +79,7 @@ Se conserva `experiments/{experimentID}/sessions/{sessionId}` como registro de i
 | Grupo | Campos propuestos y significado |
 |---|---|
 | Identidad | `sessionProtocolVersion: 3`, `eventProtocolVersion: 1`, `experimentID`, `sessionId`, `participantNumber`, `condition`, `createdAt`, `sessionName`. La condición queda fijada para la sesión. |
-| Configuración | Copia de `publishedConfiguration` al crear la sesión: lote, IndexedDB, timeout, reclutamiento, CAPTCHA, validación, proveedor y destino; metadata inicial. No incluye una identidad de publicación. Las credenciales se obtienen del backend; no se copian tokens OAuth al documento ni al HTML. |
+| Configuración | Ajustes guardados del experimento: lote, IndexedDB, timeout, reclutamiento y CAPTCHA; combinados al crear la sesión con validación, proveedor y destino de `publishedConfiguration`; metadata inicial. No incluye una identidad de publicación. Las credenciales se obtienen del backend; no se copian tokens OAuth al documento ni al HTML. |
 | Ejecución | `lifecycle`: `active`, `disconnected`, `completed` o `expired`; `closedAt`; `closeReason`. `completed` y `expired` son terminales para la ejecución. |
 | Presencia | `connectionGeneration`, `connectionId`, `disconnectedAt`, `resumeExpiresAt`. Tiempos de servidor y generación que invalida mensajes antiguos. |
 | Recepción | Total de eventos únicos, última secuencia conocida, prefijo continuo confirmado y, al completar, `expectedEventCount`, `expectedLastSequence` y resumen verificable del conjunto esperado. |
@@ -251,7 +253,7 @@ Se actualiza `Storage Behavior Summary` para expresar las mismas reglas. Se reti
 
 El participante dispone de estados claros: guardando, guardado confirmado, error con reintento, sesión expirada y opción de nueva participación. La recuperación de pendientes cerrados se informa por separado; su fallo no mueve esas respuestas a la sesión nueva ni las elimina. El investigador puede distinguir cierre, exportación pendiente, error y archivo confirmado.
 
-Cambiar configuración o publicar no modifica las sesiones existentes. El HTML incorpora el contrato de sesión vigente y sus ajustes generados; el publicador confirma una sola `publishedConfiguration` en el experimento después de subir correctamente HTML y recursos. El backend copia esa configuración al crear una sesión y devuelve su configuración propia al retomar. La retoma y la recuperación no consultan un historial de HTML ni de configuración.
+Guardar ajustes o publicar no modifica la configuración de las sesiones existentes. El HTML incorpora el contrato de sesión y recibe IndexedDB/lote/timeout, CAPTCHA y reclutamiento del servicio al iniciar. El publicador confirma una sola `publishedConfiguration` de proveedor/destino/validación después de subir correctamente HTML y recursos. El backend combina esos campos con los ajustes guardados al crear una sesión y devuelve su configuración propia al retomar. Nombre y apariencia permanecen incorporados al HTML y requieren republicar. La retoma y la recuperación no consultan un historial de HTML ni de configuración.
 
 ## 11. Trazabilidad de los ocho hallazgos
 

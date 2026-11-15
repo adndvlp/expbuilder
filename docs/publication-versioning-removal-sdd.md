@@ -23,6 +23,8 @@ La limpieza de lo que ya existe en GitHub y Firestore la hace el usuario. Esta i
 
 Esta SDD es independiente de [la retirada de retrocompatibilidad](retrocompatibility-removal-sdd.md). Sustituye exclusivamente los requisitos de conservar publicaciones anteriores de la [SDD de persistencia](public-session-persistence-sdd.md), su plan de publicación y la anterior regla R07 de la spec de retrocompatibilidad.
 
+Actualización de configuración, 2026-11-14: la [SDD de ajustes sin republicar](public-settings-sdd.md) sustituye la fuente de los ajustes dinámicos en D03/D06 y la sección 4. Las sesiones nuevas toman lote/IndexedDB/timeout, CAPTCHA y reclutamiento de los campos guardados del experimento. `publishedConfiguration` conserva proveedor, destino y validación; cada sesión mantiene su propia configuración. El registro de entregas posterior conserva las comprobaciones realizadas en su fecha.
+
 ## 2. Alcance y límites
 
 ### Incluido
@@ -52,10 +54,10 @@ Esta SDD es independiente de [la retirada de retrocompatibilidad](retrocompatibi
 |---|---|
 | D01 | Una publicación reemplaza la publicación vigente del mismo experimento; no crea otra copia ejecutable ni un registro por publicación. |
 | D02 | El enlace del experimento y las rutas de recursos siguen funcionando sin un prefijo `publications/`. |
-| D03 | Una sesión nueva recibe la configuración publicada vigente, comprobada por el servidor. No adopta ajustes que todavía no se hayan publicado ni confía en valores arbitrarios enviados por el navegador. |
+| D03 | Una sesión nueva recibe los ajustes guardados de IndexedDB/lote/timeout, CAPTCHA y reclutamiento junto con proveedor/destino/validación publicados, comprobados por el servidor. El navegador no puede reemplazarlos. |
 | D04 | Una sesión existente conserva ID, participante, condición, configuración, destino de resultados, respuestas y progreso respaldado. Republicar no la registra ni contabiliza otra vez. |
 | D05 | Si no cambió fundamentalmente la ejecución y el progreso sigue siendo válido, volver antes del timeout continúa la misma sesión sobre el HTML actual. |
-| D06 | Cambiar IndexedDB, lote o timeout aplica a sesiones nuevas. Una sesión existente mantiene los ajustes con los que empezó, incluido el timeout que gobierna su desconexión. |
+| D06 | Guardar IndexedDB, lote, timeout, CAPTCHA o reclutamiento aplica a sesiones nuevas sin republicar. Una sesión existente mantiene los ajustes con los que empezó, incluido el timeout que gobierna su desconexión. |
 | D07 | Cambiar metadatos o presentación sin alterar la ejecución no basta para rechazar una retoma. Tampoco basta una fecha distinta, un HTML con otros bytes o el hecho de haber pulsado Publicar. |
 | D08 | Un progreso incompatible no se aplica al experimento actual. Se informa el problema y se conservan identidad, respuestas y pendientes; no se reinicia, borra ni crea otra participación automáticamente. |
 | D09 | La expiración mantiene sus reglas: cierra la ejecución, solicita exportar lo recibido y permite reenviar pendientes a su sesión original. No necesita un HTML anterior para enviar esos datos. |
@@ -69,13 +71,13 @@ Esta SDD es independiente de [la retirada de retrocompatibilidad](retrocompatibi
 
 El documento del experimento conserva una única configuración publicada vigente, propuesta como `publishedConfiguration`. Se sobrescribe al completar una publicación correcta; no se guarda una lista de configuraciones ni una subcolección por publicación.
 
-Contiene los ajustes actuales que el backend ya necesita: lote/IndexedDB/timeout, CAPTCHA, reclutamiento, validación y proveedor/destino de resultados. El servidor resuelve y valida los datos que le corresponden. No se añaden tokens ni secretos a esta configuración o al HTML.
+Contiene exclusivamente `storageProvider`, `exportDestination` y `validation`. Los ajustes de lote/IndexedDB/timeout, CAPTCHA y reclutamiento se guardan en los tres campos editables del documento de experimento y se validan al crear la sesión. El servidor resuelve y valida los datos que le corresponden. No se añaden tokens ni secretos a esta configuración o al HTML.
 
 La publicación fallida no confirma nuevos ajustes como vigentes. Mantener una configuración vigente es necesario para iniciar sesiones con datos publicados; no conserva HTML anteriores ni permite volver a ellos.
 
 ### 4.2 Configuración propia de cada sesión
 
-Al crear una sesión se copia la configuración vigente a su registro duradero mediante la creación idempotente actual. Al retomar se usa esa copia, sin consultar `publications` y sin sustituirla por los ajustes de una republicación posterior.
+Al crear una sesión se combinan los ajustes guardados del experimento con proveedor, destino y validación publicados y se copia ese conjunto a su registro duradero mediante la creación idempotente actual. Al retomar se usa esa copia, sin consultar `publications` y sin sustituirla por ajustes guardados o publicados posteriormente.
 
 Esta configuración por sesión ya forma parte de las garantías de persistencia. No se elimina para retirar el historial de publicaciones.
 
@@ -107,7 +109,7 @@ Se utiliza la navegación existente: identidad del ensayo, destino, ámbito, rec
 | Situación | Resultado esperado |
 |---|---|
 | Republicar sin cambiar la ejecución | Retoma de la misma sesión sobre el mismo enlace. |
-| Cambiar IndexedDB, lote o timeout | La sesión anterior conserva sus ajustes; las nuevas reciben los publicados. |
+| Guardar IndexedDB, lote o timeout sin republicar | La sesión anterior conserva sus ajustes; las nuevas reciben los guardados. |
 | Cambiar presentación o metadatos sin modificar la ejecución | El progreso válido sigue siendo retomable. |
 | Desaparece el destino guardado, cambia su ámbito o el recorrido de un loop deja de ser válido | Se rechaza aplicar ese progreso; se conservan los datos y se informa la incompatibilidad. |
 | La sesión ya expiró | Continúa cerrada; los pendientes se envían a su archivo original mediante el flujo actual. |

@@ -33,8 +33,26 @@ Settings Tab
 ### Storage Strategy
 
 Settings use **two different** storage backends:
-- **Firebase Firestore** (`client/src/lib/firebase.ts`): For published-experiment settings (batch, recruitment, captcha). These only appear after the experiment has been published.
-- **Local Express API + LowDB**: For local-only settings (session naming, appearance, tunnel).
+- **Firebase Firestore** (`client/src/lib/firebase.ts`): For public-session settings (batch, recruitment, CAPTCHA). These controls appear once the experiment exists in Firebase, normally after its first publication.
+- **Local Express API + LowDB**: For session naming, appearance and tunnel settings. Names and appearance are included when generating public HTML.
+
+### Save or republish?
+
+For an experiment published with the current public generator:
+
+| Setting | Action to apply a change |
+|---|---|
+| IndexedDB, batch size and resume timeout | **Save Configuration**. New sessions use the saved values without republishing. |
+| Recruitment platform and Prolific completion code | **Save Configuration**. New sessions use the saved values without republishing. |
+| CAPTCHA enabled, provider and site key | **Save Configuration**. New sessions use the saved values without republishing. |
+| Session name formula and separator | **Save Session Name**, then republish the public experiment. |
+| Background, fullscreen and progress bar | **Save Appearance**, then republish the public experiment. |
+| Trials, loops, code, media, storage provider/destination and response validation | Publish the updated experiment. |
+| Tunnel hostname | Save the tunnel settings; independent of public publication. |
+
+Each **Save Configuration** button saves the complete batch, recruitment and CAPTCHA groups in one Firestore operation. It neither validates nor saves the session name. **Save Session Name** and **Save Appearance** have their own operations and results.
+
+An existing session retains its original batch, recruitment, CAPTCHA, provider, destination and validation settings. Saving another timeout does not change its existing resume deadline. Retrying registration after a lost response also preserves the original session configuration and participant assignment.
 
 ---
 
@@ -51,7 +69,7 @@ type BatchConfig = {
 };
 ```
 
-`Batch Size` appears only when IndexedDB is enabled and accepts nonnegative integers. Its stored value is retained but does not control transport when IndexedDB is disabled.
+`Batch Size` appears only when IndexedDB is enabled and accepts nonnegative safe integers. Its stored value is retained but does not control transport when IndexedDB is disabled. The timeout accepts whole minutes from 1 to 1440. New experiments default to IndexedDB enabled, batch 0 and a 30-minute timeout.
 
 ### Behavior in all providers
 
@@ -60,13 +78,17 @@ type BatchConfig = {
 - **Disconnect and timeout**: Drive, Dropbox and OSF use the same server deadline. Returning before it permits the same session to continue. Expiry closes execution and requests export of data already received by the server; it does not delete session identity or permit further trials. Normal completion requests export immediately.
 - **Batch 0 limitation**: If the page closes before upload, the timeout cannot export responses that exist only in its browser. Returning with that stored data can recover them into the original session's file without reopening execution.
 
-Saving these settings changes the editor's configuration. Publishing confirms a single `publishedConfiguration` on the experiment; new sessions copy it. Existing sessions retain their own IndexedDB, batch, timeout, recruitment, validation and destination settings. Compatible progress resumes on the current HTML. See the [publication and verification plan](public-session-release-plan.md).
+Saving writes `batchConfig`, `recruitmentConfig` and `captchaConfig` on `experiments/{experimentID}`. The session service reads and validates those fields transactionally when creating a new session, together with the provider, destination and validation confirmed by publication. The public HTML takes its settings from that session response. Publishing later does not overwrite the saved settings. Compatible progress resumes on the current HTML. See the [publication and verification plan](public-session-release-plan.md).
+
+The form validates before writing, Firestore rules restrict administrative writes to the owner and valid values, and the session service validates before assigning a new participant. Missing or invalid settings block new sessions with an instruction to save valid settings. Existing sessions continue to use their own configuration.
 
 ---
 
 ## Session Name Configuration
 
 Stored via `POST /api/session-name-config/:experimentID`. Allows composing automatic session names for each participant run.
+
+Use **Save Session Name** independently of **Save Configuration**. The public generator embeds this formula and separator; republish to update the public HTML. Local execution resolves names through the local API.
 
 ### Token Types
 
@@ -106,6 +128,8 @@ type RecruitmentConfig = {
 };
 ```
 
+Save changes with **Save Configuration**; republishing is unnecessary. A resumed session retains its platform and completion code. Redirects and form submission occur after the session's export is confirmed.
+
 ### Prolific
 - Prolific appends `?PROLIFIC_PID=...` & `STUDY_ID=...` & `SESSION_ID=...` to the experiment URL
 - User provides the **completion code** from Prolific
@@ -135,11 +159,11 @@ type CaptchaConfig = {
 
 ### How it works
 
-1. When `enabled: true`, the generated public experiment code includes the CAPTCHA gate
-2. Before the experiment starts, a fullscreen overlay appears with a CAPTCHA widget
-3. The participant must pass the challenge
-4. On success, `sessionStorage.setItem('jsPsych_captchaPassed', '1')` is set
-5. On page refresh, `sessionStorage.removeItem('jsPsych_captchaPassed')` clears it
+1. The generated HTML supports both CAPTCHA providers. The session response selects the enabled flag, provider and site key; these values are not embedded during publication.
+2. A new session uses the saved settings; a resumed session keeps its original settings. When enabled, the key must contain a non-whitespace character.
+3. Session registration and presence activation finish before the challenge overlay appears. Trials wait for the challenge to pass.
+4. Success sets the experiment-scoped `expbuilder:public:<experimentID>:captcha-passed` marker in `sessionStorage`. Refreshing the same tab retains it; another tab can require the challenge again.
+5. Successful completion or choosing a new participation clears the marker. Saving CAPTCHA changes does not require republishing.
 
 ### Generated Code (from `CaptchaCode.ts`)
 
@@ -168,6 +192,8 @@ function _showCaptchaGate(siteKey, provider) {
 ## Appearance Settings
 
 Stored in `experiment.appearanceSettings` via `PUT /api/appearance-settings/:experimentID`:
+
+**Save Appearance** is independent of public-session configuration. Republish to apply its changes to the public HTML.
 
 ```typescript
 type AppearanceSettings = {
@@ -282,6 +308,8 @@ For published experiments, Firebase stores:
 }
 ```
 
-The fields above are editable settings. Successful publication also stores one server-confirmed `publishedConfiguration` with these settings plus validation/provider/destination, and `sessionExportProtocolVersion: 1`. The protocol 3 session document at `experiments/{experimentID}/sessions/{sessionId}` stores its own `configuration` and stable export destination. It does not refer to a history of published HTML.
+The fields above are the current editable settings. Successful publication separately replaces one server-confirmed `publishedConfiguration` containing only `storageProvider`, `exportDestination` and `validation`, and sets `sessionExportProtocolVersion: 1`. It does not copy or overwrite the three editable groups.
 
-The Firebase Firestore client is initialized in `client/src/lib/firebase.ts` and uses `doc()`, `getDoc()`, `setDoc()` from the Firebase Web SDK. The public handshake reads the confirmed configuration on the server; it does not accept unpublished settings supplied by a participant.
+The protocol 3 document at `experiments/{experimentID}/sessions/{sessionId}` stores its own `configuration`: the current saved settings plus those published provider/destination/validation fields. It also stores the stable export destination. Retrying registration, activating a connection and resuming use that session copy. There is no history of published HTML or separate active settings collection.
+
+The Firebase Firestore client is initialized in `client/src/lib/firebase.ts` and uses `doc()`, `getDoc()`, `setDoc()` from the Firebase Web SDK. The public handshake reads settings on the server; it does not accept replacement configuration supplied by the participant.

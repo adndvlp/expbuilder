@@ -1,14 +1,16 @@
 # Persistencia pública: publicación única y verificación
 
-El comportamiento vigente se define en la [SDD de persistencia](public-session-persistence-sdd.md) y la [SDD de publicación única](publication-versioning-removal-sdd.md). Los resultados de la revisión local final y las comprobaciones aplazadas se registran en esta última. Este documento describe la preparación y prueba de una publicación; no acredita un despliegue del proyecto remoto.
+El comportamiento vigente se define en la [SDD de persistencia](public-session-persistence-sdd.md), la [SDD de publicación única](publication-versioning-removal-sdd.md) y la [SDD de ajustes sin republicar](public-settings-sdd.md). Sus entregas registran las verificaciones y los aplazamientos correspondientes. Este documento describe la preparación y prueba de una publicación; no acredita un despliegue del proyecto remoto.
 
 La retirada de contratos antiguos pertenece a la [SDD independiente de retrocompatibilidad](retrocompatibility-removal-sdd.md). La limpieza de carpetas y documentos históricos existentes corresponde al usuario.
 
 ## Resultado de una publicación
 
-Cada experimento tiene un enlace y un HTML vigentes. Publicar actualiza `index.html`, `img/`, `aud/` y `vid/` en el mismo repositorio. El backend valida la configuración generada, resuelve proveedor/destino y confirma una sola `publishedConfiguration` después de subir correctamente los recursos y el HTML. El lease de publicación impide subidas concurrentes y conflictos con la eliminación del experimento.
+Cada experimento tiene un enlace y un HTML vigentes. Publicar actualiza `index.html`, `img/`, `aud/` y `vid/` en el mismo repositorio. El backend valida identidad y recursos, resuelve proveedor/destino y confirma una sola `publishedConfiguration` con proveedor, destino y validación después de subir correctamente los recursos y el HTML. El lease de publicación impide subidas concurrentes y conflictos con la eliminación del experimento.
 
-Una sesión nueva copia esa configuración. Una sesión existente conserva ID, participante, condición, destino, ajustes y pendientes. La retoma valida el progreso sobre el HTML actual: cambiar presentación, nombre o fecha de edición no basta para rechazarla; un destino, ámbito, fila o repetición incompatibles se informa sin borrar los datos. No se solicita un HTML anterior.
+Al crear una sesión, el servidor combina esos datos publicados con `batchConfig`, `recruitmentConfig` y `captchaConfig` guardados en el experimento. Guardarlos mediante **Save Configuration** aplica a sesiones nuevas sin modificar el HTML. La publicación posterior no revierte esos ajustes. Nombre y apariencia requieren su guardado independiente y republicar. El [manual de configuración](10-EXPERIMENT_CONFIG.md#save-or-republish) detalla las acciones por campo.
+
+Una sesión existente conserva ID, participante, condición, destino, ajustes y pendientes. La retoma valida el progreso sobre el HTML actual: cambiar presentación, nombre o fecha de edición no basta para rechazarla; un destino, ámbito, fila o repetición incompatibles se informa sin borrar los datos. No se solicita un HTML anterior.
 
 El mismo timeout rige con ambos modos de IndexedDB y los tres proveedores. Al vencer cierra la ejecución y solicita guardar lo recibido por el servidor. Con lote 0, lo que siga solamente en el navegador espera a que ese navegador vuelva para recuperarse. La sesión expirada permanece cerrada; iniciar otra requiere la elección del participante.
 
@@ -46,10 +48,16 @@ El commit `ada109f` no ejecutó esas pruebas en Actions: sus cambios quedaron fu
 
    Revisar el resultado por función: un despliegue con errores puede haber actualizado solo una parte. La referencia de funciones, colas e índices es el código y los manifiestos de `api`; no se sustituyen por una lista antigua del historial de publicaciones.
 3. Abrir el Builder actualizado y publicar el experimento de prueba elegido. Desplegar Functions no sustituye un HTML ya publicado. Comprobar que el repositorio recibe el HTML y los recursos en sus rutas normales y que la configuración vigente se confirma en el documento del experimento.
-4. En su enlace público, completar sesiones nuevas con IndexedDB activado y desactivado. Interrumpir otra y volver antes del minuto; dejar expirar una más y volver después. Cambiar y republicar ajustes sin alterar la ejecución, y comprobar que la sesión anterior conserva sus ajustes y la nueva usa los vigentes.
+4. En su enlace público, guardar IndexedDB activado/desactivado, lote y timeout mediante **Save Configuration**, sin republicar, y completar una sesión nueva en cada modo. Interrumpir otra y volver antes de su timeout; dejar expirar una más y volver después. Comprobar que la sesión anterior conserva sus ajustes y plazo originales y que las nuevas usan lo guardado. Los guardados de CAPTCHA y reclutamiento siguen la misma regla. Cambiar nombre o apariencia sí requiere su guardado propio y republicar.
 5. Abrir los CSV resultantes en el proveedor elegido. Comprobar contenido completo, orden y unicidad de `event_id`/`event_sequence`; contrastar con los recibos y la revisión de exportación confirmada de la sesión. `completed` y un HTTP 202 no acreditan por sí solos que el proveedor guardó el archivo.
 
 La prueba en el proyecto real comprueba también que sus funciones y tareas efectivamente se ejecutan y llegan al proveedor. La simulación local verifica su lógica y fallos controlados; no afirma qué permisos, cuotas o credenciales tiene el proyecto remoto.
+
+## Regresión de ajustes sin republicar
+
+La misma suite de persistencia incluye los 19 casos de la SDD de ajustes: guardados ON/lote 0 → OFF → ON/lotes 1/N, plazo original de una sesión desconectada, CAPTCHA y reclutamiento propios de cada sesión, respuesta de registro perdida, configuración incompleta, guardados durante una publicación y subidas fallidas. Conserva y compara el contenido y hash del HTML servido durante los guardados; comprueba también el CSV final, el destino y la confirmación de exportación. Las reglas de Firestore se comprueban con escrituras administrativas y de participantes en el emulador.
+
+El [cierre de esa SDD](public-settings-sdd.md#15-revisión-final-y-documentación--2026-11-14) reúne los consumidores revisados y la trazabilidad AC01–AC20. El [informe de costos](investigaciones/public-settings-cost-comparison-2026-11-14.md) documenta la comparación estricta anterior/actual y las repeticiones. Estas comprobaciones no requieren ejecutar una participación facturable en el proyecto remoto.
 
 ## Trazabilidad de persistencia
 

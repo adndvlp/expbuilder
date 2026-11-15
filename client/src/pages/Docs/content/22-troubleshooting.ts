@@ -13,7 +13,7 @@ export const TroubleshootingSection: DocSection = {
 ## Files not showing (404)
 
 - In **local** mode, files must have been uploaded from the Builder's Timeline panel. URLs are generated as \`/api/files/:id/filename.ext\`.
-- In **published** mode, files are converted to base64 upon publishing. If a file fails, re-publish the experiment.
+- In **published** mode, verify the published \`img/\`, \`aud/\` or \`vid/\` resource path. Publishing transfers the files to the experiment's repository.
 
 ## Branching doesn't work
 
@@ -24,10 +24,16 @@ export const TroubleshootingSection: DocSection = {
 
 ## Resume doesn't work
 
-1. Resume only works if the participant closes the browser **after** completing at least one trial with \`builder_id\`.
-2. If the trial was deleted or renamed after the participant started, resume will fail (clean reset).
+1. A public session can resume before its saved resume deadline. Trials continue from their backed checkpoint when one exists.
+2. Renaming or changing appearance alone does not invalidate progress. If a saved destination or loop path no longer exists, execution stops and preserves pending data; it does not reset the session automatically.
 3. Clearing localStorage or IndexedDB erases part of the recoverable state; do not clear site data while a local session is pending.
 4. In incognito, resume does not persist between browser sessions.
+
+## Do Settings Changes Require Republishing?
+
+For a page published with the current generator, **Save Configuration** applies IndexedDB, batch size, resume timeout, recruitment and CAPTCHA to new sessions without republishing. Resuming a session preserves its original settings and deadline. **Save Session Name** and **Save Appearance** require republication to update the public HTML.
+
+If startup reports invalid or missing session settings, save a complete valid configuration in the Builder. A new timeout does not extend or reopen a session that already expired.
 
 ## localStorage Limits
 
@@ -53,7 +59,7 @@ export const TroubleshootingSection: DocSection = {
 
 ## The Experiment is Slow
 
-- **Published with IndexedDB**: Check \`BATCH_CONFIG\`. A \`size\` that's too low generates too many requests. Too high can cause data loss if the browser crashes.
+- **Published with IndexedDB**: Smaller positive batches make more requests; larger batches leave more responses pending in the browser. Pending data is retained until acknowledgement, provided the browser storage remains available. Batch 0 waits for completion, so the timeout cannot export responses the server has not received.
 - **Many files without preload**: Add a \`jsPsychPreload\` at the start or upload files from the Builder's Timeline.
 - **Large SurveyJS**: Surveys with 50+ questions may take time to render. Consider splitting into multiple trials.
 

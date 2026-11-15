@@ -338,8 +338,9 @@ const { files } = await res.json();
 
 3. `publishWithStorage()` calls `generateExperiment(storage)` from `PublicConfiguration.ts`
 4. `PublicConfiguration.ts::generateExperiment()`:
-   - Loads Firebase config: batchConfig, recruitmentConfig, captchaConfig
+   - Resolves the active Firebase backend and credentials
    - Loads session name config from local API
+   - Embeds session naming and appearance, while batch/recruitment/CAPTCHA values come from the session service at runtime
    - Loads DevMode code/custom params (public variant)
    - Generates public experiment code with:
      - Firebase SDK loading (from CDN)
@@ -392,7 +393,7 @@ const { files } = await res.json();
 
 8. Firebase:
    - Creates/updates GitHub repository
-   - Validates the generated configuration and media paths
+   - Validates experiment identity and media paths; resolves provider, destination and response validation on the server
    - Acquires the publication lease, uploads `img/`, `aud/`, `vid/` and the root `index.html`, and confirms one `publishedConfiguration`
    - Retains each existing session's own configuration and destination
    - Sets up GitHub Pages
@@ -407,7 +408,9 @@ Client receives: `{ success: true, repoUrl, pagesUrl }`
 - URL is automatically copied to clipboard
 - User can share the public experiment URL
 
-Republishing updates that same entry and resource paths. New sessions use the confirmed settings; existing sessions retain their original settings and resume only if their saved progress remains valid for the current execution. Base64 is used to transfer media to the publisher, not to embed every resource in the participant's HTML. The browser loads the published files from their normal paths.
+Republishing updates that same entry and resource paths. `publishedConfiguration` contains provider, destination and response validation. A new session combines those fields with the latest saved `batchConfig`, `recruitmentConfig` and `captchaConfig`; these three groups apply after **Save Configuration** without republishing. Publishing does not overwrite them. Session naming, appearance and execution content still require publication. Existing sessions retain their original session configuration and resume only if their saved progress remains valid for the current execution. See [save or republish](10-EXPERIMENT_CONFIG.md#save-or-republish).
+
+Base64 is used to transfer media to the publisher, not to embed every resource in the participant's HTML. The browser loads the published files from their normal paths.
 
 ---
 
