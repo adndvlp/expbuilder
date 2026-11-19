@@ -1,16 +1,21 @@
+import { buildWorkspace } from "./workspaceBuild.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+await buildWorkspace();
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(repositoryRoot, "client");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const isCi =
-  process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
 const suites = [
+  {
+    name: "shared workspace and canvas types",
+    args: ["run", "check:workspace"],
+  },
   {
     name: "client file size limits",
     args: ["--prefix", "client", "run", "check:max-lines"],
@@ -97,7 +102,9 @@ try {
   }
 } catch (error) {
   console.error(
-    error instanceof Error ? error.message : "Failed to run the complete test suite",
+    error instanceof Error
+      ? error.message
+      : "Failed to run the complete test suite",
   );
   exitCode = 1;
 } finally {

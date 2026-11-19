@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";

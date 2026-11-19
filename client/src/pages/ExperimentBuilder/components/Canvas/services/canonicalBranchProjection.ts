@@ -3,7 +3,7 @@ import { addExpandedFlowEdges } from "./expandedEdgeFactory";
 import { ROOT_CANVAS_SCOPE_ID } from "./expandedLayoutTypes";
 import type {
   ExpandedCanvasLayout,
-  ExpandedCanvasNode,
+  CanvasRoutingNode,
   ExpandedLoopScope,
 } from "./expandedLayoutTypes";
 
@@ -77,7 +77,7 @@ export function getCanonicalBranchTargets(
 }
 
 function findItemNode(
-  nodes: readonly ExpandedCanvasNode[],
+  nodes: readonly CanvasRoutingNode[],
   itemId: string | number,
   type: "trial" | "loop",
 ) {
@@ -87,7 +87,7 @@ function findItemNode(
 }
 
 function resolveVisibleNodes(
-  nodes: readonly ExpandedCanvasNode[],
+  nodes: readonly CanvasRoutingNode[],
   itemId: string | number,
   ownerId: string | null,
   scopeParents: Readonly<Record<string, string | null>>,
@@ -109,7 +109,7 @@ function resolveVisibleNodes(
 }
 
 export function addCanonicalBranchEdges(
-  layout: ExpandedCanvasLayout,
+  layout: Omit<ExpandedCanvasLayout, "nodes"> & { nodes: CanvasRoutingNode[] },
   edges: readonly GraphBranchEdge[],
   scopeParents: Readonly<Record<string, string | null>>,
 ) {

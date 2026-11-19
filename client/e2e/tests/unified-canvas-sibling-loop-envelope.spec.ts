@@ -1,6 +1,7 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
-import { fulfillGraph } from "../helpers/loopBranchGraph";
+import { routeGraph } from "../helpers/loopBranchGraph";
 import type {
   ExperimentGraphSnapshot,
   TimelineItem,
@@ -107,8 +108,7 @@ const graphSnapshot: ExperimentGraphSnapshot = {
   diagnostics: [],
 };
 
-const node = (canvas: Locator, id: string) =>
-  canvas.locator(`.react-flow__node[data-id="${id}"]`);
+const node = (canvas: Locator, id: string) => canvasNode(canvas, id);
 
 async function horizontalBounds(canvas: Locator, nodeIds: string[]) {
   const boxes = await Promise.all(
@@ -145,9 +145,7 @@ const edgeId = (kind: string, source: string, target: string) =>
 test("keeps a branched sibling outside the complete loop envelope", async ({
   page,
 }) => {
-  await page.route("**/api/experiment-graph/exp-sibling-envelope", (route) =>
-    route.fulfill(fulfillGraph(graphSnapshot)),
-  );
+  await routeGraph(page, "exp-sibling-envelope", graphSnapshot);
   await page.route("**/api/trials-metadata/exp-sibling-envelope", (route) =>
     route.fulfill({
       status: 200,

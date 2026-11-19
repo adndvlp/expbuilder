@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "../../../pages/ExperimentBuilder/contexts/TrialsContext";
@@ -38,9 +39,7 @@ describe("TrialsProvider loop timeline cache", () => {
     );
 
     await act(async () => {
-      await view
-        .getContext()
-        ?.getLoopTimeline("parent", { mode: "cache" });
+      await view.getContext()?.getLoopTimeline("parent", { mode: "cache" });
       await view.getContext()?.getLoopTimeline("child", { mode: "cache" });
     });
 
@@ -80,9 +79,7 @@ describe("TrialsProvider loop timeline cache", () => {
     queueFetchResponses(okJson({ trialsMetadata: queriedItems }));
 
     const result = await act(async () =>
-      view
-        .getContext()
-        ?.getLoopTimeline("query-loop", { mode: "query" }),
+      view.getContext()?.getLoopTimeline("query-loop", { mode: "query" }),
     );
 
     expect(result).toEqual(queriedItems);
@@ -102,12 +99,10 @@ describe("TrialsProvider loop timeline cache", () => {
     let slowLoad!: Promise<TimelineItem[]>;
     act(() => {
       slowLoad =
-        view
-          .getContext()
-          ?.getLoopTimeline("slow", {
-            mode: "activate",
-            forceRefresh: true,
-          }) ?? Promise.resolve([]);
+        view.getContext()?.getLoopTimeline("slow", {
+          mode: "activate",
+          forceRefresh: true,
+        }) ?? Promise.resolve([]);
     });
 
     await act(async () => {

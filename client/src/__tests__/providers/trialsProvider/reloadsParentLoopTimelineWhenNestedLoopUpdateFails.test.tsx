@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -69,9 +70,7 @@ describe("TrialsProvider canonical loop updates", () => {
   it("applies a nested-loop field response without mutating selected-loop state", async () => {
     const before = [timelineTrial({ id: 1, name: "Before" })];
     const after = [timelineTrial({ id: 2, name: "After" })];
-    const root = [
-      timelineLoop({ id: "loop-parent", trials: ["loop-child"] }),
-    ];
+    const root = [timelineLoop({ id: "loop-parent", trials: ["loop-child"] })];
     const view = await renderGraph(root, parentScope(before));
     const selected = loop({
       id: "loop-child",
@@ -89,9 +88,7 @@ describe("TrialsProvider canonical loop updates", () => {
       mutationJson({ loop: updated }, root, parentScope(after)),
     );
     const result = await act(async () =>
-      view
-        .getContext()
-        ?.updateLoopField("loop-child", "trials", [2], false),
+      view.getContext()?.updateLoopField("loop-child", "trials", [2], false),
     );
 
     expect(result).toBe(true);

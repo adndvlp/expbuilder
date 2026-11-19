@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 
 const mocks = vi.hoisted(() => ({
   trialsContext: {} as any,
@@ -180,9 +180,12 @@ describe("Canvas container", () => {
     fireEvent.click(screen.getByText("As Branch (Parallel)"));
 
     await waitFor(() => {
-      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
-        branches: [2, 99],
-      }));
+      expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          branches: [2, 99],
+        }),
+      );
     });
   });
 

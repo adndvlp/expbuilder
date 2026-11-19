@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 
 const mocks = vi.hoisted(() => ({ workspace: {} as any }));
 vi.mock(

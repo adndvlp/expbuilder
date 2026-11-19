@@ -1,3 +1,4 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import {
   expectBalancedFan,
@@ -7,8 +8,8 @@ import {
 import {
   branchEdge,
   edgeId,
-  fulfillGraph,
   graph,
+  routeGraph,
 } from "../helpers/loopBranchGraph";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
@@ -54,21 +55,6 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
       branches: [],
     },
   ];
-  const rootAfter = rootBefore.map((item) =>
-    item.id === "loop_4" ? { ...item, trials: [6, 7, 8, 9] } : item,
-  );
-  const loopAfter = [
-    ...loopBefore.map((item) =>
-      item.id === 8 ? { ...item, branches: [9] } : item,
-    ),
-    {
-      id: 9,
-      type: "trial" as const,
-      name: "New Trial 7",
-      parentLoopId: "loop_4",
-      branches: [],
-    },
-  ];
   const edgesBefore = [
     branchEdge(1, 2, null, null),
     branchEdge(1, 3, null, null),
@@ -84,52 +70,8 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
     },
     edgesBefore,
   );
-  const after = graph(
-    rootAfter,
-    {
-      loop_4: { scopeId: "loop_4", parentScopeId: null, items: loopAfter },
-    },
-    [...edgesBefore, branchEdge(8, 9, "loop_4", "loop_4")],
-  );
-  let submittedBody: unknown;
-  await page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
-    route.fulfill(fulfillGraph(before)),
-  );
-  await page.route(`**/api/loop-branch-levels/${experimentId}/8`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        levels: [
-          { scopeId: "loop_4", name: "Loop 1", branchCount: 0 },
-          { scopeId: null, name: "Main timeline", branchCount: 0 },
-        ],
-      }),
-    }),
-  );
-  await page.route(`**/api/trial/${experimentId}/8`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ trial: loopBefore[2] }),
-    }),
-  );
-  await page.route(`**/api/loop-branch/${experimentId}`, async (route) => {
-    submittedBody = route.request().postDataJSON();
-    await route.fulfill({
-      status: 201,
-      contentType: "application/json",
-      body: JSON.stringify({
-        trial: {
-          ...loopAfter[3],
-          plugin: "html-keyboard-response",
-          parameters: {},
-          trialCode: "",
-        },
-        graph: after,
-      }),
-    });
-  });
+  const fixture = routeGraph(page, experimentId, before);
+  const expectedRevision = fixture.document(experimentId).authoringRevision;
 
   await page.setViewportSize({ width: 1500, height: 1000 });
   await page.goto(`/#/home/experiment/${experimentId}/builder`);
@@ -137,7 +79,6 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
   const marker = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop_4");
   const loopScope = getLoopLayoutScopeId("loop_4");
   const source = getScopedNodeId(loopScope, "trial", 8);
-  const created = getScopedNodeId(loopScope, "trial", 9);
   const exit = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", 5);
   const sibling = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", 3);
   const exitSource = getScopedNodeId(loopScope, "trial", 6);
@@ -146,32 +87,65 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
   const parent = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", 2);
   const edge = (from: string, to: string) =>
     canvas.locator(`[data-testid="rf__edge-${edgeId(from, to)}"]`);
-  const node = (id: string) =>
-    canvas.locator(`.react-flow__node[data-id="${id}"]`);
+  const node = (id: string) => canvasNode(canvas, id);
   const path = (from: string, to: string) =>
     edge(from, to).locator(".react-flow__edge-path");
 
-  await canvas
-    .locator(`.react-flow__node[data-id="${marker}"]`)
-    .getByTitle("Expand loop")
-    .click();
+  await canvasNode(canvas, marker).getByTitle("Expand loop").click();
   await expect(edge(parent, exitSource)).toHaveCount(1);
   await expect(edge(parent, marker)).toHaveCount(0);
-  const sourceNode = canvas.locator(`.react-flow__node[data-id="${source}"]`);
+  const sourceNode = canvasNode(canvas, source);
   await sourceNode.click();
   await sourceNode.getByTitle("Add branch").click();
   await page.getByRole("checkbox", { name: "Loop 1" }).check();
+  const creation = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/workspace/${experimentId}/commands`) &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Continue" }).click();
-
-  await expect(
-    canvas.locator(`.react-flow__node[data-id="${created}"]`),
-  ).toBeVisible();
-  expect(submittedBody).toEqual({
-    sourceTrialId: 8,
-    targetScopeId: "loop_4",
-    mode: "parallel",
-    expectedRevision: "visual-regression",
+  const response = await creation;
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON()).toEqual({
+    kind: "addChild",
+    args: {
+      sourceId: "8",
+      scopeId: "loop_4",
+      mode: "parallel",
+      layoutBefore: expect.any(Object),
+    },
+    expectedRevision,
   });
+  const { layoutBefore } = response.request().postDataJSON().args;
+  expect(Object.keys(layoutBefore).sort()).toEqual([
+    "1",
+    "2",
+    "3",
+    "5",
+    "6",
+    "7",
+    "8",
+    "loop_4",
+  ]);
+  for (const position of Object.values(layoutBefore)) {
+    expect(position).toEqual({ x: expect.any(Number), y: expect.any(Number) });
+  }
+  const saved = await response.json();
+  const created = getScopedNodeId(loopScope, "trial", saved.result);
+  await expect(canvasNode(canvas, created)).toBeVisible();
+  expect(
+    saved.document.trials.find(
+      (trial: { id: number }) => trial.id === saved.result,
+    ),
+  ).toMatchObject({ name: "New Trial 7", parentLoopId: "loop_4" });
+  expect(
+    saved.document.trials.find((trial: { id: number }) => trial.id === 8)
+      .defaultNextTrialId,
+  ).toBe(saved.result);
+  expect(
+    saved.document.trials.find((trial: { id: number }) => trial.id === 3)
+      .branches,
+  ).toEqual([]);
   await expect(edge(source, created)).toHaveCount(1);
   await expect(edge(exitSource, exit)).toHaveCount(1);
   await expect(edge(sibling, exit)).toHaveCount(0);
@@ -190,10 +164,7 @@ test("inserting another loop trial never reconnects an unrelated sibling", async
     path: "test-results/loop-branch-after-insertion-expanded.png",
   });
 
-  await canvas
-    .locator(`.react-flow__node[data-id="${marker}"]`)
-    .getByTitle("Collapse loop")
-    .click();
+  await canvasNode(canvas, marker).getByTitle("Collapse loop").click();
   await expect(edge(marker, exit)).toHaveCount(1);
   await expect(edge(sibling, exit)).toHaveCount(0);
   await expectBelowAndCentered(canvas, marker, exit);

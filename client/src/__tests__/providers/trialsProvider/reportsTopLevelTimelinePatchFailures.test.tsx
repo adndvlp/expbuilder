@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, render, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,7 +113,10 @@ describe("TrialsProvider", () => {
     });
 
     expect(result).toEqual(createdTrial);
-    expect(view.getContext()?.timeline).toEqual([...initialTimeline, createdItem]);
+    expect(view.getContext()?.timeline).toEqual([
+      ...initialTimeline,
+      createdItem,
+    ]);
     expect(fetchMock()).toHaveBeenLastCalledWith(
       `${API_URL}/api/trial/test-exp-123`,
       {
@@ -165,7 +169,10 @@ describe("TrialsProvider", () => {
     const view = await renderLoadedProvider([
       timelineTrial({ id: 1, name: "Question", branches: [] }),
     ]);
-    const branchTrial = { ...trial({ id: 2, name: "Follow-up" }), branches: undefined };
+    const branchTrial = {
+      ...trial({ id: 2, name: "Follow-up" }),
+      branches: undefined,
+    };
     const updatedTrial = trial({
       id: 1,
       name: "Question Updated",

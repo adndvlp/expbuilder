@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { notOkJson } from "../../helpers/trialFactories";
@@ -18,13 +19,11 @@ describe("TrialsProvider strict loop timeline loading", () => {
 
     await act(async () => {
       try {
-        await view
-          .getContext()
-          ?.getLoopTimeline("missing-loop", {
-            mode: "cache",
-            forceRefresh: true,
-            throwOnError: true,
-          });
+        await view.getContext()?.getLoopTimeline("missing-loop", {
+          mode: "cache",
+          forceRefresh: true,
+          throwOnError: true,
+        });
       } catch (cause: unknown) {
         failure = cause;
       }

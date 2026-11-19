@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 import type { TimelineItem } from "../../pages/ExperimentBuilder/contexts/TrialsContext";
 
 type MockNode = {
@@ -109,7 +109,9 @@ describe("unified Canvas loop rendering", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "toggle-parent" }));
     expect(await screen.findByText("Parent first")).toBeInTheDocument();
-    expect(container.querySelector(".canvas-breadcrumb")).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".canvas-breadcrumb"),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByTestId("react-flow")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "toggle-nested" }));

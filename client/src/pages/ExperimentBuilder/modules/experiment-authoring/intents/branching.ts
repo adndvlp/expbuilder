@@ -54,6 +54,7 @@ export function addBranchingRule(
     condition.id === conditionId
       ? {
           ...condition,
+          kind: "condition" as const,
           rules: [...condition.rules, { column: "", op: "==", value: "" }],
         }
       : condition,
@@ -86,6 +87,7 @@ export function updateBranchingRule(
     condition.id === conditionId
       ? {
           ...condition,
+          kind: "condition" as const,
           rules: condition.rules.map((rule, index) =>
             index === ruleIndex ? { ...rule, [field]: value } : rule,
           ),
@@ -168,7 +170,7 @@ export function buildBranchingSaveUpdates(options: {
   existingBranches?: (string | number)[];
   isBranchTarget: (trialId: string | number) => boolean;
 }): BranchingSaveUpdates {
-  const branches = [...(options.existingBranches ?? [])];
+  const branches: (string | number)[] = [];
   const branchConditions: BranchCondition[] = [];
   for (const condition of options.conditions) {
     if (condition.nextTrialId == null) continue;

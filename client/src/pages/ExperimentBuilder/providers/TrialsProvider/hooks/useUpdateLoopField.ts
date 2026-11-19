@@ -27,7 +27,8 @@ export default function useUpdateLoopField({
           id,
           { [fieldName]: value } as Partial<Loop>,
         );
-        if (graphFields.has(fieldName)) applyGraphSnapshot(data.graph);
+        if (data.graph?.workspace || graphFields.has(fieldName))
+          applyGraphSnapshot(data.graph);
         if (updateSelectedLoop) {
           setSelectedLoop((current) =>
             current && idsMatch(current.id, id) ? data.loop : current,

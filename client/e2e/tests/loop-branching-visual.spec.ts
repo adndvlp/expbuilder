@@ -1,3 +1,4 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import {
   expectBalancedFan,
@@ -7,8 +8,8 @@ import {
 import {
   branchEdge,
   edgeId,
-  fulfillGraph,
   graph,
+  routeGraph,
 } from "../helpers/loopBranchGraph";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
@@ -88,9 +89,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
       branchEdge("source", "root-target", "inner", null, ["inner", "outer"]),
     ],
   );
-  await page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
-    route.fulfill(fulfillGraph(snapshot)),
-  );
+  await routeGraph(page, experimentId, snapshot);
   await page.route(
     `**/api/loop-branch-levels/${experimentId}/source`,
     (route) =>
@@ -142,8 +141,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
   const sibling = getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "trial", "right");
   const edge = (from: string, to: string) =>
     canvas.locator(`[data-testid="rf__edge-${edgeId(from, to)}"]`);
-  const node = (id: string) =>
-    canvas.locator(`.react-flow__node[data-id="${id}"]`);
+  const node = (id: string) => canvasNode(canvas, id);
   const path = (from: string, to: string) =>
     edge(from, to).locator(".react-flow__edge-path");
 
@@ -174,7 +172,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
   ]);
   await canvas.screenshot({ path: "test-results/loop-branching-expanded.png" });
 
-  const sourceNode = canvas.locator(`.react-flow__node[data-id="${source}"]`);
+  const sourceNode = canvasNode(canvas, source);
   await sourceNode.click();
   await sourceNode.getByTitle("Add branch").click();
   await expect(
@@ -189,10 +187,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
   ).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
 
-  await canvas
-    .locator(`.react-flow__node[data-id="${innerMarker}"]`)
-    .getByTitle("Collapse loop")
-    .click();
+  await canvasNode(canvas, innerMarker).getByTitle("Collapse loop").click();
   await expect(edge(left, innerMarker)).toHaveCount(1);
   await expect(edge(left, outerMarker)).toHaveCount(0);
   await expect(edge(innerMarker, outerTarget)).toHaveCount(1);
@@ -207,10 +202,7 @@ test("[TC-10] [TL-01] [TL-02] [TL-03] renders exact exit sources through expande
     path: "test-results/loop-branching-nested-collapsed.png",
   });
 
-  await canvas
-    .locator(`.react-flow__node[data-id="${outerMarker}"]`)
-    .getByTitle("Collapse loop")
-    .click();
+  await canvasNode(canvas, outerMarker).getByTitle("Collapse loop").click();
   await expect(edge(left, outerMarker)).toHaveCount(1);
   await expect(edge(outerMarker, rootTarget)).toHaveCount(1);
   await expect(edge(sibling, rootTarget)).toHaveCount(0);

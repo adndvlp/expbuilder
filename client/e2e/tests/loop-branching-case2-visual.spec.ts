@@ -1,9 +1,10 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import {
   branchEdge,
   edgeId,
-  fulfillGraph,
   graph,
+  routeGraph,
 } from "../helpers/loopBranchGraph";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 import { getLoopLayoutScopeId } from "../../src/pages/ExperimentBuilder/components/Canvas/services/buildUnifiedFlowLayout";
@@ -80,9 +81,7 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
       branchEdge("source", "root-b", "inner", null, ["inner", "outer"]),
     ],
   );
-  await page.route(`**/api/experiment-graph/${experimentId}`, (route) =>
-    route.fulfill(fulfillGraph(snapshot)),
-  );
+  await routeGraph(page, experimentId, snapshot);
   await page.setViewportSize({ width: 1900, height: 1200 });
   await page.goto(`/#/home/experiment/${experimentId}/builder`);
 
@@ -132,10 +131,7 @@ test("[TL-04] [TL-05] [TL-06] [TL-07] [TL-08] [TL-09] preserves Case 2 routes, i
       .getByTitle("Expand loop")
       .click();
   const collapse = (id: string) =>
-    canvas
-      .locator(`.react-flow__node[data-id="${id}"]`)
-      .getByTitle("Collapse loop")
-      .click();
+    canvasNode(canvas, id).getByTitle("Collapse loop").click();
 
   await expandOuter();
   await expandInner();

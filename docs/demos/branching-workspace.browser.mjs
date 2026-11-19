@@ -1,0 +1,1269 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const require = createRequire(new URL('../../client/package.json', import.meta.url));
+const { chromium, expect } = require('@playwright/test');
+const { buildSync } = require('esbuild');
+const helperBuild=buildSync({entryPoints:[fileURLToPath(new URL('../../client/e2e/helpers/layoutAssertions.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'cjs',external:['@playwright/test']});
+const helperModule={exports:{}};
+new Function('require','module','exports',helperBuild.outputFiles[0].text)(require,helperModule,helperModule.exports);
+const {waitForCanvasViewport,expectBelowAndCentered,expectPathAvoidsNodes}=helperModule.exports;
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const source = readFileSync(new URL('./branching-workspace.html', import.meta.url));
+const server = createServer((req,res) => { res.setHeader('Content-Type','text/html');res.end(source); });
+await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
+const executable = process.env.PLAYWRIGHT_EXECUTABLE_PATH || '/private/tmp/branching-curves-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell';
+const browser = await chromium.launch({headless:true,...(existsSync(executable)?{executablePath:executable}:{})});
+const page = await browser.newPage({viewport:{width:1500,height:980}});
+const errors = [];
+page.on('pageerror',error=>errors.push(error.message));
+page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+// Optional cached copies of the exact pinned CDN resources make the check work offline.
+const cdn = new Map([
+  ['react@18.3.1/umd/react.production.min.js','/private/tmp/branching-workspace-react.js'],
+  ['react-dom@18.3.1/umd/react-dom.production.min.js','/private/tmp/branching-workspace-react-dom.js'],
+  ['htm@3.1.1/dist/htm.umd.js','/private/tmp/branching-workspace-htm.js'],
+  ['@xyflow/react@12.9.2/dist/umd/index.js',root+'client/node_modules/@xyflow/react/dist/umd/index.js'],
+  ['@xyflow/react@12.9.2/dist/style.css',root+'client/node_modules/@xyflow/react/dist/style.css'],
+]);
+await page.route('https://unpkg.com/**',async route=>{
+  const key=route.request().url().replace('https://unpkg.com/',''),path=cdn.get(key);
+  if(path&&existsSync(path))return route.fulfill({path,contentType:key.endsWith('.css')?'text/css':'application/javascript'});
+  return route.continue();
+});
+const state=()=>page.evaluate(()=>window.workspaceDemo.getState());
+const snapshot=async name=>page.screenshot({path:'/private/tmp/branching-workspace-'+name+'.png',fullPage:true});
+const openPreview=()=>page.evaluate(()=>{
+  document.querySelector('iframe[title="Generated experiment preview"]')?.remove();
+  const frame=document.createElement('iframe');frame.title='Generated experiment preview';frame.sandbox='allow-scripts';
+  Object.assign(frame.style,{position:'fixed',inset:'0',width:'100%',height:'100%',zIndex:'99999'});
+  frame.srcdoc=workspaceDemo.generatedHTML();document.body.append(frame);
+});
+const closePreview=()=>page.locator('iframe[title="Generated experiment preview"]').evaluate(frame=>frame.remove());
+
+const choose=async index=>{const select=page.getByLabel('Escenario',{exact:true});if(await select.inputValue()===String(index))await select.selectOption(String(index===3?0:3));await select.selectOption(String(index));await page.waitForTimeout(350);};
+const run=async(name,fn)=>{if(process.env.WORKSPACE_BROWSER_TEST&&!name.includes(process.env.WORKSPACE_BROWSER_TEST))return;await fn();console.log('PASS '+name);};
+const selectConnection=async(source,target)=>{
+  const id=await page.evaluate(({source,target})=>WorkspaceDemo.layout(workspaceDemo.getState()).flowEdges.find(e=>e.source===source&&e.target===target).id,{source,target});
+  const edge=page.locator('.react-flow__edge[data-id="'+id+'"]');
+  const point=await edge.locator('.react-flow__edge-path').evaluate(p=>{const v=p.getPointAtLength(p.getTotalLength()*.5).matrixTransform(p.getScreenCTM());return{x:v.x,y:v.y};});
+  await page.mouse.click(point.x,point.y);await page.mouse.move(0,0);await expect(edge).toHaveClass(/selected/);
+  return edge;
+};
+const dragConnectionEnd=async(edge,end,point)=>{
+  const label=end==='source'?'Arrastrar origen para reconectar':'Arrastrar destino para reconectar';
+  const anchor=edge.getByRole('img',{name:label,exact:true});await anchor.waitFor();const box=await anchor.boundingBox();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(point.x,point.y,{steps:20});await page.mouse.up();await page.mouse.move(0,0);
+};
+const dragConnectionTarget=(edge,point)=>dragConnectionEnd(edge,'target',point);
+const dragHandles=async(a,ha,b,hb)=>{
+  const first=await page.getByTestId('item-'+a).locator('[data-handleid="'+(ha==='top'?'flow-target':'flow-source')+'"]').boundingBox();
+  const last=await page.getByTestId('item-'+b).locator('[data-handleid="'+(hb==='top'?'flow-target':'flow-source')+'"]').boundingBox();
+  await page.mouse.move(first.x+first.width/2,first.y+first.height/2);await page.mouse.down();
+  await page.mouse.move(last.x+last.width/2,last.y+last.height/2,{steps:20});await page.mouse.up();await page.mouse.move(0,0);
+};
+const loadLooseLoopFixture=async()=>{
+  await choose(1);const free=await page.evaluate(()=>{
+    const s=workspaceDemo.getState(),id=WorkspaceDemo.addTrial(s,{x:1400,y:100});workspaceDemo.load(s);return id;
+  });await waitForCanvasViewport(page.locator('.canvas-area'));return free;
+};
+const loadInsertionFixture=async(complex=false)=>{
+  await page.evaluate(complex=>{
+    const s=WorkspaceDemo.makeState('Inserción',[WorkspaceDemo.trial('a','Inicio',null,'b'),WorkspaceDemo.trial('b','Ensayo A'),WorkspaceDemo.trial('free','Trial suelto')],[],'a');
+    s.anchors.free={x:650,y:80};
+    if(complex){
+      s.trials=s.trials.filter(t=>t.id!=='free');
+      s.trials.push(WorkspaceDemo.trial('loca','LOCA',null,'h1'),WorkspaceDemo.trial('h1','Hijo 1',null,'h2'),WorkspaceDemo.trial('h2','Hijo 2'),WorkspaceDemo.trial('right','New Trial 1'));
+      WorkspaceDemo.connect(s,'loca','right');s.anchors.loca={x:650,y:80};
+    }
+    workspaceDemo.load(s);
+  },complex);
+  await expect(page.getByTestId('item-'+(complex?'loca':'free'))).toBeVisible();await waitForCanvasViewport(page.locator('.canvas-area'));
+};
+const loadSiblingFixture=async()=>{
+  await loadInsertionFixture();
+  await page.evaluate(()=>{
+    const s=workspaceDemo.getState();s.trials.push(WorkspaceDemo.trial('loca','LOCA',null,'loca-child'),WorkspaceDemo.trial('loca-child','Hijo de LOCA'),WorkspaceDemo.trial('tail','Final'));
+    WorkspaceDemo.connect(s,'a','loca');WorkspaceDemo.setDefault(s,'b','tail');workspaceDemo.load(s);
+  });
+  await expect(page.getByTestId('item-loca')).toBeVisible();await waitForCanvasViewport(page.locator('.canvas-area'));
+};
+const dragToPoint=async(id,point)=>{
+  const node=await page.getByTestId('item-'+id).boundingBox();
+  await page.mouse.move(node.x+node.width/2,node.y+node.height/2);await page.mouse.down();await page.mouse.move(point.x,point.y,{steps:24});
+};
+const dragOverEdge=async(id,offset=0)=>{
+  const target=await page.locator('.react-flow__edge-path').first().evaluate(p=>{const point=p.getPointAtLength(p.getTotalLength()/2).matrixTransform(p.getScreenCTM());return{x:point.x,y:point.y};});
+  await dragToPoint(id,{x:target.x+offset,y:target.y});
+  return target;
+};
+const selectBox=async(ids)=>{
+  await waitForCanvasViewport(page.locator('.canvas-area'));
+  const boxes=await Promise.all(ids.map(id=>page.getByTestId('item-'+id).boundingBox()));
+  const start={x:Math.min(...boxes.map(b=>b.x))-4,y:Math.min(...boxes.map(b=>b.y))-4};
+  const end={x:Math.max(...boxes.map(b=>b.x+b.width))+4,y:Math.max(...boxes.map(b=>b.y+b.height))+4};
+  await page.mouse.move(start.x,start.y);await page.mouse.down({button:'left'});await page.mouse.move(end.x,end.y,{steps:20});
+};
+try {
+  await page.goto('http://127.0.0.1:'+server.address().port);
+  await page.waitForFunction(()=>!!window.workspaceDemo,{timeout:20000});
+  await page.waitForTimeout(600);
+  await run('renders the editor and persistent Add trial button',async()=>{
+    await expect(page.getByText('Trials guardados',{exact:true})).toHaveCount(0);
+    await expect(page.getByRole('button',{name:'Estado / HTML',exact:true})).toHaveCount(0);
+    await expect(page.locator('.canvas-hint,.statusbar,.trial-list-button')).toHaveCount(0);
+    await expect(page.getByRole('heading',{name:'Experiment',exact:true})).toHaveCount(0);
+    await page.getByTitle('Add trial',{exact:true}).waitFor();
+    assert.equal((await state()).trials.length,7);
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);
+    await expect(page.getByTestId('item-start').getByText('▶ INICIO DEL EXPERIMENTO',{exact:true})).toBeVisible();
+    await snapshot('initial');
+    await expect(page.locator('.react-flow__edge-path')).toHaveCount(4);
+    assert.equal(await page.locator('.react-flow__edge-path').evaluateAll(paths=>paths.every(path=>path.getTotalLength()>0&&getComputedStyle(path).stroke!=='none'&&parseFloat(getComputedStyle(path).strokeWidth)>0)),true);
+  });
+  await run('edge selection highlights only the connection and restores its normal style',async()=>{
+    const edge=page.locator('.react-flow__edge').filter({has:page.locator('path')}).first();
+    const path=edge.locator('.react-flow__edge-path');
+    const original=await path.evaluate(p=>({stroke:getComputedStyle(p).stroke,width:parseFloat(getComputedStyle(p).strokeWidth),filter:getComputedStyle(p).filter}));
+    const geometry=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    await page.getByTestId('item-start').click();
+    await expect(page.getByTestId('item-start').locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    const point=await path.evaluate(p=>{const v=p.getPointAtLength(p.getTotalLength()*.62).matrixTransform(p.getScreenCTM());return {x:v.x,y:v.y};});
+    await page.mouse.click(point.x,point.y);await page.mouse.move(0,0);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await expect(page.locator('.trial-node--selected,.loop-node--selected')).toHaveCount(0);
+    await expect(page.getByRole('heading',{name:'Conexión seleccionada',exact:true})).toBeVisible();
+    const selected=await path.evaluate(p=>({stroke:getComputedStyle(p).stroke,width:parseFloat(getComputedStyle(p).strokeWidth),filter:getComputedStyle(p).filter,marker:p.getAttribute('marker-end')}));
+    assert.notEqual(selected.stroke,original.stroke);assert.ok(selected.width>original.width);assert.notEqual(selected.filter,'none');
+    const arrow=await path.evaluate(p=>{const id=p.getAttribute('marker-end').match(/#([^'")]+)/)[1];const marker=document.getElementById(id).querySelector('polyline');return getComputedStyle(marker).fill;});
+    assert.equal(arrow,selected.stroke);
+    await expect(edge.getByRole('img',{name:'Arrastrar origen para reconectar',exact:true})).toBeVisible();
+    await expect(edge.getByRole('img',{name:'Arrastrar destino para reconectar',exact:true})).toBeVisible();
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions),geometry);
+    await snapshot('selected-edge');
+    await page.getByTestId('item-a').click();await page.mouse.move(0,0);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(0);
+    await expect(page.locator('.edge-reconnect-icon')).toHaveCount(0);
+    await expect(page.getByTestId('item-a').locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    const restored=await path.evaluate(p=>({stroke:getComputedStyle(p).stroke,width:parseFloat(getComputedStyle(p).strokeWidth),filter:getComputedStyle(p).filter}));
+    assert.deepEqual(restored,original);
+    await page.mouse.click(1080,850);
+    await expect(page.locator('.trial-node--selected,.react-flow__edge.selected')).toHaveCount(0);
+  });
+  await run('double click enables node checkboxes and the canvas background clears multiple selection',async()=>{
+    await choose(0);const before=await state();
+    await page.getByTestId('item-a').dblclick();
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true})).toBeChecked();
+    await expect(page.getByRole('checkbox')).toHaveCount(before.trials.length);
+    await page.getByRole('checkbox',{name:'Seleccionar Final',exact:true}).check();
+    await expect(page.getByTestId('item-a').locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    await expect(page.getByTestId('item-b').locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    await expect(page.getByRole('heading',{name:'Selección múltiple',exact:true})).toBeVisible();
+    await page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true}).uncheck();
+    await expect(page.getByTestId('item-a').locator('.trial-node')).not.toHaveClass(/trial-node--selected/);
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Final',exact:true})).toBeChecked();
+    assert.deepEqual(await state(),before,'selecting nodes does not change the graph or layout');
+    await snapshot('multiple-selection');
+    await page.mouse.click(1080,850);
+    await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.locator('.trial-node--selected,.loop-node--selected')).toHaveCount(0);
+    await page.getByTestId('item-a').click();
+    await expect(page.getByTestId('item-a').locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    await expect(page.getByRole('checkbox')).toHaveCount(0);
+  });
+  await run('native copy/paste duplicates a connected pair plus an isolated selection with one undoable edit',async()=>{
+    await choose(0);const before=await state();
+    await page.getByTestId('item-start').dblclick();
+    await page.getByTestId('item-a').click();await page.getByTestId('item-loca2').click();
+    await page.keyboard.press('Meta+c');assert.deepEqual(await state(),before,'copy does not mutate');
+    await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+3);
+    const after=await state(),added=after.trials.filter(t=>!before.trials.some(old=>old.id===t.id)),first=added.find(t=>t.name==='Inicio 2'),second=added.find(t=>t.name==='Ensayo A 2'),single=added.find(t=>t.name==='Hijo 3');
+    assert.equal(first.defaultNextTrialId,second.id);assert.equal(second.defaultNextTrialId,null);assert.equal(single.defaultNextTrialId,null);
+    assert.equal(after.entryId,before.entryId);await expect(page.locator('.node-selection-control input:checked')).toHaveCount(3);
+    const live=await page.evaluate(()=>[...WorkspaceDemo.reachable(workspaceDemo.getState()).trials]);assert.ok(added.every(t=>!live.includes(t.id)));
+    const dragGeometry=await page.evaluate(ids=>ids.map(id=>({id,draggable:WorkspaceDemo.layout(workspaceDemo.getState()).flowNodes.find(n=>n.id===id).draggable})),added.map(t=>t.id));
+    assert.ok(dragGeometry.every(n=>n.draggable));
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('pasted-mixed-selection');
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+    await page.keyboard.press('Meta+v');await expect.poll(async()=>(await state()).trials.length).toBe(after.trials.length+3);
+    const twice=await state();assert.equal(new Set(twice.trials.map(t=>t.id)).size,twice.trials.length);
+    await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(twice.trials.length+3);
+    const third=(await state()).trials.filter(t=>!twice.trials.some(old=>old.id===t.id));
+    assert.deepEqual(third.map(t=>t.name).sort(),['Inicio 4','Ensayo A 4','Hijo 5'].sort());
+  });
+  await run('copy naming skips existing trial and loop names and continues when copying the copy',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const s=workspaceDemo.getState();s.trials.find(t=>t.id==='free').name='Ensayo A 2';
+      WorkspaceDemo.groupLoop(s,['loca','loca1','loca2'],'Ensayo A 3');workspaceDemo.load(s);
+    });
+    const before=await state();await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+1);
+    assert.ok((await state()).trials.some(t=>t.name==='Ensayo A 4'));
+    await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+2);
+    assert.ok((await state()).trials.some(t=>t.name==='Ensayo A 5'));
+  });
+  await run('copying a collapsed loop includes its nested contents without linking copies to originals',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.evaluate(id=>{const s=workspaceDemo.getState();s.loops.find(l=>l.id===id).expanded=false;workspaceDemo.load(s);},outer.id);
+    await page.getByTestId('item-'+outer.id).click();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).loops.length).toBe(before.loops.length+2);
+    const after=await state(),copied=after.loops.find(l=>l.name==='Loop principal 2'),nested=after.loops.find(l=>l.name==='Nested loop 2');
+    assert.equal(copied.expanded,false);assert.equal(nested.parentLoopId,copied.id);assert.equal(after.trials.length,before.trials.length+3);
+    const originalIds=[...before.trials,...before.loops].map(i=>i.id);
+    assert.equal(copied.nextId,null);
+    assert.ok(after.trials.filter(t=>!originalIds.includes(t.id)).every(t=>!originalIds.includes(t.defaultNextTrialId)&&t.thenGoTo.every(r=>!originalIds.includes(r.targetId))));
+    await expect(page.getByTestId('item-'+copied.id)).toBeVisible();await expect(page.getByTestId('start-badge')).toHaveCount(1);
+  });
+  await run('pasting into an empty canvas restores the snapshot and automatically chooses one start',async()=>{
+    await choose(0);await page.getByTestId('item-start').dblclick();await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');
+    await choose(3);await page.locator('.canvas-area').focus();await page.keyboard.press('Meta+v');
+    await expect.poll(async()=>(await state()).trials.length).toBe(2);
+    const s=await state(),start=s.trials.find(t=>t.name==='Inicio 2'),next=s.trials.find(t=>t.name==='Ensayo A 2');
+    assert.equal(s.entryId,start.id);assert.equal(start.defaultNextTrialId,next.id);await expect(page.getByTestId('start-badge')).toHaveCount(1);
+  });
+  await run('text clipboard operations, unrelated text, edge selection and open dialogs do not copy or paste nodes',async()=>{
+    await choose(0);await page.getByTestId('item-start').click();
+    const name=page.getByLabel('Item name',{exact:true});await name.focus();await name.selectText();
+    const before=await state();await page.keyboard.press('Meta+c');await page.keyboard.press('Meta+v');assert.deepEqual(await state(),before);
+    await page.locator('.canvas-area').focus();await page.keyboard.press('Meta+v');assert.deepEqual(await state(),before,'plain text is not a graph fragment');
+    await page.getByTestId('item-b').click();await selectConnection('start','a');
+    const copied=await page.evaluate(()=>{const e=new ClipboardEvent('copy',{clipboardData:new DataTransfer(),bubbles:true,cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;});assert.equal(copied,false);
+    await page.getByTestId('item-start').click();await page.keyboard.press('Meta+c');
+    await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();const opened=await state();
+    await page.keyboard.press('Meta+v');assert.deepEqual(await state(),opened);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+  });
+  await run('clipboard snapshot survives source deletion and its serializable payload supports a fresh editor instance',async()=>{
+    await choose(0);await page.getByTestId('item-a').click();await page.keyboard.press('Meta+c');await page.keyboard.press('Delete');
+    const deleted=await state();await page.keyboard.press('Meta+v');await expect.poll(async()=>(await state()).trials.length).toBe(deleted.trials.length+1);
+    const after=await state(),copy=after.trials.find(t=>t.name==='Ensayo A 2');assert.equal(copy.defaultNextTrialId,null);
+    const payload=await page.evaluate(()=>{const data=new DataTransfer(),e=new ClipboardEvent('copy',{clipboardData:data,bubbles:true,cancelable:true});window.dispatchEvent(e);return data.getData('text/plain');});
+    assert.equal(JSON.parse(payload).schema,'branching-workspace-fragment/1');
+    await page.reload();await page.waitForFunction(()=>!!window.workspaceDemo);const before=await state();
+    await page.evaluate(payload=>{const data=new DataTransfer();data.setData('text/plain',payload);window.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));},payload);
+    await expect.poll(async()=>(await state()).trials.length).toBe(before.trials.length+1);
+  });
+  await run('checkboxes sit inside the visual trial and loop nodes and follow their animation',async()=>{
+    for(const preset of [0,1]){
+      await choose(preset);
+      const id=preset===0?'a':(await state()).loops.find(l=>l.name==='Loop principal').id;
+      const node=page.getByTestId('item-'+id),name=(await state())[preset===0?'trials':'loops'].find(n=>n.id===id).name;
+      const textGeometry=()=>node.evaluate((el,name)=>{
+        const parent=el.querySelector('.trial-node,.loop-node'),walker=document.createTreeWalker(parent,NodeFilter.SHOW_TEXT);
+        let text;while((text=walker.nextNode()))if(text.textContent.trim()===name)break;
+        const range=document.createRange();range.selectNodeContents(text);const bounds=range.getBoundingClientRect(),outer=parent.getBoundingClientRect();
+        return{x:bounds.x-outer.x,y:bounds.y-outer.y,width:bounds.width,height:bounds.height};
+      },name);
+      await page.mouse.move(0,0);const originalText=await textGeometry();await node.dblclick();await page.mouse.move(0,0);
+      const checkbox=node.getByRole('checkbox');await expect(checkbox).toBeChecked();
+      const selectedText=await textGeometry();for(const key of ['x','y','width','height'])assert.ok(Math.abs(originalText[key]-selectedText[key])<.2,'selection preserves text '+key);
+      assert.equal(await checkbox.evaluate(el=>!!el.closest('.trial-node,.loop-node')),true,'checkbox is inside the animated node');
+      assert.equal(await checkbox.evaluate(el=>getComputedStyle(el,'::after').borderRightColor),'rgb(255, 255, 255)','the checkmark is white');
+      const before=await checkbox.boundingBox();await node.hover();
+      const samples=await checkbox.evaluate(async el=>{
+        const result=[],parent=el.closest('.trial-node,.loop-node');
+        for(let i=0;i<18;i++){
+          await new Promise(requestAnimationFrame);const box=el.getBoundingClientRect(),node=parent.getBoundingClientRect();
+          result.push({inside:box.left>=node.left&&box.right<=node.right&&box.top>=node.top&&box.bottom<=node.bottom,x:(box.x+box.width/2-node.x)/node.width-parent.clientLeft/parent.offsetWidth,y:(box.y+box.height/2-node.y)/node.height,centerY:box.y+box.height/2});
+        }
+        return result;
+      });
+      assert.ok(samples.every(s=>s.inside));
+      assert.ok(Math.max(...samples.map(s=>s.x))-Math.min(...samples.map(s=>s.x))<.005);
+      assert.ok(Math.max(...samples.map(s=>s.y))-Math.min(...samples.map(s=>s.y))<.005);
+      assert.ok(Math.abs(samples.at(-1).centerY-before.y-before.height/2)>1,'checkbox moves with the node');
+    }
+  });
+  await run('clicking node bodies toggles multiple selection and checkbox clicks toggle only once',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-a').dblclick();
+    const final=page.getByTestId('item-b'),checkbox=final.getByRole('checkbox');
+    await final.getByText('Final',{exact:true}).click();await expect(checkbox).toBeChecked();
+    await final.getByText('Final',{exact:true}).click();await expect(checkbox).not.toBeChecked();
+    await checkbox.check();await expect(checkbox).toBeChecked();
+    await page.getByTestId('item-a').getByText('Ensayo A',{exact:true}).click();await expect(page.getByTestId('item-a').getByRole('checkbox')).not.toBeChecked();
+    await expect(checkbox).toBeChecked();assert.deepEqual(await state(),before);
+    await page.getByTestId('item-a').getByText('Ensayo A',{exact:true}).click();await snapshot('checkboxes-inside');
+    await choose(1);const s=await state(),outer=s.loops.find(l=>l.name==='Loop principal'),inner=s.loops.find(l=>l.name==='Nested loop');
+    await page.getByTestId('item-'+outer.id).dblclick();
+    const loop=page.getByTestId('item-'+inner.id);await loop.getByText('Nested loop',{exact:true}).click();await expect(loop.getByRole('checkbox')).toBeChecked();
+    await loop.getByText('Nested loop',{exact:true}).click();await expect(loop.getByRole('checkbox')).not.toBeChecked();
+    await loop.getByTitle('Collapse loop',{exact:true}).click();await expect(loop.getByRole('checkbox')).not.toBeChecked();
+    await expect(page.getByTestId('item-'+outer.id).getByRole('checkbox')).toBeChecked();
+  });
+  await run('left drag selects with the native rectangle, marks checkboxes, and supports Delete and Undo',async()=>{
+    await choose(0);const before=await state(),viewport=await page.locator('.react-flow__viewport').getAttribute('style');
+    await page.getByTestId('item-free').click();await page.getByLabel('Item name',{exact:true}).focus();
+    await selectBox(['start','a']);
+    await expect(page.locator('.react-flow__selection')).toBeVisible();
+    await page.mouse.up();await page.mouse.move(0,0);
+    await expect(page.locator('.react-flow__selection')).toHaveCount(0);
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Inicio',exact:true})).toBeChecked();
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true})).toBeChecked();
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Final',exact:true})).not.toBeChecked();
+    assert.equal(await page.locator('.react-flow__viewport').getAttribute('style'),viewport);
+    assert.deepEqual(await state(),before);await snapshot('selection-rectangle');
+    await page.keyboard.press('Delete');const after=await state();assert.ok(!after.trials.some(t=>t.id==='start'||t.id==='a'));assert.ok(after.trials.some(t=>t.id==='b'));
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('holding a click or drawing a zero-area rectangle never selects everything',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-free').dblclick();await page.mouse.move(1050,730);
+    await page.mouse.down();await page.waitForTimeout(120);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(1);
+    await expect(page.getByTestId('item-free').getByRole('checkbox')).toBeChecked();
+    await page.mouse.move(1051,731);await page.waitForTimeout(80);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(1);
+    await page.mouse.up();await page.mouse.click(1050,730);
+    for(const end of [{x:1050,y:820},{x:960,y:730}]){
+      await page.mouse.move(1050,730);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:12});
+      await expect(page.locator('.node-selection-control input:checked')).toHaveCount(0);
+      await page.mouse.up();await page.mouse.click(1050,850);
+    }
+    assert.deepEqual(await state(),before);
+  });
+  await run('a tiny overlap selects a node and moving the rectangle away deselects it',async()=>{
+    await choose(0);const before=await state(),node=await page.getByTestId('item-a').boundingBox(),y=node.y+node.height/2;
+    await page.mouse.move(node.x-30,y);await page.mouse.down();await page.mouse.move(node.x+2,y+3,{steps:12});
+    await expect(page.getByTestId('item-a').getByRole('checkbox')).toBeChecked();
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(1);
+    await page.mouse.move(node.x-5,y+3,{steps:6});await expect(page.locator('.node-selection-control input:checked')).toHaveCount(0);
+    await page.mouse.move(node.x+2,y+3,{steps:6});await expect(page.getByTestId('item-a').getByRole('checkbox')).toBeChecked();
+    await page.mouse.up();await page.mouse.move(0,0);
+    await expect(page.getByTestId('item-a').getByRole('checkbox')).toBeChecked();assert.deepEqual(await state(),before);
+  });
+  await run('two-finger wheel panning preserves the selected nodes and does not draw a rectangle',async()=>{
+    await choose(0);await selectBox(['start','a']);await page.mouse.up();await page.mouse.move(0,0);
+    const before=await state(),viewport=await page.locator('.react-flow__viewport').getAttribute('style');
+    const canvas=await page.locator('.canvas-area').boundingBox();await page.mouse.move(canvas.x+canvas.width*.8,canvas.y+canvas.height*.8);
+    await page.mouse.wheel(120,80);
+    await expect(page.locator('.react-flow__viewport')).not.toHaveAttribute('style',viewport);
+    await expect(page.locator('.react-flow__selection')).toHaveCount(0);
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Inicio',exact:true})).toBeChecked();
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true})).toBeChecked();
+    assert.deepEqual(await state(),before);
+    await page.mouse.click(canvas.x+canvas.width-30,canvas.y+canvas.height-50);await expect(page.getByRole('checkbox')).toHaveCount(0);
+  });
+  await run('the same rectangle can select again after clearing and checkboxes stay independently editable',async()=>{
+    await choose(0);
+    for(let i=0;i<2;i++){
+      await selectBox(['start','a']);await page.mouse.up();await page.mouse.move(0,0);
+      await expect(page.getByRole('checkbox',{name:'Seleccionar Inicio',exact:true})).toBeChecked();
+      await expect(page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true})).toBeChecked();
+      await page.getByRole('checkbox',{name:'Seleccionar Ensayo A',exact:true}).uncheck();
+      await expect(page.getByRole('checkbox',{name:'Seleccionar Inicio',exact:true})).toBeChecked();
+      await page.mouse.click(1080,850);await expect(page.getByRole('checkbox')).toHaveCount(0);
+    }
+  });
+  await run('Delete removes checked trials, ungroups checked loops and cleans empty scopes in one undoable action',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.getByTestId('item-'+outer.id).dblclick();
+    await expect(page.getByRole('checkbox',{name:'Seleccionar Loop principal',exact:true})).toBeChecked();
+    await page.getByRole('checkbox',{name:'Seleccionar Nested A',exact:true}).check();
+    await page.keyboard.press('Delete');
+    const after=await state();assert.ok(!after.loops.some(l=>l.id===outer.id));assert.ok(!after.trials.some(t=>t.id==='x'));
+    assert.ok(after.trials.some(t=>t.id==='y'));assert.ok(!after.loops.some(l=>l.name==='Nested loop'));
+    assert.equal(after.trials.find(t=>t.id==='y').parentLoopId,null);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('dragging over an edge previews a sequential insertion without mutating state and commits one undoable edit',async()=>{
+    await loadInsertionFixture();const before=await state();await dragOverEdge('free');
+    const preview=page.getByTestId('insertion-preview');await expect(preview).toHaveAttribute('data-mode','sequential');
+    await expect(page.getByTestId('ghost-free')).toBeVisible();assert.deepEqual(await state(),before);
+    await snapshot('ghost-sequential');
+    const proposed=await page.evaluate(()=>AppCanvas.previewInsertion(workspaceDemo.getState(),'free',{sourceId:'a',targetId:'b',mode:'sequential'}).state);
+    await page.mouse.up();await page.mouse.move(0,0);await expect(preview).toHaveCount(0);
+    assert.deepEqual(await state(),proposed);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),proposed);
+  });
+  for(const side of ['left','right'])await run('lateral drag previews and commits a parallel insertion on the '+side,async()=>{
+    await loadInsertionFixture();const before=await state();await dragOverEdge('free',side==='left'?-70:70);
+    await expect(page.getByTestId('insertion-preview')).toHaveAttribute('data-mode','parallel');
+    const ghost=await page.getByTestId('ghost-free').boundingBox(),sibling=await page.getByTestId('item-b').boundingBox();
+    assert.ok(Math.abs(ghost.y-sibling.y)<2,'the ghost is a sibling of the destination');
+    assert.ok(side==='left'?ghost.x<sibling.x:ghost.x>sibling.x);
+    assert.deepEqual(await state(),before);await snapshot('ghost-parallel-'+side);
+    await page.mouse.up();await page.mouse.move(0,0);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'b');
+    assert.equal(after.trials.find(t=>t.id==='a').thenGoTo[0].targetId,'free');
+    assert.equal(after.trials.find(t=>t.id==='free').defaultNextTrialId,null);
+    assert.equal(after.trials.find(t=>t.id==='free').thenGoTo.length,0);
+    assert.deepEqual(after.trials.find(t=>t.id==='a').destinationOrder,side==='left'?['free','b']:['b','free']);
+  });
+  for(const slot of ['between','left','right'])await run('a trial becomes the third sibling in the '+slot+' slot of an existing fork',async()=>{
+    await loadSiblingFixture();const before=await state();
+    const peers=[await page.getByTestId('item-b').boundingBox(),await page.getByTestId('item-loca').boundingBox()].sort((a,b)=>a.x-b.x);
+    const x=slot==='between'?(peers[0].x+peers[0].width+peers[1].x)/2:slot==='left'?peers[0].x-50:peers[1].x+peers[1].width+50;
+    await dragToPoint('free',{x,y:peers[0].y+peers[0].height/2});
+    const preview=page.getByTestId('insertion-preview');await expect(preview).toHaveAttribute('data-mode','parallel');await expect(preview).toHaveAttribute('data-source','a');
+    const ghost=await page.getByTestId('ghost-free').boundingBox(),b=await page.getByTestId('item-b').boundingBox(),loca=await page.getByTestId('item-loca').boundingBox();
+    assert.ok(Math.abs(ghost.y-b.y)<2&&Math.abs(ghost.y-loca.y)<2);
+    if(slot==='between')assert.ok(ghost.x>Math.min(b.x,loca.x)&&ghost.x<Math.max(b.x,loca.x));
+    if(slot==='left')assert.ok(ghost.x<Math.min(b.x,loca.x));if(slot==='right')assert.ok(ghost.x>Math.max(b.x,loca.x));
+    assert.deepEqual(await state(),before);await snapshot('ghost-siblings-'+slot);
+    await page.mouse.up();await page.mouse.move(0,0);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'b');
+    assert.equal(after.trials.find(t=>t.id==='b').defaultNextTrialId,'tail');assert.equal(after.trials.find(t=>t.id==='loca').defaultNextTrialId,'loca-child');
+    assert.equal(after.trials.find(t=>t.id==='free').defaultNextTrialId,null);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).filter(e=>e.source==='a').length),3);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).filter(e=>e.source==='free').length),0);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('the shared area of a fork offers another sibling',async()=>{
+    await loadSiblingFixture();const parent=await page.getByTestId('item-a').boundingBox();
+    await dragToPoint('free',{x:parent.x+parent.width/2,y:parent.y+parent.height+24});
+    await expect(page.getByTestId('insertion-preview')).toHaveAttribute('data-mode','parallel');
+    await expect(page.getByTestId('insertion-preview')).toHaveAttribute('data-source','a');
+    await page.keyboard.press('Escape');await page.mouse.up();await page.mouse.move(0,0);
+  });
+  await run('a precise hit on one fork arm still inserts sequentially into that branch only',async()=>{
+    await loadSiblingFixture();
+    const id=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).flowEdges.find(e=>e.source==='a'&&e.target==='b').id);
+    const point=await page.locator('.react-flow__edge[data-id="'+id+'"] .react-flow__edge-path').evaluate(p=>{const point=p.getPointAtLength(p.getTotalLength()*.7).matrixTransform(p.getScreenCTM());return{x:point.x,y:point.y};});
+    await dragToPoint('free',point);await expect(page.getByTestId('insertion-preview')).toHaveAttribute('data-mode','sequential');
+    await page.mouse.up();await page.mouse.move(0,0);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'free');assert.equal(after.trials.find(t=>t.id==='free').defaultNextTrialId,'b');
+    assert.ok(after.trials.find(t=>t.id==='a').thenGoTo.some(r=>r.targetId==='loca'));
+  });
+  await run('a branched island previews its real entry and final trial and keeps its other leaf unchanged',async()=>{
+    await loadInsertionFixture(true);const before=await state();await dragOverEdge('loca');
+    const preview=page.getByTestId('insertion-preview');await expect(preview).toHaveAttribute('data-entry','loca');await expect(preview).toHaveAttribute('data-exit','h2');
+    await expect(page.getByTestId('ghost-h1')).toBeVisible();await expect(page.getByTestId('ghost-right')).toBeVisible();
+    assert.deepEqual(await state(),before);await snapshot('ghost-branched');
+    await page.mouse.up();await page.mouse.move(0,0);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'loca');
+    assert.equal(after.trials.find(t=>t.id==='h2').defaultNextTrialId,'b');assert.equal(after.trials.find(t=>t.id==='right').defaultNextTrialId,null);
+  });
+  await run('moving away removes the insertion proposal and Escape cancels the whole drag',async()=>{
+    await loadInsertionFixture();const before=await state(),point=await dragOverEdge('free');
+    await expect(page.getByTestId('insertion-preview')).toBeVisible();
+    await page.mouse.move(point.x+400,point.y+100,{steps:12});await expect(page.getByTestId('insertion-preview')).toHaveCount(0);assert.deepEqual(await state(),before);
+    await page.mouse.move(point.x,point.y,{steps:12});await expect(page.getByTestId('insertion-preview')).toBeVisible();
+    await page.keyboard.press('Escape');await expect(page.getByTestId('insertion-preview')).toHaveCount(0);
+    await page.mouse.up();await page.mouse.move(0,0);assert.deepEqual(await state(),before);
+  });
+  await run('a collapsed nested loop previews real trial endpoints and preserves the destination scope',async()=>{
+    await loadInsertionFixture();
+    const outer=await page.evaluate(()=>{
+      const s=workspaceDemo.getState();s.trials.push(WorkspaceDemo.trial('last','Último trial'));WorkspaceDemo.setDefault(s,'free','last');
+      const inner=WorkspaceDemo.groupLoop(s,['last'],'Inner'),outer=WorkspaceDemo.groupLoop(s,['free',inner],'Outer');
+      s.loops.find(l=>l.id===outer).expanded=false;workspaceDemo.load(s);return outer;
+    });
+    await expect(page.getByTestId('item-'+outer)).toBeVisible();await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragOverEdge(outer);const preview=page.getByTestId('insertion-preview');
+    await expect(preview).toHaveAttribute('data-entry','free');await expect(preview).toHaveAttribute('data-exit','last');
+    await expect(page.getByTestId('ghost-'+outer)).toBeVisible();await snapshot('ghost-loop');
+    await page.mouse.up();await page.mouse.move(0,0);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='b').parentLoopId,null);
+    assert.equal(after.trials.find(t=>t.id==='last').defaultNextTrialId,'b');
+  });
+  await run('collapsed loop aggregates cannot be deleted or reconnected; expanded connections remain editable',async()=>{
+    for(const variant of ['outgoing','incoming','boundary','nested']){
+      const {marker,inner}=await page.evaluate(variant=>{
+        const M=WorkspaceDemo,s=M.makeState('Collapsed connections',[
+          M.trial('start','Inicio',null,variant==='boundary'?'end':'a'),
+          M.trial('a','A',null,'b'),M.trial('b','B',null,'end'),M.trial('end','Final'),
+        ],[],'start');
+        M.connect(s,variant==='incoming'?'start':'a',variant==='incoming'?'b':'end');
+        const inner=M.groupLoop(s,['a','b'],'Inner'),marker=variant==='nested'?M.groupLoop(s,[inner],'Outer'):inner;
+        s.loops.forEach(l=>l.expanded=false);workspaceDemo.load(s);return {marker,inner};
+      },variant);
+      await waitForCanvasViewport(page.locator('.canvas-area'));
+      await page.getByTestId('item-start').dblclick();
+      await expect(page.getByTestId('item-start').getByRole('checkbox')).toBeChecked();
+      const edge=await selectConnection(variant==='incoming'?'start':marker,variant==='incoming'?marker:'end');
+      await expect(page.locator('.node-selection-control')).toHaveCount(0);
+      await expect(page.getByRole('button',{name:'Eliminar conexión',exact:true})).toBeDisabled();
+      await expect(edge.locator('.edge-reconnect-icon,.react-flow__edgeupdater')).toHaveCount(0);
+      const before=await state();
+      for(const key of ['Delete','Backspace']){
+        await page.keyboard.press(key);assert.deepEqual(await state(),before,variant+' '+key);
+        await expect(edge).toHaveClass(/selected/);
+      }
+      await page.getByTestId('item-'+marker).getByTitle('Expand loop',{exact:true}).click();
+      if(marker!==inner)await page.getByTestId('item-'+inner).getByTitle('Expand loop',{exact:true}).click();
+      await waitForCanvasViewport(page.locator('.canvas-area'));
+      const pair=variant==='incoming'?['start','b']:['a','end'];
+      const editable=await selectConnection(...pair),expanded=await state();
+      await expect(page.getByRole('button',{name:'Eliminar conexión',exact:true})).toBeEnabled();
+      await expect(editable.locator('.edge-reconnect-icon')).toHaveCount(2);
+      await page.getByRole('button',{name:'Eliminar conexión',exact:true}).click();
+      const remaining=await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).map(e=>[e.source,e.target]));
+      assert.ok(!remaining.some(([a,b])=>a===pair[0]&&b===pair[1]),variant);
+      const other=variant==='incoming'?['start','a']:['b','end'];
+      assert.ok(remaining.some(([a,b])=>a===other[0]&&b===other[1]),variant+' retains the other connection');
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),expanded);
+    }
+  });
+  await run('a free loop with converging exits expands and drags at its automatic position without crossing nodes',async()=>{
+    const loop=await page.evaluate(()=>{
+      const M=WorkspaceDemo,s=M.makeState('Automatic free loop',[
+        M.trial('start','Inicio',null,'end'),M.trial('a','A',null,'b'),
+        M.trial('b','B',null,'end'),M.trial('end','Final'),
+      ],[],'start');
+      M.connect(s,'a','end');const loop=M.groupLoop(s,['a','b'],'Free loop');M.item(s,loop).expanded=false;
+      workspaceDemo.load(s);return loop;
+    });
+    await page.getByTestId('item-'+loop).getByTitle('Expand loop',{exact:true}).click();
+    const checkGeometry=async()=>{
+      await page.mouse.move(0,0);await waitForCanvasViewport(page.locator('.canvas-area'));
+      const nodes=await page.locator('.react-flow__node').all();
+      const edges=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).flowEdges.filter(e=>!e.data.control).map(e=>e.id));
+      for(const id of edges){
+        const path=page.locator('.react-flow__edge[data-id="'+id+'"] .react-flow__edge-path');
+        await expect(path).toHaveAttribute('d',/C/);await expectPathAvoidsNodes(path,nodes);
+      }
+    };
+    await checkGeometry();await snapshot('free-loop-obstacle-route');
+    const before=await state(),main=await page.evaluate(()=>{
+      const layout=WorkspaceDemo.layout(workspaceDemo.getState());return ['start','end'].map(id=>layout.positions[id]);
+    });
+    const box=await page.getByTestId('item-'+loop).boundingBox();
+    await dragToPoint(loop,{x:box.x+box.width/2+50,y:box.y+box.height/2+60});await page.mouse.up();
+    await checkGeometry();assert.notDeepEqual((await state()).anchors,before.anchors);
+    assert.deepEqual(await page.evaluate(()=>{
+      const layout=WorkspaceDemo.layout(workspaceDemo.getState());return ['start','end'].map(id=>layout.positions[id]);
+    }),main);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('dragging a selected edge target changes its rule and releases the old destination',async()=>{
+    await choose(0);const edge=await selectConnection('a','b');
+    await expect(edge.locator('.react-flow__edgeupdater-source')).toHaveCount(1);
+    await expect(edge.locator('.edge-reconnect-icon')).toHaveCount(2);
+    for(const path of await edge.locator('.edge-reconnect-icon path').all())await expect(path).toHaveAttribute('stroke','#fff');
+    const target=await page.getByTestId('item-loca').locator('[data-handleid="flow-target"]').boundingBox();
+    await dragConnectionTarget(edge,{x:target.x+target.width/2,y:target.y+target.height/2});
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='a').defaultNextTrialId==='loca');
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'b').locked),false);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'loca').locked),true);
+    assert.ok(!(await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()))).some(e=>e.source==='a'&&e.target==='b'));
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await expect(page.locator('.trial-node--selected')).toHaveCount(0);
+    await snapshot('reconnected-edge');
+  });
+  await run('dragging the source changes the parent and updates both branching panels in one undoable edit',async()=>{
+    await choose(0);const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-start').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='start').thenGoTo.some(r=>r.targetId==='b'));
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,null);
+    assert.equal(after.trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);await expect(page.locator('.trial-node--selected')).toHaveCount(0);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('reconnected-source');await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('FINISH_EXPERIMENT');await expect(page.getByLabel('Then go to · 1',{exact:true})).toHaveCount(0);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await page.getByTestId('item-start').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('a');await expect(page.getByLabel('Then go to · 1',{exact:true})).toHaveValue('b');
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+  });
+  await run('moving a shared edge source to an empty parent assigns its Default and moves all conditions',async()=>{
+    await choose(0);await page.evaluate(()=>{const s=workspaceDemo.getState();s.trials.find(t=>t.id==='a').thenGoTo.push({id:'shared-1',targetId:'b',customParameters:{kept:true}},{id:'shared-2',targetId:'b'});workspaceDemo.load(s);});
+    const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-free').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='free').defaultNextTrialId==='b');
+    const after=await state(),oldParent=after.trials.find(t=>t.id==='a'),newParent=after.trials.find(t=>t.id==='free');
+    assert.equal(oldParent.defaultNextTrialId,null);assert.equal(oldParent.thenGoTo.length,0);
+    assert.deepEqual(newParent.thenGoTo,before.trials.find(t=>t.id==='a').thenGoTo);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnecting the source to an existing pair leaves one selected edge and preserves its rules',async()=>{
+    await choose(0);await page.evaluate(()=>{const s=workspaceDemo.getState();WorkspaceDemo.connect(s,'start','b');s.trials.find(t=>t.id==='a').thenGoTo.push({id:'transferred',targetId:'b'});workspaceDemo.load(s);});
+    const before=await state(),edge=await selectConnection('a','b');
+    const parent=await page.getByTestId('item-start').locator('[data-handleid="flow-source"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:parent.x+parent.width/2,y:parent.y+parent.height/2});
+    await page.waitForFunction(()=>!workspaceDemo.getState().trials.find(t=>t.id==='a').thenGoTo.length);
+    const after=await state();assert.equal(after.trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+    assert.equal(after.trials.find(t=>t.id==='start').thenGoTo.filter(r=>r.targetId==='b').length,2);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).filter(e=>e.source==='start'&&e.target==='b').length),1);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('source reconnection cancels on empty canvas, same-end handles and loop markers',async()=>{
+    await choose(0);const before=await state(),edge=await selectConnection('start','a');
+    await dragConnectionEnd(edge,'source',{x:1070,y:850});assert.deepEqual(await state(),before);
+    const top=await page.getByTestId('item-free').locator('[data-handleid="flow-target"]').boundingBox();
+    await dragConnectionEnd(edge,'source',{x:top.x+top.width/2,y:top.y+top.height/2});assert.deepEqual(await state(),before);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await choose(1);const nestedBefore=await state(),nestedEdge=await selectConnection('start','p'),loop=nestedBefore.loops.find(l=>l.name==='Loop principal');
+    const marker=await page.getByTestId('item-'+loop.id).boundingBox();
+    await dragConnectionEnd(nestedEdge,'source',{x:marker.x+marker.width/2,y:marker.y+marker.height});assert.deepEqual(await state(),nestedBefore);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+  });
+  await run('dropping a selected connection on empty canvas keeps it unchanged',async()=>{
+    await choose(0);const before=JSON.stringify(await state()),edge=await selectConnection('start','a');
+    await dragConnectionTarget(edge,{x:1070,y:850});
+    assert.equal(JSON.stringify(await state()),before);
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+  });
+  await run('Delete removes the selected edge and all Default/Then references with keyboard undo and redo',async()=>{
+    await choose(0);
+    await page.evaluate(()=>{const s=workspaceDemo.getState();s.trials.find(t=>t.id==='start').thenGoTo.push({id:'shared',targetId:'a'});workspaceDemo.load(s);});
+    const before=await state();await selectConnection('start','a');
+    await page.keyboard.press('Delete');
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(0);
+    const after=await state(),source=after.trials.find(t=>t.id==='start');
+    assert.equal(source.defaultNextTrialId,null);assert.equal(source.thenGoTo.length,0);
+    assert.equal(after.trials.length,before.trials.length);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'a').locked),false);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+    await page.getByTitle('Rehacer',{exact:true}).click();assert.deepEqual(await state(),after);
+    await page.getByTitle('Deshacer',{exact:true}).click();assert.deepEqual(await state(),before);
+    await page.keyboard.press('Meta+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('Backspace deletes only the selected trial and undo restores its exact graph',async()=>{
+    await choose(0);await selectConnection('start','a');
+    await page.getByTestId('item-loca').click();
+    const before=await state();await page.keyboard.press('Backspace');
+    await page.getByTestId('item-loca').waitFor({state:'detached'});
+    const after=await state();
+    assert.ok(!after.trials.some(t=>t.id==='loca'));assert.ok(after.trials.some(t=>t.id==='loca1'));
+    assert.equal(after.trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('deleting a branching start automatically follows Default with one badge and one undoable edit',async()=>{
+    await choose(2);const before=await state();await page.getByTestId('item-start').click();await page.keyboard.press('Delete');
+    await page.getByTestId('item-start').waitFor({state:'detached'});const after=await state();
+    assert.equal(after.entryId,'a');await expect(page.getByTestId('item-a').getByTestId('start-badge')).toBeVisible();
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await expect(page.getByRole('dialog')).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.map(t=>t.id).sort()),['a','end']);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'b').locked),false);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await expect(page.getByTestId('item-start').getByTestId('start-badge')).toBeVisible();
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('deleting the whole main sequence automatically activates a remaining island and undo restores both',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const id of ['a','b'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(3);await page.keyboard.press('Delete');
+    await page.getByTestId('item-start').waitFor({state:'detached'});const after=await state();assert.equal(after.entryId,'loca');
+    await expect(page.getByTestId('item-loca').getByTestId('start-badge')).toBeVisible();await expect(page.getByTestId('start-badge')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.map(t=>t.id).sort()),['loca','loca1','loca2']);
+    await snapshot('automatic-start');await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('deleting every trial leaves no start until the first new trial is added',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const trial of before.trials)await page.getByTestId('item-'+trial.id).getByRole('checkbox').check();
+    await page.keyboard.press('Delete');await expect(page.getByTestId('start-badge')).toHaveCount(0);
+    assert.equal((await state()).entryId,null);assert.equal((await state()).trials.length,0);
+    await page.getByTitle('Add trial',{exact:true}).click();const after=await state();assert.equal(after.entryId,after.trials[0].id);
+    await expect(page.getByTestId('item-'+after.entryId).getByTestId('start-badge')).toBeVisible();
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.length),1);
+    await page.keyboard.press('Control+z');assert.equal((await state()).trials.length,0);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('a replacement start inside a loop is marked on its real trial or collapsed loop',async()=>{
+    for(const collapsed of [false,true]){
+      await choose(1);const loop=(await state()).loops.find(l=>l.name==='Loop principal');
+      if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      const before=await state();await page.getByTestId('item-start').click();await page.keyboard.press('Delete');
+      await page.getByTestId('item-start').waitFor({state:'detached'});assert.equal((await state()).entryId,'p');
+      await expect(page.getByTestId('item-'+(collapsed?loop.id:'p')).getByTestId('start-badge')).toBeVisible();
+      await expect(page.getByTestId('start-badge')).toHaveCount(1);
+      assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).loops.length),2);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
+  await run('Delete ungroups expanded and collapsed loops while preserving nested loops and trials',async()=>{
+    for(const collapsed of [false,true]){
+      await choose(1);const before=await state(),loop=before.loops.find(l=>l.name==='Loop principal');
+      if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      await page.getByTestId('item-'+loop.id).click();
+      const selected=await state();await page.keyboard.press('Delete');
+      await page.getByTestId('item-'+loop.id).waitFor({state:'detached'});
+      const after=await state();assert.equal(after.trials.length,before.trials.length);
+      assert.ok(!after.loops.some(l=>l.id===loop.id));
+      const inner=after.loops.find(l=>l.name==='Nested loop');assert.equal(inner.parentLoopId,null);
+      assert.equal(after.trials.find(t=>t.id==='x').parentLoopId,inner.id);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),selected);
+    }
+  });
+  await run('deleting the last trial removes its expanded or collapsed loop and undo restores both',async()=>{
+    for(const collapsed of [false,true]){
+      await choose(0);await page.getByTestId('item-free').click();await page.getByTitle('Add loop',{exact:true}).click();
+      await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+      const loop=(await state()).loops[0];await page.getByTestId('item-free').click();if(collapsed)await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+      const before=await state();await page.keyboard.press('Delete');
+      await expect(page.getByTestId('item-'+loop.id)).toHaveCount(0);await expect(page.getByTestId('item-free')).toHaveCount(0);
+      const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));assert.equal(after.entryId,'start');
+      assert.ok(!after.scopeOrder[loop.id]);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+      await expect(page.getByTestId('item-'+loop.id)).toBeVisible();await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('deleting the only nested trial removes empty ancestor loops in the same undoable action',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),inner=WorkspaceDemo.groupLoop(s,['free'],'Inner'),outer=WorkspaceDemo.groupLoop(s,[inner],'Outer');
+      workspaceDemo.load(s);
+    });
+    await page.getByTestId('item-free').click();const outer=(await state()).loops.find(l=>l.name==='Outer');
+    await page.getByTestId('item-'+outer.id).getByTitle('Collapse loop',{exact:true}).click();
+    const before=await state();assert.equal(before.loops.length,2);
+    await page.keyboard.press('Backspace');await expect(page.locator('.loop-node')).toHaveCount(0);
+    const after=await state();assert.equal(after.loops.length,0);assert.ok(!after.trials.some(t=>t.id==='free'));
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);await expect(page.locator('.loop-node')).toHaveCount(1);
+    await page.keyboard.press('Meta+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('removing the final inner trial keeps outer loops with remaining content',async()=>{
+    await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.getByTestId('item-y').click();await page.keyboard.press('Delete');
+    assert.ok((await state()).loops.some(l=>l.id===inner.id));const oneLeft=await state();
+    await page.getByTestId('item-x').click();await page.keyboard.press('Delete');
+    await expect(page.getByTestId('item-'+inner.id)).toHaveCount(0);const after=await state();
+    assert.ok(after.loops.some(l=>l.id===outer.id));assert.equal(after.trials.find(t=>t.id==='p').parentLoopId,outer.id);
+    assert.equal(after.loops.length,2);await expect(page.getByTestId('item-'+outer.id)).toBeVisible();
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),oneLeft);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('deleting all nested content leaves no trials or loop markers and undo restores the whole structure',async()=>{
+    await choose(1);const before=await state();await page.getByTestId('item-start').dblclick();
+    for(const trial of before.trials)await page.getByTestId('item-'+trial.id).getByRole('checkbox').check();
+    await page.keyboard.press('Delete');await expect(page.locator('.react-flow__node')).toHaveCount(0);
+    const after=await state();assert.equal(after.trials.length,0);assert.equal(after.loops.length,0);assert.equal(after.entryId,null);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('editing fields, open dialogs and an empty selection do not delete graph elements',async()=>{
+    await choose(0);await page.mouse.click(1080,850);
+    const none=await state();await page.keyboard.press('Delete');await page.keyboard.press('Backspace');assert.deepEqual(await state(),none);
+    await page.getByTestId('item-a').click();
+    const name=page.getByLabel('Item name',{exact:true});await name.fill('Renamed');await name.press('End');await name.press('Backspace');
+    assert.equal((await state()).trials.find(t=>t.id==='a').name,'Rename');
+    assert.equal((await state()).trials.length,none.trials.length);
+    await selectConnection('start','a');
+    const select=page.getByLabel('Escenario',{exact:true});await select.focus();
+    const focused=await state();await page.keyboard.press('Delete');assert.deepEqual(await state(),focused);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),focused);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),focused);
+    await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    const dialog=await state();await page.keyboard.press('Delete');await page.keyboard.press('Control+z');assert.deepEqual(await state(),dialog);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await page.getByTestId('item-a').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toBeVisible();
+    const branching=await state();await page.keyboard.press('Delete');assert.deepEqual(await state(),branching);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+  });
+  await run('a fresh graph edit after undo discards redo and repeated deletion has no hidden history',async()=>{
+    await choose(0);await page.getByTestId('item-free').click();const before=await state();
+    await page.keyboard.press('Delete');const deleted=await state();
+    await page.keyboard.press('Delete');await page.keyboard.press('Backspace');
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.getByTestId('item-loca2').click();await page.keyboard.press('Delete');
+    const edited=await state();assert.ok(edited.trials.some(t=>t.id==='free'));
+    await expect(page.getByTitle('Rehacer',{exact:true})).toBeDisabled();
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),edited);
+    assert.notDeepEqual(edited,deleted);
+  });
+  await run('creating a trial replaces the edge selection, so Delete cannot remove the former connection',async()=>{
+    await choose(0);await selectConnection('start','a');
+    await page.getByTitle('Add trial',{exact:true}).click();
+    const added=(await state()).trials.at(-1).id;
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(0);
+    await expect(page.getByTestId('item-'+added).locator('.trial-node')).toHaveClass(/trial-node--selected/);
+    await page.keyboard.press('Delete');await page.getByTestId('item-'+added).waitFor({state:'detached'});
+    assert.equal((await state()).trials.find(t=>t.id==='start').defaultNextTrialId,'a');
+  });
+  await choose(0);
+  await run('adds a loose trial excluded from generated HTML',async()=>{
+    await page.getByTitle('Add trial',{exact:true}).click();
+    const s=await state(),id=s.trials.at(-1).id;
+    assert.equal(s.trials.length,8);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,id),false);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.compile(workspaceDemo.getState()).trials.some(t=>t.id===id),id),false);
+  });
+  await run('default connection attaches LOCA and removal releases it',async()=>{
+    await page.getByRole('button',{name:'Final Editor',exact:true}).count();
+    await page.getByTestId('item-b').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByLabel('Default destination',{exact:true}).selectOption('loca');
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.reachable(workspaceDemo.getState()).trials.has('loca2')),true);
+    await page.getByLabel('Default destination',{exact:true}).selectOption('FINISH_EXPERIMENT');await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'loca2').locked),false);
+  });
+  await run('dragging a child moves the whole disconnected structure',async()=>{
+    await choose(0);
+    const before=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    const node=page.getByTestId('item-loca1'),box=await node.boundingBox();
+    await page.mouse.move(box.x+box.width*.3,box.y+box.height*.55);await page.mouse.down();await page.mouse.move(box.x+box.width*.3+95,box.y+box.height*.55+55,{steps:12});await page.mouse.up();
+    const after=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    assert.ok(after.loca.x-before.loca.x>50);
+    for(const id of ['loca','loca1','loca2'])assert.ok(Math.abs((after[id].x-before[id].x)-(after.loca.x-before.loca.x))<.01);
+    assert.equal(after.start.x,before.start.x);
+    await page.waitForTimeout(100);
+    assert.equal(await page.getByTestId('item-loca1').count(),1);
+    assert.deepEqual(errors,[],'drag must not crash after React processes its queued state update');
+  });
+  await run('green plus opens Sequential/Parallel and creates a removable Then go to',async()=>{
+    await choose(0);await page.getByTestId('item-start').click();
+    await page.getByTestId('item-start').getByTitle('Add branch',{exact:true}).click();
+    await page.getByRole('button',{name:'As Branch (Parallel)',exact:true}).click();
+    const s=await state(),child=s.trials.at(-1);
+    assert.ok(s.trials.find(t=>t.id==='start').thenGoTo.some(r=>r.targetId===child.id));
+    await page.getByTestId('item-start').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByTitle('Remove condition',{exact:true}).first().click();await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,child.id),false);
+  });
+  await run('green plus inside a loop uses the app level selector before placement and both dialogs cancel without changes',async()=>{
+    await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();
+    for(const name of ['Nested loop','Loop principal','Main timeline'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeVisible();
+    const checkbox=page.getByRole('checkbox',{name:'Nested loop',exact:true}),checkBox=await checkbox.boundingBox(),labelText=await checkbox.locator('xpath=..').locator(':scope > span').first().boundingBox();
+    assert.ok(labelText.x>checkBox.x+checkBox.width);assert.ok(Math.abs(labelText.y+labelText.height/2-checkBox.y-checkBox.height/2)<2,'the app level labels must remain beside their checkboxes');
+    await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();assert.deepEqual(await state(),before);
+    await snapshot('branch-levels');await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();await page.getByRole('checkbox',{name:inner.name,exact:true}).check();
+    await page.getByRole('button',{name:'Continue',exact:true}).click();await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await page.getByTestId('item-y').click();await page.getByTestId('item-y').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+  });
+  await run('the first destination at each chosen nesting level is created directly and one undo restores the graph',async()=>{
+    for(const level of ['current','ancestor','root']){
+      await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+      const scope=level==='current'?inner.id:level==='ancestor'?outer.id:null,name=level==='current'?inner.name:level==='ancestor'?outer.name:'Main timeline';
+      await page.getByTestId('item-y').click();await page.getByTestId('item-y').getByTitle('Add branch',{exact:true}).click();
+      await page.getByRole('checkbox',{name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+      assert.ok(created);assert.equal(created.parentLoopId,scope);assert.equal(after.trials.find(t=>t.id==='y').defaultNextTrialId,created.id);
+      await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toHaveCount(0);
+      await expect(page.getByTestId('item-'+created.id).locator('.trial-node')).toHaveClass(/trial-node--selected/);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('branches in another nesting level do not force placement or pull a new ancestor trial into the inner loop',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await page.getByRole('checkbox',{name:outer.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+    assert.equal(created.parentLoopId,outer.id);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,'y');
+    assert.ok(after.trials.find(t=>t.id==='x').thenGoTo.some(r=>r.targetId===created.id));
+    await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('branch-level-ancestor');
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('an occupied level offers the app Sequential and Parallel choices with matching ownership and continuations',async()=>{
+    for(const mode of ['parallel','sequential']){
+      await choose(1);const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+      await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+      await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      await page.getByRole('button',{name:mode==='parallel'?'As Branch (Parallel)':'As Parent (Sequential)',exact:true}).click();
+      const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));
+      assert.equal(created.parentLoopId,inner.id);assert.equal(created.defaultNextTrialId,mode==='sequential'?'y':null);
+      assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,mode==='sequential'?created.id:'y');
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
+  await run('a sequential root insertion moves only exits in that level and preserves source conditions and all other levels',async()=>{
+    await choose(0);await page.evaluate(()=>{
+      const M=WorkspaceDemo,s=M.makeState('Level exits',[M.trial('start','Inicio',null,'x'),M.trial('x','Source',null,'y'),M.trial('y','Inside',null,'ancestor'),M.trial('ancestor','Outer exit',null,'root-exit'),M.trial('root-exit','Root exit',null,'root-2'),M.trial('root-2','Root 2')],[],'start');
+      const inner=M.groupLoop(s,['x','y'],'Inner');M.groupLoop(s,[inner,'ancestor'],'Outer');
+      M.connect(s,'x','ancestor');M.connect(s,'x','root-exit');M.connect(s,'x','root-2');M.item(s,'x').thenGoTo.find(r=>r.targetId==='root-exit').customParameters={kept:true};workspaceDemo.load(s);
+    });
+    const before=await state(),rule=before.trials.find(t=>t.id==='x').thenGoTo.find(r=>r.targetId==='root-exit');
+    await page.getByTestId('item-x').click();await page.getByTestId('item-x').getByTitle('Add branch',{exact:true}).click();
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id)),source=after.trials.find(t=>t.id==='x');
+    assert.equal(created.parentLoopId,null);assert.equal(created.defaultNextTrialId,'root-exit');
+    assert.equal(source.thenGoTo.find(r=>r.id===rule.id).targetId,created.id);assert.deepEqual(source.thenGoTo.find(r=>r.id===rule.id).customParameters,{kept:true});
+    const edges=await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()));
+    for(const target of ['y','ancestor',created.id])assert.ok(edges.some(e=>e.source==='x'&&e.target===target));
+    for(const target of ['root-exit','root-2'])assert.ok(edges.some(e=>e.source===created.id&&e.target===target));
+    assert.deepEqual(after.loops,before.loops);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('level additions also preserve isolated loops and remain outside the generated experiment until connected',async()=>{
+    await choose(1);const before=await state(),compiled=await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()));
+    await page.getByTestId('item-l2').click();await page.getByTestId('item-l2').getByTitle('Add branch',{exact:true}).click();
+    await expect(page.getByRole('checkbox',{name:'Loop aislado',exact:true})).toBeVisible();
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state(),created=after.trials.find(t=>!before.trials.some(old=>old.id===t.id));assert.equal(created.parentLoopId,null);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,created.id),false);
+    assert.deepEqual(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState())),compiled);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('connecting a loose trial asks for a loop level in either drag direction and Cancel leaves the graph unchanged',async()=>{
+    for(const reverse of [false,true]){
+      const free=await loadLooseLoopFixture(),before=await state();
+      if(reverse)await dragHandles(free,'top','x','bottom');else await dragHandles('x','bottom',free,'top');
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();
+      for(const name of ['Nested loop','Loop principal','Main timeline'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeVisible();
+      assert.deepEqual(await state(),before);await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeDisabled();
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    }
+  });
+  await run('an existing loose trial connects at the selected loop level without creating extra trials or replacing other destinations',async()=>{
+    for(const level of ['current','ancestor','root']){
+      const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),outer=before.loops.find(l=>l.name==='Loop principal');
+      const scope=level==='current'?inner.id:level==='ancestor'?outer.id:null,name=level==='current'?inner.name:level==='ancestor'?outer.name:'Main timeline';
+      await dragHandles('x','bottom',free,'top');assert.deepEqual(await state(),before);
+      await page.getByRole('checkbox',{name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+      if(level==='current'){
+        await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+        await page.getByRole('button',{name:'As Branch (Parallel)',exact:true}).click();
+      }else await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toHaveCount(0);
+      const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,scope);
+      assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,'y');assert.ok(after.trials.find(t=>t.id==='x').thenGoTo.some(r=>r.targetId===free));
+      await expect(page.getByRole('heading',{name:'Add New Trial',exact:true})).toHaveCount(0);
+      await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toHaveCount(0);
+      await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+    }
+  });
+  await run('the level selector preserves a loose structure with its children and nested loops when connecting it',async()=>{
+    const free=await loadLooseLoopFixture();const nested=await page.evaluate(free=>{
+      const s=workspaceDemo.getState(),child=WorkspaceDemo.addTrial(s);WorkspaceDemo.connect(s,free,child);
+      const loop=WorkspaceDemo.groupLoop(s,[child],'Loose nested');workspaceDemo.load(s);return {child,loop};
+    },free);
+    const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:outer.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,outer.id);
+    assert.equal(after.loops.find(l=>l.id===nested.loop).parentLoopId,outer.id);assert.equal(after.trials.find(t=>t.id===nested.child).parentLoopId,nested.loop);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,nested.child);
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('connecting a loose parent to the first loop trial promotes the loop entry after level confirmation',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await dragHandles(free,'bottom','x','top');await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.loops.find(l=>l.id===inner.id).entryId,free);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,inner.id);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'x');assert.equal(after.trials.find(t=>t.id==='x').parentLoopId,inner.id);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('an unreachable incoming parent can remain a movable root connection without silently moving into a loop',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state();await dragHandles(free,'bottom','y','top');
+    await page.getByRole('checkbox',{name:'Nested loop',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    assert.deepEqual(await state(),before);await expect(page.getByRole('status')).toContainText('entrada del loop');
+    await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    const after=await state();assert.equal(after.trials.find(t=>t.id===free).parentLoopId,null);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'y');
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,free),false);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnecting either edge endpoint to a loose trial waits for its level and remains one undoable edit',async()=>{
+    for(const end of ['target','source']){
+      const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+      const oldSource=end==='target'?'x':'p',edge=await selectConnection(oldSource,end==='target'?'y':'x');
+      const handle=await page.getByTestId('item-'+free).locator('[data-handleid="'+(end==='target'?'flow-target':'flow-source')+'"]').boundingBox();
+      const point={x:handle.x+handle.width/2,y:handle.y+handle.height/2};
+      await dragConnectionEnd(edge,end,point);await expect(page.getByRole('heading',{name:'Select branch level',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+      await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);await expect(edge).toHaveClass(/selected/);
+      await dragConnectionEnd(edge,end,point);await page.getByRole('checkbox',{name:end==='target'?'Main timeline':inner.name,exact:true}).check();
+      await page.getByRole('button',{name:'Continue',exact:true}).click();const after=await state();
+      assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id===free).parentLoopId,end==='target'?null:inner.id);
+      if(end==='target')assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+      else{assert.equal(after.trials.find(t=>t.id==='p').defaultNextTrialId,null);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'x');}
+      await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    }
+  });
+  await run('an occupied connection level waits for Parallel or Sequential and Cancel preserves the pending structure',async()=>{
+    const free=await loadLooseLoopFixture(),before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await expect(page.getByRole('button',{name:'As Parent (Sequential)',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'As Branch (Parallel)',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();
+    const after=await state();assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,'y');assert.equal(after.trials.find(t=>t.id===free).parentLoopId,inner.id);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('Sequential inserts an entire existing nested structure before the selected level continuation',async()=>{
+    const free=await loadLooseLoopFixture(),nested=await page.evaluate(free=>{
+      const s=workspaceDemo.getState(),child=WorkspaceDemo.addTrial(s);WorkspaceDemo.connect(s,free,child);
+      const loop=WorkspaceDemo.groupLoop(s,[child],'Loose nested');workspaceDemo.load(s);return {child,loop};
+    },free);
+    const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state();
+    assert.equal(after.trials.length,before.trials.length);assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);
+    assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,nested.child);assert.equal(after.trials.find(t=>t.id===nested.child).defaultNextTrialId,'y');
+    assert.equal(after.trials.find(t=>t.id===nested.child).parentLoopId,nested.loop);assert.equal(after.trials.find(t=>t.id==='y').parentLoopId,inner.id);
+    assert.equal(after.loops.find(l=>l.id===nested.loop).parentLoopId,inner.id);
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('sequential-existing-structure');await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('Sequential at root preserves destinations at other levels and keeps every source condition',async()=>{
+    const free=await loadLooseLoopFixture();await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),extra=WorkspaceDemo.addTrial(s);WorkspaceDemo.setDefault(s,'end',extra);
+      WorkspaceDemo.connect(s,'x','end');WorkspaceDemo.connect(s,'x',extra);WorkspaceDemo.item(s,'x').thenGoTo.find(r=>r.targetId==='end').customParameters={kept:true};workspaceDemo.load(s);
+    });
+    const before=await state(),extra=before.trials.at(-1).id,rule=before.trials.find(t=>t.id==='x').thenGoTo.find(r=>r.targetId==='end');await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('x','bottom',free,'top');await page.getByRole('checkbox',{name:'Main timeline',exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state(),source=after.trials.find(t=>t.id==='x'),target=after.trials.find(t=>t.id===free);
+    assert.equal(after.trials.length,before.trials.length);assert.equal(target.parentLoopId,null);assert.equal(target.defaultNextTrialId,'end');assert.ok(target.thenGoTo.some(r=>r.targetId===extra));
+    assert.equal(source.defaultNextTrialId,free);assert.ok(source.thenGoTo.some(r=>r.targetId==='y'));
+    assert.equal(source.thenGoTo.find(r=>r.id===rule.id).targetId,free);assert.deepEqual(source.thenGoTo.find(r=>r.id===rule.id).customParameters,{kept:true});
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('reconnection asks placement only for other destinations and preserves the old edge until the last confirmation',async()=>{
+    const free=await loadLooseLoopFixture(),other=await page.evaluate(()=>{
+      const s=workspaceDemo.getState(),inner=s.loops.find(l=>l.name==='Nested loop'),id=WorkspaceDemo.addLoopBranch(s,'x',inner.id,'parallel');workspaceDemo.load(s);return id;
+    });await waitForCanvasViewport(page.locator('.canvas-area'));
+    const before=await state(),inner=before.loops.find(l=>l.name==='Nested loop'),edge=await selectConnection('x','y');
+    const handle=await page.getByTestId('item-'+free).locator('[data-handleid="flow-target"]').boundingBox(),point={x:handle.x+handle.width/2,y:handle.y+handle.height/2};
+    await dragConnectionEnd(edge,'target',point);await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Connect Existing Trial',exact:true})).toBeVisible();assert.deepEqual(await state(),before);
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);
+    await dragConnectionEnd(edge,'target',point);await page.getByRole('checkbox',{name:inner.name,exact:true}).check();await page.getByRole('button',{name:'Continue',exact:true}).click();
+    await page.getByRole('button',{name:'As Parent (Sequential)',exact:true}).click();const after=await state();
+    assert.equal(after.trials.find(t=>t.id==='x').defaultNextTrialId,free);assert.equal(after.trials.find(t=>t.id===free).defaultNextTrialId,other);
+    assert.equal(after.trials.length,before.trials.length);await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),after);
+  });
+  await run('nested loop detach lifts trials into the root canvas',async()=>{
+    await choose(1);
+    await page.getByTestId('item-x').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByLabel('Default destination',{exact:true}).selectOption('');
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    const s=await state();assert.equal(s.trials.find(t=>t.id==='y').parentLoopId,null);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'y').locked),false);
+    await snapshot('nested-detached');
+  });
+  await run('loop markers reject branching handles and preserve collapsed projection',async()=>{
+    await choose(1);const s=await state(),loop=s.loops.find(l=>l.name==='Loop principal');
+    await page.getByTestId('item-'+loop.id).getByTitle('Collapse loop',{exact:true}).click();
+    await page.getByTestId('item-x').waitFor({state:'detached'});
+    const handles=page.getByTestId('item-'+loop.id).locator('.react-flow__handle');
+    assert.equal(await handles.first().evaluate(el=>getComputedStyle(el).pointerEvents),'none');
+    await page.getByTestId('item-'+loop.id).getByTitle('Expand loop',{exact:true}).click();
+    await page.getByTestId('item-p').waitFor();
+    await page.evaluate(()=>{
+      const s=WorkspaceDemo.makeState('Nested start',[WorkspaceDemo.trial('first','Primer trial',null,'second'),WorkspaceDemo.trial('second','Segundo trial')],[],'first');
+      const inner=WorkspaceDemo.groupLoop(s,['first','second'],'Inner');WorkspaceDemo.groupLoop(s,[inner],'Outer');
+      workspaceDemo.load(s);
+    });
+    await expect(page.getByTestId('item-first').getByTestId('start-badge')).toBeVisible();
+    const loops=(await state()).loops,inner=loops.find(l=>l.name==='Inner'),outer=loops.find(l=>l.name==='Outer');
+    await page.getByTestId('item-'+inner.id).getByTitle('Collapse loop',{exact:true}).click();
+    await expect(page.getByTestId('item-'+inner.id).getByTestId('start-badge')).toBeVisible();
+    await page.getByTestId('item-'+outer.id).getByTitle('Collapse loop',{exact:true}).click();
+    await expect(page.getByTestId('item-'+outer.id).getByTestId('start-badge')).toBeVisible();
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);
+  });
+  await run('the loop button directly groups checked nodes in structural order as one undoable edit',async()=>{
+    await choose(0);const before=await state();await page.getByTestId('item-b').dblclick();
+    await page.getByTestId('item-a').getByText('Ensayo A',{exact:true}).click();await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(after.loops.length,1);assert.equal(loop.entryId,'a');
+    for(const id of ['a','b'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(after.trials.find(t=>t.id==='start').parentLoopId,null);
+    await expect(page.getByTestId('item-'+loop.id).locator('.loop-node')).toHaveClass(/loop-node--selected/);
+    await expect(page.getByLabel('Repetitions',{exact:true})).toHaveCount(0);await expect(page.getByRole('checkbox')).toHaveCount(0);
+    await expect(page.getByText('Select trials/loops for loop',{exact:true})).toHaveCount(0);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+y');assert.deepEqual(await state(),after);
+  });
+  await run('rectangle selection creates a loop directly while retaining the main start and outgoing connection',async()=>{
+    await choose(0);const before=await state();await selectBox(['start','a']);await page.mouse.up();await page.mouse.move(0,0);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(2);await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(loop.entryId,'start');assert.equal(after.entryId,'start');
+    for(const id of ['start','a'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(after.trials.find(t=>t.id==='b').parentLoopId,null);assert.equal(after.trials.find(t=>t.id==='a').defaultNextTrialId,'b');
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);await expect(page.getByTestId('item-start').getByTestId('start-badge')).toBeVisible();
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('selection-loop');
+    await page.keyboard.press('Meta+z');assert.deepEqual(await state(),before);
+  });
+  await run('direct grouping retains disconnected structures in the editor without exporting them',async()=>{
+    await choose(0);await page.getByTestId('item-loca2').dblclick();
+    for(const id of ['loca1','loca'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),loop=after.loops[0];assert.equal(loop.entryId,'loca');
+    for(const id of ['loca','loca1','loca2'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,loop.id);
+    assert.equal(await page.evaluate(id=>WorkspaceDemo.componentFor(workspaceDemo.getState(),id).locked,loop.id),false);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).loops.length),0);
+  });
+  await run('direct selection creates nested loops without flattening selected descendants or changing branching',async()=>{
+    await choose(1);const before=await state(),outer=before.loops.find(l=>l.name==='Loop principal'),inner=before.loops.find(l=>l.name==='Nested loop');
+    await page.getByTestId('item-y').dblclick();
+    for(const id of ['x',inner.id,'p'])await page.getByTestId('item-'+id).getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();
+    const after=await state(),created=after.loops.find(l=>!before.loops.some(old=>old.id===l.id));
+    assert.equal(created.parentLoopId,outer.id);assert.equal(created.entryId,'p');
+    assert.equal(after.loops.find(l=>l.id===outer.id).entryId,created.id);assert.equal(after.loops.find(l=>l.id===inner.id).parentLoopId,created.id);
+    for(const id of ['x','y'])assert.equal(after.trials.find(t=>t.id===id).parentLoopId,inner.id);
+    assert.deepEqual(after.trials.map(t=>[t.id,t.defaultNextTrialId,t.thenGoTo]),before.trials.map(t=>[t.id,t.defaultNextTrialId,t.thenGoTo]));
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('the loop button preserves empty or invalid selections and creates no partial groups',async()=>{
+    await choose(0);const before=await state();await page.getByTitle('Add loop',{exact:true}).click();assert.deepEqual(await state(),before);
+    await expect(page.getByRole('status')).toContainText('Selecciona trials o loops');
+    await expect(page.getByText('Select trials/loops for loop',{exact:true})).toHaveCount(0);
+    await page.getByTestId('item-start').dblclick();await page.getByTestId('item-b').getByRole('checkbox').check();
+    await page.getByTitle('Add loop',{exact:true}).click();assert.deepEqual(await state(),before);
+    await expect(page.locator('.node-selection-control input:checked')).toHaveCount(2);await expect(page.getByRole('status')).toContainText('sin saltar trials intermedios');
+    await page.getByTestId('item-a').getByRole('checkbox').check();await page.getByTitle('Add loop',{exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Loop configuration',exact:true})).toBeVisible();assert.equal((await state()).loops.length,1);
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+  });
+  await run('real handle drag assigns Default first, Then go to second, and rejects equal ends',async()=>{
+    await choose(0);
+    await dragHandles('free','top','loca','top');
+    assert.equal((await state()).trials.find(t=>t.id==='free').thenGoTo.length,0);
+    await dragHandles('loca','top','b','bottom');
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='b').defaultNextTrialId==='loca');
+    assert.equal((await state()).trials.find(t=>t.id==='b').thenGoTo.length,0);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'loca2').locked),true);
+    await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('b','bottom','free','top');
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='b').thenGoTo.some(r=>r.targetId==='free'));
+    assert.equal((await state()).trials.find(t=>t.id==='b').defaultNextTrialId,'loca');
+  });
+  await run('inserting a loose trial and removing the bypass preserves a complete Default route',async()=>{
+    await choose(0);
+    await page.evaluate(()=>{
+      const s=workspaceDemo.getState();s.trials=s.trials.filter(t=>!['loca','loca1','loca2'].includes(t.id));delete s.anchors.loca;
+      workspaceDemo.load(s);
+    });
+    await expect(page.locator('.react-flow__node')).toHaveCount(4);await waitForCanvasViewport(page.locator('.canvas-area'));
+    await dragHandles('a','bottom','free','top');
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='a').thenGoTo.some(r=>r.targetId==='free'));
+    await waitForCanvasViewport(page.locator('.canvas-area'));await dragHandles('free','bottom','b','top');
+    await page.waitForFunction(()=>workspaceDemo.getState().trials.find(t=>t.id==='free').defaultNextTrialId==='b');
+    const before=await state();await selectConnection('a','b');await page.keyboard.press('Delete');
+    const inserted=await state();assert.equal(inserted.trials.find(t=>t.id==='a').defaultNextTrialId,'free');
+    assert.equal(inserted.trials.find(t=>t.id==='free').defaultNextTrialId,'b');
+    assert.equal(inserted.trials.find(t=>t.id==='free').thenGoTo.length,0);
+    assert.equal(inserted.trials.find(t=>t.id==='a').thenGoTo[0].targetId,'free');
+    await page.keyboard.press('Control+z');assert.deepEqual(await state(),before);
+    await page.keyboard.press('Control+Shift+z');assert.deepEqual(await state(),inserted);
+    await page.getByTestId('item-free').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('b');
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await snapshot('default-insertion');
+    await openPreview();
+    const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
+    for(const name of ['Ensayo A','Trial suelto','Final','Finish experiment'])await frame.getByRole('button',{name:'Default → '+name,exact:true}).click();
+    await frame.getByRole('heading',{name:'Preview complete',exact:true}).waitFor();
+    await closePreview();
+  });
+  await run('multiple Then go to rows share one edge and keep the same destination as Default',async()=>{
+    await choose(0);await page.getByTestId('item-free').click();await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByRole('button',{name:/Add first condition/}).click();
+    await page.getByLabel('Then go to · 1',{exact:true}).selectOption('b');
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('b');
+    await page.getByRole('button',{name:/Add condition/}).click();
+    await page.getByLabel('Then go to · 2',{exact:true}).selectOption('b');
+    await expect(page.getByLabel('Default destination',{exact:true})).toHaveValue('b');
+    const shared=await page.evaluate(()=>WorkspaceDemo.connections(workspaceDemo.getState()).filter(e=>e.source==='free'));
+    assert.equal(shared.length,1);assert.equal(shared[0].refs.length,3);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await selectConnection('free','b');await page.keyboard.press('Delete');
+    const free=(await state()).trials.find(t=>t.id==='free');assert.equal(free.defaultNextTrialId,null);assert.equal(free.thenGoTo.length,0);
+  });
+  await run('all structural DB snapshots render without model errors',async()=>{
+    for(const i of [4,5,6]){await choose(i);assert.ok((await state()).name.startsWith('DB · '));await snapshot('db-'+i);}
+  });
+  await run('deleting a trial preserves its descendants and supports Undo',async()=>{
+    await choose(0);await page.getByTestId('item-loca').click();
+    await page.getByRole('button',{name:'Eliminar trial',exact:true}).click();
+    const s=await state();assert.ok(!s.trials.some(t=>t.id==='loca'));assert.ok(s.trials.some(t=>t.id==='loca1'));
+    await page.getByTestId('item-loca').waitFor({state:'detached'});
+    await page.getByTitle('Deshacer',{exact:true}).click();
+    await page.getByTestId('item-loca').waitFor();
+  });
+  const setDefaultFromPanel=async(name,target)=>{
+    const trial=(await state()).trials.find(t=>t.name===name);await page.getByTestId('item-'+trial.id).click();
+    await page.getByRole('button',{name:'Open branching conditions',exact:true}).click();
+    await page.getByLabel('Default destination',{exact:true}).selectOption(target);
+    await page.getByRole('button',{name:'Save configuration',exact:true}).click();
+    await page.mouse.move(0,0);
+  };
+  await run('pending groups remain movable without shifting the main route',async()=>{
+    await choose(0);const before=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    await setDefaultFromPanel('Hijo 2','b');
+    await page.getByTestId('partial-badge').waitFor();
+    assert.equal((await state()).entryId,'start');
+    const attached=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    for(const id of ['start','a','b'])assert.deepEqual(attached[id],before[id]);
+    await waitForCanvasViewport(page.locator('.canvas-area'));
+    const screenBefore=await page.getByTestId('item-start').boundingBox();
+    const handle=await page.getByTestId('item-loca1').boundingBox();
+    await page.mouse.move(handle.x+handle.width*.4,handle.y+handle.height*.6);await page.mouse.down();
+    await page.mouse.move(handle.x+handle.width*.4+65,handle.y+handle.height*.6+35,{steps:15});await page.mouse.up();
+    await page.mouse.move(0,0);await page.waitForTimeout(150);
+    const moved=await page.evaluate(()=>WorkspaceDemo.layout(workspaceDemo.getState()).positions);
+    assert.ok(moved.loca.x-attached.loca.x>30);
+    for(const id of ['start','a','b'])assert.deepEqual(moved[id],before[id]);
+    const screenAfter=await page.getByTestId('item-start').boundingBox();
+    assert.ok(Math.abs(screenAfter.x-screenBefore.x)<.1&&Math.abs(screenAfter.y-screenBefore.y)<.1);
+    assert.deepEqual(errors,[]);
+    await snapshot('partial-connection');
+  });
+  await run('a whole prefix becomes the start while a connection to the former start remains partial',async()=>{
+    await choose(0);await setDefaultFromPanel('Hijo 2','start');
+    assert.equal((await state()).entryId,'loca');
+    await expect(page.getByTestId('item-loca').getByTestId('start-badge')).toBeVisible();
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'loca1').locked),true);
+    await setDefaultFromPanel('Trial suelto','start');
+    assert.equal((await state()).entryId,'loca');
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.componentFor(workspaceDemo.getState(),'free').locked),false);
+    await page.getByTestId('partial-badge').waitFor();
+  });
+  await run('cutting the photographed return promotes Hijo 2 as the sole start',async()=>{
+    await choose(0);await setDefaultFromPanel('Final','loca');await setDefaultFromPanel('Hijo 2','start');
+    assert.equal((await state()).entryId,'start','a return keeps the original start');
+    await setDefaultFromPanel('Hijo 1','FINISH_EXPERIMENT');
+    assert.equal((await state()).entryId,'loca2');
+    await expect(page.getByTestId('item-loca2').getByTestId('start-badge')).toBeVisible();
+    await expect(page.getByTestId('start-badge')).toHaveCount(1);
+    assert.equal(await page.evaluate(()=>WorkspaceDemo.compile(workspaceDemo.getState()).entryId),'loca2');
+    await waitForCanvasViewport(page.locator('.canvas-area'));await snapshot('promoted-start');
+  });
+  const canvas=page.locator('.canvas-area');
+  const appScenarios=await page.evaluate(()=>AppCanvas.flatCurveScenarios.map((s,index)=>({name:s.name,spine:s.spine,count:s.items.length,edges:s.items.reduce((n,t)=>n+(t.branches?.length??0),0),index})));
+  for(const fixture of appScenarios)await run('original app browser geometry: '+fixture.name,async()=>{
+    await page.evaluate(index=>workspaceDemo.load(AppCanvas.fromAppGraph(AppCanvas.flatCurveScenarios[index].graph())),fixture.index);
+    await expect(page.locator('.react-flow__node')).toHaveCount(fixture.count);
+    await expect(page.locator('.react-flow__edge-path')).toHaveCount(fixture.edges);
+    await page.mouse.move(0,0);await waitForCanvasViewport(canvas);
+    for(let i=1;i<fixture.spine.length;i++)await expectBelowAndCentered(canvas,fixture.spine[i-1],fixture.spine[i]);
+    const nodeLocators=await canvas.locator('.react-flow__node').all();
+    for(const path of await canvas.locator('.react-flow__edge-path').all()){
+      await expect(path).toHaveAttribute('d',/C/);await expect(path).toHaveAttribute('marker-end',/url/);
+      await expectPathAvoidsNodes(path,nodeLocators);
+    }
+    assert.equal(await canvas.evaluate(element=>{const bounds=element.getBoundingClientRect();return [...element.querySelectorAll('.react-flow__edge-path')].every(path=>{const box=path.getBoundingClientRect();return box.left>=bounds.left&&box.right<=bounds.right&&box.top>=bounds.top&&box.bottom<=bounds.bottom;});}),true,'all original app curves must remain in the viewport');
+  });
+  await run('HTML execution contains only connected trials',async()=>{
+    await choose(0);await openPreview();
+    const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
+    await frame.getByRole('heading',{name:'Inicio',exact:true}).waitFor();
+    await frame.getByRole('button',{name:'Default → Ensayo A',exact:true}).click();
+    await frame.getByRole('button',{name:'Default → Final',exact:true}).click();
+    await frame.getByRole('button',{name:'Default → Finish experiment',exact:true}).click();
+    await frame.getByRole('heading',{name:'Preview complete',exact:true}).waitFor();
+    assert.equal(await frame.getByText('LOCA',{exact:true}).count(),0);
+    await closePreview();
+  });
+  await run('exported nested loops repeat before continuing to the final trial',async()=>{
+    await choose(1);await openPreview();
+    const frame=page.frameLocator('iframe[title="Generated experiment preview"]');
+    await frame.getByRole('heading',{name:'Inicio',exact:true}).waitFor();
+    const visited=[];
+    for(let step=0;step<30;step++){
+      const name=await frame.locator('h1').innerText();
+      if(name==='Preview complete')break;
+      visited.push(name);await frame.getByRole('button',{name:/^Default →/}).click();
+    }
+    assert.equal(visited.filter(name=>name==='Antes del nested').length,3);
+    assert.equal(visited.filter(name=>name==='Nested A').length,6);
+    assert.equal(visited.filter(name=>name==='Nested B').length,6);
+    assert.equal(visited.at(-1),'Final experimento');
+    await frame.getByRole('heading',{name:'Preview complete',exact:true}).waitFor();
+  });
+  assert.deepEqual(errors,[],'browser errors');
+  console.log('Browser checks complete; screenshots in /private/tmp/branching-workspace-*.png');
+} finally { await browser.close();server.close(); }

@@ -1,6 +1,7 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import { expectPathAvoidsNodes } from "../helpers/layoutAssertions";
-import { fulfillGraph } from "../helpers/loopBranchGraph";
+import { routeGraph } from "../helpers/loopBranchGraph";
 import type {
   ExperimentGraphSnapshot,
   TimelineItem,
@@ -76,9 +77,7 @@ const edgeId = (kind: string, source: string, target: string) =>
 test("routes the parent circuit through a terminal trial and nested loop branch", async ({
   page,
 }) => {
-  await page.route("**/api/experiment-graph/exp-multi-exit", (route) =>
-    route.fulfill(fulfillGraph(graphSnapshot)),
-  );
+  await routeGraph(page, "exp-multi-exit", graphSnapshot);
   await page.route("**/api/trials-metadata/exp-multi-exit", (route) =>
     route.fulfill({
       status: 200,
@@ -112,8 +111,7 @@ test("routes the parent circuit through a terminal trial and nested loop branch"
   const splitId = getScopedNodeId(scope, "trial", "split");
   const leftId = getScopedNodeId(scope, "trial", "left");
   const rightId = getScopedNodeId(scope, "loop", "nested-loop");
-  const node = (id: string) =>
-    canvas.locator(`.react-flow__node[data-id="${id}"]`);
+  const node = (id: string) => canvasNode(canvas, id);
   const path = (kind: string, source: string, target: string) =>
     canvas.locator(
       `[data-testid="rf__edge-${edgeId(kind, source, target)}"] .react-flow__edge-path`,

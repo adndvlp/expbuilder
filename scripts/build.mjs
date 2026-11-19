@@ -1,7 +1,9 @@
+import { buildWorkspace } from "./workspaceBuild.mjs";
 import { execSync } from "child_process";
 import { fetchCloudflared } from "./fetch-cloudflared.mjs";
 
 execSync("npm install", { stdio: "inherit" });
+await buildWorkspace();
 execSync("npm install --prefix client", { stdio: "inherit" });
 execSync("npm install --prefix server/jspsych-bundler", { stdio: "inherit" });
 execSync("npm run build --prefix server/jspsych-bundler", {

@@ -11,6 +11,7 @@ export type Rule = {
 };
 
 export type Condition = {
+  kind?: "route" | "condition";
   id: number;
   rules: Rule[];
   nextTrialId: number | string | null;

@@ -1,0 +1,157 @@
+import type {
+  GraphDocument,
+  GraphTrial,
+  ItemId,
+  Placement,
+  TimelineEntry,
+} from "../types.js";
+import { createUniqueItemName } from "../names.js";
+import {
+  getCrossedLoops,
+  getItemOwnerId,
+  getOwnedBranchIds,
+  normalizeScopeId,
+} from "./scopeGraph.js";
+
+const idsMatch = (left: unknown, right: unknown) =>
+  String(left) === String(right);
+
+function addUnique(branches: ItemId[] | undefined, branchId: ItemId) {
+  return (branches ?? []).some((id) => idsMatch(id, branchId))
+    ? [...(branches ?? [])]
+    : [...(branches ?? []), branchId];
+}
+
+function replaceLevelBranches(
+  branches: ItemId[] | undefined,
+  levelBranchIds: ItemId[],
+  newBranchId: ItemId,
+) {
+  const replacedIds = new Set(levelBranchIds.map(String));
+  const next: ItemId[] = [];
+  let inserted = false;
+  for (const branchId of branches ?? []) {
+    if (!replacedIds.has(String(branchId))) {
+      next.push(branchId);
+    } else if (!inserted) {
+      next.push(newBranchId);
+      inserted = true;
+    }
+  }
+  if (!inserted) next.push(newBranchId);
+  return next;
+}
+
+function insertBeforeLevelBranches<T extends ItemId | TimelineEntry>(
+  items: T[],
+  newItem: T,
+  levelBranchIds: ItemId[],
+) {
+  const targetIds = new Set(levelBranchIds.map(String));
+  const targetIndex = items.findIndex((item) => {
+    const itemId = item && typeof item === "object" ? item.id : item;
+    return targetIds.has(String(itemId));
+  });
+  if (targetIndex < 0) return [...items, newItem];
+  return [...items.slice(0, targetIndex), newItem, ...items.slice(targetIndex)];
+}
+
+export function createLoopBranch(
+  experimentDoc: GraphDocument,
+  sourceTrial: GraphTrial,
+  targetScopeId: ItemId | null,
+  mode: Placement,
+  mutationTimestamp: string,
+  allocateId: (doc: GraphDocument) => ItemId,
+) {
+  const sourceOwnerId = getItemOwnerId(experimentDoc, sourceTrial.id);
+  if (sourceOwnerId === null || sourceOwnerId === undefined) {
+    return { error: "Source trial must belong to a loop" };
+  }
+  const normalizedTarget = normalizeScopeId(targetScopeId);
+  const crossedLoops = getCrossedLoops(
+    experimentDoc,
+    sourceOwnerId,
+    normalizedTarget,
+  );
+  if (!crossedLoops) {
+    return { error: "Target scope must be the current loop or an ancestor" };
+  }
+
+  const levelBranches = getOwnedBranchIds(
+    experimentDoc,
+    sourceTrial.branches,
+    normalizedTarget,
+  );
+  const targetLoop =
+    normalizedTarget === null
+      ? null
+      : experimentDoc.loops.find((loop) => idsMatch(loop.id, normalizedTarget));
+  const now = mutationTimestamp;
+  const trial: GraphTrial = {
+    id: allocateId(experimentDoc),
+    type: "Trial",
+    name: createUniqueItemName(experimentDoc, "New Trial", "New Trial"),
+    plugin: "plugin-dynamic",
+    parameters: {},
+    trialCode: "",
+    branchConditions: [],
+    defaultNextTrialId:
+      mode === "sequential"
+        ? (levelBranches.find((id) =>
+            idsMatch(id, sourceTrial.defaultNextTrialId),
+          ) ??
+          levelBranches[0] ??
+          null)
+        : null,
+    branches: mode === "sequential" ? [...levelBranches] : [],
+    ...(normalizedTarget === null ? {} : { parentLoopId: normalizedTarget }),
+    ...((targetLoop?.csvJson?.length ?? 0) > 0 ? { csvFromLoop: true } : {}),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  sourceTrial.branches =
+    mode === "sequential"
+      ? replaceLevelBranches(sourceTrial.branches, levelBranches, trial.id)
+      : addUnique(sourceTrial.branches, trial.id);
+  if (mode === "sequential") {
+    sourceTrial.branchConditions = sourceTrial.branchConditions.map(
+      (condition) =>
+        levelBranches.some((id) => idsMatch(id, condition.nextTrialId))
+          ? { ...condition, nextTrialId: trial.id }
+          : condition,
+    );
+  }
+  if (mode === "sequential" || sourceTrial.defaultNextTrialId === null)
+    sourceTrial.defaultNextTrialId = trial.id;
+  sourceTrial.updatedAt = now;
+  experimentDoc.trials.push(trial);
+
+  if (normalizedTarget === null) {
+    const timelineItem: TimelineEntry = {
+      id: trial.id,
+      type: "trial",
+      name: trial.name,
+    };
+    experimentDoc.timeline =
+      mode === "sequential"
+        ? insertBeforeLevelBranches(
+            experimentDoc.timeline,
+            timelineItem,
+            levelBranches,
+          )
+        : [...experimentDoc.timeline, timelineItem];
+  } else {
+    if (!targetLoop) throw Error("Target loop not found");
+    targetLoop.trials =
+      mode === "sequential"
+        ? insertBeforeLevelBranches(targetLoop.trials, trial.id, levelBranches)
+        : addUnique(targetLoop.trials, trial.id);
+    targetLoop.updatedAt = now;
+  }
+  for (const loop of experimentDoc.loops) delete loop.exitBranchRoutes;
+  for (const loop of crossedLoops) loop.updatedAt = now;
+  experimentDoc.updatedAt = now;
+  return { trial, crossedLoopIds: crossedLoops.map((loop) => loop.id) };
+}

@@ -1,11 +1,11 @@
 interface Options {
   categories: boolean;
-  categoryData: any[];
+  categoryData: unknown[];
   hasAnyData: boolean;
-  id?: number;
+  id?: string | number;
   isInLoop?: boolean;
   orders: boolean;
-  stimuliOrders: any[];
+  stimuliOrders: unknown[];
   testStimuliCode: string[];
   trialNameSanitized: string;
 }

@@ -3,22 +3,23 @@ import { BRANCH_EDGE_COLOR_COUNT } from "./branchEdgeTheme";
 import type { GraphBranchEdge } from "../../../modules/experiment-graph/types";
 import { getCanonicalBranchEdgeId } from "./canonicalBranchProjection";
 
+type ColorEdge = Omit<ExpandedCanvasEdge, "type">;
 type FlowGraph = {
-  incoming: Map<string, ExpandedCanvasEdge[]>;
-  outgoing: Map<string, ExpandedCanvasEdge[]>;
+  incoming: Map<string, ColorEdge[]>;
+  outgoing: Map<string, ColorEdge[]>;
 };
 
 const addEdge = (
-  map: Map<string, ExpandedCanvasEdge[]>,
+  map: Map<string, ColorEdge[]>,
   nodeId: string,
-  edge: ExpandedCanvasEdge,
+  edge: ColorEdge,
 ) => {
   const current = map.get(nodeId);
   if (current) current.push(edge);
   else map.set(nodeId, [edge]);
 };
 
-function buildFlowGraph(edges: ExpandedCanvasEdge[]): FlowGraph {
+function buildFlowGraph(edges: ColorEdge[]): FlowGraph {
   const graph: FlowGraph = {
     incoming: new Map(),
     outgoing: new Map(),
@@ -78,7 +79,7 @@ function assignCanonicalSlots(edges: readonly GraphBranchEdge[]) {
 }
 
 export function assignBranchColorSlots(
-  edges: ExpandedCanvasEdge[],
+  edges: ColorEdge[],
   canonicalEdges: readonly GraphBranchEdge[] = [],
 ) {
   const flowEdges = edges.filter((edge) => edge.data.kind === "flow");
@@ -87,7 +88,7 @@ export function assignBranchColorSlots(
   const resolved = new Map<string, number | undefined>();
   const resolving = new Set<string>();
 
-  const resolve = (edge: ExpandedCanvasEdge): number | undefined => {
+  const resolve = (edge: ColorEdge): number | undefined => {
     const direct = directSlots.get(edge.id);
     if (direct !== undefined) return direct;
     if (resolved.has(edge.id)) return resolved.get(edge.id);

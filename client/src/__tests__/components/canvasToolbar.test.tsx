@@ -29,7 +29,7 @@ describe("CanvasToolbar", () => {
     expect(actions.onCreateLoop).toHaveBeenCalledOnce();
     expect(actions.onShowBranches).toHaveBeenCalledOnce();
     expect(actions.onMoveItem).toHaveBeenCalledOnce();
-    expect(screen.queryByTitle("Add trial")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Add trial")).toBeInTheDocument();
   });
 
   it("offers only add trial when the root timeline is empty", () => {

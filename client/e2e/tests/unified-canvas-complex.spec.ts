@@ -1,3 +1,4 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { expect, test } from "../fixtures/test.fixture";
 import type { Locator } from "@playwright/test";
 import {
@@ -190,8 +191,7 @@ test("renders the complete branching loop topology in one canvas", async ({
 
   const outerScope = getLoopLayoutScopeId("loop-1");
   const nestedScope = getLoopLayoutScopeId("nested-loop");
-  const node = (id: string) =>
-    canvas.locator(`.react-flow__node[data-id="${id}"]`);
+  const node = (id: string) => canvasNode(canvas, id);
   const outerMarker = node(
     getScopedNodeId(ROOT_CANVAS_SCOPE_ID, "loop", "loop-1"),
   );

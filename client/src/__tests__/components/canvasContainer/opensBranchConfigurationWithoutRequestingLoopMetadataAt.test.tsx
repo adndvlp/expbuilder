@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 
 const mocks = vi.hoisted(() => ({
   trialsContext: {} as any,
@@ -152,18 +152,23 @@ describe("Canvas container", () => {
     });
 
     await waitFor(() => {
-      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(expect.objectContaining({
-        type: "Trial",
-        name: "New Trial",
-        plugin: "plugin-dynamic",
-        parameters: {},
-        trialCode: "",
-      }));
+      expect(mocks.trialsContext.createTrial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "Trial",
+          name: "New Trial",
+          plugin: "plugin-dynamic",
+          parameters: {},
+          trialCode: "",
+        }),
+      );
     });
     expect(mocks.trialsContext.getTrial).toHaveBeenCalledWith(3);
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
-      branches: [99],
-    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        branches: [99],
+      }),
+    );
     expect(mocks.trialsContext.setSelectedTrial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 99 }),
     );
@@ -180,9 +185,12 @@ describe("Canvas container", () => {
       await mocks.flowLayoutProps.onAddBranch(3);
     });
 
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(3, expect.objectContaining({
-      branches: [99],
-    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({
+        branches: [99],
+      }),
+    );
     trialRender.unmount();
     vi.clearAllMocks();
 

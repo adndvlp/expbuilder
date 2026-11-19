@@ -1,15 +1,16 @@
+import { buildWorkspace } from "./workspaceBuild.mjs";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+await buildWorkspace();
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const clientRoot = join(repositoryRoot, "client");
 const jestPath = join(repositoryRoot, "node_modules", "jest", "bin", "jest.js");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const isCi =
-  process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
 function run(command, args, environment, timeout) {
   const result = spawnSync(command, args, {
@@ -60,14 +61,16 @@ try {
   if (exitCode === 0) {
     exitCode = run(
       process.execPath,
-      [
-        "--experimental-vm-modules",
-        jestPath,
-        ...process.argv.slice(2),
-      ],
+      ["--experimental-vm-modules", jestPath, ...process.argv.slice(2)],
       testEnvironment,
     );
   }
+  if (exitCode === 0)
+    exitCode = run(
+      process.execPath,
+      [join(repositoryRoot, "scripts", "run-workspace-tests.mjs")],
+      testEnvironment,
+    );
 } catch (error) {
   console.error(
     error instanceof Error ? error.message : "Failed to run server tests",

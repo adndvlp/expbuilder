@@ -1,7 +1,7 @@
 import { buildBranchingSaveUpdates, describe, expect, it } from "./testHarness";
 
 describe("buildBranchingSaveUpdates", () => {
-  it("does not clear existing branches when a condition has no target", () => {
+  it("removes stale branches when no Default or Then references remain", () => {
     const updates = buildBranchingSaveUpdates({
       conditions: [
         {
@@ -16,12 +16,12 @@ describe("buildBranchingSaveUpdates", () => {
     });
 
     expect(updates).toEqual({
-      branches: [2, 3],
+      branches: [],
       branchConditions: [],
     });
   });
 
-  it("keeps existing branches when saving a condition for an existing branch target", () => {
+  it("keeps only destinations referenced by the saved conditions", () => {
     const updates = buildBranchingSaveUpdates({
       conditions: [
         {
@@ -36,7 +36,7 @@ describe("buildBranchingSaveUpdates", () => {
     });
 
     expect(updates).toEqual({
-      branches: [2, 3],
+      branches: [2],
       branchConditions: [
         {
           id: 1,
@@ -48,7 +48,7 @@ describe("buildBranchingSaveUpdates", () => {
     });
   });
 
-  it("adds a new trial destination without removing existing branches", () => {
+  it("replaces stale destinations with the configured destination", () => {
     const updates = buildBranchingSaveUpdates({
       conditions: [
         {
@@ -63,7 +63,7 @@ describe("buildBranchingSaveUpdates", () => {
     });
 
     expect(updates).toEqual({
-      branches: [2, 3, "earlier-trial"],
+      branches: ["earlier-trial"],
       branchConditions: [
         {
           id: 1,

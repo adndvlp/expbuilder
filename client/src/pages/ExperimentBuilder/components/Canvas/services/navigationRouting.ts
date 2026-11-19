@@ -1,21 +1,27 @@
 import type {
-  ExpandedCanvasLayout,
-  ExpandedCanvasNode,
+  ExpandedCanvasEdge,
+  CanvasRoutingNode,
 } from "./expandedLayoutTypes";
 
 import { findNavigationCurve } from "./navigationCurve";
 
-const bounds = (node: ExpandedCanvasNode, padding = 18) => ({
+const bounds = (node: CanvasRoutingNode, padding = 18) => ({
   left: node.position.x - padding,
   right: node.position.x + node.measured.width + padding,
   top: node.position.y - padding,
   bottom: node.position.y + node.measured.height + padding,
 });
 
-export function routeNavigationEdges(layout: ExpandedCanvasLayout) {
+export function routeNavigationEdges(layout: {
+  nodes: CanvasRoutingNode[];
+  edges: Pick<ExpandedCanvasEdge, "id" | "source" | "target" | "data">[];
+  exitIds?: string[];
+}) {
   const nodes = new Map(layout.nodes.map((node) => [node.id, node]));
   const occupiedLanes: { side: string; top: number; bottom: number }[] = [];
-  const span = (edge: ExpandedCanvasLayout["edges"][number]) => {
+  const span = (
+    edge: Pick<ExpandedCanvasEdge, "id" | "source" | "target" | "data">,
+  ) => {
     const source = nodes.get(edge.source)!,
       target = nodes.get(edge.target)!;
     return Math.abs(

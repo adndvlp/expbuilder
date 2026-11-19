@@ -1,3 +1,6 @@
+import { runtimeResources } from "../../../../modules/experiment-workspace/runtimeResources";
+import { projectExecutionGraph } from "../../../../../../../../shared/experiment-workspace/dist/projection.js";
+import { executionRevision } from "../../../../../../../../shared/experiment-workspace/dist/executionRevision.js";
 import type { ExperimentAppearance } from "../../../../appearance";
 import { loadExperimentGraph } from "../../../../modules/experiment-graph/api";
 import { generateExecutionAddressManifestCode } from "../../../../modules/experiment-runtime/executionAddressManifest";
@@ -29,10 +32,20 @@ export async function generateExperimentBaseCode({
   apiBaseUrl,
   fetchImpl,
 }: ExperimentBaseCodeOptions) {
-  const graph = await loadExperimentGraph(experimentID, {
+  let graph = await loadExperimentGraph(experimentID, {
     apiBaseUrl,
     fetchImpl,
   });
+  if (graph.workspace?.workspaceSchemaVersion === 2) {
+    graph = projectExecutionGraph(graph);
+    graph = {
+      ...graph,
+      revision: await executionRevision(graph.workspace!, [
+        ...uploadedFiles,
+        runtimeResources,
+      ]),
+    };
+  }
   const { generateAllCodes } = await import(
     "../../../../utils/generateTrialLoopCodes"
   );

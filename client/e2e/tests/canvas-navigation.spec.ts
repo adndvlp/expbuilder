@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 import { expect, test } from "../fixtures/test.fixture";
-import { fulfillGraph, graph } from "../helpers/loopBranchGraph";
+import { graph, routeGraph } from "../helpers/loopBranchGraph";
 import { waitForCanvasViewport } from "../helpers/layoutAssertions";
 import type { TimelineItem } from "../../src/pages/ExperimentBuilder/modules/experiment-graph/types";
 
@@ -24,9 +24,7 @@ async function readViewport(viewport: Locator): Promise<Viewport> {
 }
 
 test("supports pinch zoom but ignores double-click zoom", async ({ page }) => {
-  await page.route("**/api/experiment-graph/exp-navigation", (route) =>
-    route.fulfill(fulfillGraph(graph(timeline, {}, []))),
-  );
+  await routeGraph(page, "exp-navigation", graph(timeline, {}, []));
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.goto("/#/home/experiment/exp-navigation/builder");
 
@@ -59,10 +57,11 @@ test("supports pinch zoom but ignores double-click zoom", async ({ page }) => {
   await page.mouse.move(gesturePoint.x - 120, gesturePoint.y - 80, {
     steps: 5,
   });
+  await expect(canvas.locator(".react-flow__selection")).toBeVisible();
   await page.mouse.up();
   const afterDrag = await readViewport(viewport);
-  expect(afterDrag.x).not.toBeCloseTo(afterScroll.x, 2);
-  expect(afterDrag.y).not.toBeCloseTo(afterScroll.y, 2);
+  expect(afterDrag.x).toBeCloseTo(afterScroll.x, 2);
+  expect(afterDrag.y).toBeCloseTo(afterScroll.y, 2);
   expect(afterDrag.zoom).toBeCloseTo(afterScroll.zoom, 4);
 
   await page.mouse.dblclick(gesturePoint.x, gesturePoint.y);

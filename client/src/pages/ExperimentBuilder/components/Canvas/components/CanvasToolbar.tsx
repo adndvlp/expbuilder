@@ -63,7 +63,7 @@ function CanvasToolbar({
           <FiRefreshCw size={24} color="#fff" />
         </button>
       )}
-      {isRoot && itemCount === 0 && (
+      {isRoot && (
         <button
           type="button"
           style={actionStyle(fabStyle, "#ffb300")}

@@ -1,3 +1,4 @@
+import "../../helpers/legacyGraphTransport";
 import { act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { GraphScopeView } from "../../../pages/ExperimentBuilder/modules/experiment-graph/types";
@@ -83,10 +84,7 @@ describe("TrialsProvider canonical nested-loop deletion", () => {
       timelineLoop({ id: "loop-child", parentLoopId: "loop-parent" }),
     ]);
     const serverState = [timelineTrial({ id: 77, name: "Server state" })];
-    queueFetchResponses(
-      notOkJson(),
-      graphJson(root, parentScope(serverState)),
-    );
+    queueFetchResponses(notOkJson(), graphJson(root, parentScope(serverState)));
 
     const result = await act(async () =>
       view.getContext()?.deleteLoop("loop-child"),

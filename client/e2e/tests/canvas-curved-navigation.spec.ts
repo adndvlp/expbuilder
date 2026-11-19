@@ -1,3 +1,4 @@
+import { canvasNode } from "../helpers/canvasNode";
 import { test, expect } from "../fixtures/test.fixture";
 import type { Locator, Page } from "@playwright/test";
 import { edgeId, routeGraph } from "../helpers/loopBranchGraph";
@@ -27,8 +28,7 @@ async function openGraph(page: Page, value: CurvedCanvasSnapshot) {
   return page.locator(".canvas-container");
 }
 
-const node = (canvas: Locator, id: string) =>
-  canvas.locator(`.react-flow__node[data-id="${id}"]`);
+const node = (canvas: Locator, id: string) => canvasNode(canvas, id);
 
 async function expectCurvesClearAndFramed(canvas: Locator) {
   const nodes = await canvas.locator(".react-flow__node").all();
@@ -49,7 +49,8 @@ async function expectCurvesClearAndFramed(canvas: Locator) {
             .getAttribute("data-id")!
             .split("::")
             .slice(2)
-            .map(decodeURIComponent);
+            .map(decodeURIComponent)
+            .map((id) => decodeURIComponent(id.split("::").at(-1)!));
           const handle = (id: string, kind: string) =>
             document
               .querySelector(
@@ -116,13 +117,11 @@ for (const theme of ["light", "dark"] as const) {
           })
           .getByRole("button")
           .click();
-        // The editor expands one path: opening a root sibling closes the other.
+        // Each workspace loop keeps its own expansion state.
         if (toggle === "Loop 1") {
           firstOpen = !firstOpen;
-          if (firstOpen) secondOpen = false;
         } else {
           secondOpen = !secondOpen;
-          if (secondOpen) firstOpen = false;
         }
       }
       await page.mouse.move(0, 0);

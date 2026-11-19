@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Canvas from "../../../pages/ExperimentBuilder/components/Canvas";
+import Canvas from "../../../pages/ExperimentBuilder/components/Canvas/LegacyCanvas";
 import {
   bindCanvasMocks,
   installTrialsContext,
@@ -83,9 +83,12 @@ describe("Canvas container", () => {
     await waitFor(() => {
       expect(mocks.trialsContext.updateTimeline).toHaveBeenCalled();
     });
-    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(1, expect.objectContaining({
-      branches: [],
-    }));
+    expect(mocks.trialsContext.updateTrial).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        branches: [],
+      }),
+    );
     const reorderedTimeline =
       mocks.trialsContext.updateTimeline.mock.calls.at(-1)?.[0];
     expect(reorderedTimeline.map((item: any) => item.id)).toEqual([1, 3, 2]);

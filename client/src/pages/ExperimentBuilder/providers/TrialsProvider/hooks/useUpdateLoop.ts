@@ -27,7 +27,8 @@ export default function useUpdateLoop({
           id,
           updates,
         );
-        if (affectsGraph(updates)) applyGraphSnapshot(data.graph);
+        if (data.graph?.workspace || affectsGraph(updates))
+          applyGraphSnapshot(data.graph);
         setSelectedLoop((current) =>
           current && idsMatch(current.id, id) ? data.loop : current,
         );
