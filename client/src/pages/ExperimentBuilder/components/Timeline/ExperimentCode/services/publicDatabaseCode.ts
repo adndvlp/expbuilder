@@ -1,5 +1,6 @@
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
 import { getPublicRuntimeStorageKeys } from "./publicRuntimeStorageKeys";
+import { publicEventStorageCode, publicEventStorageMethods } from "./publicEventStorageCode";
 
 export function publicDatabaseCode(
   options: PublicExperimentCodeOptions,
@@ -9,9 +10,6 @@ export function publicDatabaseCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -28,9 +26,6 @@ export function publicDatabaseCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -48,22 +43,23 @@ export function publicDatabaseCode(
   window.JSPSYCH_FILE_UPLOAD_ENDPOINT = '${DATA_API_URL}'.replace('/apiData', '/uploadParticipantFile');
   window.JSPSYCH_EXPERIMENT_ID = '${experimentID}';
 
-  // --- IndexedDB Wrapper para Batching con TTL (3 días) ---
+${publicEventStorageCode()}
+
+  // --- IndexedDB: unacknowledged events have no age-based expiry ---
   const TrialDB = {
     dbName: ${JSON.stringify(storageKeys.trialDatabase)},
     storeName: 'trials',
+    counterName: 'session-sequences',
+    manifestName: 'event-manifest',
     db: null,
-    TTL_DAYS: 3,
 
     async init() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open(this.dbName, 1);
+        const request = indexedDB.open(this.dbName, 3);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           this.db = request.result;
-          // Limpiar datos vencidos al iniciar
-          this.cleanExpiredData().catch(err => console.error('Error cleaning expired data:', err));
           resolve(this.db);
         };
         
@@ -78,69 +74,26 @@ export function publicDatabaseCode(
             store.createIndex('timestamp', 'timestamp', { unique: false });
             store.createIndex('createdAt', 'createdAt', { unique: false });
           }
-        };
-      });
-    },
-
-    async cleanExpiredData() {
-      if (!this.db) await this.init();
-      const now = Date.now();
-      const expirationTime = this.TTL_DAYS * 24 * 60 * 60 * 1000; // 3 días en ms
-      
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const index = store.index('createdAt');
-        const request = index.openCursor();
-        
-        let deletedCount = 0;
-        
-        request.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            const trial = cursor.value;
-            const age = now - (trial.createdAt || now);
-            
-            if (age > expirationTime) {
-              cursor.delete();
-              deletedCount++;
-            }
-            cursor.continue();
-          } else {
-            if (deletedCount > 0) {
-              console.log(\`Cleaned \${deletedCount} expired trials from IndexedDB\`);
-            }
-            resolve(deletedCount);
+          if (!db.objectStoreNames.contains(this.manifestName)) {
+            const manifest = db.createObjectStore(this.manifestName, { keyPath: ['sessionId', 'sequence'] });
+            manifest.createIndex('sessionId', 'sessionId');
+          }
+          if (!db.objectStoreNames.contains(this.counterName)) {
+            db.createObjectStore(this.counterName, { keyPath: 'sessionId' });
+            _upgradePublicEvents(request.transaction, this.storeName, this.counterName);
           }
         };
-        
-        request.onerror = () => reject(request.error);
       });
     },
 
-    async add(trial) {
-      if (!this.db) await this.init();
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const request = store.add({
-          ...trial,
-          timestamp: Date.now(),
-          createdAt: Date.now(),
-          sessionId: trialSessionId
-        });
-        
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-    },
+${publicEventStorageMethods()}
 
-    async getAll() {
+    async getAll(sessionId = trialSessionId) {
       if (!this.db) await this.init();
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.getAll();
+        const request = store.index('sessionId').getAll(sessionId);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -152,7 +105,7 @@ export function publicDatabaseCode(
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.count();
+        const request = store.index('sessionId').count(trialSessionId);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -164,7 +117,7 @@ export function publicDatabaseCode(
       return new Promise((resolve, reject) => {
         const transaction = this.db.transaction([this.storeName], 'readonly');
         const store = transaction.objectStore(this.storeName);
-        const request = store.getAll(null, n);
+        const request = store.index('sessionId').getAll(trialSessionId, n);
         
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -188,15 +141,8 @@ export function publicDatabaseCode(
     },
 
     async clear() {
-      if (!this.db) await this.init();
-      return new Promise((resolve, reject) => {
-        const transaction = this.db.transaction([this.storeName], 'readwrite');
-        const store = transaction.objectStore(this.storeName);
-        const request = store.clear();
-        
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-      });
+      const rows = await this.getAll();
+      return this.deleteIds(rows.map(row => row.id));
     }
   };
 `;

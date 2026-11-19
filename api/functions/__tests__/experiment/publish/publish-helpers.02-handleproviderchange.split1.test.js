@@ -26,9 +26,6 @@ jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () =
   deleteFolder: mockDeleteFolder,
 }));
 
-const { createExperimentIfMissing } = await import(
-  "../../../experiment/publish/create-if-missing.js"
-);
 const { handleProviderChange } = await import(
   "../../../experiment/publish/provider-change.js"
 );
@@ -69,7 +66,7 @@ describe("handleProviderChange", () => {
     expect(mockGetValidToken).not.toHaveBeenCalled();
   });
 
-  test("switches Dropbox to Drive, creates the new folder and cleans old Dropbox state", async () => {
+  test("switches Dropbox to Drive and retains the old destination for existing sessions", async () => {
     const experimentRef = fs.getRef("experiments/EID");
     mockGetValidToken
       .mockResolvedValueOnce({ success: true, access_token: "drive-token" })
@@ -99,11 +96,7 @@ describe("handleProviderChange", () => {
       "/ExpBuilder/repo",
       "repo",
     );
-    expect(mockDeleteFolder).toHaveBeenCalledWith(
-      "dropbox",
-      "dropbox-token",
-      "/ExpBuilder/repo-old",
-    );
+    expect(mockDeleteFolder).not.toHaveBeenCalled();
     expect(experimentRef.update).toHaveBeenCalledWith({
       storageProvider: "googledrive",
     });

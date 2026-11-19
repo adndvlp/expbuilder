@@ -112,6 +112,19 @@ describe("apiDataComplete — experiment checks", () => {
 });
 
 describe("apiDataComplete — happy path per provider", () => {
+  test("H05: a legacy batch-zero upload does not count a durably registered session again", async () => {
+    const experiment = fs.getRef("experiments/EID");
+    experiment.get.mockResolvedValue({ exists: true, data: () => ({ active: true, owner: "u1", storageProvider: "osf" }) });
+    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValue({ exists: true, data: () => ({ participantNumber: 23 }) });
+    mockGetValidToken.mockResolvedValue({ success: true, access_token: "token" });
+    mockAppendResult.mockResolvedValue({ success: true });
+    for (let i = 0; i < 2; i++) {
+      const res = makeRes();
+      await apiDataComplete(makeReq({ body: { experimentID: "EID", sessionId: "S1", trialsData: [{ response: "A" }] } }), res);
+      expect(res.statusCode).toBe(201);
+    }
+    expect(experiment.set).not.toHaveBeenCalled();
+  });
   test("googledrive: converts trials to CSV, calls appendResult, writes session_metadata", async () => {
     fs.getRef("experiments/EID").get.mockResolvedValueOnce({
       exists: true,

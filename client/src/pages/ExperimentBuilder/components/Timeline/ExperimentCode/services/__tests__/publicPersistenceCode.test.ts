@@ -9,20 +9,6 @@ function options(experimentID: string): PublicExperimentCodeOptions {
     FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID,
     useStorage: "firebase",
-    batchConfig: {
-      useIndexedDB: true,
-      batchSize: 10,
-      resumeTimeoutMinutes: 30,
-    },
-    recruitmentConfig: {
-      platform: "none",
-      prolificCompletionCode: "",
-    },
-    captchaConfig: {
-      enabled: true,
-      provider: "hcaptcha",
-      siteKey: "test-site-key",
-    },
     sessionNameTokens: [],
     sessionNameSeparator: "_",
     currentUid: "test-user",
@@ -51,7 +37,7 @@ describe("public session persistence code", () => {
     const secondKeys = getPublicRuntimeStorageKeys("experiment-b");
     const secondValues = new Set(Object.values(secondKeys));
 
-    expect(Object.values(firstKeys)).toHaveLength(5);
+    expect(Object.values(firstKeys)).toHaveLength(6);
     expect(
       Object.values(firstKeys).every((key) =>
         key.startsWith("expbuilder:public:experiment-a:"),

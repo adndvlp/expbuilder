@@ -82,28 +82,25 @@ export function DataSettingsSection({
           }}
         >
           When enabled, trial data is stored in the participant's browser for
-          offline resilience. Disable for maximum data confidentiality (trials
-          sent directly to Firestore).
+          recovery after closing or reloading this page. When disabled, unsent
+          responses remain only in memory until the server confirms receipt.
         </p>
       </div>
 
-      <NumberSetting
-        id="batchSize"
-        label="Batch Size"
-        min={0}
-        value={config.batchSize}
-        disabled={!config.useIndexedDB}
-        onChange={(value) => setConfig({ ...config, batchSize: value || 0 })}
-      >
-        <strong>0</strong>: Send all trials at the end (no batching)
-        <br />
-        <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 = batch
-        every 10 trials)
-        <br />
-        {!config.useIndexedDB && (
-          <em>(Only available with IndexedDB enabled)</em>
-        )}
-      </NumberSetting>
+      {config.useIndexedDB && (
+        <NumberSetting
+          id="batchSize"
+          label="Batch Size"
+          min={0}
+          value={config.batchSize}
+          onChange={(value) => setConfig({ ...config, batchSize: value || 0 })}
+        >
+          <strong>0</strong>: Send all trials at the end (no batching)
+          <br />
+          <strong>&gt; 0</strong>: Send trials in batches of N (e.g., 10 = batch
+          every 10 trials)
+        </NumberSetting>
+      )}
 
       <NumberSetting
         id="resumeTimeout"
@@ -112,11 +109,12 @@ export function DataSettingsSection({
         max={1440}
         value={config.resumeTimeoutMinutes}
         onChange={(value) =>
-          setConfig({ ...config, resumeTimeoutMinutes: value || 30 })
+          setConfig({ ...config, resumeTimeoutMinutes: value })
         }
       >
-        Time before a disconnected session is saved to storage with the data
-        collected so far (1-1440 minutes)
+        Deadline for resuming after disconnection (1-1440 whole minutes). At the
+        deadline, the session closes and saving the responses received by the
+        server is requested. Storage may finish later if retries are needed.
       </NumberSetting>
 
       <div
@@ -152,17 +150,10 @@ export function DataSettingsSection({
               <li>
                 <strong>IndexedDB enabled:</strong> Trials cached locally
                 {config.batchSize === 0
-                  ? ", sent all at once when experiment completes"
+                  ? ", sent when the experiment completes"
                   : ` in batches of ${config.batchSize} trials`}
               </li>
-              <li>
-                Participants can reconnect within {config.resumeTimeoutMinutes}{" "}
-                minutes
-              </li>
-              <li>
-                If they do not reconnect, the partial session is saved to
-                storage when the timeout expires
-              </li>
+              {config.batchSize === 0 && <li>With batch 0, the timeout cannot save responses that have never reached the server. Return in this browser to recover pending responses.</li>}
             </>
           ) : (
             <>
@@ -170,16 +161,11 @@ export function DataSettingsSection({
                 <strong>IndexedDB disabled:</strong> Trials sent individually to
                 Firestore
               </li>
-              <li>
-                <strong>Google Drive/Dropbox:</strong> Partial save on
-                disconnect, append on completion
-              </li>
-              <li>
-                <strong>OSF:</strong> Complete save only after timeout or
-                completion (no PATCH support)
-              </li>
             </>
           )}
+          <li>The same resume deadline applies to every storage provider and both IndexedDB modes.</li>
+          <li>Return before {config.resumeTimeoutMinutes} minutes to continue the same session. After expiry, earlier pending responses stay with that session; starting another participation requires your choice.</li>
+          <li>Saved settings apply to new sessions without republishing. Existing sessions retain their original configuration.</li>
         </ul>
       </div>
 
@@ -259,7 +245,7 @@ function NumberSetting({
         min={min}
         max={max}
         value={value}
-        onChange={(event) => onChange(parseInt(event.target.value))}
+        onChange={(event) => onChange(Number(event.target.value))}
         style={fieldStyle}
         disabled={disabled}
       />

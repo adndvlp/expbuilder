@@ -1,0 +1,3816 @@
+{
+  "format": 1,
+  "purpose": "Storage-method correction, not product savings; no conversion of historical inventories.",
+  "prior": {
+    "directory": "benchmarks/references/persistence-controlled-2026-11-13",
+    "reference": {
+      "bytes": 3629128,
+      "sha256": "bc1f2ebdad678d70e77d8aaa07a4e26abedeae6faf17e78131ae9f1b7755cecc"
+    }
+  },
+  "corrected": {
+    "directory": "/tmp/reconciliation-b0-control-3",
+    "reference": {
+      "bytes": 4819479,
+      "sha256": "05fd90e31a489d23d6c5cfff896cc3bf29b84f32726434e6759a8c695077ec4d"
+    }
+  },
+  "method": {
+    "id": "firestore-standard-storage/2",
+    "sources": {
+      "benchmarks/persistence/storage.mjs": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+    },
+    "sdk": {
+      "name": "@google-cloud/firestore",
+      "version": "6.6.0"
+    },
+    "sha256": "08af65067113dbe7154c7fa06b535e563d24169b92c26935b17f33448946e1e2"
+  },
+  "indexConfiguration": {
+    "value": {
+      "indexes": [
+        {
+          "collectionGroup": "export_jobs",
+          "queryScope": "COLLECTION_GROUP",
+          "fields": [
+            {
+              "fieldPath": "dispatchDue",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "nextDispatchAt",
+              "order": "ASCENDING"
+            }
+          ]
+        },
+        {
+          "collectionGroup": "export_jobs",
+          "queryScope": "COLLECTION_GROUP",
+          "fields": [
+            {
+              "fieldPath": "experimentID",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "phase",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "status",
+              "order": "ASCENDING"
+            }
+          ]
+        },
+        {
+          "collectionGroup": "sessions",
+          "queryScope": "COLLECTION_GROUP",
+          "fields": [
+            {
+              "fieldPath": "timeoutPending",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "timeoutNextDispatchAt",
+              "order": "ASCENDING"
+            }
+          ]
+        },
+        {
+          "collectionGroup": "sessions",
+          "queryScope": "COLLECTION_GROUP",
+          "fields": [
+            {
+              "fieldPath": "presenceCheckPending",
+              "order": "ASCENDING"
+            },
+            {
+              "fieldPath": "presenceCheckAt",
+              "order": "ASCENDING"
+            }
+          ]
+        }
+      ],
+      "fieldOverrides": []
+    },
+    "sha256": "ce399c3fa649ad0b5f615de6c97e5ad2145e6ea38fa61050d034523624d34457",
+    "provenance": "observed",
+    "source": "api/firestore.indexes.json"
+  },
+  "productFilesChanged": [],
+  "nonPerformanceMetricChanges": [],
+  "unchangedFunctionalScenarios": 23,
+  "unchangedDocumentSizes": true,
+  "explanation": "Additional ordered entries for whole nonempty maps and whole arrays, including empty arrays. Existing scalar values, document bytes, composite configuration, tariffs, operation counts and transport-byte measurements are unchanged.",
+  "storage": [
+    {
+      "scenario": "idle",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-true-0",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-true-1",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-true-3",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-false-0",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-false-1",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "normal-false-3",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4218,
+      "before": {
+        "indexBytes": 50528,
+        "indexEntries": 200,
+        "storedBytes": 54746
+      },
+      "after": {
+        "automaticIndexBytes": 69400,
+        "compositeBytes": 304,
+        "indexBytes": 69704,
+        "indexEntries": 240,
+        "storedBytes": 73922
+      },
+      "delta": {
+        "indexBytes": 19176,
+        "indexEntries": 40,
+        "storedBytes": 19176
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "event_receipts",
+      "documents": 3,
+      "documentBytes": 1281,
+      "before": {
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "after": {
+        "automaticIndexBytes": 14244,
+        "compositeBytes": 0,
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "volume-3",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 6070,
+      "before": {
+        "indexBytes": 53236,
+        "indexEntries": 200,
+        "storedBytes": 59306
+      },
+      "after": {
+        "automaticIndexBytes": 83692,
+        "compositeBytes": 304,
+        "indexBytes": 83996,
+        "indexEntries": 240,
+        "storedBytes": 90066
+      },
+      "delta": {
+        "indexBytes": 30760,
+        "indexEntries": 40,
+        "storedBytes": 30760
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "event_receipts",
+      "documents": 30,
+      "documentBytes": 12810,
+      "before": {
+        "indexBytes": 142440,
+        "indexEntries": 420,
+        "storedBytes": 155250
+      },
+      "after": {
+        "automaticIndexBytes": 142440,
+        "compositeBytes": 0,
+        "indexBytes": 142440,
+        "indexEntries": 420,
+        "storedBytes": 155250
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "volume-30",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 25103,
+      "before": {
+        "indexBytes": 53238,
+        "indexEntries": 200,
+        "storedBytes": 78341
+      },
+      "after": {
+        "automaticIndexBytes": 83694,
+        "compositeBytes": 304,
+        "indexBytes": 83998,
+        "indexEntries": 240,
+        "storedBytes": 109101
+      },
+      "delta": {
+        "indexBytes": 30760,
+        "indexEntries": 40,
+        "storedBytes": 30760
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "event_receipts",
+      "documents": 300,
+      "documentBytes": 128100,
+      "before": {
+        "indexBytes": 1424400,
+        "indexEntries": 4200,
+        "storedBytes": 1552500
+      },
+      "after": {
+        "automaticIndexBytes": 1424400,
+        "compositeBytes": 0,
+        "indexBytes": 1424400,
+        "indexEntries": 4200,
+        "storedBytes": 1552500
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "volume-300",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4307,
+      "before": {
+        "indexBytes": 50706,
+        "indexEntries": 200,
+        "storedBytes": 55013
+      },
+      "after": {
+        "automaticIndexBytes": 70260,
+        "compositeBytes": 304,
+        "indexBytes": 70564,
+        "indexEntries": 240,
+        "storedBytes": 74871
+      },
+      "delta": {
+        "indexBytes": 19858,
+        "indexEntries": 40,
+        "storedBytes": 19858
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "event_receipts",
+      "documents": 3,
+      "documentBytes": 1281,
+      "before": {
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "after": {
+        "automaticIndexBytes": 14244,
+        "compositeBytes": 0,
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "visual-true",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4307,
+      "before": {
+        "indexBytes": 50706,
+        "indexEntries": 200,
+        "storedBytes": 55013
+      },
+      "after": {
+        "automaticIndexBytes": 70260,
+        "compositeBytes": 304,
+        "indexBytes": 70564,
+        "indexEntries": 240,
+        "storedBytes": 74871
+      },
+      "delta": {
+        "indexBytes": 19858,
+        "indexEntries": 40,
+        "storedBytes": 19858
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "event_receipts",
+      "documents": 3,
+      "documentBytes": 1281,
+      "before": {
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "after": {
+        "automaticIndexBytes": 14244,
+        "compositeBytes": 0,
+        "indexBytes": 14244,
+        "indexEntries": 42,
+        "storedBytes": 15525
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "visual-false",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4274,
+      "before": {
+        "indexBytes": 50640,
+        "indexEntries": 200,
+        "storedBytes": 54914
+      },
+      "after": {
+        "automaticIndexBytes": 70072,
+        "compositeBytes": 304,
+        "indexBytes": 70376,
+        "indexEntries": 240,
+        "storedBytes": 74650
+      },
+      "delta": {
+        "indexBytes": 19736,
+        "indexEntries": 40,
+        "storedBytes": 19736
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "resume-true",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4274,
+      "before": {
+        "indexBytes": 50640,
+        "indexEntries": 200,
+        "storedBytes": 54914
+      },
+      "after": {
+        "automaticIndexBytes": 70072,
+        "compositeBytes": 304,
+        "indexBytes": 70376,
+        "indexEntries": 240,
+        "storedBytes": 74650
+      },
+      "delta": {
+        "indexBytes": 19736,
+        "indexEntries": 40,
+        "storedBytes": 19736
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "resume-false",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 3348,
+      "before": {
+        "indexBytes": 40640,
+        "indexEntries": 162,
+        "storedBytes": 43988
+      },
+      "after": {
+        "automaticIndexBytes": 51526,
+        "compositeBytes": 304,
+        "indexBytes": 51830,
+        "indexEntries": 186,
+        "storedBytes": 55178
+      },
+      "delta": {
+        "indexBytes": 11190,
+        "indexEntries": 24,
+        "storedBytes": 11190
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "export_jobs",
+      "documents": 2,
+      "documentBytes": 4077,
+      "before": {
+        "indexBytes": 59794,
+        "indexEntries": 193,
+        "storedBytes": 63871
+      },
+      "after": {
+        "automaticIndexBytes": 75376,
+        "compositeBytes": 544,
+        "indexBytes": 75920,
+        "indexEntries": 217,
+        "storedBytes": 79997
+      },
+      "delta": {
+        "indexBytes": 16126,
+        "indexEntries": 24,
+        "storedBytes": 16126
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 953,
+      "before": {
+        "indexBytes": 12088,
+        "indexEntries": 48,
+        "storedBytes": 13041
+      },
+      "after": {
+        "automaticIndexBytes": 13286,
+        "compositeBytes": 0,
+        "indexBytes": 13286,
+        "indexEntries": 50,
+        "storedBytes": 14239
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-true-0",
+      "collection": "event_receipts",
+      "documents": 2,
+      "documentBytes": 854,
+      "before": {
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "after": {
+        "automaticIndexBytes": 9496,
+        "compositeBytes": 0,
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 3348,
+      "before": {
+        "indexBytes": 40640,
+        "indexEntries": 162,
+        "storedBytes": 43988
+      },
+      "after": {
+        "automaticIndexBytes": 51526,
+        "compositeBytes": 304,
+        "indexBytes": 51830,
+        "indexEntries": 186,
+        "storedBytes": 55178
+      },
+      "delta": {
+        "indexBytes": 11190,
+        "indexEntries": 24,
+        "storedBytes": 11190
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "export_jobs",
+      "documents": 2,
+      "documentBytes": 4077,
+      "before": {
+        "indexBytes": 59794,
+        "indexEntries": 193,
+        "storedBytes": 63871
+      },
+      "after": {
+        "automaticIndexBytes": 75376,
+        "compositeBytes": 544,
+        "indexBytes": 75920,
+        "indexEntries": 217,
+        "storedBytes": 79997
+      },
+      "delta": {
+        "indexBytes": 16126,
+        "indexEntries": 24,
+        "storedBytes": 16126
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 953,
+      "before": {
+        "indexBytes": 12088,
+        "indexEntries": 48,
+        "storedBytes": 13041
+      },
+      "after": {
+        "automaticIndexBytes": 13286,
+        "compositeBytes": 0,
+        "indexBytes": 13286,
+        "indexEntries": 50,
+        "storedBytes": 14239
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-true-3",
+      "collection": "event_receipts",
+      "documents": 2,
+      "documentBytes": 854,
+      "before": {
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "after": {
+        "automaticIndexBytes": 9496,
+        "compositeBytes": 0,
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 3997,
+      "before": {
+        "indexBytes": 47106,
+        "indexEntries": 186,
+        "storedBytes": 51103
+      },
+      "after": {
+        "automaticIndexBytes": 65082,
+        "compositeBytes": 304,
+        "indexBytes": 65386,
+        "indexEntries": 224,
+        "storedBytes": 69383
+      },
+      "delta": {
+        "indexBytes": 18280,
+        "indexEntries": 38,
+        "storedBytes": 18280
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "event_receipts",
+      "documents": 2,
+      "documentBytes": 854,
+      "before": {
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "after": {
+        "automaticIndexBytes": 9496,
+        "compositeBytes": 0,
+        "indexBytes": 9496,
+        "indexEntries": 28,
+        "storedBytes": 10350
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2841,
+      "before": {
+        "indexBytes": 40034,
+        "indexEntries": 128,
+        "storedBytes": 42875
+      },
+      "after": {
+        "automaticIndexBytes": 51940,
+        "compositeBytes": 378,
+        "indexBytes": 52318,
+        "indexEntries": 146,
+        "storedBytes": 55159
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "expiry-false-1",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 953,
+      "before": {
+        "indexBytes": 12088,
+        "indexEntries": 48,
+        "storedBytes": 13041
+      },
+      "after": {
+        "automaticIndexBytes": 13286,
+        "compositeBytes": 0,
+        "indexBytes": 13286,
+        "indexEntries": 50,
+        "storedBytes": 14239
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "lost-ack-true",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "lost-ack-false",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4369,
+      "before": {
+        "indexBytes": 50830,
+        "indexEntries": 200,
+        "storedBytes": 55199
+      },
+      "after": {
+        "automaticIndexBytes": 71042,
+        "compositeBytes": 304,
+        "indexBytes": 71346,
+        "indexEntries": 240,
+        "storedBytes": 75715
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2843,
+      "before": {
+        "indexBytes": 40038,
+        "indexEntries": 128,
+        "storedBytes": 42881
+      },
+      "after": {
+        "automaticIndexBytes": 51944,
+        "compositeBytes": 378,
+        "indexBytes": 52322,
+        "indexEntries": 146,
+        "storedBytes": 55165
+      },
+      "delta": {
+        "indexBytes": 12284,
+        "indexEntries": 18,
+        "storedBytes": 12284
+      }
+    },
+    {
+      "scenario": "enqueue-failure",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 955,
+      "before": {
+        "indexBytes": 12092,
+        "indexEntries": 48,
+        "storedBytes": 13047
+      },
+      "after": {
+        "automaticIndexBytes": 13290,
+        "compositeBytes": 0,
+        "indexBytes": 13290,
+        "indexEntries": 50,
+        "storedBytes": 14245
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1210,
+      "before": {
+        "indexBytes": 8516,
+        "indexEntries": 60,
+        "storedBytes": 9726
+      },
+      "after": {
+        "automaticIndexBytes": 12784,
+        "compositeBytes": 0,
+        "indexBytes": 12784,
+        "indexEntries": 76,
+        "storedBytes": 13994
+      },
+      "delta": {
+        "indexBytes": 4268,
+        "indexEntries": 16,
+        "storedBytes": 4268
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4352,
+      "before": {
+        "indexBytes": 50796,
+        "indexEntries": 200,
+        "storedBytes": 55148
+      },
+      "after": {
+        "automaticIndexBytes": 71008,
+        "compositeBytes": 304,
+        "indexBytes": 71312,
+        "indexEntries": 240,
+        "storedBytes": 75664
+      },
+      "delta": {
+        "indexBytes": 20516,
+        "indexEntries": 40,
+        "storedBytes": 20516
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2607,
+      "before": {
+        "indexBytes": 37350,
+        "indexEntries": 120,
+        "storedBytes": 39957
+      },
+      "after": {
+        "automaticIndexBytes": 48012,
+        "compositeBytes": 378,
+        "indexBytes": 48390,
+        "indexEntries": 136,
+        "storedBytes": 50997
+      },
+      "delta": {
+        "indexBytes": 11040,
+        "indexEntries": 16,
+        "storedBytes": 11040
+      }
+    },
+    {
+      "scenario": "provider-lost-googledrive",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 1079,
+      "before": {
+        "indexBytes": 12772,
+        "indexEntries": 50,
+        "storedBytes": 13851
+      },
+      "after": {
+        "automaticIndexBytes": 13970,
+        "compositeBytes": 0,
+        "indexBytes": 13970,
+        "indexEntries": 52,
+        "storedBytes": 15049
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1199,
+      "before": {
+        "indexBytes": 8494,
+        "indexEntries": 60,
+        "storedBytes": 9693
+      },
+      "after": {
+        "automaticIndexBytes": 12742,
+        "compositeBytes": 0,
+        "indexBytes": 12742,
+        "indexEntries": 76,
+        "storedBytes": 13941
+      },
+      "delta": {
+        "indexBytes": 4248,
+        "indexEntries": 16,
+        "storedBytes": 4248
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4236,
+      "before": {
+        "indexBytes": 50564,
+        "indexEntries": 200,
+        "storedBytes": 54800
+      },
+      "after": {
+        "automaticIndexBytes": 70432,
+        "compositeBytes": 304,
+        "indexBytes": 70736,
+        "indexEntries": 240,
+        "storedBytes": 74972
+      },
+      "delta": {
+        "indexBytes": 20172,
+        "indexEntries": 40,
+        "storedBytes": 20172
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2498,
+      "before": {
+        "indexBytes": 36554,
+        "indexEntries": 118,
+        "storedBytes": 39052
+      },
+      "after": {
+        "automaticIndexBytes": 46848,
+        "compositeBytes": 378,
+        "indexBytes": 47226,
+        "indexEntries": 134,
+        "storedBytes": 49724
+      },
+      "delta": {
+        "indexBytes": 10672,
+        "indexEntries": 16,
+        "storedBytes": 10672
+      }
+    },
+    {
+      "scenario": "provider-lost-dropbox",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 946,
+      "before": {
+        "indexBytes": 12074,
+        "indexEntries": 48,
+        "storedBytes": 13020
+      },
+      "after": {
+        "automaticIndexBytes": 13272,
+        "compositeBytes": 0,
+        "indexBytes": 13272,
+        "indexEntries": 50,
+        "storedBytes": 14218
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "experiments",
+      "documents": 1,
+      "documentBytes": 1236,
+      "before": {
+        "indexBytes": 8568,
+        "indexEntries": 60,
+        "storedBytes": 9804
+      },
+      "after": {
+        "automaticIndexBytes": 12988,
+        "compositeBytes": 0,
+        "indexBytes": 12988,
+        "indexEntries": 76,
+        "storedBytes": 14224
+      },
+      "delta": {
+        "indexBytes": 4420,
+        "indexEntries": 16,
+        "storedBytes": 4420
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "users",
+      "documents": 1,
+      "documentBytes": 432,
+      "before": {
+        "indexBytes": 2244,
+        "indexEntries": 24,
+        "storedBytes": 2676
+      },
+      "after": {
+        "automaticIndexBytes": 3348,
+        "compositeBytes": 0,
+        "indexBytes": 3348,
+        "indexEntries": 30,
+        "storedBytes": 3780
+      },
+      "delta": {
+        "indexBytes": 1104,
+        "indexEntries": 6,
+        "storedBytes": 1104
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "sessions",
+      "documents": 1,
+      "documentBytes": 4812,
+      "before": {
+        "indexBytes": 53532,
+        "indexEntries": 208,
+        "storedBytes": 58344
+      },
+      "after": {
+        "automaticIndexBytes": 75132,
+        "compositeBytes": 304,
+        "indexBytes": 75436,
+        "indexEntries": 248,
+        "storedBytes": 80248
+      },
+      "delta": {
+        "indexBytes": 21904,
+        "indexEntries": 40,
+        "storedBytes": 21904
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "logs",
+      "documents": 1,
+      "documentBytes": 111,
+      "before": {
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "after": {
+        "automaticIndexBytes": 222,
+        "compositeBytes": 0,
+        "indexBytes": 222,
+        "indexEntries": 2,
+        "storedBytes": 333
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "event_receipts",
+      "documents": 5,
+      "documentBytes": 2135,
+      "before": {
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "after": {
+        "automaticIndexBytes": 23740,
+        "compositeBytes": 0,
+        "indexBytes": 23740,
+        "indexEntries": 70,
+        "storedBytes": 25875
+      },
+      "delta": {
+        "indexBytes": 0,
+        "indexEntries": 0,
+        "storedBytes": 0
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "export_jobs",
+      "documents": 1,
+      "documentBytes": 2867,
+      "before": {
+        "indexBytes": 39010,
+        "indexEntries": 124,
+        "storedBytes": 41877
+      },
+      "after": {
+        "automaticIndexBytes": 49954,
+        "compositeBytes": 378,
+        "indexBytes": 50332,
+        "indexEntries": 140,
+        "storedBytes": 53199
+      },
+      "delta": {
+        "indexBytes": 11322,
+        "indexEntries": 16,
+        "storedBytes": 11322
+      }
+    },
+    {
+      "scenario": "provider-lost-osf",
+      "collection": "session_metadata",
+      "documents": 1,
+      "documentBytes": 1174,
+      "before": {
+        "indexBytes": 12962,
+        "indexEntries": 50,
+        "storedBytes": 14136
+      },
+      "after": {
+        "automaticIndexBytes": 14160,
+        "compositeBytes": 0,
+        "indexBytes": 14160,
+        "indexEntries": 52,
+        "storedBytes": 15334
+      },
+      "delta": {
+        "indexBytes": 1198,
+        "indexEntries": 2,
+        "storedBytes": 1198
+      }
+    }
+  ],
+  "normal1000": {
+    "before": {
+      "low": [
+        {
+          "sessions": 1,
+          "fixed": "0.751989887201886984609807",
+          "variable": "0.000409958432136205424144",
+          "total": "0.752399845634023190033951"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "0.751989887201886984609807",
+          "variable": "0.409958432136205424143959",
+          "total": "1.161948319338092408753766"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "0.751989887201886984609807",
+          "variable": "4.099584321362054241439586",
+          "total": "4.851574208563941226049393"
+        }
+      ],
+      "nominal": [
+        {
+          "sessions": 1,
+          "fixed": "0.772589252436261984609807",
+          "variable": "0.000550233269746856976094",
+          "total": "0.773139485706008841585901"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "0.772589252436261984609807",
+          "variable": "0.550233269746856976093517",
+          "total": "1.322822522183118960703325"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "0.772589252436261984609807",
+          "variable": "5.502332697468569760935174",
+          "total": "6.274921949904831745544981"
+        }
+      ],
+      "high": [
+        {
+          "sessions": 1,
+          "fixed": "5.151385443842511984609807",
+          "variable": "0.002564276431547711629214",
+          "total": "5.153949720274059696239021"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "5.151385443842511984609807",
+          "variable": "2.564276431547711629213558",
+          "total": "7.715661875390223613823365"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "5.151385443842511984609807",
+          "variable": "25.642764315477116292135583",
+          "total": "30.79414975931962827674539"
+        }
+      ]
+    },
+    "after": {
+      "low": [
+        {
+          "sessions": 1,
+          "fixed": "0.751990787753563734792987",
+          "variable": "0.000415657784922603089055",
+          "total": "0.752406445538486337882042"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "0.751990787753563734792987",
+          "variable": "0.415657784922603089055176",
+          "total": "1.167648572676166823848163"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "0.751990787753563734792987",
+          "variable": "4.156577849226030890551758",
+          "total": "4.908568636979594625344745"
+        }
+      ],
+      "nominal": [
+        {
+          "sessions": 1,
+          "fixed": "0.772590152987938734792987",
+          "variable": "0.000555932622533254641005",
+          "total": "0.773146085610471989433992"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "0.772590152987938734792987",
+          "variable": "0.555932622533254641004735",
+          "total": "1.328522775521193375797722"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "0.772590152987938734792987",
+          "variable": "5.559326225332546410047346",
+          "total": "6.331916378320485144840333"
+        }
+      ],
+      "high": [
+        {
+          "sessions": 1,
+          "fixed": "5.151386344394188734792987",
+          "variable": "0.002569975784334109294125",
+          "total": "5.153956320178522844087112"
+        },
+        {
+          "sessions": 1000,
+          "fixed": "5.151386344394188734792987",
+          "variable": "2.569975784334109294124775",
+          "total": "7.721362128728298028917763"
+        },
+        {
+          "sessions": 10000,
+          "fixed": "5.151386344394188734792987",
+          "variable": "25.699757843341092941247755",
+          "total": "30.851144187735281676040742"
+        }
+      ]
+    }
+  },
+  "revalidation": {
+    "reason": "The idle validator now checks the registered schedule members instead of hardcoding two names.",
+    "previousReference": {
+      "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14",
+      "files": {
+        "reference.json": {
+          "bytes": 4820119,
+          "sha256": "e81d0ab653d1b937be060329fcaf8a42df5f17eb27a6dc3f8d8ea5b06c5aaa3f"
+        },
+        "budget.json": {
+          "bytes": 11012942,
+          "sha256": "e3a7f986579b4f79f3341e4bd40da6a9402efd3d31aab200611aea2886d82955"
+        }
+      }
+    },
+    "sameProductRevision": "437a305",
+    "onlyWorktreeSourceChange": "benchmarks/persistence/scenarios.e2e.mjs",
+    "all23CommonMeasurementsInventoriesTimelinesFunctionalAndProjectedAmountsUnchanged": true
+  }
+}

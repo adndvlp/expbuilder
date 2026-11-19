@@ -1,0 +1,146 @@
+{
+  "command": "npm run benchmark:cost:check -- --candidate /tmp/reconciliation-b0-control-3 --normalization benchmarks/ci/normalization.json --output /tmp/reconciliation-b0-r2-check",
+  "run": {
+    "format": 1,
+    "startedAt": "2026-11-14T07:27:11.714Z",
+    "finished": true,
+    "status": "passed",
+    "exitCode": 0,
+    "baseline": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r2",
+    "candidate": "/private/tmp/reconciliation-b0-control-3",
+    "reusedCapture": true,
+    "stages": [
+      {
+        "name": "unit",
+        "startedAt": "2026-11-14T07:27:11.716Z",
+        "log": "unit.log",
+        "code": 0,
+        "signal": null,
+        "loggedBytes": 20863,
+        "omittedBytes": 0,
+        "finishedAt": "2026-11-14T07:27:20.658Z"
+      },
+      {
+        "name": "comparison",
+        "startedAt": "2026-11-14T07:27:20.738Z",
+        "log": "comparison.log",
+        "code": 0,
+        "signal": null,
+        "loggedBytes": 79,
+        "omittedBytes": 0,
+        "finishedAt": "2026-11-14T07:27:23.196Z"
+      }
+    ],
+    "finishedAt": "2026-11-14T07:27:23.257Z",
+    "artifactBytes": 12797476
+  },
+  "comparison": {
+    "status": "passed",
+    "exitCode": 0,
+    "issues": [],
+    "equality": {
+      "measurements": true,
+      "storage": true,
+      "quantities": true,
+      "money": true,
+      "functional": true
+    },
+    "sources": {
+      "baseline": {
+        "directory": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14-r2",
+        "files": {
+          "reference.json": {
+            "bytes": 4819479,
+            "sha256": "05fd90e31a489d23d6c5cfff896cc3bf29b84f32726434e6759a8c695077ec4d"
+          },
+          "budget.json": {
+            "bytes": 11012942,
+            "sha256": "e3a7f986579b4f79f3341e4bd40da6a9402efd3d31aab200611aea2886d82955"
+          }
+        }
+      },
+      "candidate": {
+        "directory": "/private/tmp/reconciliation-b0-control-3",
+        "files": {
+          "reference.json": {
+            "bytes": 4819479,
+            "sha256": "05fd90e31a489d23d6c5cfff896cc3bf29b84f32726434e6759a8c695077ec4d"
+          },
+          "budget.json": {
+            "bytes": 11012942,
+            "sha256": "e3a7f986579b4f79f3341e4bd40da6a9402efd3d31aab200611aea2886d82955"
+          }
+        }
+      },
+      "calculation": {
+        "runtime": "v22.23.2",
+        "files": {
+          "cli.mjs": {
+            "bytes": 6045,
+            "sha256": "ff3454921b4790db8ed057b969eed5e3a962906d581e28658295a530f77375e2"
+          },
+          "core/comparison.mjs": {
+            "bytes": 34453,
+            "sha256": "dbd9a1f23347f8858c2bc5c3e75bf4c9f509464f851900df2b3f66597c5eef09"
+          },
+          "core/repeatability.mjs": {
+            "bytes": 5332,
+            "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+          },
+          "core/attribution.mjs": {
+            "bytes": 3486,
+            "sha256": "80333a7e0ea9085606965cdb72fb5388cadb9b5767e9129c97889bbc46dc0c88"
+          },
+          "core/calibration.mjs": {
+            "bytes": 3143,
+            "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+          },
+          "core/budget.mjs": {
+            "bytes": 7053,
+            "sha256": "3e7e3101c60b3ee45f550005224f23c30961d6e086915ab050f0bce5de86839e"
+          },
+          "core/models.mjs": {
+            "bytes": 5237,
+            "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+          },
+          "core/quantity.mjs": {
+            "bytes": 2985,
+            "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+          },
+          "core/decimal.mjs": {
+            "bytes": 2920,
+            "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+          },
+          "persistence/budget.mjs": {
+            "bytes": 17894,
+            "sha256": "e2062c22f1f5f0a5bfb536ecffb503b67e8d1ca16c89c079994c78562384e5f5"
+          },
+          "persistence/function-inventory.mjs": {
+            "bytes": 11326,
+            "sha256": "cab4b8dee3799b59468858c1d3fdab6f24da777f5936a6860cabf8eda78997c1"
+          },
+          "persistence/storage.mjs": {
+            "bytes": 11631,
+            "sha256": "caaf1017658bfc589ba8e814e16becd51ce626314952d42316cd3c8f5ea343cd"
+          },
+          "persistence/storage-measurement.mjs": {
+            "bytes": 2411,
+            "sha256": "913235ee60edf866f4c309d1c6e2fe93f5d8193b2886742fe2af0cfc42ce6332"
+          }
+        }
+      },
+      "policy": {
+        "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/policies/no-increases.json",
+        "bytes": 71,
+        "sha256": "c1568883f2b83346f6954f2304e288b698279ed2deadc96809f7dabd663d9feb"
+      },
+      "normalization": {
+        "file": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/ci/normalization.json",
+        "bytes": 250,
+        "sha256": "cb2e8f784e246d8317ac8ded4ce49ab9c8801d0a3302981f3a12201dfe9a73ca"
+      }
+    }
+  },
+  "unitTests": 192,
+  "remoteGitHubExecution": false
+}

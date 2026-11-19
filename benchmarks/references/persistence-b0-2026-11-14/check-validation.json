@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "purpose": "Local check command with CI normalization and the independently captured final3 candidate; not a remote GitHub Actions run.",
+  "command": "npm run benchmark:cost:check -- --candidate /tmp/cost-b0-20261114-final3 --normalization benchmarks/ci/normalization.json --output /tmp/cost-b0-20261114-ci-final",
+  "unitTests": 191,
+  "status": "passed",
+  "exitCode": 0,
+  "equality": {
+    "measurements": true,
+    "storage": true,
+    "quantities": true,
+    "money": true,
+    "functional": true
+  },
+  "policy": {
+    "format": 1,
+    "metrics": [],
+    "money": [],
+    "performance": []
+  },
+  "run": {
+    "format": 1,
+    "startedAt": "2026-11-14T06:53:31.180Z",
+    "finished": true,
+    "status": "passed",
+    "exitCode": 0,
+    "baseline": "/Users/andresitopacheco/Desktop/workspace/Builder/bug-fix/benchmarks/references/persistence-b0-2026-11-14",
+    "candidate": "/private/tmp/cost-b0-20261114-final3",
+    "reusedCapture": true,
+    "stages": [
+      {
+        "name": "unit",
+        "startedAt": "2026-11-14T06:53:31.182Z",
+        "log": "unit.log",
+        "code": 0,
+        "signal": null,
+        "loggedBytes": 20682,
+        "omittedBytes": 0,
+        "finishedAt": "2026-11-14T06:53:36.216Z"
+      },
+      {
+        "name": "comparison",
+        "startedAt": "2026-11-14T06:53:36.283Z",
+        "log": "comparison.log",
+        "code": 0,
+        "signal": null,
+        "loggedBytes": 78,
+        "omittedBytes": 0,
+        "finishedAt": "2026-11-14T06:53:38.651Z"
+      }
+    ],
+    "finishedAt": "2026-11-14T06:53:38.727Z",
+    "artifactBytes": 12797151
+  },
+  "source": {
+    "directory": "/tmp/cost-b0-20261114-ci-final",
+    "files": {
+      "run.json": {
+        "bytes": 915,
+        "sha256": "8644586b2808454d2ad1df97919d9e3e1f611dbb5ef240e8cb49d60a3c3bab0c"
+      },
+      "unit.xml": {
+        "bytes": 28103,
+        "sha256": "115b2bacf4f78ee9460e4ce2af5c04f8e8dda884473ac66b111518d5629efae6"
+      },
+      "unit.log": {
+        "bytes": 20682,
+        "sha256": "848aa6d75083170e1c9dfcfc22f0c17e7f2415397e01d9cc8e1024260d3b9515"
+      },
+      "comparison/comparison.json": {
+        "bytes": 12738673,
+        "sha256": "a42bd7d8b40aa4e74df67a24bf3d5b09b53f5a937968408cfbed1931e8bfd60d"
+      }
+    }
+  },
+  "reference": {
+    "bytes": 4820119,
+    "sha256": "e81d0ab653d1b937be060329fcaf8a42df5f17eb27a6dc3f8d8ea5b06c5aaa3f"
+  }
+}

@@ -1,3 +1,4 @@
+import { publicHandshakeCode } from "./publicHandshakeCode";
 import { captchaCode } from "../CaptchaCode";
 import { loadingOverlayCode } from "../LoadingOverlay";
 import { resumeCode } from "../ResumeCode";
@@ -12,9 +13,6 @@ export function publicSessionCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -31,9 +29,6 @@ export function publicSessionCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -125,44 +120,12 @@ export function publicSessionCode(
 
   // Set JSPSYCH_SESSION_ID immediately so file uploads always have the current sessionId
   window.JSPSYCH_SESSION_ID = trialSessionId;
+  // Keep the identity even if registration commits but its HTTP response is lost.
+  localStorage.setItem(_publicStorageKeys.sessionId, trialSessionId);
 
   let participantNumber;
 
-  async function createSession() {
-    try {
-      const _preSessionName = !_sessionNameHasDynamic() ? _generateSessionName(null) : null;
-      const res = await fetch("${DATA_API_URL}", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "*/*" },
-        body: JSON.stringify({
-          experimentID: "${experimentID}",
-          sessionId: trialSessionId,
-          uid: Uid,
-          batchSize: ${batchConfig.batchSize},
-          ...(_preSessionName ? { sessionName: _preSessionName } : {})
-        }),
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Error creating session:', errorText);
-        throw new Error(\`Failed to create session: \${res.status} - \${errorText}\`);
-      }
-      
-      const result = await res.json();
-      console.log('Session created:', result);
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to create session');
-      }
-      
-      return result.participantNumber;
-    } catch (error) {
-      console.error('Error in createSession:', error);
-      alert('Error creating session: ' + error.message);
-      throw error;
-    }
-  }
+  ${publicHandshakeCode(options)}
 
   async function _updateSessionName(sessionId, sessionName) {
     try {

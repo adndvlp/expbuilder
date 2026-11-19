@@ -9,13 +9,6 @@ function options(experimentID: string): PublicExperimentCodeOptions {
     FIREBASE_DATABASE_URL: "https://example.invalid",
     experimentID,
     useStorage: "firebase",
-    batchConfig: {
-      useIndexedDB: true,
-      batchSize: 10,
-      resumeTimeoutMinutes: 30,
-    },
-    recruitmentConfig: { platform: "none", prolificCompletionCode: "" },
-    captchaConfig: { enabled: false, provider: "hcaptcha", siteKey: "" },
     sessionNameTokens: [],
     sessionNameSeparator: "_",
     currentUid: "test-user",
@@ -33,7 +26,8 @@ let browser: Browser;
 
 describe("public IndexedDB isolation in Chromium", () => {
   beforeAll(async () => {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true,
+      executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined });
   });
 
   afterAll(async () => {
@@ -42,7 +36,7 @@ describe("public IndexedDB isolation in Chromium", () => {
 
   it("does not read or clear pending trials owned by another experiment", async () => {
     const context = await browser.newContext();
-    await context.route("http://public-storage.test/**", (route) =>
+    await context.route("https://public-storage.test/**", (route) =>
       route.fulfill({
         status: 200,
         contentType: "text/html",
@@ -50,7 +44,7 @@ describe("public IndexedDB isolation in Chromium", () => {
       }),
     );
     const page = await context.newPage();
-    await page.goto("http://public-storage.test/");
+    await page.goto("https://public-storage.test/");
 
     const result = await page.evaluate(
       async ({ firstCode, secondCode }) => {
@@ -116,4 +110,28 @@ describe("public IndexedDB isolation in Chromium", () => {
 
     await context.close();
   });
+  it("keeps old unacknowledged data across three days, a new session, and that session's cleanup", async () => {
+    const context = await browser.newContext();
+    await context.route('https://public-storage.test/**', route => route.fulfill({ contentType: 'text/html', body: '<html></html>' }));
+    const page = await context.newPage(); await page.goto('https://public-storage.test/');
+    try {
+      const result = await page.evaluate(async code => {
+        type DB = { db: IDBDatabase; init(): Promise<void>; add(row: object): Promise<void>; getAll(): Promise<Array<{ id: number; payload: { marker: string } }>>; clear(): Promise<void> };
+        const make = (sid: string) => new Function('trialSessionId', code + '\nreturn TrialDB;')(sid) as DB;
+        const old = make('old'); await old.add({ marker: 'must survive' });
+        const rows = await old.getAll();
+        await new Promise<void>((resolve, reject) => {
+          const tx = old.db.transaction('trials', 'readwrite'), store = tx.objectStore('trials');
+          const read = store.get(rows[0].id); read.onsuccess = () => store.put({ ...read.result, createdAt: Date.now() - 10 * 86400000 });
+          tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+        });
+        const next = make('new'); await next.init(); await next.add({ marker: 'new response' });
+        await next.clear();
+        const pending = await old.getAll(); old.db.close(); next.db.close();
+        return pending.map(row => row.payload.marker);
+      }, publicDatabaseCode(options('same-experiment')));
+      expect(result).toEqual(['must survive']);
+    } finally { await context.close(); }
+  });
+
 });

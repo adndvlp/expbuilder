@@ -1,0 +1,160 @@
+{
+  "format": 1,
+  "metrics": [],
+  "money": [],
+  "performance": [],
+  "temporalStorage": {
+    "component": "session-firestore-storage",
+    "unit": "byte-second",
+    "scope": {
+      "baseline": {
+        "id": "persistence-b0-2026-11-14-r3",
+        "referenceSha256": "1019b62878d9438f59ce04f2e0dfceecbcab5265382d13ec6dee89217f58d0a0",
+        "budgetSha256": "0b8b2a9ed867788b6769a3855aa8715878e78d3f95e6bb81a7110301e53eae20",
+        "measuredCodeSha256": "e19e6dceea204fcaac6ae4dafa0ad526aa0ac5a902bad5ac8390ff9227f268ac"
+      },
+      "conditionsSha256": "5eabe9985497568cd6c7bff1d425e725a725f3039bc981d86fc55c268ac9f6c2",
+      "assumptionsSha256": "f0ec5f310b4e4e6772e5fb4590948723ba3001c948b92f2f125eeba898374a2a",
+      "storageMethod": {
+        "id": "firestore-standard-storage/2",
+        "sha256": "08af65067113dbe7154c7fa06b535e563d24169b92c26935b17f33448946e1e2"
+      },
+      "indexConfigurationSha256": "ce399c3fa649ad0b5f615de6c97e5ad2145e6ea38fa61050d034523624d34457",
+      "profile": {
+        "id": "google-cloud-usd-2026-11-13",
+        "sha256": "60a0e3130a8cdffbfac5c1740af0f6d535dda7ef26a63553e56c39035f613049",
+        "currency": "USD",
+        "basis": "gross"
+      },
+      "windowSeconds": 2592000,
+      "billingPeriodSeconds": 2592000,
+      "variants": [
+        "low",
+        "nominal",
+        "high"
+      ],
+      "volumes": [
+        1,
+        1000,
+        10000
+      ]
+    },
+    "review": {
+      "reason": "Reviewed, bounded execution-time storage increases only; operations and final retained bytes remain strict, fixed and variable cost must decrease.",
+      "specification": "docs/public-session-cost-optimization-sdd.md, section 18",
+      "evidence": {
+        "file": "docs/investigaciones/persistence-cost-final-validation-2026-11-14.json",
+        "sha256": "f1ed379184482223187e230ac6c99a4ad6fddcd3862b0c355ffa758d5bab7a18",
+        "candidateReferenceSha256": "3f8dec564af9e353f52149cbb474341ccd7a0af022bb91451019089e33e6053a",
+        "candidateMeasuredCodeSha256": "8bd317c16cd57ebaef9ff360985fda8f3ec2973615ab1c03c7a582028f3d7609"
+      }
+    },
+    "limits": [
+      {
+        "scenario": "normal-true-0",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "normal-true-1",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "normal-true-3",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "normal-false-0",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "normal-false-1",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "normal-false-3",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "volume-3",
+        "maxIncreaseByteSeconds": "21560.535",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "volume-30",
+        "maxIncreaseByteSeconds": "20077.625",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "visual-true",
+        "maxIncreaseByteSeconds": "17742.485",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "visual-false",
+        "maxIncreaseByteSeconds": "17742.485",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "resume-true",
+        "maxIncreaseByteSeconds": "43269.405",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "resume-false",
+        "maxIncreaseByteSeconds": "43269.405",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "expiry-true-0",
+        "maxIncreaseByteSeconds": "15552.935",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "expiry-true-3",
+        "maxIncreaseByteSeconds": "15552.935",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "expiry-false-1",
+        "maxIncreaseByteSeconds": "17139.75",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "lost-ack-true",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "lost-ack-false",
+        "maxIncreaseByteSeconds": "22134.705",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "enqueue-failure",
+        "maxIncreaseByteSeconds": "26130.435",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "provider-lost-googledrive",
+        "maxIncreaseByteSeconds": "17284.165",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "provider-lost-dropbox",
+        "maxIncreaseByteSeconds": "16145.71",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      },
+      {
+        "scenario": "provider-lost-osf",
+        "maxIncreaseByteSeconds": "21699.75",
+        "reason": "Exact additional byte-seconds from the verified comparison; reviewed in SDD section 18.2."
+      }
+    ]
+  }
+}

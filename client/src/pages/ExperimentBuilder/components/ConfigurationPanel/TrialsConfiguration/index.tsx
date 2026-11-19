@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import useTrials from "../../../hooks/useTrials";
 import { usePluginParameters } from "../hooks/usePluginParameters";
 import TrialMetaConfig from "./TrialMetaConfig";
@@ -15,6 +15,7 @@ import SaveIndicator from "./components/SaveIndicator";
 import TrialLifecycleCode from "./components/TrialLifecycleCode";
 import { useParentLoop } from "./hooks/useParentLoop";
 import { getLoopCsvData } from "./services/getLoopCsvData";
+import { useSaveIndicator } from "./hooks/useSaveIndicator";
 
 type Props = { pluginName: string };
 
@@ -31,9 +32,7 @@ function TrialsConfig({ pluginName }: Props) {
 
   // Autosave
   const [isLoadingTrial, setIsLoadingTrial] = useState(false);
-  const isInitialFileLoad = useRef(false);
-  const [saveIndicator, setSaveIndicator] = useState(false);
-  const [savingField, setSavingField] = useState<string | null>(null);
+  const { saveIndicator, savingField, showSaveIndicator } = useSaveIndicator();
 
   const { csvColumns, setCsvColumns } = useCsvData();
 
@@ -65,6 +64,8 @@ function TrialsConfig({ pluginName }: Props) {
 
   // Persistir/traer datos del trial
   useEffect(() => {
+    let cancelled = false;
+    let loadingTimer: ReturnType<typeof setTimeout> | undefined;
     const loadTrialData = async () => {
       if (selectedTrial) {
         setIsLoadingTrial(true);
@@ -101,15 +102,19 @@ function TrialsConfig({ pluginName }: Props) {
           getLoop,
         );
 
+        if (cancelled) return;
         setCsvColumns(effectiveCsvColumns);
 
-        setTimeout(() => {
+        loadingTimer = setTimeout(() => {
           setIsLoadingTrial(false);
-          isInitialFileLoad.current = false; // Permitir guardado después de cargar el trial
-        }, 100); // 500 en producción
+        }, 100);
       }
     };
     loadTrialData();
+    return () => {
+      cancelled = true;
+      clearTimeout(loadingTimer);
+    };
 
     // eslint-disable-next-line
   }, [selectedTrial]);
@@ -126,16 +131,6 @@ function TrialsConfig({ pluginName }: Props) {
   // (Run Experiment, Run Demo, Publish) to avoid storing duplicate data
 
   const canSave = !!trialName && !isLoadingTrial;
-
-  // Función auxiliar para mostrar indicador de guardado
-  const showSaveIndicator = (fieldName?: string) => {
-    setSavingField(fieldName || null);
-    setSaveIndicator(true);
-    setTimeout(() => {
-      setSaveIndicator(false);
-      setSavingField(null);
-    }, 1500);
-  };
 
   // Guardar campo individual (para autoguardado granular)
   const saveField = async (fieldName: string, value: any) => {

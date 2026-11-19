@@ -47,13 +47,7 @@ jest.unstable_mockModule("../../../experiment/sessions/storage.js", () => ({
   escapeDriveQueryValue: (v) => String(v ?? ""),
 }));
 
-const {
-  handleCreateSession,
-  handleAppendResult,
-  handleListSessions,
-  handleDownloadSession,
-  handleDeleteSession,
-} = await import("../../../experiment/sessions/handler.js");
+const { handleCreateSession } = await import("../../../experiment/sessions/handler.js");
 
 beforeEach(() => {
   fs.refsByPath.clear();
@@ -71,7 +65,8 @@ beforeEach(() => {
 
 describe("handleCreateSession — error branches", () => {
   test("returns 400 MAX_SESSIONS_REACHED when limit on and counter ≥ max", async () => {
-    fs.getRef("experiments/EID").get.mockResolvedValueOnce({
+    fs.getRef("experiments/EID/sessions/S1").get.mockResolvedValue({ exists: false });
+    fs.getRef("experiments/EID").get.mockResolvedValue({
       exists: true,
       data: () => ({
         active: true,
@@ -123,7 +118,7 @@ describe("handleCreateSession — error branches", () => {
         nConditions: 1,
       }),
     });
-    sessionRef.get.mockResolvedValueOnce({ exists: false });
+    sessionRef.get.mockResolvedValue({ exists: false });
 
     const res = makeRes();
     await handleCreateSession(
@@ -155,7 +150,7 @@ describe("handleCreateSession — error branches", () => {
         nConditions: 1,
       }),
     });
-    sessionRef.get.mockResolvedValueOnce({ exists: false });
+    sessionRef.get.mockResolvedValue({ exists: false });
     fs.getRef("experiments/EID/session_metadata/S1").set.mockRejectedValueOnce(
       new Error("meta boom"),
     );

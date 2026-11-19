@@ -41,7 +41,11 @@ function expandTrialsSnapshot(trialsSnapshot) {
 }
 
 function sortTrials(results) {
+  const hasEventOrder = results.every(row => Number.isSafeInteger(row.event_sequence));
   results.sort((a, b) => {
+    if (hasEventOrder && a.event_sequence !== b.event_sequence) {
+      return a.event_sequence - b.event_sequence;
+    }
     const tA = Number(a.clientTimestamp);
     const tB = Number(b.clientTimestamp);
     if (Number.isFinite(tA) && Number.isFinite(tB) && tA !== tB) {

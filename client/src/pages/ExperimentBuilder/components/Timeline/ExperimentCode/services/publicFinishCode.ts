@@ -6,9 +6,6 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -25,9 +22,6 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -40,7 +34,10 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     baseCode,
   ];
   return `
-      on_finish: async function() {
+      on_finish: publicFinishHandler = async function() {
+        if (publicFinished) return;
+        if (publicFinishInFlight) return publicFinishInFlight;
+        publicFinishInFlight = (async () => {
         if (window.ExpBuilderNavigation.isTransitionPending()) {
           window.ExpBuilderRuntime?.emit(
             'experiment-finish-suppressed',
@@ -48,91 +45,63 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
           );
           return;
         }
+        publicClosing = true;
         _showLoading('Saving your data\u2026');
-        await new Promise(r => setTimeout(r, 0));
-        
+        if (typeof _showPublicExpiredNotice === 'function') _showPublicExpiredNotice();
+        await new Promise(resolve => setTimeout(resolve, 0));
         try {
-          if (BATCH_CONFIG.useIndexedDB) {
-          // --- CON IndexedDB: Enviar datos acumulados ---
-          
-          // Esperar cualquier batch pendiente
-          if (pendingBatchSaves.length > 0) {
-            _setLoadingMsg('Uploading batches\u2026');
-            await Promise.allSettled(pendingBatchSaves);
-          }
-
-          const allTrials = await TrialDB.getAll();
-          
-          if (allTrials.length > 0) {
-            if (BATCH_CONFIG.size === 0) {
-              _setLoadingMsg('Uploading data\u2026');
-              await sendCompleteExperiment(allTrials);
-              await TrialDB.clear();
-            } else {
-              BATCH_CONFIG.currentBatchNumber++;
-              _setLoadingMsg('Sending final batch\u2026');
-              await sendBatchConcatenated(allTrials, BATCH_CONFIG.currentBatchNumber);
-              await TrialDB.clear();
-              
-              if (pendingBatchSaves.length > 0) {
-                _setLoadingMsg('Finishing upload\u2026');
-                await Promise.allSettled(pendingBatchSaves);
-              }
-            }
-          }
-          }
+          await _completePublicSession();
         } catch (error) {
-          console.error('Error flushing trial data:', error);
-          _setLoadingMsg(
-            'Error saving data. Your progress was preserved. Please reload to retry.'
-          );
+          _publicPersistenceError(error);
           return;
         }
-        
+
+        if (_publicSessionState.lifecycle === 'expired') {
+          document.getElementById('expbuilder-retry-save')?.remove();
+          window.ExpBuilderNavigation.clearTransientState();
+          _showPublicRecoveryComplete(); publicFinished = true;
+          return;
+        }
         _setLoadingMsg('Finishing up\u2026');
         
         try {
-          const needsBackendFinalization = !(BATCH_CONFIG.useIndexedDB && BATCH_CONFIG.size === 0);
-          
-          await sessionRef.update({
+          if (_publicSessionState.sessionProtocolVersion !== 3) await sessionRef.update({
             connected: false,
             finished: true,
-            needsFinalization: needsBackendFinalization,
+            needsFinalization: false,
+            sessionProtocolVersion: 2,
+            finalizationProcessed: true,
             state: 'completed',
             finishedAt: window.firebase.database.ServerValue.TIMESTAMP,
             lastUpdate: window.firebase.database.ServerValue.TIMESTAMP
           });
+          // Cancel only after the durable completed state was confirmed.
+          await sessionRef?.onDisconnect().cancel();
         } catch (error) {
-          console.error('Error marking session as finished:', error);
-          _setLoadingMsg('Error saving data. Please contact support.');
+          _publicPersistenceError(error);
           return;
         }
 
-        // Cancel only after the durable completed state was confirmed.
-        sessionRef.onDisconnect().cancel();
+        document.getElementById('expbuilder-retry-save')?.remove();
+
         window.ExpBuilderNavigation.clearTransientState();
         localStorage.removeItem(_publicStorageKeys.sessionId);
         localStorage.removeItem(_publicStorageKeys.participant);
         sessionStorage.removeItem(_publicStorageKeys.captchaPassed);
 
+        publicFinished = true;
         // --- Recruitment platform redirect ---
-        ${
-          recruitmentConfig.platform === "prolific"
-            ? `
-        if (_prolificPID && '${recruitmentConfig.prolificCompletionCode}') {
+        const recruitment = _publicSessionState.configuration.recruitmentConfig;
+        if (recruitment.platform === 'prolific') {
+        if (_prolificPID && recruitment.prolificCompletionCode) {
           _setLoadingMsg('Redirecting to Prolific\u2026');
           await new Promise(r => setTimeout(r, 300));
-          window.location.href = 'https://app.prolific.com/submissions/complete?cc=${recruitmentConfig.prolificCompletionCode}';
+          window.location.href = 'https://app.prolific.com/submissions/complete?cc=' + encodeURIComponent(recruitment.prolificCompletionCode);
         } else {
           // No Prolific URL params — testing mode or direct access
           _showSuccess();
         }
-        `
-            : ""
-        }
-        ${
-          recruitmentConfig.platform === "mturk"
-            ? `
+        } else if (recruitment.platform === 'mturk') {
         if (_mturkTurkSubmitTo && _mturkAssignmentID && !_mturkIsPreview) {
           _setLoadingMsg('Submitting to MTurk\u2026');
           const _mturkForm = document.createElement('form');
@@ -144,10 +113,11 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
         } else {
           _showSuccess();
         }
-        `
-            : ""
-        }
-        ${recruitmentConfig.platform === "none" ? `_showSuccess();` : ""}${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
+        } else {
+          _showSuccess();
+        }${publicParams.on_finish?.trim() ? `\n        // --- User code (on_finish) ---\n        ${publicParams.on_finish.trim()}` : ""}
+        })();
+        try { await publicFinishInFlight; } finally { publicFinishInFlight = null; }
       }${(() => {
         const BUILDER_PARAMS = [
           "on_trial_start",
@@ -180,10 +150,7 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
     // Uncomment to see the json results after finishing a session experiment
     // jsPsych.data.displayData('csv');
 
-    ${
-      recruitmentConfig.platform === "prolific" ||
-      recruitmentConfig.platform === "mturk"
-        ? `
+    if (['prolific', 'mturk'].includes(_publicSessionState.configuration.recruitmentConfig.platform)) {
     // Add platform IDs to all trials automatically (after initJsPsych)
     jsPsych.data.addProperties({
       prolific_pid: _prolificPID || "",
@@ -193,12 +160,26 @@ export function publicFinishCode(options: PublicExperimentCodeOptions): string {
       mturk_assignment_id: _mturkAssignmentID || "",
       mturk_hit_id: _mturkHitID || "",
     });
-    `
-        : ""
     }
 
-    ${baseCode}
+    if (typeof _recoverOlderPublicSessions === 'function') _recoverOlderPublicSessions().catch(error => {
+      console.error('Earlier responses retained for recovery:', error);
+      const notice = document.createElement('p'); notice.textContent = 'Earlier session responses are still pending recovery. Keep this browser data and contact the study team if this persists.';
+      document.body.append(notice);
+    });
+    if (_publicSessionState.sessionProtocolVersion === 3 && !['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
+      await _connectPublicSession();
+      _observePublicConnection();
+    }
+    if (['completed', 'expired'].includes(_publicSessionState.lifecycle)) {
+      await publicFinishHandler();
+    } else {
+      ${baseCode}
+    }
 
-})();
+})().catch(error => {
+  console.error('Public session could not start:', error);
+  _showLoading('This session cannot start: ' + error.message + '. Pending responses are preserved.');
+});
 `;
 }

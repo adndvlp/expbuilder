@@ -92,7 +92,7 @@ export async function saveFinalSessionMetadata({
       metadata: combinedMetadata,
       ...(driveFileUrl && { fileUrl: driveFileUrl }),
     };
-    await metaDocRef.set(metaPayload);
+    await metaDocRef.set(metaPayload, { merge: true });
   } catch (metaErr) {
     console.error("Error saving session_metadata:", metaErr);
   }

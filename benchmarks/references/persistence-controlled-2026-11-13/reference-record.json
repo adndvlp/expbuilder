@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "recordedAt": "2026-11-14T04:56:29.552Z",
+  "reason": "Referencia controlada de persistencia tras validar tres matrices independientes de 23 escenarios y sus tres comparaciones estrictas con igualdad exacta. Se completa la confirmación de recuperación en el navegador antes de cerrar; sustituye el método variable, sin aprobar consumo ni declarar ahorro del producto.",
+  "source": {
+    "directory": "/tmp/cost-repeatability-point4-b1",
+    "files": {
+      "reference.json": {
+        "bytes": 3629128,
+        "sha256": "bc1f2ebdad678d70e77d8aaa07a4e26abedeae6faf17e78131ae9f1b7755cecc"
+      },
+      "budget.json": {
+        "bytes": 7745697,
+        "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+      }
+    }
+  },
+  "calculation": {
+    "runtime": "v22.23.2",
+    "files": {
+      "cli.mjs": {
+        "bytes": 5743,
+        "sha256": "fa9104640855846a143c2d6de59a9d80d5abaa61ab0b731e7f2431d4170aea5a"
+      },
+      "core/comparison.mjs": {
+        "bytes": 30614,
+        "sha256": "8393e349ad9d775cb587874a8a044f90f9030daeceba142bf008bb3eb4b16d3d"
+      },
+      "core/repeatability.mjs": {
+        "bytes": 5332,
+        "sha256": "280cfdd298df5ca2cfa70fe990b9c485e2fce3e155fccd70f5920c7dbb598952"
+      },
+      "core/calibration.mjs": {
+        "bytes": 3143,
+        "sha256": "14117d0c187dea88a3e0f03299322ad5c41aaa95025b5a7945015022531e95b7"
+      },
+      "core/budget.mjs": {
+        "bytes": 7053,
+        "sha256": "3e7e3101c60b3ee45f550005224f23c30961d6e086915ab050f0bce5de86839e"
+      },
+      "core/models.mjs": {
+        "bytes": 5237,
+        "sha256": "d5c0ca63309181d52bc8878848428af7d800934b4085c957f21da3713d9abcd9"
+      },
+      "core/quantity.mjs": {
+        "bytes": 2985,
+        "sha256": "4a77c8cac10de2987ab0465deaf062e805f47a5c9f684ab98c0fc70b71708efa"
+      },
+      "core/decimal.mjs": {
+        "bytes": 2920,
+        "sha256": "c70da56431bd537fc8bdebcca737066eb32a7a59ee9f868db19af40e46f2e6e6"
+      },
+      "persistence/budget.mjs": {
+        "bytes": 17488,
+        "sha256": "4a13c951eea582051feb23bd8db85f16d033be4a94bebe65c1bbb077eb126bdc"
+      }
+    }
+  },
+  "approvesConsumptionTarget": false,
+  "budgetRecalculated": true,
+  "policy": "Recording evidence does not approve a cost target or bypass comparison limits"
+}

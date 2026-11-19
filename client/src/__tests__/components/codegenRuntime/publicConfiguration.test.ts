@@ -6,6 +6,7 @@ import {
   PublicConfigurationHarness,
 } from "./testHarness";
 
+
 describe("PublicConfigurationHarness", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,60 +45,25 @@ describe("PublicConfigurationHarness", () => {
     });
   }
 
-  it("falls back to default public settings when Firestore config loading fails", async () => {
-    const consoleWarn = vi
-      .spyOn(console, "warn")
-      .mockImplementation(() => {});
-    mocks.firestoreGetDoc.mockRejectedValueOnce(new Error("load failed"));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-    const { generateExperiment } = createPublicConfigurationHarness(
-      "experiment-firestore-error",
-    );
-
-    const code = normalize(await generateExperiment());
-
-    expect(consoleWarn).toHaveBeenCalledWith(
-      "Error loading batch config; using defaults:",
-      expect.any(Error),
-    );
-    expect(code).toContain("jsPsych.run(timeline);");
+  it.each([
+    { batchConfig: {}, recruitmentConfig: {}, captchaConfig: {} },
+    { batchConfig: { useIndexedDB: false, batchSize: 7, resumeTimeoutMinutes: 45 },
+      recruitmentConfig: { platform: 'prolific', prolificCompletionCode: 'DO-NOT-BAKE' },
+      captchaConfig: { enabled: true, provider: 'recaptcha', siteKey: 'DO-NOT-BAKE' } },
+  ])("does not read or embed dynamic settings while generating (%#)", async settings => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })));
+    const { generateExperiment } = createPublicConfigurationHarness('EID');
+    const before = await generateExperiment();
+    mocks.firestoreGetDoc.mockResolvedValueOnce({ exists: () => true, data: () => settings });
+    const after = await generateExperiment();
+    expect(after).toBe(before);
+    expect(mocks.firestoreGetDoc).not.toHaveBeenCalled();
+    expect(after).not.toContain('_PUBLIC_PUBLICATION_CONFIG');
+    expect(after).not.toContain('DO-NOT-BAKE');
+    expect(() => new Function(after)).not.toThrow();
   });
 
-  it("uses fallback values when remote config sections are empty", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({
-        batchConfig: {},
-        recruitmentConfig: {},
-        captchaConfig: {},
-      }),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("experiment-empty");
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).toContain("size: 0");
-    expect(code).toContain("resumeTimeoutMinutes: 30");
-    expect(code).toContain("_showSuccess();");
-    expect(code).toContain("const Trial_A_procedure = {};");
-  });
-
-  it("generates mturk, captcha and user-added public params from remote config", async () => {
+  it("generates runtime support for MTurk and CAPTCHA with user-added public params", async () => {
     mocks.devMode.customInitJsPsychParams.public = {
       on_trial_finish: "console.log('trial finish');",
       display_element: "'jspsych-container'",
@@ -136,16 +102,13 @@ describe("PublicConfigurationHarness", () => {
       createPublicConfigurationHarness("experiment-mturk");
     const code = normalize(await generateExperiment("cloud"));
 
-    expect(code).toContain("useIndexedDB: false");
-    expect(code).toContain("size: 7");
-    expect(code).toContain("resumeTimeoutMinutes: 45");
+    expect(code).toContain('const effectiveCaptcha = _publicSessionState.configuration.captchaConfig;');
     expect(code).toContain("Accept the HIT to start the experiment");
     expect(code).toContain("Submitting to MTurk");
     expect(code).toContain("jsPsych.data.addProperties");
     expect(code).toContain("window.beforePublic = true;");
     expect(code).toContain("on_trial_finish: function(data)");
     expect(code).toContain("display_element: 'jspsych-container'");
-    expect(code).toContain('storage: "cloud"');
   });
 
   it("skips remote config without experiment id and can emit dev-mode base code", async () => {
@@ -171,51 +134,6 @@ describe("PublicConfigurationHarness", () => {
       "timeline.push({ type: jsPsychHtmlKeyboardResponse });",
     );
     expect(code).toContain('const Uid = "";');
-  });
-
-  it("keeps defaults when the Firestore document does not exist", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => false,
-      data: () => {
-        throw new Error("data should not be read");
-      },
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("missing-doc");
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).toContain("_showSuccess();");
-  });
-
-  it("keeps defaults when the Firestore document has no config sections", async () => {
-    mocks.firestoreGetDoc.mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({}),
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: false,
-        json: vi.fn(async () => ({})),
-      })),
-    );
-
-    const { generateExperiment } =
-      createPublicConfigurationHarness("empty-doc");
-    const code = normalize(await generateExperiment());
-
-    expect(code).toContain("useIndexedDB: true");
-    expect(code).not.toContain("platform IDs");
-    expect(code).toContain("_showSuccess();");
   });
 
   it("generates prolific, progress bar and builder hook user code", async () => {
@@ -265,7 +183,7 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("updateHook();");
     expect(code).toContain("finishHook();");
     expect(code).toContain("Redirecting to Prolific");
-    expect(code).toContain("cc=DONE");
+    expect(code).not.toContain('DONE');
     expect(code).toContain("jsPsych.data.addProperties");
   });
 
@@ -287,7 +205,6 @@ describe("PublicConfigurationHarness", () => {
     expect(code).toContain("_updateSessionName(trialSessionId, _finalName)");
     expect(code).not.toContain("trialSessionId = _finalName");
     expect(code).not.toContain("window.JSPSYCH_SESSION_ID = trialSessionId; // update global");
-    expect(code).toContain("throw new Error('Batch upload failed:");
     expect(() => new Function(code)).not.toThrow();
   });
 });

@@ -26,9 +26,6 @@ jest.unstable_mockModule("../../../experiment/sessions/services/folder.js", () =
   deleteFolder: mockDeleteFolder,
 }));
 
-const { createExperimentIfMissing } = await import(
-  "../../../experiment/publish/create-if-missing.js"
-);
 const { handleProviderChange } = await import(
   "../../../experiment/publish/provider-change.js"
 );
@@ -143,7 +140,7 @@ describe("handleProviderChange", () => {
     expect(mockCreateFolder).not.toHaveBeenCalled();
   });
 
-  test("continues when cleanup of the previous provider throws", async () => {
+  test("preserves the previous provider folder on republish", async () => {
     const experimentRef = fs.getRef("experiments/EID");
     mockGetValidToken
       .mockResolvedValueOnce({ success: true, access_token: "drive-token" })
@@ -167,10 +164,7 @@ describe("handleProviderChange", () => {
       ),
     ).resolves.toEqual({ ok: true });
 
-    expect(console.warn).toHaveBeenCalledWith(
-      "[PROVIDER CHANGE] Old folder cleanup failed (non-fatal):",
-      "cleanup failed",
-    );
+    expect(mockDeleteFolder).not.toHaveBeenCalled();
     expect(experimentRef.update).toHaveBeenCalledWith({
       osfComponentId: null,
       osfUploadLink: null,

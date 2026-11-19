@@ -1,9 +1,16 @@
-import { jest } from "@jest/globals";
+import { jest, describe, test, expect } from "@jest/globals";
 
+const onSessionConnectionWritten = jest.fn(), enqueueSessionTimeout = jest.fn();
+const reconcilePendingSessions = jest.fn();
+jest.unstable_mockModule('../../experiment/sessions/reconciliation/functions.js', () => ({ reconcilePendingSessions }));
+jest.unstable_mockModule('../../experiment/sessions/lifecycle/presence.js', () => ({ onSessionConnectionWritten }));
+jest.unstable_mockModule('../../experiment/sessions/timeout/functions.js', () => ({ enqueueSessionTimeout }));
 const apiData = jest.fn();
 const apiDataComplete = jest.fn();
 const finalizeDisconnectedSessions = jest.fn();
 const processSessionTimeout = jest.fn();
+const enqueueSessionExport = jest.fn(), processSessionExportTask = jest.fn();
+jest.unstable_mockModule('../../experiment/sessions/export/functions.js', () => ({ enqueueSessionExport, processSessionExportTask }));
 const publishExperiment = jest.fn();
 const apiDeleteExperiment = jest.fn();
 const apiCondition = jest.fn();
@@ -72,7 +79,7 @@ const functionsYamlText = readFileSync(
 const functionsYamlEndpoints = [
   ...functionsYamlText
     .split("endpoints:\n")[1]
-    .matchAll(/^  ([A-Za-z0-9_]+):$/gm),
+    .matchAll(/^ {2}([A-Za-z0-9_]+):$/gm),
 ].map((match) => match[1]);
 
 describe("functions/index.js", () => {
@@ -85,6 +92,8 @@ describe("functions/index.js", () => {
       apiCondition,
       finalizeDisconnectedSessions,
       processSessionTimeout,
+      onSessionConnectionWritten, enqueueSessionTimeout, reconcilePendingSessions,
+      enqueueSessionExport, processSessionExportTask,
       dropboxOAuthCallback,
       githubOAuthCallback,
       publishExperiment,
@@ -95,6 +104,8 @@ describe("functions/index.js", () => {
       getOAuthClientIds,
       uploadParticipantFile,
     });
+    expect(entrypoints).not.toHaveProperty('reconcilePendingSessionTimeouts');
+    expect(entrypoints).not.toHaveProperty('reconcilePendingSessionExports');
     expect(functionsYamlEndpoints.sort()).toEqual(
       [
         "apiData",
@@ -103,6 +114,8 @@ describe("functions/index.js", () => {
         "apiCondition",
         "finalizeDisconnectedSessions",
         "processSessionTimeout",
+        "onSessionConnectionWritten", "enqueueSessionTimeout", "reconcilePendingSessions",
+        'enqueueSessionExport', 'processSessionExportTask',
         "dropboxOAuthCallback",
         "githubOAuthCallback",
         "publishExperiment",

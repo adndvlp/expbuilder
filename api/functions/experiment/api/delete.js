@@ -38,6 +38,8 @@ export const apiDeleteExperiment = onRequest(
           success: false,
           message: "Experiment not found",
         });
+      } else if (error.status === 409) {
+        res.status(409).json({ success: false, message: error.message });
       } else {
         // T-11: log internal detail; respond generic.
         console.error("Error deleting experiment:", error);

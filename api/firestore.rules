@@ -19,18 +19,42 @@ service cloud.firestore {
       allow write: if false;
     }
     match /experiments/{experimentId} {
+      function validBatch(value) {
+        return value is map && value.keys().hasAll(['useIndexedDB', 'batchSize', 'resumeTimeoutMinutes']) &&
+          value.keys().hasOnly(['useIndexedDB', 'batchSize', 'resumeTimeoutMinutes']) &&
+          value.useIndexedDB is bool && value.batchSize is int && value.batchSize >= 0 && value.batchSize <= 9007199254740991 &&
+          value.resumeTimeoutMinutes is int && value.resumeTimeoutMinutes >= 1 && value.resumeTimeoutMinutes <= 1440;
+      }
+      function validRecruitment(value) {
+        return value is map && value.keys().hasAll(['platform', 'prolificCompletionCode']) &&
+          value.keys().hasOnly(['platform', 'prolificCompletionCode']) &&
+          value.platform in ['none', 'prolific', 'mturk'] && value.prolificCompletionCode is string;
+      }
+      // Match the whitespace-only key rejection used by String.trim() in the form/backend.
+      function validCaptcha(value) {
+        return value is map && value.keys().hasAll(['enabled', 'provider', 'siteKey']) &&
+          value.keys().hasOnly(['enabled', 'provider', 'siteKey']) && value.enabled is bool &&
+          value.provider in ['hcaptcha', 'recaptcha'] && value.siteKey is string &&
+          (!value.enabled || value.siteKey.matches('(?s).*[^\\s\\x{000b}\\x{00a0}\\x{1680}\\x{2000}-\\x{200a}\\x{2028}\\x{2029}\\x{202f}\\x{205f}\\x{3000}\\x{feff}].*'));
+      }
+      function validPublicSettings() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['batchConfig', 'recruitmentConfig', 'captchaConfig']) &&
+          validBatch(data.batchConfig) && validRecruitment(data.recruitmentConfig) && validCaptcha(data.captchaConfig);
+      }
       function verifyFields(){
         return request.resource.data.keys().hasOnly(['active', 'id', 'owner', 'title', 'sessions', 'useValidation', 'allowJSON', 'allowCSV', 'requiredFields', 'maxSessions', 'limitSessions', 'activeConditionAssignment', 'nConditions', 'currentCondition', 'batchConfig', 'recruitmentConfig', 'captchaConfig'])
       }
       function isOwner(){
-        return request.auth.uid == resource.data.owner;
+        return request.auth != null && request.auth.uid == resource.data.owner;
       }
       allow read: if(request.auth.uid != null) &&
         resource.data.owner == request.auth.uid;
       allow create: if(request.auth.uid != null) &&
-       verifyFields() &&
+       verifyFields() && validPublicSettings() &&
         request.resource.data.owner == request.auth.uid;
-      allow update: if isOwner() && (
+      allow update: if isOwner() && request.resource.data.owner == resource.data.owner &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['batchConfig', 'recruitmentConfig', 'captchaConfig']) || validPublicSettings()) && (
         verifyFields() ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['batchConfig', 'recruitmentConfig', 'captchaConfig']))
       );

@@ -77,7 +77,7 @@ function AppearanceSettings({ experimentID }: Props) {
       >
         Configure the background color and fullscreen behavior of the experiment
         canvas. These settings apply to the live experiment and the builder
-        preview.
+        preview. Save and republish to apply changes to the public experiment.
       </p>
 
       {/* Background Color */}

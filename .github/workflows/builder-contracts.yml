@@ -8,17 +8,23 @@ on:
       - "client/**"
       - "server/**"
       - "api/functions/**"
+      - "api/persistence-e2e/**"
+      - "scripts/*persistence*"
+      - "__tests__/ci-workflows.test.js"
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/builder-contracts.yml"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "client/**"
       - "server/**"
       - "api/functions/**"
+      - "api/persistence-e2e/**"
+      - "scripts/*persistence*"
+      - "__tests__/ci-workflows.test.js"
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/builder-contracts.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +37,7 @@ permissions:
 jobs:
   contracts:
     name: Authoring to generated runtime
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       CI: true
@@ -40,10 +46,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate workflow syntax and expressions
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color -shellcheck= -pyflakes=
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ">=22.22.2 <23"
           cache: npm
           cache-dependency-path: |
             package-lock.json

@@ -20,20 +20,6 @@ export type PublicExperimentCodeOptions = {
   firebaseWebConfig?: PublicFirebaseWebConfig;
   experimentID: string | undefined;
   useStorage: string | undefined;
-  batchConfig: {
-    useIndexedDB: boolean;
-    batchSize: number;
-    resumeTimeoutMinutes: number;
-  };
-  recruitmentConfig: {
-    platform: "none" | "prolific" | "mturk";
-    prolificCompletionCode: string;
-  };
-  captchaConfig: {
-    enabled: boolean;
-    provider: "hcaptcha" | "recaptcha";
-    siteKey: string;
-  };
   sessionNameTokens: SessionNameToken[];
   sessionNameSeparator: string;
   currentUid: string;

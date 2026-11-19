@@ -56,7 +56,7 @@ export function buildPublicExperimentCode(
         {
           state: "route",
           mode: "writer",
-          evidence: "JSON.stringify(_createResumeCheckpoint(data))",
+          evidence: "_persistPublicResponse(data, checkpoint)",
         },
       ],
     },

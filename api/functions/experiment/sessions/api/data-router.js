@@ -1,3 +1,4 @@
+import { handleSessionHandshake } from "../lifecycle/handshake.js";
 import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../../app.js";
@@ -8,6 +9,8 @@ import validateJSON from "../validation/validate-json.js";
 import { getValidToken } from "../../../oauth/index.js";
 import { finalizeSession } from "../finalization/finalize.js";
 import { postFile } from "../storage.js";
+import { handleExportStatus } from "../export/status.js";
+import { handleCompleteSession } from "../handlers/complete-session.js";
 import {
   handleCreateSession,
   handleAppendResult,
@@ -50,6 +53,8 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     }
   }
 
+  if (["resumeSession", "activateConnection"].includes(action) || (req.body.sessionProtocolVersion === 3 && (!action || action === "createSession"))) return await handleSessionHandshake(req, res);
+
   // Manejar diferentes acciones según el parámetro 'action'
   if (action === "list" && experimentID) {
     return await handleListSessions(req, res, experimentID);
@@ -63,8 +68,16 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
     return await handleDeleteSession(req, res, experimentID, sessionId);
   }
 
+  if (action === "sessionStatus" || action === "retryExport") return await handleExportStatus(req, res, action === "retryExport");
+
+  if (action === "completeSession") return await handleCompleteSession(req, res);
+
   if (action === "finish" && experimentID && sessionId) {
     try {
+      const session = await db.collection('experiments').doc(experimentID).collection('sessions').doc(sessionId).get();
+      if (session?.data?.()?.sessionProtocolVersion >= 2) {
+        res.status(409).json({ success: false, message: 'Versioned sessions require completeSession with their expected event set' }); return;
+      }
       const result = await finalizeSession(experimentID, sessionId);
       res.status(200).json(result);
     } catch (error) {
@@ -95,6 +108,8 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
       res.status(400).json({ error: "sessionName must be <= 200 characters" });
       return;
     }
+    // Session display names deliberately reject ASCII control characters.
+    // eslint-disable-next-line no-control-regex
     if (/[\x00-\x1F]/.test(trimmed)) {
       res
         .status(400)
@@ -114,6 +129,15 @@ export const apiData = onRequest({ cors: true }, async (req, res) => {
       res.status(500).json({ error: "Internal server error" });
     }
     return;
+  }
+
+  // Explicit event ingestion must never fall through to session creation.
+  if ((action === "appendEvents" || action === "recoverEvents")) {
+    if (!experimentID || !sessionId || !data) {
+      res.status(400).json({ success: false, message: "Event reception requires experimentID, sessionId and data" });
+      return;
+    }
+    return await handleAppendResult(req, res, experimentID, sessionId, data);
   }
 
   // Detectar si es creación de sesión (experimentID, sessionId, sin data ni filename)
@@ -150,6 +174,10 @@ async function handlePostFile(req, res, experimentID, data, filename) {
   }
 
   const exp_data = exp_doc.data();
+  if (exp_data.sessionExportProtocolVersion === 1) {
+    res.status(409).json({ success: false, message: 'This publication requires stable events and verified completion' });
+    return;
+  }
   if (!exp_data.active) {
     res.status(400).json(MESSAGES.DATA_COLLECTION_NOT_ACTIVE);
     return;

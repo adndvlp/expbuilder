@@ -13,6 +13,18 @@ This documentation covers the complete architecture, data model, API, and system
 | [05-TRIALS_AND_LOOPS.md](05-TRIALS_AND_LOOPS.md) | Trial lifecycle, loop system, orders & categories, CSV integration, code injection hooks |
 | [06-BRANCHING.md](06-BRANCHING.md) | Explicit branching, default destinations, parameter overrides, loops and resume |
 | [temporary-migrations.md](temporary-migrations.md) | Temporary tester migrations, current status, and the code and tests to retire before the release for users |
+| [retrocompatibility-removal-sdd.md](retrocompatibility-removal-sdd.md) | Spec for removing old public session protocols and historical recovery, updating a finite set of existing experiments, and deleting temporary converters after validation |
+| [publication-versioning-removal-sdd.md](publication-versioning-removal-sdd.md) | Publication history retirement: one current HTML, per-session configuration, compatible resume, TDD results and deferred checks; existing GitHub/Firestore cleanup belongs to the user |
+| [public-settings-sdd.md](public-settings-sdd.md) | Implemented and locally verified settings without republishing: new-session settings, independent saves, naming/appearance publication rules, acceptance coverage and final review |
+| [Public settings cost comparison](investigaciones/public-settings-cost-comparison-2026-11-14.md) | Verified common fixture and strict before/after cost comparison; unchanged variable cost and preserved historical optimization evidence |
+| [cost-benchmarking-sdd.md](cost-benchmarking-sdd.md) | Implemented cost benchmarking: observers, monetary calculations, persistence reference, strict comparisons and CI |
+| [cost-benchmarking-repeatability-sdd.md](cost-benchmarking-repeatability-sdd.md) | Validated controlled inputs and timing, repetition contracts, three independent matrices and the registered cost reference |
+| [Persistence cost analysis](investigaciones/persistence-cost-analysis-2026-11-13.md) | Cost breakdown and evidence for a future optimization spec: idle work, handlers, per-event operations, retention and index-model limitations |
+| [public-session-cost-optimization-sdd.md](public-session-cost-optimization-sdd.md) | Implementations and final validation executed: functional, operation and exact repetition checks pass; strict monetary approval remains pending |
+| [Session reconciliation cost comparison](investigaciones/session-reconciliation-cost-2026-11-14.md) | Delivery 3 evidence: one scheduled job, lower fixed cost and three expiry storage increases rejected by the strict policy |
+| [Session export cost comparison](investigaciones/session-export-cost-2026-11-14.md) | Delivery 4 evidence: fewer dispatch reads, no empty job write and a coherent preparation view; lower variable costs with temporal storage increases still rejected |
+| [Final persistence cost validation](investigaciones/persistence-cost-final-validation-2026-11-14.md) | Delivery 5: corrected enqueue fault, revalidated B0 R3, three exact candidate repetitions and preserved strict cost rejection |
+| [public-session-release-plan.md](public-session-release-plan.md) | Current publication flow, reproducible verification and a concrete test experiment; no historical recovery or general republication steps |
 | [dynamic-plugin-proportional-scaling-sdd.md](dynamic-plugin-proportional-scaling-sdd.md) | Implemented proportional scaling with a shared internal 2560 × 1450 scene, editor/runtime geometry, input mapping, graphics resolution, verification results and pending npm distribution |
 | [unified-branching-contract-sdd.md](unified-branching-contract-sdd.md) | Single Branching contract, scope entries, loops, persistence, resume and TDD acceptance criteria |
 | [experiment-background-sdd.md](experiment-background-sdd.md) | Single experiment background for local execution, preview and publication; removal of per-trial background copies and verification results |
@@ -20,6 +32,7 @@ This documentation covers the complete architecture, data model, API, and system
 | [08-EXECUTION.md](08-EXECUTION.md) | Code generation, experiment compilation, preview, local run, Cloudflare publishing |
 | [09-CLIENT_SERVER.md](09-CLIENT_SERVER.md) | Providers, context, hooks, optimistic UI, data flow, autosave patterns |
 | [10-EXPERIMENT_CONFIG.md](10-EXPERIMENT_CONFIG.md) | Experiment settings: batch config, recruitment (Prolific/MTurk), CAPTCHA (hCaptcha/reCAPTCHA), session naming, appearance, Cloudflare tunnel |
+| [public-session-persistence-sdd.md](public-session-persistence-sdd.md) | Implemented public session persistence: IndexedDB, batching, shared timeout, stable identity, verified export, recovery after expiry and the recorded deliveries |
 | [11-DEVMODE.md](11-DEVMODE.md) | DevMode system, custom code components, jsPsych init overrides, pre-init code, code generation integration |
 | [12-PUBLISH_FLOW.md](12-PUBLISH_FLOW.md) | CSV handling (parse/generate), multimedia file upload/management, complete publish pipeline, local vs public code differences, experiment creation flow |
 | [13-CODE_GENERATION.md](13-CODE_GENERATION.md) | Full code generation pipeline: generateTrialLoopCodes, useLoopCode, ExperimentBase, execution order, local vs public config comparison |

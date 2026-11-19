@@ -70,8 +70,13 @@ export function getLoopResumeRuntimeCode(): string {
       }
       return frame.order.slice(frame.cursor);
     };
-    const remainingLoopRepetitions = (loopId, repetitions) =>
-      Math.max(0, repetitions - (restoredLoops.get(String(loopId))?.repetition ?? 0));
+    const remainingLoopRepetitions = (loopId, repetitions) => {
+      const saved = restoredLoops.get(String(loopId));
+      if (saved && saved.repetition >= repetitions) {
+        throw new Error('The saved loop repetition no longer exists');
+      }
+      return repetitions - (saved?.repetition ?? 0);
+    };
     const startLoop = (loopId, readRouting, writeRouting) => {
       const key = String(loopId);
       const frame = preparedLoops.get(key);

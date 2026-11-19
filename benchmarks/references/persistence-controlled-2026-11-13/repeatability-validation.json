@@ -1,0 +1,300 @@
+{
+  "format": 1,
+  "purpose": "Three independent complete captures with exact pairwise equality; no consumption target or historical conversion",
+  "validatedAt": "2026-11-14T04:56:21.069Z",
+  "command": "npm run benchmark:cost:persistence -- --output NEW_DIRECTORY (three separate processes)",
+  "runs": [
+    {
+      "number": 1,
+      "createdAt": "2026-11-14T04:53:08.216Z",
+      "revision": "7c3f5715fdd1350e57c92026c8d01bfd6b467d59",
+      "machine": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64",
+        "browser": "157.0.8103.52"
+      },
+      "measuredCode": "611961e7909aee0e668d963ea18af66e3c768623d360b62a01f674b505f444b4",
+      "conditions": "cfd45efe98e6f521e9797d9bf47c649893c91422613836eb61730210166b08e9",
+      "scenarios": 23,
+      "functionalPassed": 23,
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b1",
+        "files": {
+          "reference.json": {
+            "bytes": 3629128,
+            "sha256": "bc1f2ebdad678d70e77d8aaa07a4e26abedeae6faf17e78131ae9f1b7755cecc"
+          },
+          "budget.json": {
+            "bytes": 7745697,
+            "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+          }
+        }
+      }
+    },
+    {
+      "number": 2,
+      "createdAt": "2026-11-14T04:54:21.863Z",
+      "revision": "7c3f5715fdd1350e57c92026c8d01bfd6b467d59",
+      "machine": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64",
+        "browser": "157.0.8103.52"
+      },
+      "measuredCode": "611961e7909aee0e668d963ea18af66e3c768623d360b62a01f674b505f444b4",
+      "conditions": "cfd45efe98e6f521e9797d9bf47c649893c91422613836eb61730210166b08e9",
+      "scenarios": 23,
+      "functionalPassed": 23,
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b2",
+        "files": {
+          "reference.json": {
+            "bytes": 3629139,
+            "sha256": "6adc13fb7aa159e4b9e2c40257c66e822d9edb31c2ccceb7d16d443d835636a3"
+          },
+          "budget.json": {
+            "bytes": 7745697,
+            "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+          }
+        }
+      }
+    },
+    {
+      "number": 3,
+      "createdAt": "2026-11-14T04:55:45.316Z",
+      "revision": "7c3f5715fdd1350e57c92026c8d01bfd6b467d59",
+      "machine": {
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64",
+        "browser": "157.0.8103.52"
+      },
+      "measuredCode": "611961e7909aee0e668d963ea18af66e3c768623d360b62a01f674b505f444b4",
+      "conditions": "cfd45efe98e6f521e9797d9bf47c649893c91422613836eb61730210166b08e9",
+      "scenarios": 23,
+      "functionalPassed": 23,
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b3",
+        "files": {
+          "reference.json": {
+            "bytes": 3629133,
+            "sha256": "9d539206f9917ef82d0a257422b611edf25c048d3219746a136be06c5173f577"
+          },
+          "budget.json": {
+            "bytes": 7745697,
+            "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+          }
+        }
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "runs": [
+        1,
+        2
+      ],
+      "status": "passed",
+      "exitCode": 0,
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "measurements": 4573,
+        "quantities": 18084,
+        "money": 14133
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-repeatability-point4-b1",
+          "files": {
+            "reference.json": {
+              "bytes": 3629128,
+              "sha256": "bc1f2ebdad678d70e77d8aaa07a4e26abedeae6faf17e78131ae9f1b7755cecc"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-repeatability-point4-b2",
+          "files": {
+            "reference.json": {
+              "bytes": 3629139,
+              "sha256": "6adc13fb7aa159e4b9e2c40257c66e822d9edb31c2ccceb7d16d443d835636a3"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        }
+      },
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b1-b2",
+        "files": {
+          "comparison.json": {
+            "bytes": 12449196,
+            "sha256": "64a102956858df7e40835404399e990eb3f341a05cc2399694da7a84e341966a"
+          },
+          "README.md": {
+            "bytes": 69626,
+            "sha256": "fbf0869c5a48f474ab5002fc4fdfcfc1e6dd6ae257819e7786adf11d4989c637"
+          }
+        }
+      }
+    },
+    {
+      "runs": [
+        1,
+        3
+      ],
+      "status": "passed",
+      "exitCode": 0,
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "measurements": 4573,
+        "quantities": 18084,
+        "money": 14133
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-repeatability-point4-b1",
+          "files": {
+            "reference.json": {
+              "bytes": 3629128,
+              "sha256": "bc1f2ebdad678d70e77d8aaa07a4e26abedeae6faf17e78131ae9f1b7755cecc"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-repeatability-point4-b3",
+          "files": {
+            "reference.json": {
+              "bytes": 3629133,
+              "sha256": "9d539206f9917ef82d0a257422b611edf25c048d3219746a136be06c5173f577"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        }
+      },
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b1-b3",
+        "files": {
+          "comparison.json": {
+            "bytes": 12449196,
+            "sha256": "3899def37f819575ab1e8b25c0755a60f964620d3f4ac39ea037bf9de4f75041"
+          },
+          "README.md": {
+            "bytes": 69620,
+            "sha256": "fd0eabc8d08a41661752125aaac969f95b2a4d22a23e54f783eadd70fe1f01ab"
+          }
+        }
+      }
+    },
+    {
+      "runs": [
+        2,
+        3
+      ],
+      "status": "passed",
+      "exitCode": 0,
+      "equality": {
+        "measurements": true,
+        "storage": true,
+        "quantities": true,
+        "money": true,
+        "functional": true
+      },
+      "policy": {
+        "format": 1,
+        "metrics": [],
+        "money": [],
+        "performance": []
+      },
+      "nonzeroDifferences": 0,
+      "rows": {
+        "measurements": 4573,
+        "quantities": 18084,
+        "money": 14133
+      },
+      "captureSources": {
+        "baseline": {
+          "directory": "/tmp/cost-repeatability-point4-b2",
+          "files": {
+            "reference.json": {
+              "bytes": 3629139,
+              "sha256": "6adc13fb7aa159e4b9e2c40257c66e822d9edb31c2ccceb7d16d443d835636a3"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        },
+        "candidate": {
+          "directory": "/tmp/cost-repeatability-point4-b3",
+          "files": {
+            "reference.json": {
+              "bytes": 3629133,
+              "sha256": "9d539206f9917ef82d0a257422b611edf25c048d3219746a136be06c5173f577"
+            },
+            "budget.json": {
+              "bytes": 7745697,
+              "sha256": "cafbf5dbc3189b891e0b7e6e2f466ac959634608b4dd8b11622dea25d7eb58fe"
+            }
+          }
+        }
+      },
+      "source": {
+        "directory": "/tmp/cost-repeatability-point4-b2-b3",
+        "files": {
+          "comparison.json": {
+            "bytes": 12449103,
+            "sha256": "b62630b3ac621da346431c666f43b4e415fd1bbf7793575f00bb69e08af4932e"
+          },
+          "README.md": {
+            "bytes": 69527,
+            "sha256": "7cb713ba9f9965f0dbf6c00e6bba511a50e7f819919b2611dc6fc34df7349f4c"
+          }
+        }
+      }
+    }
+  ],
+  "conditionsFingerprint": "cfd45efe98e6f521e9797d9bf47c649893c91422613836eb61730210166b08e9",
+  "measuredCode": "611961e7909aee0e668d963ea18af66e3c768623d360b62a01f674b505f444b4"
+}

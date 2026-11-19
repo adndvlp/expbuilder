@@ -1,0 +1,8 @@
+{
+  "artifactBytes": {
+    "reference.json": 3446853,
+    "budget.json": 6988095,
+    "README.md": 6676
+  },
+  "retention": "Local files under user control; this runner creates no hosted artifacts, uploads or scheduled telemetry"
+}

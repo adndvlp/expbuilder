@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../app.js";
+import { createDefaultPublicSettings, validatePublicSettings } from './settings.js';
 import writeLog from "./sessions/logging/write-log.js";
 import {
   buildProviderFields,
@@ -21,6 +22,7 @@ export async function createExperiment(
   storageProvider = "googledrive",
   overrides = {},
 ) {
+  const publicSettings = validatePublicSettings({ ...createDefaultPublicSettings(), ...overrides });
   await writeLog(experimentID, "createExperiment");
 
   const folderPath = `/ExpBuilder/${experimentName}`;
@@ -116,6 +118,7 @@ export async function createExperiment(
     await experimentRef.create({
       ...defaults,
       ...safeOverrides,
+      ...publicSettings,
       title: experimentName,
       ...providerFields,
       storageProvider: storageProvider,
@@ -127,7 +130,7 @@ export async function createExperiment(
     });
   } catch (err) {
     if (err?.code === 6 || /ALREADY_EXISTS/i.test(err?.message || "")) {
-      throw new Error("EXPERIMENT_ALREADY_EXISTS");
+      throw new Error("EXPERIMENT_ALREADY_EXISTS", { cause: err });
     }
     throw err;
   }

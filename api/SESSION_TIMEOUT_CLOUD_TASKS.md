@@ -1,144 +1,148 @@
-# Session Timeout Cloud Tasks
+# Public session timeout and export queues
 
-This document describes the delayed timeout flow used by `builder_api` for
-disconnected experiment sessions.
+The current implementation uses one publication per experiment. The
+[single publication SDD](../docs/publication-versioning-removal-sdd.md) records
+its local regression results and the browser checks deferred by the user.
+The [publication and verification plan](../docs/public-session-release-plan.md)
+describes a concrete test publication. This task does not deploy or republish
+real experiments. Existing GitHub/Firestore history cleanup belongs to the user.
 
-## Why This Exists
+## Protocol 3 lifecycle
 
-The previous implementation used `setTimeout(..., 30 minutes)` inside the
-Realtime Database trigger `finalizeDisconnectedSessions`. That is not reliable
-in Cloud Functions: the trigger handler returns immediately, and the timer then
-lives only in the memory of one function instance.
+A session copies the current server-confirmed `publishedConfiguration`, including
+batch configuration, validation, recruitment, CAPTCHA, provider and destination,
+when it is created. New publications
+apply to new sessions. `Resume Timeout` is an integer from 1 to 1440 minutes and
+has the same meaning with either IndexedDB mode and all three providers.
 
-The current implementation uses Firebase task queue functions, backed by Google
-Cloud Tasks, to schedule the delayed work durably.
-
-Official references:
-
-- Firebase task queue functions: https://firebase.google.com/docs/functions/task-functions
-- Cloud Tasks pricing: https://cloud.google.com/tasks/pricing
-- Cloud Tasks quotas and limits: https://cloud.google.com/tasks/docs/quotas
-
-## Deployed Functions
-
-- `finalizeDisconnectedSessions`: Realtime Database trigger on
-  `sessions/{experimentID}/{sessionId}`. It detects disconnects and schedules
-  durable timeout work when the session is resumable.
-- `processSessionTimeout`: task queue worker. Cloud Tasks dispatches this
-  function at `resumeExpiresAt`.
-
-The queue target used by the Admin SDK is:
+The HTTP handshake grants one connection ID, generation and random write
+capability. Only its hash is kept in Firestore. A private, server-written RTDB
+lease authorizes presence under:
 
 ```text
-locations/us-central1/functions/processSessionTimeout
+session_connection_leases/{experimentID}/{sessionId}/{connectionId}
+session_connections/{experimentID}/{sessionId}/{connectionId}
 ```
 
-No new npm dependency is required. The existing `firebase-functions` and
-`firebase-admin` versions already support task queue functions.
+The client registers and awaits `onDisconnect().set(...)` before publishing
+connected presence, then confirms activation through the API before running
+trials. Presence is established before CAPTCHA/resource preparation and checked
+again before execution. `.info/connected` pauses progression on network loss
+and renews the handshake on reconnect without requiring a reload. An initial
+handshake that never establishes presence has a 30-second setup window before
+the ordinary resume deadline starts; it cannot reserve the session forever.
 
-## Runtime Flow
+RTDB rules require a valid capability and generation and a server timestamp.
+They disallow replaying a disconnect to extend its date and reopening the same
+generation. A private lease also blocks legacy writes to the old session node.
 
-When a participant disconnects and resume is enabled:
+`resumeSession`, activation, event reception, completion, status, presence and
+timeout use the same lifecycle resolver. It reads the current connection even
+if its trigger is delayed. The deadline is the server disconnect timestamp plus
+the frozen timeout. At `now >= resumeExpiresAt`, execution closes as `expired`
+and the export request commits in the same Firestore transaction. Provider
+latency never extends permission to continue. Old generations cannot write new
+events or expire a replacement connection. Identical received-event retries can
+still be acknowledged after expiry.
 
-1. `finalizeDisconnectedSessions` writes `resumeExpiresAt`,
-   `resumeTimeoutStarted`, and `resumeTimeoutTaskStatus: "pending"` to RTDB.
-2. It enqueues a Cloud Task for `processSessionTimeout` using `scheduleTime`.
-3. After enqueue succeeds, it writes `resumeTimeoutTaskStatus: "queued"`.
-4. If the participant reconnects before the task fires, RTDB is marked as
-   `state: "resumed"` and `resumeTimeoutTaskStatus: "cancelled"`.
-5. The task may still dispatch, but it is idempotent: it re-reads RTDB and
-   no-ops unless the session is still disconnected and `resumeExpiresAt`
-   matches the task payload.
+Returning before the deadline retains the same participant, condition and
+checkpoint. Returning after it recovers pending events into the original
+session and offers an explicit new participation with a different ID, subject
+to participation limits. An unbacked in-memory response must be saved before
+that choice can navigate away. Earlier recovery references are separate from
+the active session; later visits retry their original-session delivery.
 
-Provider behavior:
+## Durable timeout dispatch
 
-- `useIndexedDB=true`: the browser is the source of truth for recovery. If the
-  session remains disconnected until timeout, the worker deletes temporary
-  Firestore data under `experiments/{experimentID}/sessions/{sessionId}`,
-  including `trials` in batches of 500, writes `session_metadata` with
-  `state: "expired"`, and marks RTDB as processed.
-- `useIndexedDB=false` and `storageProvider="osf"`: OSF cannot use the immediate
-  PATCH path. The worker calls `finalizeSession`, writes expired metadata, and
-  marks RTDB as processed. `SESSION_NOT_FOUND` and `NO_RESULTS` are treated as
-  terminal no-data expirations; other errors are rethrown so Cloud Tasks can
-  retry.
-- `useIndexedDB=false` with Google Drive or Dropbox: no delayed task is needed.
-  The trigger still sends the immediate PATCH on disconnect.
+- `onSessionConnectionWritten`: RTDB trigger for connection presence.
+- `enqueueSessionTimeout`: Firestore trigger for durable session timeout intent.
+- `reconcilePendingSessionTimeouts`: every minute, retries due timeout intents.
+- `processSessionTimeout`: task queue worker, target
+  `locations/us-central1/functions/processSessionTimeout`.
 
-## Retry And Rate Limits
+The session stores `timeoutPending`, `timeoutKind`, `timeoutExpiresAt`,
+`timeoutGeneration` and `timeoutNextDispatchAt`. Enqueue failure preserves that
+intent and retries after 30 seconds. A claimed dispatch becomes eligible again
+after its intended deadline plus one minute. Delivery may repeat. Its payload
+includes connection ID/generation; obsolete work cannot affect a newer owner.
+Activation cancels the intent logically. The scheduler also inspects sessions
+with `presenceCheckPending` and a due `presenceCheckAt`, so a lost RTDB trigger
+cannot strand a disconnect indefinitely. It advances each check date and uses
+the same deadline resolver; terminal/deleting sessions stop being inspected.
+This is necessary because the installed RTDB trigger SDK does not encode
+`retry: true` into its endpoint metadata. Source and packaged manifest both
+retain its supported `retry: false` behavior, with the scheduler as repair.
+Expiry commits closure and export;
+empty sessions close without producing a fictitious CSV.
 
-`processSessionTimeout` is configured with:
+The worker has a 300-second function timeout, five attempts, 30–300 second
+backoff, and limits of 20 concurrent dispatches and 20 dispatches/second. The
+queue dispatch deadline remains 120 seconds. Both the SDK exports and the
+checked-in Functions manifest declare the new trigger and scheduler.
 
-- Region: `us-central1`
-- Timeout: 300 seconds
-- Max attempts: 5
-- Backoff: 30 to 300 seconds
-- Max concurrent dispatches: 20
-- Max dispatches per second: 20
-- Per-task dispatch deadline: 120 seconds
+`finalizeDisconnectedSessions` remains for older publications. Both IndexedDB
+modes now schedule their disconnect timeout for all providers, using the
+recorded disconnect timestamp when available. Drive/Dropbox no longer request
+an immediate partial export on disconnect. This compatibility path does not
+invent protocol 3 writer capabilities for old clients. The
+[compatibility removal spec](../docs/retrocompatibility-removal-sdd.md) treats
+retirement of that old trigger and transport separately. Current sessions do
+not consult a publication history.
 
-## Deployment Requirements
+## Export confirmation
 
-Deploy the task worker and the RTDB trigger together:
+Closing and requesting an export revision commit together. `enqueueSessionExport`
+dispatches persisted jobs, `processSessionExportTask` writes/reconciles their
+stable provider resource, and `reconcilePendingSessionExports` repairs delivery
+gaps every minute. The export task target is:
 
-```bash
-firebase deploy --only functions:processSessionTimeout,functions:finalizeDisconnectedSessions
+```text
+locations/us-central1/functions/processSessionExportTask
 ```
 
-Deploying all functions is also fine:
+Each job fixes its event set, hash, destination and session metadata. It keeps
+CSV chunks and payloads until the provider bytes have been verified. Only the
+IDs in that confirmed snapshot can be cleaned. Recovery requests another
+revision of the same file, never a new participant or a reopened execution.
+Uncertain writes remain recoverable for reconciliation or explicit retry.
 
-```bash
-firebase deploy --only functions
-```
+HTTP 202 and execution state `completed` do not mean storage succeeded. The
+runtime checks a matching confirmed receipt before reporting success or
+redirecting to a recruitment platform. `retryExport` reactivates a blocked job.
 
-On first deploy, Firebase CLI creates the Cloud Tasks queue for the task queue
-function using the retry and rate-limit options in source code.
+## Publications and local retention
 
-If enqueueing fails with permission errors, check IAM for the service account
-used by the function. It needs permission to create Cloud Tasks tasks
-(`cloudtasks.tasks.create`, commonly via `roles/cloudtasks.enqueuer`) and to
-invoke the task queue function.
+The generated runtime embeds its configuration. Cloud publishing validates it,
+uploads media to `img/`, `aud/` and `vid/`, and updates the root `index.html`.
+It then confirms the single `publishedConfiguration` on the experiment. A
+publication lease prevents competing uploads; experiment deletion waits for it.
+The publisher's 300-second timeout is shorter than its ten-minute lease.
+Switching providers retains earlier folders required by existing sessions.
 
-No new environment variable is required.
+Existing sessions resume on the current HTML with their own configuration.
+Navigation validates the saved destination, scope, queue, loop order and
+repetition before execution. A changed authoring date alone cannot reject a
+valid checkpoint. Invalid progress is reported without resetting identity or
+deleting pending responses. Closed-session recovery sends data to the original
+session without executing another graph. New participation reloads the current
+location, preserving its origin, path, query and fragment.
 
-## Cost Model
+IndexedDB retains unacknowledged events without age-based deletion. Cleanup is
+scoped to the current session and exact acknowledged IDs. With batch 0, the
+server cannot export responses that have never left the browser; closing that
+browser does not create a background delivery guarantee.
 
-The task payload is far below 32 KB, so one disconnected resumable session
-normally adds two Cloud Tasks billable operations:
+## Publication and environment verification
 
-1. One enqueue API call.
-2. One push delivery attempt.
+The local suite verifies the provider/emulator matrix; its controlled task
+delivery tests dispatch failures and retries without claiming production IAM.
+Deploy the Functions exports and manifest together with RTDB rules and Firestore
+indexes, then publish the selected test experiment. Deploying only Functions does
+not update an already published HTML file or provision the required indexes.
+The timeout dispatcher requires Cloud Tasks enqueue/invoke permissions. Cloud
+Tasks and Cloud Scheduler are declared required APIs; no new npm dependency or
+environment variable is introduced.
 
-Ignoring free tiers, Google lists Cloud Tasks at USD 0.40 per million operations
-up to 5 billion operations/month. Under that model:
-
-- 500 disconnected sessions: 1,000 operations = USD 0.0004.
-- 1,000 disconnected sessions: 2,000 operations = USD 0.0008.
-- Retries add one delivery operation per retry.
-
-This is only the Cloud Tasks increment. The worker still incurs the normal
-Firebase costs for Cloud Functions execution, RTDB reads/writes, Firestore
-reads/writes/deletes, and any provider API work.
-
-## Relevant Limits
-
-Current Cloud Tasks limits that matter for this implementation:
-
-- Maximum schedule time: 30 days in the future. Builder uses minutes, normally
-  30 minutes, so it is well below the limit.
-- Maximum task size: 1 MiB. Builder sends only `experimentID`, `sessionId`, and
-  `expiresAt`.
-- Queue dispatch rate: 500 tasks/second per queue. Builder caps this worker at
-  20 dispatches/second in source.
-- Queues per region: 1,000. Builder uses one task queue function for session
-  timeouts.
-- Task retention: 31 days.
-
-## Tests
-
-Targeted tests:
-
-```bash
-cd functions
-npm test -- sessions-timeout-tasks.test.js sessions-finalizeDisconnected-trigger.test.js
-```
+Session and experiment deletion remove receipts, jobs/chunks and connection
+records without consulting a publication history. Pending or uncertain provider writes
+must be reconciled before deleting their remaining recoverable copies.

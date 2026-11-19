@@ -1,3 +1,5 @@
+import { publicRecoveryCode } from "./publicRecoveryCode";
+import { publicPresenceCode } from "./publicPresenceCode";
 import { PublicExperimentCodeOptions } from "./publicCodeTypes";
 import {
   activateResumeRouteDecisionCode,
@@ -13,9 +15,6 @@ export function publicBootstrapCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -32,9 +31,6 @@ export function publicBootstrapCode(
     FIREBASE_DATABASE_URL,
     experimentID,
     useStorage,
-    batchConfig,
-    recruitmentConfig,
-    captchaConfig,
     sessionNameTokens,
     sessionNameSeparator,
     currentUid,
@@ -49,53 +45,56 @@ export function publicBootstrapCode(
   const storageKeys = getPublicRuntimeStorageKeys(experimentID);
   return `
   (async () => {
-    // --- CAPTCHA gate (hCaptcha / reCAPTCHA) ---
-    if (${captchaConfig.enabled} && "${captchaConfig.siteKey}" && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
-      const _loadingEl = document.getElementById('jspsych-loading-overlay');
-      if (_loadingEl) _loadingEl.style.display = 'none';
-      await _showCaptchaGate("${captchaConfig.siteKey}", "${captchaConfig.provider}");
-      sessionStorage.setItem(_publicStorageKeys.captchaPassed, '1');
-      if (_loadingEl) _loadingEl.style.display = 'flex';
-      _setLoadingMsg('Creating session\u2026');
-    }
-
-${resumeStartupCode(storageKeys.resumeTrial)}
-    
-    // --- Configuración de Batching (cargada desde Firestore) ---
-    const BATCH_CONFIG = {
-      size: ${batchConfig.batchSize},
-      currentBatchNumber: 0,
-      resumeTimeoutMinutes: ${batchConfig.resumeTimeoutMinutes},
-      useIndexedDB: ${batchConfig.useIndexedDB}
-    };
-
-    // Inicializar IndexedDB solo si está habilitado
-    if (BATCH_CONFIG.useIndexedDB) {
-      await TrialDB.init();
-    }
-    
-    // Verificar si hay una sesión pendiente (para retoma)
-    let resumedSession = false;
-    
-    if (BATCH_CONFIG.useIndexedDB) {
-      const existingTrials = await TrialDB.getAll();
-      
-      if (existingTrials.length > 0) {
-        const lastTrial = existingTrials[existingTrials.length - 1];
-        
-        if (lastTrial.sessionId === trialSessionId) {
-          BATCH_CONFIG.currentBatchNumber = Math.floor(existingTrials.length / (BATCH_CONFIG.size || 1));
-          resumedSession = true;
-        } else {
-          await TrialDB.clear();
-        }
-      }
-    }
-    
-    // SIEMPRE llamar a createSession (para crear documento en Firestore)
-    // El backend maneja sesiones duplicadas (409) y las retorna correctamente
     _setLoadingMsg('Creating session…');
-    participantNumber = await createSession();
+    let _publicSessionState = await createSession();
+    if (_publicSessionState.decision && !['resume_allowed', 'session_expired', 'session_completed'].includes(_publicSessionState.decision)) {
+      throw new Error('Session cannot resume: ' + _publicSessionState.decision + '. Your pending responses are preserved.');
+    }
+    const effectiveBatch = _publicSessionState.configuration.batchConfig;
+    const BATCH_CONFIG = { size: effectiveBatch.batchSize, useIndexedDB: effectiveBatch.useIndexedDB,
+      resumeTimeoutMinutes: effectiveBatch.resumeTimeoutMinutes, currentBatchNumber: 0 };
+    // Esperar e inicializar Firebase
+    _setLoadingMsg('Loading resources…');
+    await waitForFirebase();
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(firebaseConfig);
+    }
+    const db = window.firebase.database();
+
+${publicRecoveryCode(options)}
+${publicPresenceCode(options)}
+    if (_publicSessionState.sessionProtocolVersion === 3) await _connectPublicSession();
+
+
+    const effectiveCaptcha = _publicSessionState.configuration.captchaConfig;
+    if (!['completed', 'expired'].includes(_publicSessionState.lifecycle) && effectiveCaptcha.enabled && effectiveCaptcha.siteKey
+        && !sessionStorage.getItem(_publicStorageKeys.captchaPassed)) {
+      const loading = document.getElementById('jspsych-loading-overlay');
+      if (loading) loading.style.display = 'none';
+      await _showCaptchaGate(effectiveCaptcha.siteKey, effectiveCaptcha.provider);
+      sessionStorage.setItem(_publicStorageKeys.captchaPassed, '1');
+      if (loading) loading.style.display = 'flex';
+    }
+    if (BATCH_CONFIG.useIndexedDB) await TrialDB.init();
+    participantNumber = _publicSessionState.participantNumber;
+    if (typeof participantNumber !== 'number' || !Number.isFinite(participantNumber)) {
+      throw new Error('participantNumber not assigned');
+    }
+    if (BATCH_CONFIG.useIndexedDB) await TrialDB.syncManifest(_publicSessionState.receivedEvents || []);
+    const _savedLocalState = BATCH_CONFIG.useIndexedDB ? await TrialDB.getState() : null;
+    const _serverSequence = _publicSessionState.resumeCheckpointSequence ?? -1;
+    const _backedCheckpoint = _savedLocalState?.checkpoint && (_savedLocalState.checkpointSequence ?? -1) >= _serverSequence
+      ? _savedLocalState.checkpoint : _publicSessionState.resumeCheckpoint;
+    let _cachedCheckpoint = null;
+    try { _cachedCheckpoint = JSON.parse(localStorage.getItem(_publicStorageKeys.resumeTrial) || 'null'); } catch (_) {}
+    const _canKeepStartCursor = _backedCheckpoint && _cachedCheckpoint
+      && _canonicalPublicEvent(_cachedCheckpoint.completed) === _canonicalPublicEvent(_backedCheckpoint.completed);
+    if (['completed', 'expired'].includes(_publicSessionState.lifecycle) || !_backedCheckpoint) {
+      localStorage.removeItem(_publicStorageKeys.resumeTrial);
+    } else if (!_canKeepStartCursor) {
+      localStorage.setItem(_publicStorageKeys.resumeTrial, JSON.stringify(_backedCheckpoint));
+    }
+${resumeStartupCode(storageKeys.resumeTrial)}
 
     // If session name has counter token, generate final name now that participantNumber is known
     if (_sessionNameHasDynamic() && typeof participantNumber === 'number' && !isNaN(participantNumber)) {
@@ -115,38 +114,6 @@ ${resumeStartupCode(storageKeys.resumeTrial)}
       throw new Error("participantNumber not assigned");
     }
     
-    // Esperar e inicializar Firebase
-    _setLoadingMsg('Loading resources…');
-    await waitForFirebase();
-    if (!window.firebase.apps.length) {
-      window.firebase.initializeApp(firebaseConfig);
-    }
-    const db = window.firebase.database();
-
-    // --- Configurar onDisconnect para finalizar sesión automáticamente ---
-    const sessionRef = db.ref('sessions/${experimentID}/' + trialSessionId);
-    await sessionRef.set({
-      connected: true,
-      experimentID: '${experimentID}',
-      sessionId: trialSessionId,
-      participantNumber: participantNumber,
-      startedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${useStorage}',
-      storageProvider: '${useStorage}',
-      state: resumedSession ? 'resumed' : 'initiated',
-      lastUpdate: window.firebase.database.ServerValue.TIMESTAMP,
-      metadata: metadata,
-      resumeTimeoutMinutes: BATCH_CONFIG.resumeTimeoutMinutes,
-      useIndexedDB: BATCH_CONFIG.useIndexedDB
-    });
-    
-    sessionRef.onDisconnect().update({
-      connected: false,
-      state: 'disconnected',
-      disconnectedAt: window.firebase.database.ServerValue.TIMESTAMP,
-      storage: '${useStorage}'
-    });
-
     ${evaluateCondition}
 ${activateResumeRouteDecisionCode()}
 
@@ -163,20 +130,15 @@ ${activateResumeRouteDecisionCode()}
     const _mturkTurkSubmitTo = _urlParams.get('turkSubmitTo');
     const _mturkIsPreview = _mturkAssignmentID === 'ASSIGNMENT_ID_NOT_AVAILABLE';
 
-    ${
-      recruitmentConfig.platform === "mturk"
-        ? `
+    const effectiveRecruitment = _publicSessionState.configuration.recruitmentConfig;
     // MTurk preview mode: block experiment from starting
-    if (_mturkIsPreview) {
+    if (effectiveRecruitment.platform === 'mturk' && _mturkIsPreview) {
       document.getElementById('jspsych-container').innerHTML =
         '<div style="padding:40px;text-align:center;font-family:sans-serif">' +
         '<h2>Preview</h2>' +
         '<p>Accept the HIT to start the experiment.</p>' +
         '</div>';
       return;
-    }
-    `
-        : ""
     }
 `;
 }

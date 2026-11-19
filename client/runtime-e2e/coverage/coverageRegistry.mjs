@@ -19,6 +19,7 @@ export const runtimeScenarios = {
   "RUNTIME-CONDITIONAL-LOOP": "conditions-runtime.spec.ts",
   "RUNTIME-BRANCH-RETURN": "navigation-runtime.spec.ts",
   "RUNTIME-BRANCH-INVALID": "navigation-negative-runtime.spec.ts",
+  "RUNTIME-RESUME-REVISION": "navigation-negative-runtime.spec.ts",
   "RUNTIME-RESUME-BRANCH": "navigation-runtime.spec.ts",
   "RUNTIME-RESUME-SEQUENTIAL": "navigation-runtime.spec.ts",
   "RUNTIME-NESTED-ROOT-EXIT": "nested-loop-runtime.spec.ts",

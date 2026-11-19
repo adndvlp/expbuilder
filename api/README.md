@@ -32,6 +32,18 @@ Builder_api is a Firebase project using serverless functions to authenticate use
      firebase deploy --only functions
      ```
 
+## Functions runtime
+
+Cloud Functions uses Node.js 22, declared in `functions/package.json` and its lockfile. Functions CI and the local verification use Node.js 22. Node.js 20 was decommissioned on 2026-10-30 and cannot be redeployed. See the [official runtime schedule](https://docs.cloud.google.com/functions/docs/runtime-support) and [Firebase runtime upgrade instructions](https://firebase.google.com/docs/functions/manage-functions#upgrade_your_nodejs_runtime).
+
+From the repository root, using Node.js 22, check the configured runtime without deploying:
+
+```bash
+node --test api/persistence-e2e/runtime.test.mjs
+```
+
+This invokes the installed Firebase CLI's runtime selection and support validator, and checks that the lockfile agrees with the deployed package. It reproduces the reported retirement cutoff and checks the current date. `npm run test:e2e:persistence` also runs this check before downloading SDKs or starting emulators. Passing it verifies runtime selection; it does not verify a remote deployment or the project's IAM permissions.
+
 ---
 
 # Copyright
