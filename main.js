@@ -5,6 +5,8 @@ import { dialog } from "electron";
 import JSZip from "jszip";
 import fs from "fs";
 import path from "path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "url";
 import pkg from "electron-updater";
 import {
@@ -220,6 +222,48 @@ ipcMain.handle("save-zip-file", async (_event, { buffer, defaultName }) => {
     });
     if (canceled || !filePath) return { success: false, error: "Cancelled" };
     fs.writeFileSync(filePath, Buffer.from(buffer));
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler to export an experiment backup ZIP without IPC size limits.
+// The renderer only sends the local API path (a tiny message); the main
+// process fetches the ZIP from the local server and streams it straight to
+// disk. Large backups never cross the IPC bridge, so they cannot hit
+// Electron's ~128 MB message size cap.
+ipcMain.handle("save-exported-zip", async (_event, { apiPath, defaultName }) => {
+  try {
+    if (
+      typeof apiPath !== "string" ||
+      !apiPath.startsWith("/api/") ||
+      apiPath.includes("..") ||
+      /[\s\\#]/.test(apiPath)
+    ) {
+      return { success: false, error: "Invalid export URL" };
+    }
+    const response = await globalThis.fetch(`${apiBaseUrl}${apiPath}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: body?.error || `Export failed (HTTP ${response.status})`,
+      };
+    }
+    if (!response.body) {
+      return { success: false, error: "Empty export response" };
+    }
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save backup ZIP",
+      defaultPath: defaultName /* istanbul ignore next */ || "backup.zip",
+      filters: [{ name: "ZIP", extensions: ["zip"] }],
+    });
+    if (canceled || !filePath) return { success: false, error: "Cancelled" };
+    await pipeline(
+      Readable.fromWeb(response.body),
+      fs.createWriteStream(filePath),
+    );
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };

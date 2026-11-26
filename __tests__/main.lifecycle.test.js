@@ -26,6 +26,7 @@ describe('main.js Electron lifecycle', () => {
       'read-oauth-config',
       'restart-app',
       'save-csv-zip',
+      'save-exported-zip',
       'save-json-file',
       'save-zip-file',
       'start-oauth-flow',
