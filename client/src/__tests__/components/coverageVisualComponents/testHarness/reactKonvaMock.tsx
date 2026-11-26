@@ -61,7 +61,12 @@ vi.mock("react-konva", async () => {
       );
       const event = eventFor(node);
       return (
-        <div data-testid={`konva-${name}`}>
+        <div
+          data-testid={`konva-${name}`}
+          data-font-size={name === "Text" ? props.fontSize : undefined}
+          data-width={name === "Rect" ? props.width : undefined}
+          data-height={name === "Rect" ? props.height : undefined}
+        >
           <button onClick={() => props.onClick?.(event)}>{name} click</button>
           <button onClick={() => props.onTap?.(event)}>{name} tap</button>
           <button onClick={() => props.onDblClick?.(event)}>

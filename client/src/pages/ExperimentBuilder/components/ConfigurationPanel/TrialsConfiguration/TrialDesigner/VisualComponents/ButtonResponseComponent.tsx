@@ -8,8 +8,7 @@ import type { TrialComponent } from "../types";
 import ButtonContent from "./ButtonResponse/ButtonContent";
 import {
   getButtonConfigValue,
-  NATURAL_BUTTON_HEIGHT,
-  NATURAL_BUTTON_WIDTH,
+  getNaturalButtonSize,
   normalizeChoices,
 } from "./ButtonResponse/buttonModel";
 
@@ -86,9 +85,14 @@ const ButtonResponseComponent: React.FC<ButtonResponseComponentProps> = ({
 
   // ── Natural size (like ImageComponent's intrinsic image size) ────────
   // When width/height == 0 (freshly dropped, not yet resized), derive the
-  // natural size from the grid + per-button natural dimensions.
-  const naturalWidth = NATURAL_BUTTON_WIDTH * parsedGridColumns;
-  const naturalHeight = NATURAL_BUTTON_HEIGHT * parsedGridRows;
+  // natural size from the grid + per-button natural dimensions, which scale
+  // with the configured font size (same model as the runtime preview).
+  const naturalSize = getNaturalButtonSize({
+    choices,
+    fontSize: buttonFontSize,
+  });
+  const naturalWidth = naturalSize.width * parsedGridColumns;
+  const naturalHeight = naturalSize.height * parsedGridRows;
   const effectiveWidth = shapeProps.width > 0 ? shapeProps.width : naturalWidth;
   const effectiveHeight =
     shapeProps.height > 0 ? shapeProps.height : naturalHeight;
