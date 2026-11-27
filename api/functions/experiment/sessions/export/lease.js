@@ -26,7 +26,8 @@ export async function acquireExportLease(ref, jobRef, revision, now) {
     const status = job.phase === 'writing' ? 'reconciling' : 'running';
     transaction.set(ref, { exportFence: fence, exportLeaseRevision: revision, exportLeaseUntil: now + EXPORT_LEASE_MS,
       ...(data.exportRequestedRevision === revision && { exportStatus: status }) }, { merge: true });
-    transaction.set(jobRef, { fence, status, attempts: job.attempts + 1, startedAt: now }, { merge: true });
+    // Nuevo intento: el código del error anterior deja de describir este intento.
+    transaction.set(jobRef, { fence, status, attempts: job.attempts + 1, startedAt: now, lastErrorCode: null }, { merge: true });
     return { session: data, job: { ...job, fence, status, attempts: job.attempts + 1 }, fence, snapshot: exportSnapshot };
   });
 }

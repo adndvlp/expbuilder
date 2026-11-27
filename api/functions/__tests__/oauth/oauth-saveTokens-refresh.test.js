@@ -9,6 +9,12 @@
 import { jest } from "@jest/globals";
 import fetchMock from "../helpers/fetch-mock.js";
 
+// Provider configs read process.env at module load; set before dynamic import.
+process.env.DROPBOX_CLIENT_ID = "test-dropbox-client";
+process.env.DROPBOX_CLIENT_SECRET = "test-dropbox-secret";
+process.env.GOOGLE_DRIVE_CLIENT_ID = "test-google-client";
+process.env.GOOGLE_DRIVE_CLIENT_SECRET = "test-google-secret";
+
 const userData = new Map();
 const refsByUid = new Map();
 
@@ -39,6 +45,15 @@ const mockDb = {
   collection: jest.fn(() => ({
     doc: jest.fn((uid) => getUserRef(uid)),
   })),
+  runTransaction: jest.fn(async (fn) => {
+    const transaction = {
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+      update: (ref, data) => ref.update(data),
+      delete: (ref) => ref.delete(),
+    };
+    return await fn(transaction);
+  }),
 };
 
 const mockRefreshOSFToken = jest.fn();
@@ -96,7 +111,9 @@ describe("refreshAccessToken (via getValidToken)", () => {
     ]);
     const r = await getValidToken("dropbox", "u1");
     expect(r.success).toBe(false);
-    expect(r.error).toMatch(/network down/);
+    expect(r.code).toBe("OAUTH_TEMPORARY");
+    expect(r.retryable).toBe(true);
+    expect(r.error).toMatch(/temporarily unavailable/);
   });
 
   test("refresh response without error_description falls back to default message", async () => {
@@ -110,19 +127,24 @@ describe("refreshAccessToken (via getValidToken)", () => {
     fetchMock.__setMockResponses([{ status: 400, body: {} }]);
     const r = await getValidToken("dropbox", "u1");
     expect(r.success).toBe(false);
-    expect(r.error).toBe("No access token returned");
+    expect(r.code).toBe("OAUTH_UNKNOWN");
+    expect(r.retryable).toBe(true);
+    expect(r.error).toMatch(/authorization failed temporarily/);
   });
 });
 
 // ─── getValidToken outer catch ───────────────────────────────────────────
 describe("getValidToken — outer catch", () => {
   test("returns failure when userRef.get throws", async () => {
-    // Pre-create the ref then make .get reject
+    // Pre-create the ref then make .get reject with a numeric gRPC code.
     const ref = getUserRef("u1");
-    ref.get.mockRejectedValueOnce(new Error("firestore down"));
+    ref.get.mockRejectedValueOnce(Object.assign(new Error("firestore down"), { code: 14 }));
     const r = await getValidToken("dropbox", "u1");
     expect(r.success).toBe(false);
-    expect(r.error).toMatch(/firestore down/);
+    expect(r.code).toBe("TOKEN_STORE_TEMPORARY");
+    expect(r.retryable).toBe(true);
+    // Sanitizado: el error crudo no se propaga.
+    expect(r.error).not.toMatch(/firestore down/);
   });
 });
 
@@ -154,12 +176,32 @@ describe("saveTokens", () => {
     expect(body.googleDriveTokens.expires_in).toBe(7200);
   });
 
+  test("T11: omitted new refresh token keeps the previous valid one", async () => {
+    userData.set("u1", {
+      dropboxTokens: { access_token: "old", refresh_token: "prev-rf", expires_at: Date.now() - 1000 },
+    });
+    const r = await saveTokens("dropbox", "u1", "acc", "", 3600);
+    expect(r.success).toBe(true);
+    expect(userData.get("u1").dropboxTokens.refresh_token).toBe("prev-rf");
+    expect(userData.get("u1").dropboxTokens.access_token).toBe("acc");
+  });
+
+  test("T11: no durable authorization when neither a new nor a previous refresh token exists", async () => {
+    const r = await saveTokens("dropbox", "u1", "acc", "", 3600);
+    expect(r).toEqual({ success: false, error: "Tokens are incomplete" });
+  });
+
+  test("non-finite computed expiration is rejected (not only expiresIn)", async () => {
+    const r = await saveTokens("dropbox", "u1", "acc", "rf", Number.MAX_VALUE);
+    expect(r).toEqual({ success: false, error: "Tokens are incomplete" });
+  });
+
   test("returns failure when Firestore set rejects", async () => {
     const ref = getUserRef("u1");
-    ref.set.mockRejectedValueOnce(new Error("firestore unreachable"));
+    ref.set.mockRejectedValueOnce(Object.assign(new Error("firestore unreachable"), { code: 14 }));
     const r = await saveTokens("dropbox", "u1", "acc", "rf", 3600);
     expect(r.success).toBe(false);
-    expect(r.error).toMatch(/firestore unreachable/);
+    expect(r.error).toMatch(/temporarily unavailable/);
   });
 });
 

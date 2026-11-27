@@ -74,7 +74,7 @@ export async function processSessionExport(payload, options = {}) {
     const status = attention ? 'needs_attention' : uncertain ? 'reconciling' : 'retry_wait';
     try {
       await fencedExportUpdate(ref, jobRef, fence, { status, phase: uncertain ? 'writing' : job.intent ? 'prepared' : 'preparing',
-        lastError: error.message, dispatchDue: !attention, nextDispatchAt: now() + Math.min(900_000, 30_000 * 2 ** (job.attempts - 1)) },
+        lastError: error.message, lastErrorCode: error.code || null, dispatchDue: !attention, nextDispatchAt: now() + Math.min(900_000, 30_000 * 2 ** (job.attempts - 1)) },
       { exportLeaseUntil: 0, exportStatus: status });
     } catch (updateError) { if (updateError.code !== 'EXPORT_STALE_WORKER') throw updateError; }
     if (attention) return { status: 'needs_attention' };

@@ -169,6 +169,7 @@ describe("utils/oauth-state", () => {
     await expect(validateOAuthState(state, "github")).resolves.toEqual({
       ok: true,
       uid: "u1",
+      ts: 1_700_000_000_000,
     });
   });
 
@@ -192,6 +193,7 @@ describe("utils/oauth-state", () => {
     await expect(validateOAuthState(state, "github")).resolves.toEqual({
       ok: true,
       uid: "u1",
+      ts: 1_700_000_000_000,
     });
     const stored = dbStub.impl.__docs.get("_serverConfig/oauthState");
     expect(typeof stored?.secret).toBe("string");
@@ -228,6 +230,7 @@ describe("utils/oauth-state", () => {
     await expect(validateOAuthState(state, "github")).resolves.toEqual({
       ok: true,
       uid: "u1",
+      ts: 1_700_000_000_000,
     });
     expect(touchDb).not.toHaveBeenCalled();
   });
@@ -241,6 +244,7 @@ describe("utils/oauth-state", () => {
     await expect(validateOAuthState(state, "dropbox")).resolves.toEqual({
       ok: true,
       uid: "u1",
+      ts: 1_700_000_000_000,
     });
   });
 

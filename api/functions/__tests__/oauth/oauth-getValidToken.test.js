@@ -6,6 +6,12 @@
 import { jest } from "@jest/globals";
 import fetchMock from "../helpers/fetch-mock.js";
 
+// Provider configs read process.env at module load; set before dynamic import.
+process.env.DROPBOX_CLIENT_ID = "test-dropbox-client";
+process.env.DROPBOX_CLIENT_SECRET = "test-dropbox-secret";
+process.env.GOOGLE_DRIVE_CLIENT_ID = "test-google-client";
+process.env.GOOGLE_DRIVE_CLIENT_SECRET = "test-google-secret";
+
 // ── Stateful Firestore mock ────────────────────────────────────────────────
 const userData = new Map(); // uid -> data; absent key = doc doesn't exist
 const refsByUid = new Map();
@@ -37,6 +43,15 @@ const mockDb = {
   collection: jest.fn(() => ({
     doc: jest.fn((uid) => getUserRef(uid)),
   })),
+  runTransaction: jest.fn(async (fn) => {
+    const transaction = {
+      get: (ref) => ref.get(),
+      set: (ref, data, opts) => ref.set(data, opts),
+      update: (ref, data) => ref.update(data),
+      delete: (ref) => ref.delete(),
+    };
+    return await fn(transaction);
+  }),
 };
 
 const mockRefreshOSFToken = jest.fn();
@@ -102,12 +117,9 @@ describe("getValidToken — dropbox (and googledrive same path)", () => {
     expect(call.options.body.toString()).toContain("grant_type=refresh_token");
     expect(call.options.body.toString()).toContain("refresh_token=rf-1");
 
-    // New token persisted to Firestore
-    const ref = getUserRef("u1");
-    expect(ref.update).toHaveBeenCalledTimes(1);
-    const updateArg = ref.update.mock.calls[0][0];
-    expect(updateArg.dropboxTokens.access_token).toBe("tok-NEW");
-    expect(updateArg.dropboxTokens.refresh_token).toBe("rf-1");
+    // New token persisted to Firestore (CAS write)
+    expect(userData.get("u1").dropboxTokens.access_token).toBe("tok-NEW");
+    expect(userData.get("u1").dropboxTokens.refresh_token).toBe("rf-1");
   });
 
   test("returns failure when user has no provider tokens", async () => {
@@ -126,11 +138,13 @@ describe("getValidToken — dropbox (and googledrive same path)", () => {
       },
     });
     fetchMock.__setMockResponses([
-      { status: 400, body: { error_description: "invalid_grant" } },
+      { status: 400, body: { error: "invalid_grant", error_description: "revoked" } },
     ]);
     const r = await getValidToken("dropbox", "u1");
     expect(r.success).toBe(false);
-    expect(r.error).toBe("invalid_grant");
+    expect(r.code).toBe("OAUTH_REAUTH_PENDING");
+    expect(r.retryable).toBe(true);
+    expect(r.error).toMatch(/may need to be reconnected/);
   });
 });
 

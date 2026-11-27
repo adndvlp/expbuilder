@@ -8,6 +8,7 @@ export function makeTransactionalFirestore() {
   let failure = null;
   let autoId = 0;
   let deleteFailure = null;
+  let getFailure = null;
   const copy = value => value === undefined ? undefined : structuredClone(value);
   function validate(value) {
     if (!value || typeof value !== 'object') return;
@@ -24,7 +25,12 @@ export function makeTransactionalFirestore() {
   }
   function doc(path) {
     const ref = { path, id: path.split("/").at(-1), collection: name => collection(`${path}/${name}`) };
-    ref.get = jest.fn(async () => snapshot(ref));
+    ref.get = jest.fn(async () => {
+      if (getFailure && getFailure.path === path) {
+        const error = getFailure.error; getFailure = null; throw error;
+      }
+      return snapshot(ref);
+    });
     ref.set = jest.fn(async (data, options) => write(ref, data, options?.merge));
     ref.update = jest.fn(async data => write(ref, data, true));
     ref.delete = jest.fn(async () => records.delete(path));
@@ -32,12 +38,13 @@ export function makeTransactionalFirestore() {
   }
   function query(select, filters = [], count = Infinity, order = null) {
     return { where: (field, operator, value) => query(select, [...filters, [field, operator, value]], count, order),
-      limit: value => query(select, filters, value, order), orderBy: value => query(select, filters, count, value), get: async () => {
+      limit: value => query(select, filters, value, order), orderBy: value => query(select, filters, count, value),
+      startAfter: () => query(select, filters, count, order), get: async () => {
       let keys = [...records.keys()].filter(select).filter(key => filters.every(([field, operator, value]) => {
         const actual = records.get(key)[field];
         return operator === '==' ? actual === value : operator === '<=' ? actual <= value : operator === 'in' ? value.includes(actual) : false;
       }));
-      keys.sort((a, b) => order ? records.get(a)[order] - records.get(b)[order] : a.localeCompare(b));
+      keys.sort((a, b) => order === '__name__' ? a.localeCompare(b) : order ? records.get(a)[order] - records.get(b)[order] : a.localeCompare(b));
       const docs = keys.slice(0, count).map(key => snapshot(doc(key)));
       return { docs, empty: docs.length === 0, size: docs.length, forEach: cb => docs.forEach(cb) };
     } };
@@ -64,7 +71,7 @@ export function makeTransactionalFirestore() {
       },
     };
   }
-  const db = { collection, collectionGroup: name => query(key => key.split('/').at(-2) === name),
+  const db = { collection, doc: path => doc(path), collectionGroup: name => query(key => key.split('/').at(-2) === name),
     runTransaction: jest.fn(callback => {
       const result = tail.then(async () => { const tx = transaction(); const value = await callback(tx); await tx.commit(); return value; });
       tail = result.catch(() => {});
@@ -72,7 +79,8 @@ export function makeTransactionalFirestore() {
     }),
     batch: () => transaction(),
   };
-  return { db, records, failNextCommit: error => { failure = error; }, failNextDeleteOf: (path, error) => { deleteFailure = { path, error }; }, reset: () => {
-    records.clear(); failure = null; deleteFailure = null; tail = Promise.resolve(); db.runTransaction.mockClear();
+  return { db, records, failNextCommit: error => { failure = error; }, failNextDeleteOf: (path, error) => { deleteFailure = { path, error }; },
+    failNextGetOf: (path, error) => { getFailure = { path, error }; }, reset: () => {
+    records.clear(); failure = null; deleteFailure = null; getFailure = null; tail = Promise.resolve(); db.runTransaction.mockClear();
   } };
 }
