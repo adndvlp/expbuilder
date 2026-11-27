@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-          sudo grep -rl 'packages.microsoft.com/ubuntu/24.04/prod' /etc/apt/ 2>/dev/null | sudo xargs -r sed -i 's|^deb |#deb |'
+          grep -rl 'packages.microsoft.com/ubuntu/24.04/prod' /etc/apt/ 2>/dev/null | sudo xargs -r sed -i 's|^deb |#deb |' || true
           sudo apt-get update
 
       - name: Install Chromium for browser-backed tests
