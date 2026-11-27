@@ -50,6 +50,13 @@ jobs:
       - name: Check maintained file limits
         run: npm run check:max-lines --prefix client
 
+      - name: Repair apt sources (Microsoft noble repo returns 403)
+        shell: bash
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo grep -rl 'packages.microsoft.com/ubuntu/24.04/prod' /etc/apt/ 2>/dev/null | sudo xargs -r sed -i 's|^deb |#deb |'
+          sudo apt-get update
+
       - name: Install Chromium for browser-backed tests
         run: npm --prefix client exec -- playwright install --with-deps chromium
 
