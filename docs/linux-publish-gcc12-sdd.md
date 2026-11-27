@@ -1,6 +1,6 @@
-# SDD: fijar GCC 12 en el job de publicación Linux para recompilar módulos nativos
+# SDD: fijar el compilador GCC del job de publicación Linux para recompilar módulos nativos
 
-Estado: implementado y verificado localmente el 2026-11-26. Nada se implementó al redactar este documento; la implementación posterior fue autorizada y se ejecutó mediante TDD. La verificación final (AC01/AC02) requiere una corrida real del pipeline por el usuario.
+Estado: implementado y verificado localmente el 2026-11-26 con GCC 14 (corrección sobre el primer intento con GCC 12). Nada se implementó al redactar este documento; la implementación posterior fue autorizada y se ejecutó mediante TDD. La verificación final (AC01/AC02) requiere una corrida real del pipeline por el usuario.
 
 Fecha: 2026-11-26. Código revisado: `fc8f8a2a218e5f366d7f521dc825eb372c425d03`, rama `bugs`.
 
@@ -8,7 +8,7 @@ Fecha: 2026-11-26. Código revisado: `fc8f8a2a218e5f366d7f521dc825eb372c425d03`,
 
 El job `linux-x64` de [build.yml](../.github/workflows/build.yml) vuelve a empaquetar y publicar los artefactos `deb`/`rpm` (`npm run build:electron -- --linux deb rpm --x64 --publish always`) sin que `@electron/rebuild` falle al recompilar el módulo nativo `re2`.
 
-El fix fija GCC 12 y G++ 12 como compiladores de ese job mediante variables `CC`/`CXX`, sin tocar el producto, las dependencias, la configuración de electron-builder ni los demás jobs del workflow.
+El fix fija GCC 14 y G++ 14 como compiladores de ese job mediante variables `CC`/`CXX`, sin tocar el producto, las dependencias, la configuración de electron-builder ni los demás jobs del workflow (la primera versión fijó GCC 12 y se corrigió en la sección 10).
 
 ## 2. Evidencia del problema
 
@@ -38,15 +38,15 @@ Es una incompatibilidad conocida entre abseil anterior al fix y GCC 15. No la ca
 Añadir un paso en el job `linux-x64`, después de `Install dependencies` y antes de los pasos de build:
 
 ```yaml
-- name: Pin GCC 12 for native module rebuilds
+- name: Pin GCC 14 for native module rebuilds
   run: |
     sudo apt-get update
-    sudo apt-get install -y gcc-12 g++-12
-    echo "CC=gcc-12" >> "$GITHUB_ENV"
-    echo "CXX=g++-12" >> "$GITHUB_ENV"
+    sudo apt-get install -y gcc-14 g++-14
+    echo "CC=gcc-14" >> "$GITHUB_ENV"
+    echo "CXX=g++-14" >> "$GITHUB_ENV"
 ```
 
-Las variables `CC`/`CXX` escritas en `GITHUB_ENV` aplican a todos los pasos siguientes del job, de modo que tanto `Build and publish` como `Build (no publish)` recompilan los módulos nativos con GCC 12, que acepta el abseil incluido en re2.
+Las variables `CC`/`CXX` escritas en `GITHUB_ENV` aplican a todos los pasos siguientes del job, de modo que tanto `Build and publish` como `Build (no publish)` recompilan los módulos nativos con GCC 14, que acepta el abseil incluido en re2 y los headers de V8 de Electron 43.
 
 ## 4. Alternativas descartadas
 
@@ -68,7 +68,7 @@ Las variables `CC`/`CXX` escritas en `GITHUB_ENV` aplican a todos los pasos sigu
 
 | Área | Trabajo previsto |
 |---|---|
-| [build.yml](../.github/workflows/build.yml) | Añadir el paso `Pin GCC 12 for native module rebuilds` en `linux-x64`, entre `Install dependencies` y `Build client`. Sin otros cambios. |
+| [build.yml](../.github/workflows/build.yml) | Añadir el paso `Pin GCC 14 for native module rebuilds` en `linux-x64`, entre `Install dependencies` y `Build client`. Sin otros cambios. |
 
 ## 7. Criterios de aceptación
 
@@ -90,29 +90,40 @@ Los puntos son entregas separadas. La implementación no comienza sin autorizaci
 
 ## 9. Condición de cierre
 
-La implementación termina cuando el job `linux-x64` empaqueta y publica con GCC 12, el error de re2/abseil no reaparece, y el resto del workflow queda intacto. La verificación final requiere una corrida real del pipeline por el usuario.
+La implementación termina cuando el job `linux-x64` empaqueta y publica con GCC 14, el error de re2 no reaparece, y el resto del workflow queda intacto. La verificación final requiere una corrida real del pipeline por el usuario.
 
-## 10. Entrega — 2026-11-26
+## 10. Corrección — GCC 12 es insuficiente; se fija GCC 14 — 2026-11-26
 
-Se implementó el punto 1 mediante TDD.
+La corrida de publicación con el pin de GCC 12 (commit `dd1a405`) eliminó el error de `bmi2intrin.h`, pero destapó otro: los headers de V8 de Electron 43 no parsean con GCC 12:
 
-`build.yml` añade el paso `Pin GCC 12 for native module rebuilds` en el job `linux-x64`, entre `Install dependencies` y `Build client`: instala `gcc-12`/`g++-12` y escribe `CC=gcc-12`/`CXX=g++-12` en `GITHUB_ENV`, de modo que ambos pasos de build (publicar y no publicar) recompilan los módulos nativos con GCC 12.
+```
+v8config.h:854:20: error: expected identifier before '__attribute__'
+# define V8_EXPORT __attribute__((visibility("default")))
+v8-primitive.h:658:4: error: expected primary-expression before 'public'
+```
 
-El job `linux-arm64` queda fuera del alcance acordado: corre en `ubuntu-24.04-arm` con GCC 13, que acepta el abseil incluido en re2; si su imagen migrara a GCC 15, aplica el mismo paso.
+Análisis de la ventana de compiladores:
+
+| GCC | V8/Electron 43 (Chromium moderno exige GCC ≥ 13) | abseil incluido en re2 |
+|---|---|---|
+| 12 | ❌ no parsea los headers nuevos | ✅ |
+| 13–14 | ✅ | ✅ (el `#error` de `bmi2intrin.h` solo existe desde GCC 15) |
+| 15 | ✅ | ❌ error de `bmi2intrin.h` |
+
+La versión correcta es **GCC 14**: acepta los headers de V8 y el abseil antiguo. Se actualizó el paso a `gcc-14`/`g++-14` con `CC=gcc-14`/`CXX=g++-14`, manteniendo la posición y el resto del diseño.
 
 ### TDD y verificación
 
-Las pruebas RED fallaron porque el paso no existía (2 fallos en [ci-workflows.test.js](../__tests__/ci-workflows.test.js)). Después:
+Las pruebas RED fallaron porque el workflow seguía usando GCC 12 (2 fallos en [ci-workflows.test.js](../__tests__/ci-workflows.test.js)). Después:
 
 | Comprobación | Resultado |
 |---|---|
-| Tests del workflow (AC03–AC05) | 20 pruebas aprobadas en `ci-workflows.test.js`: posición del paso entre `Install dependencies` y `Build client`, contenido de `gcc-12`/`g++-12`/`CC`/`CXX`, y ausencia del pin en `test`, `tag`, `mac` y `win`. |
-| Parseo YAML del workflow | Aprobado; jobs y orden de pasos de `linux-x64` verificados. |
-| Suite jest completa (raíz + servidor) | 684 pruebas aprobadas, 0 fallos (una corrida intermedia mostró un flake transitorio que no se reprodujo en las dos corridas posteriores). |
+| Tests del workflow | 20 pruebas aprobadas: paso con `gcc-14`/`g++-14` y `CC`/`CXX` correctos entre `Install dependencies` y `Build client`, y ausencia del pin en los demás jobs. |
+| Parseo YAML del workflow | Aprobado. |
 | `git diff --check` | Aprobado. |
 
-Queda pendiente la verificación final AC01/AC02: una corrida del pipeline en GitHub (rama con `[build]` sin publicar y publicación en main), que ejecuta el usuario.
+La verificación final sigue siendo la corrida real del pipeline (AC01/AC02). Nombre de commit sugerido: `ci(linux): pin gcc-14 so electron-builder can rebuild re2 under the Electron 43 toolchain`.
 
-Se actualizó el [índice](INDEX.md) con esta SDD. Nombre de commit sugerido para que el usuario lo ejecute: `ci(linux): pin gcc-12 for electron-builder native rebuilds`.
+## 11. Entrega — 2026-11-26 (registro del primer intento)
 
-La condición de cierre funcional depende de la corrida real del pipeline; el cambio y sus pruebas quedan listos y verificados localmente.
+La entrega original fijó GCC 12 (commit `dd1a405`, registrado en la sección anterior): instalaba `gcc-12`/`g++-12` y escribía `CC=gcc-12`/`CXX=g++-12` en `GITHUB_ENV`, con 20 pruebas del workflow aprobadas y la suite jest completa en verde (684 pruebas). Esa entrega resolvía el fallo de abseil/GCC 15 pero resultó incompatible con los headers de Electron 43; queda reemplazada por la corrección a GCC 14 de la sección 10.

@@ -63,10 +63,10 @@ describe("build workflow Linux publish compilers", () => {
     new URL("../.github/workflows/build.yml", import.meta.url), "utf8",
   ));
 
-  test("pins GCC 12 in the linux-x64 job between dependency install and client build", () => {
+  test("pins GCC 14 in the linux-x64 job between dependency install and client build", () => {
     const steps = workflow.jobs["linux-x64"].steps;
     const pinIndex = steps.findIndex(
-      (step) => step.name === "Pin GCC 12 for native module rebuilds",
+      (step) => step.name === "Pin GCC 14 for native module rebuilds",
     );
     expect(pinIndex).toBeGreaterThanOrEqual(0);
 
@@ -82,24 +82,24 @@ describe("build workflow Linux publish compilers", () => {
     expect(pinIndex).toBeLessThan(buildClientIndex);
   });
 
-  test("installs gcc-12 and g++-12 and exports CC/CXX for later steps", () => {
+  test("installs gcc-14 and g++-14 and exports CC/CXX for later steps", () => {
     const steps = workflow.jobs["linux-x64"].steps;
     const pin = steps.find(
-      (step) => step.name === "Pin GCC 12 for native module rebuilds",
+      (step) => step.name === "Pin GCC 14 for native module rebuilds",
     );
     expect(pin).toBeTruthy();
     const run = pin.run;
-    expect(run).toContain("gcc-12");
-    expect(run).toContain("g++-12");
-    expect(run).toMatch(/echo "CC=gcc-12" >> "\$GITHUB_ENV"/);
-    expect(run).toMatch(/echo "CXX=g\+\+-12" >> "\$GITHUB_ENV"/);
+    expect(run).toContain("gcc-14");
+    expect(run).toContain("g++-14");
+    expect(run).toMatch(/echo "CC=gcc-14" >> "\$GITHUB_ENV"/);
+    expect(run).toMatch(/echo "CXX=g\+\+-14" >> "\$GITHUB_ENV"/);
   });
 
   test("keeps the compiler pin out of the other jobs", () => {
     for (const jobName of ["test", "tag", "mac", "win"]) {
       const steps = workflow.jobs[jobName]?.steps ?? [];
       const pin = steps.find(
-        (step) => step.name === "Pin GCC 12 for native module rebuilds",
+        (step) => step.name === "Pin GCC 14 for native module rebuilds",
       );
       expect(pin).toBeUndefined();
     }
