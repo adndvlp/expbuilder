@@ -29,35 +29,24 @@ export function useExperimentBackup({
   >(new Set());
   const [isExporting, setIsExporting] = useState(false);
 
-  const saveZipFromResponse = async (response: Response, filename: string) => {
-    const arrayBuffer = await response.arrayBuffer();
+  const saveExportedZip = async (apiPath: string, filename: string) => {
     const electronWindow = window as unknown as {
       electron: {
-        saveZipFile: (
-          bytes: number[],
+        saveExportedZip: (
+          apiPath: string,
           filename: string,
         ) => Promise<ZipSaveResult>;
       };
     };
-    return electronWindow.electron.saveZipFile(
-      Array.from(new Uint8Array(arrayBuffer)),
-      filename,
-    );
+    return electronWindow.electron.saveExportedZip(apiPath, filename);
   };
 
   const handleExportAll = async () => {
     setIsExporting(true);
     try {
-      const response = await fetch(`${API_URL}/api/export-all-experiments`);
-      if (!response.ok) {
-        const error = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(error.error || "Error exporting experiments");
-      }
       const date = new Date().toISOString().slice(0, 10);
-      const result = await saveZipFromResponse(
-        response,
+      const result = await saveExportedZip(
+        "/api/export-all-experiments",
         `experiments-backup-${date}.zip`,
       );
       if (result.success) {
@@ -87,56 +76,38 @@ export function useExperimentBackup({
     /* v8 ignore stop */
     setIsExporting(true);
     try {
+      let apiPath: string;
+      let filename: string;
+      let successMessage: string;
       if (selectedExperimentIds.size === 1) {
         const [experimentId] = [...selectedExperimentIds];
         const experiment = experiments.find(
           (item) => item.experimentID === experimentId,
         );
-        const response = await fetch(
-          `${API_URL}/api/export-experiment/${experimentId}`,
-        );
-        if (!response.ok) throw new Error("Export failed");
         const safeName = (experiment?.name || experimentId).replace(
           /[^a-zA-Z0-9\-_]/g,
           "_",
         );
-        const result = await saveZipFromResponse(
-          response,
-          `${safeName}-backup.zip`,
-        );
-        if (result.success) {
-          setNotification({
-            type: "success",
-            message: "Experiment exported!",
-          });
-        } else if (result.error !== "Cancelled") {
-          setNotification({
-            type: "error",
-            message: result.error || "Export failed",
-          });
-        }
+        apiPath = `/api/export-experiment/${encodeURIComponent(experimentId)}`;
+        filename = `${safeName}-backup.zip`;
+        successMessage = "Experiment exported!";
       } else {
         const ids = [...selectedExperimentIds].join(",");
-        const response = await fetch(
-          `${API_URL}/api/export-all-experiments?ids=${encodeURIComponent(ids)}`,
-        );
-        if (!response.ok) throw new Error("Export failed");
-        const date = new Date().toISOString().slice(0, 10);
-        const result = await saveZipFromResponse(
-          response,
-          `experiments-backup-${date}.zip`,
-        );
-        if (result.success) {
-          setNotification({
-            type: "success",
-            message: `${selectedExperimentIds.size} experiments exported!`,
-          });
-        } else if (result.error !== "Cancelled") {
-          setNotification({
-            type: "error",
-            message: result.error || "Export failed",
-          });
-        }
+        apiPath = `/api/export-all-experiments?ids=${encodeURIComponent(ids)}`;
+        filename = `experiments-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+        successMessage = `${selectedExperimentIds.size} experiments exported!`;
+      }
+      const result = await saveExportedZip(apiPath, filename);
+      if (result.success) {
+        setNotification({
+          type: "success",
+          message: successMessage,
+        });
+      } else if (result.error !== "Cancelled") {
+        setNotification({
+          type: "error",
+          message: result.error || "Export failed",
+        });
       }
     } catch (error: unknown) {
       setNotification({

@@ -35,6 +35,10 @@ interface ElectronAPI {
     files: Array<{ name: string; content: string }>,
     defaultName: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  saveExportedZip: (
+    apiPath: string,
+    defaultName: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   saveJsonFile: (
     content: string,
     defaultName: string,

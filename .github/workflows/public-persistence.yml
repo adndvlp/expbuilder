@@ -92,6 +92,12 @@ jobs:
       - run: npm ci --prefix api/functions
       - run: npm ci --prefix server/jspsych-bundler
       - run: npm run build --prefix server/jspsych-bundler
+      - name: Repair apt sources (Microsoft noble repo returns 403)
+        shell: bash
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          grep -rl 'packages.microsoft.com/ubuntu/24.04/prod' /etc/apt/ 2>/dev/null | sudo xargs -r sed -i 's|^deb |#deb |' || true
+          sudo apt-get update
       - run: npx --prefix client playwright install --with-deps chromium
       - run: npm run test:e2e:persistence
         if: needs.changes.outputs.persistence == 'true'

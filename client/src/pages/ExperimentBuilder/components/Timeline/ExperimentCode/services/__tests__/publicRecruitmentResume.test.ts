@@ -13,6 +13,7 @@ it.each([none, prolific('OLD')])(
     const code = (publicInitCode(options) + publicFinishCode(options)).split('// __INIT_JSPSYCH_END__')[0];
     const callback = new Function('saved', 'success', 'complete', 'location', `
       let publicFinished = false, publicFinishInFlight = null, publicClosing = false, publicFinishHandler;
+      const localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
       const _publicSessionState = { lifecycle: 'active', sessionProtocolVersion: 3, configuration: { recruitmentConfig: saved } };
       const _publicStorageKeys = {}, sessionRef = { onDisconnect: () => ({ cancel: async () => {} }) };
       const window = { location, ExpBuilderNavigation: { isTransitionPending: () => false, clearTransientState() {} } };

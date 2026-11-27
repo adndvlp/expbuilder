@@ -56,10 +56,10 @@ test('one check runs unit, measurement and comparison once, keeps evidence and n
   assert.equal(saved.finished, true); assert.ok(saved.artifactBytes > 0);
   assert.equal(await ensureReport(f.output), 0);
 });
-test('the default check selects the measured pre-settings baseline and strict policy without regenerating the reference', async t => {
+test('the default check selects the measured oauth-export-fix baseline and strict policy without regenerating the reference', async t => {
   const f = await fixture(t);
   const result = await checkCosts({ output: f.output }, { run: f.run });
-  assert.equal(path.basename(result.baseline), 'persistence-before-public-settings-2026-11-14');
+  assert.equal(path.basename(result.baseline), 'persistence-oauth-export-fix-2026-11-26');
   assert.equal(result.exitCode, 0);
   assert.deepEqual(f.calls.map(job => job.name), ['unit','measurement','comparison']);
   assert.ok(f.calls[2].args.includes(result.baseline));

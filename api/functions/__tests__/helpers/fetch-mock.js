@@ -28,15 +28,25 @@ async function fetchMock(url, options = {}) {
   if (mockResponses.length === 0) {
     return makeResponse({ status: 200, body: {} });
   }
-  const next = mockResponses.shift();
+  const next = mockResponses[0];
+  // Routers persist across calls (no shift) and route by URL; enables
+  // end-to-end scenarios with several providers behind one fetch boundary.
+  if (next && next.__router) {
+    return makeResponse(await next(url, options));
+  }
+  mockResponses.shift();
   if (typeof next === "function") {
-    return makeResponse(next(url, options));
+    return makeResponse(await next(url, options));
   }
   return makeResponse(next);
 }
 
 fetchMock.__setMockResponses = (responses) => {
   mockResponses = [...responses];
+};
+fetchMock.__setRouter = (router) => {
+  router.__router = true;
+  mockResponses = [router];
 };
 fetchMock.__getCalls = () => [...calls];
 fetchMock.__reset = () => {

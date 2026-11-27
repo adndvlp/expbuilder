@@ -6,6 +6,9 @@ import { makeReq, makeRes } from '../../helpers/firestore-mock.js';
 
 export const store = makeTransactionalFirestore();
 export const base = 'experiments/EID/sessions/S1';
+export const setTokenResolver = value => { tokenResolver = value; };
+export const resetTokenResolver = () => { tokenResolver = async () => ({ success: true, access_token: 'token' }); };
+let tokenResolver = async () => ({ success: true, access_token: 'token' });
 let realtimeState = { state: 'in-progress' };
 export const setRealtimeState = value => { realtimeState = value; };
 export const realtimeUpdates = [];
@@ -17,7 +20,7 @@ jest.unstable_mockModule('firebase-admin/database', () => ({ getDatabase: () => 
   once: async () => ({ val: () => realtimeState }), update: async value => { realtimeUpdates.push(value); },
 }) }) }));
 jest.unstable_mockModule('../../../experiment/sessions/logging/write-log.js', () => ({ default: async () => {} }));
-jest.unstable_mockModule('../../../oauth/index.js', () => ({ getValidToken: async () => ({ success: true, access_token: 'token' }) }));
+jest.unstable_mockModule('../../../oauth/index.js', () => ({ getValidToken: (...args) => tokenResolver(...args) }));
 jest.unstable_mockModule('../../../utils/fetch-with-timeout.js', () => ({ default: providerHttp }));
 const { apiData } = await import('../../../experiment/sessions/api/data-router.js');
 

@@ -105,6 +105,121 @@ describe("TrialDesigner visual components", () => {
     csvRender.unmount();
   });
 
+  it("scales fresh buttons with the configured font size", () => {
+    render(
+      <ButtonResponseComponent
+        onSelect={vi.fn()}
+        onChange={vi.fn()}
+        onGuidesChange={vi.fn()}
+        shapeProps={shape(
+          "ButtonResponseComponent",
+          { choices: value(["Button"]), button_font_size: 28 },
+          { width: 0, height: 0 },
+        )}
+        isSelected={false}
+      />,
+    );
+
+    const rects = screen.getAllByTestId("konva-Rect");
+    expect(rects[1]).toHaveAttribute("data-height", String(52 - 4));
+    expect(screen.getByTestId("konva-Text")).toHaveAttribute(
+      "data-font-size",
+      "28",
+    );
+  });
+
+  it("keeps the current natural size for the default font", () => {
+    render(
+      <ButtonResponseComponent
+        onSelect={vi.fn()}
+        onChange={vi.fn()}
+        onGuidesChange={vi.fn()}
+        shapeProps={shape(
+          "ButtonResponseComponent",
+          { choices: value(["Button"]) },
+          { width: 0, height: 0 },
+        )}
+        isSelected={false}
+      />,
+    );
+
+    const rects = screen.getAllByTestId("konva-Rect");
+    expect(rects[1]).toHaveAttribute("data-width", String(80 - 4));
+    expect(rects[1]).toHaveAttribute("data-height", String(34 - 4));
+    expect(screen.getByTestId("konva-Text")).toHaveAttribute(
+      "data-font-size",
+      "14",
+    );
+  });
+
+  it("sizes fresh buttons from the longest choice", () => {
+    render(
+      <ButtonResponseComponent
+        onSelect={vi.fn()}
+        onChange={vi.fn()}
+        onGuidesChange={vi.fn()}
+        shapeProps={shape(
+          "ButtonResponseComponent",
+          { choices: value(["A very long choice label"]) },
+          { width: 0, height: 0 },
+        )}
+        isSelected={false}
+      />,
+    );
+
+    const rects = screen.getAllByTestId("konva-Rect");
+    expect(rects[1]).toHaveAttribute(
+      "data-width",
+      String(Math.ceil(24 * 14 * 0.55 + 30) - 4),
+    );
+  });
+
+  it("clamps the font inside an explicitly resized button", () => {
+    render(
+      <ButtonResponseComponent
+        onSelect={vi.fn()}
+        onChange={vi.fn()}
+        onGuidesChange={vi.fn()}
+        shapeProps={shape(
+          "ButtonResponseComponent",
+          { choices: value(["Button"]), button_font_size: 28 },
+          { width: 120, height: 40 },
+        )}
+        isSelected={false}
+      />,
+    );
+
+    expect(screen.getByTestId("konva-Text")).toHaveAttribute(
+      "data-font-size",
+      String(Math.max(6, Math.min(40 - 16, 28))),
+    );
+  });
+
+  it("scales the font size when transforming the group", () => {
+    const onChange = vi.fn();
+    render(
+      <ButtonResponseComponent
+        onSelect={vi.fn()}
+        onChange={onChange}
+        onGuidesChange={vi.fn()}
+        shapeProps={shape(
+          "ButtonResponseComponent",
+          { choices: value(["Button"]) },
+          { width: 0, height: 0 },
+        )}
+        isSelected={true}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByText("Group transform end")[0]);
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        buttonFontSize: Math.max(6, Math.round(14 * 1.3)),
+      }),
+    );
+  });
+
   it("renders keyboard response labels for supported choice formats", () => {
     const cases = [
       [{}, "⌨️ Keyboard Response (All Keys)"],

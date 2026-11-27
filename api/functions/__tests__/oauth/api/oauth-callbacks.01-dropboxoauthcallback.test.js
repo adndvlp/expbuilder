@@ -48,6 +48,8 @@ beforeEach(() => {
   fs.refsByPath.clear();
   fs.colsByPath.clear();
   fs.db.collection.mockClear();
+  // Default user doc for CAS snapshots: no provider tokens yet.
+  fs.getRef("users/u1").get.mockResolvedValue({ exists: false, data: () => undefined });
   fetchMock.__reset();
   delete process.env.FUNCTIONS_EMULATOR;
 });
@@ -116,7 +118,7 @@ describe("dropboxOAuthCallback", () => {
 
   test("happy path Electron → 200 JSON, no redirect", async () => {
     fetchMock.__setMockResponses([
-      { status: 200, body: { access_token: "AT", expires_in: 14400 } },
+      { status: 200, body: { access_token: "AT", refresh_token: "RT", expires_in: 14400 } },
     ]);
     const res = makeRes();
     await dropboxOAuthCallback(
@@ -132,6 +134,17 @@ describe("dropboxOAuthCallback", () => {
     expect(res.jsonBody.message).toMatch(/Dropbox connected/);
   });
 
+  test("initial authorization with an invalid refresh token (no previous credentials) aborts without writing", async () => {
+    fetchMock.__setMockResponses([
+      { status: 200, body: { access_token: "AT", refresh_token: 42, expires_in: 14400 } },
+    ]);
+    const res = makeRes();
+    await dropboxOAuthCallback(makeReq({ query: { code: "c", state: "u1" } }), res);
+    expect(res.statusCode).toBe(302);
+    expect(res.sentBody).toMatch(/status=error&service=dropbox/);
+    expect(fs.getRef("users/u1").set).not.toHaveBeenCalled();
+  });
+
   test("token error (no access_token) on web → redirects to error", async () => {
     fetchMock.__setMockResponses([
       { status: 400, body: { error_description: "bad code" } },
@@ -144,7 +157,20 @@ describe("dropboxOAuthCallback", () => {
 
     expect(res.statusCode).toBe(302);
     expect(res.sentBody).toMatch(/status=error&service=dropbox/);
-    expect(res.sentBody).toMatch(/bad%20code/);
+    // Mensaje sanitizado: el error crudo del proveedor no se propaga.
+    expect(res.sentBody).not.toMatch(/bad%20code/);
+  });
+
+  test("unexpected internal error on Electron → safe JSON message, never the raw error", async () => {
+    fs.getRef("users/u1").get.mockRejectedValueOnce(new Error("RAW-SECRET-DROPBOX"));
+    const res = makeRes();
+    await dropboxOAuthCallback(
+      makeReq({ query: { code: "c", state: "u1" }, headers: { referer: "http://localhost:8888/" } }),
+      res,
+    );
+    expect(res.statusCode).toBe(500);
+    expect(res.jsonBody.success).toBe(false);
+    expect(res.jsonBody.error).toBe("Dropbox connection failed");
   });
 
   test("token error on Electron → 500 JSON", async () => {
@@ -161,7 +187,8 @@ describe("dropboxOAuthCallback", () => {
     );
     expect(res.statusCode).toBe(500);
     expect(res.jsonBody.success).toBe(false);
-    expect(res.jsonBody.error).toBe("bad code");
+    // Mensaje sanitizado: el error crudo del proveedor no se propaga.
+    expect(res.jsonBody.error).not.toBe("bad code");
   });
 });
 

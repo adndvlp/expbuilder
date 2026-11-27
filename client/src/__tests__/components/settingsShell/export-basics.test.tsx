@@ -1,6 +1,6 @@
 import { fetchMock, okJson, registerSettingsShellHooks } from "./testHarness";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import Settings from "../../../pages/Settings";
 
 describe("Settings shell", () => {
@@ -13,11 +13,8 @@ describe("Settings shell", () => {
     fireEvent.click(screen.getByText("Export all"));
 
     await waitFor(() => {
-      expect(fetchMock()).toHaveBeenCalledWith(
-        "http://localhost:3000/api/export-all-experiments",
-      );
-      expect((window as any).electron.saveZipFile).toHaveBeenCalledWith(
-        [1, 2, 3],
+      expect((window as any).electron.saveExportedZip).toHaveBeenCalledWith(
+        "/api/export-all-experiments",
         expect.stringMatching(/^experiments-backup-\d{4}-\d{2}-\d{2}\.zip$/),
       );
     });
@@ -33,30 +30,24 @@ describe("Settings shell", () => {
           experiments: [{ experimentID: "exp-1", name: "Memory Task" }],
         });
       }
-      if (url === "http://localhost:3000/api/export-all-experiments") {
-        return okJson({ error: "server refused export" }, false);
-      }
       return okJson({ success: true });
     });
 
     render(<Settings />);
 
     await screen.findByText(/1 experiment available/);
+
+    (window as any).electron.saveExportedZip.mockResolvedValueOnce({
+      success: false,
+      error: "server refused export",
+    });
     fireEvent.click(screen.getByText("Export all"));
 
     expect(
       await screen.findByText("server refused export"),
     ).toBeInTheDocument();
 
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [{ experimentID: "exp-1", name: "Memory Task" }],
-        });
-      }
-      return okJson({ success: true });
-    });
-    (window as any).electron.saveZipFile.mockResolvedValueOnce({
+    (window as any).electron.saveExportedZip.mockResolvedValueOnce({
       success: false,
       error: "disk full",
     });
@@ -66,33 +57,17 @@ describe("Settings shell", () => {
     expect(await screen.findByText("disk full")).toBeInTheDocument();
   });
 
-  it("falls back when export-all error responses cannot be parsed", async () => {
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [{ experimentID: "exp-1", name: "Memory Task" }],
-        });
-      }
-      if (url === "http://localhost:3000/api/export-all-experiments") {
-        return {
-          ok: false,
-          json: vi.fn(async () => {
-            throw new Error("invalid json");
-          }),
-          arrayBuffer: vi.fn(),
-        } as unknown as Response;
-      }
-      return okJson({ success: true });
+  it("falls back to the generic message when the export IPC rejects", async () => {
+    (window as any).electron.saveExportedZip.mockRejectedValueOnce({
+      message: "ipc exploded",
     });
 
     render(<Settings />);
 
-    await screen.findByText(/1 experiment available/);
+    await screen.findByText(/2 experiments available/);
     fireEvent.click(screen.getByText("Export all"));
 
-    expect(
-      await screen.findByText("Error exporting experiments"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("ipc exploded")).toBeInTheDocument();
   });
 
   it("exports selected experiments and resets the selection modal", async () => {
@@ -106,11 +81,8 @@ describe("Settings shell", () => {
     fireEvent.click(screen.getByText("Export (1)"));
 
     await waitFor(() => {
-      expect(fetchMock()).toHaveBeenCalledWith(
-        "http://localhost:3000/api/export-experiment/exp-1",
-      );
-      expect((window as any).electron.saveZipFile).toHaveBeenCalledWith(
-        [1, 2, 3],
+      expect((window as any).electron.saveExportedZip).toHaveBeenCalledWith(
+        "/api/export-experiment/exp-1",
         "Memory_Task-backup.zip",
       );
     });

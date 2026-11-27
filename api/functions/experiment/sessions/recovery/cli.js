@@ -2,13 +2,32 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export async function recoveryCommand(argv) {
-  const options = {}, allowed = new Set(['project','mode','experiment','session','out','plan','destination','identity','token-env']);
-  for (let i = 0; i < argv.length; i += 2) {
-    if (!argv[i].startsWith('--') || !argv[i + 1]) throw new Error('Use --project PROJECT --experiment ID --session ID --out PLAN.json; apply requires --mode apply --plan PLAN.json');
-    const name = argv[i].slice(2);
-    if (!allowed.has(name)) throw new Error('Unsupported option: ' + argv[i]);
-    options[name] = argv[i + 1];
+  const options = {};
+  const allowedValues = new Set(['project','mode','experiment','session','out','plan','destination','identity','token-env','code','limit','page-token']);
+  const allowedBooleans = new Set(['apply','dry-run','legacy-unclassified']);
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (!arg.startsWith('--')) throw new Error(`Unsupported option: ${arg}`);
+    const name = arg.slice(2);
+    if (allowedBooleans.has(name)) { options[name] = true; continue; }
+    if (!allowedValues.has(name)) throw new Error(`Unsupported option: ${arg}`);
+    const value = argv[i + 1];
+    if (!value || value.startsWith('--')) throw new Error(`--${name} requires a value`);
+    if (name === 'code') { (options.code ||= []).push(value); }
+    else { options[name] = value; }
+    i += 1;
   }
+
+  if (options.mode === 'export-status' || options.mode === 'export-reactivate') {
+    if (!options.project) throw new Error('An explicit project is required');
+    if (options.apply && options['dry-run']) throw new Error('--apply and --dry-run are mutually exclusive');
+    // Configurar el proyecto ANTES de importar módulos que inicializan Firebase.
+    process.env.GCLOUD_PROJECT = options.project;
+    process.env.FIREBASE_CONFIG = JSON.stringify({ projectId: options.project });
+    const { exportJobsCommand } = await import('./export-jobs.js');
+    return await exportJobsCommand(options);
+  }
+
   if (!options.project || !['inspect', 'apply', undefined].includes(options.mode)) throw new Error('An explicit project and valid mode are required');
   if ((process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_DATABASE_EMULATOR_HOST) && !options.project.startsWith('demo-')) throw new Error('Emulator recovery requires an isolated demo project');
   if (!options['token-env'] || !process.env[options['token-env']]) throw new Error('Supply --token-env NAME for an existing provider access token; inspection never refreshes credentials');

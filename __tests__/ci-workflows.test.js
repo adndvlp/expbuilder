@@ -58,6 +58,54 @@ function selects(workflow, event, files, branch = "bug-fix") {
   return !filters.paths || files.some((file) => filters.paths.some((glob) => minimatch(file, glob)));
 }
 
+describe("build workflow Linux publish compilers", () => {
+  const workflow = parse(readFileSync(
+    new URL("../.github/workflows/build.yml", import.meta.url), "utf8",
+  ));
+
+  test("pins GCC 12 in the linux-x64 job between dependency install and client build", () => {
+    const steps = workflow.jobs["linux-x64"].steps;
+    const pinIndex = steps.findIndex(
+      (step) => step.name === "Pin GCC 12 for native module rebuilds",
+    );
+    expect(pinIndex).toBeGreaterThanOrEqual(0);
+
+    const installIndex = steps.findIndex(
+      (step) => step.name === "Install dependencies",
+    );
+    const buildClientIndex = steps.findIndex(
+      (step) => step.name === "Build client",
+    );
+    expect(installIndex).toBeGreaterThanOrEqual(0);
+    expect(buildClientIndex).toBeGreaterThanOrEqual(0);
+    expect(pinIndex).toBeGreaterThan(installIndex);
+    expect(pinIndex).toBeLessThan(buildClientIndex);
+  });
+
+  test("installs gcc-12 and g++-12 and exports CC/CXX for later steps", () => {
+    const steps = workflow.jobs["linux-x64"].steps;
+    const pin = steps.find(
+      (step) => step.name === "Pin GCC 12 for native module rebuilds",
+    );
+    expect(pin).toBeTruthy();
+    const run = pin.run;
+    expect(run).toContain("gcc-12");
+    expect(run).toContain("g++-12");
+    expect(run).toMatch(/echo "CC=gcc-12" >> "\$GITHUB_ENV"/);
+    expect(run).toMatch(/echo "CXX=g\+\+-12" >> "\$GITHUB_ENV"/);
+  });
+
+  test("keeps the compiler pin out of the other jobs", () => {
+    for (const jobName of ["test", "tag", "mac", "win"]) {
+      const steps = workflow.jobs[jobName]?.steps ?? [];
+      const pin = steps.find(
+        (step) => step.name === "Pin GCC 12 for native module rebuilds",
+      );
+      expect(pin).toBeUndefined();
+    }
+  });
+});
+
 describe.each(workflows)("%s workflow activation", (_name, workflow) => {
   test.each(["push", "pull_request"])("%s selects the persistence harness and media regression", (event) => {
     for (const file of ["api/persistence-e2e/harness.mjs", "api/persistence-e2e/media.e2e.mjs"]) {

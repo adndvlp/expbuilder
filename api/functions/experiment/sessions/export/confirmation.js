@@ -16,7 +16,8 @@ export async function confirmExport(ref, jobRef, job, fence, resource, now) {
       update.completion = { ...data.completion, confirmed: true, status: 'confirmed', resultsSent: data.completion.expectedEventCount };
     }
     transaction.set(ref, update, { merge: true });
-    transaction.set(jobRef, { status: 'confirmed', receipt, cleanupPending: true, dispatchDue: true, confirmedAt: now, nextDispatchAt: 0 }, { merge: true });
+    transaction.set(jobRef, { status: 'confirmed', receipt, cleanupPending: true, dispatchDue: true, confirmedAt: now, nextDispatchAt: 0,
+      lastError: null, lastErrorCode: null }, { merge: true });
     transaction.set(db.collection('experiments').doc(job.experimentID).collection('session_metadata').doc(job.sessionId), {
       sessionId: job.sessionId, state: data.lifecycle || job.state, createdAt: job.session.createdAt,
       participantNumber: job.session.participantNumber, condition: job.session.condition, sessionName: job.session.sessionName,

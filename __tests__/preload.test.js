@@ -46,6 +46,10 @@ describe('preload.js', () => {
       channel: 'save-zip-file',
       payload: { buffer: Buffer.from('zip'), defaultName: 'backup.zip' },
     })
+    expect(api.saveExportedZip('/api/export-all-experiments', 'backup.zip')).toEqual({
+      channel: 'save-exported-zip',
+      payload: { apiPath: '/api/export-all-experiments', defaultName: 'backup.zip' },
+    })
     expect(api.saveJsonFile('{"ok":true}', 'db.json')).toEqual({
       channel: 'save-json-file',
       payload: { content: '{"ok":true}', defaultName: 'db.json' },

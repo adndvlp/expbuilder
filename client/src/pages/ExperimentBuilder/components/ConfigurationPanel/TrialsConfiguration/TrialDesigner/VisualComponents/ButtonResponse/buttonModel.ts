@@ -3,6 +3,40 @@ import type { TrialComponent } from "../../types";
 export const NATURAL_BUTTON_WIDTH = 80;
 export const NATURAL_BUTTON_HEIGHT = 34;
 
+const HORIZONTAL_PADDING = 30;
+const VERTICAL_PADDING = 12;
+const LINE_HEIGHT_RATIO = 1.4;
+const CHAR_WIDTH_RATIO = 0.55;
+
+export function getNaturalButtonSize({
+  choices,
+  fontSize = 14,
+}: {
+  choices: string[];
+  fontSize?: number;
+}) {
+  const safeFontSize =
+    Number.isFinite(fontSize) && fontSize > 0 ? fontSize : 14;
+  const safeChoices = choices.length > 0 ? choices : ["Button"];
+  const textChoices = safeChoices.filter((choice) => !isImageUrl(choice));
+  const longestLength = textChoices.reduce(
+    (max, choice) => Math.max(max, choice.length),
+    0,
+  );
+  const width = Math.max(
+    NATURAL_BUTTON_WIDTH,
+    Math.ceil(longestLength * safeFontSize * CHAR_WIDTH_RATIO + HORIZONTAL_PADDING),
+  );
+  const height =
+    textChoices.length > 0
+      ? Math.max(
+          NATURAL_BUTTON_HEIGHT,
+          Math.ceil(safeFontSize * LINE_HEIGHT_RATIO + VERTICAL_PADDING),
+        )
+      : NATURAL_BUTTON_HEIGHT;
+  return { width, height };
+}
+
 export function getButtonConfigValue(
   component: TrialComponent,
   key: string,

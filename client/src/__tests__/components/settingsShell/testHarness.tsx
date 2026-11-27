@@ -121,7 +121,7 @@ function registerSettingsShellHooks() {
       return okJson({ success: true });
     }) as unknown as typeof fetch;
     (window as any).electron = {
-      saveZipFile: vi.fn(async () => ({ success: true })),
+      saveExportedZip: vi.fn(async () => ({ success: true })),
     };
   });
 

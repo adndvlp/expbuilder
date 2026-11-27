@@ -141,5 +141,5 @@ export async function validateOAuthState(stateParam, expectedProvider) {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return { ok: false, reason: "invalid HMAC" };
   }
-  return { ok: true, uid };
+  return { ok: true, uid, ts };
 }

@@ -85,7 +85,7 @@ export default function ButtonContent(props: Props) {
         height={props.height - 4}
         align="center"
         verticalAlign="middle"
-        fontSize={Math.min(props.height * 0.4, props.fontSize)}
+        fontSize={Math.max(6, Math.min(props.height - 16, props.fontSize))}
         fill={props.textColor}
         fontStyle="bold"
       />

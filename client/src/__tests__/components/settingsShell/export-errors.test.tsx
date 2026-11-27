@@ -6,6 +6,8 @@ import Settings from "../../../pages/Settings";
 describe("Settings shell", () => {
   registerSettingsShellHooks();
 
+  const saveExportedZip = () => (window as any).electron.saveExportedZip;
+
   it("exports multiple selected experiments and reports selected export failures", async () => {
     render(<Settings />);
 
@@ -15,49 +17,29 @@ describe("Settings shell", () => {
     fireEvent.click(screen.getByText("Export (2)"));
 
     await waitFor(() => {
-      expect(fetchMock()).toHaveBeenCalledWith(
-        "http://localhost:3000/api/export-all-experiments?ids=exp-1%2Cexp-2",
+      expect(saveExportedZip()).toHaveBeenCalledWith(
+        "/api/export-all-experiments?ids=exp-1%2Cexp-2",
+        expect.stringMatching(/^experiments-backup-\d{4}-\d{2}-\d{2}\.zip$/),
       );
     });
     expect(
       await screen.findByText("2 experiments exported!"),
     ).toBeInTheDocument();
 
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [
-            { experimentID: "exp-1", name: "Memory Task" },
-            { experimentID: "exp-2", name: "Visual Search" },
-          ],
-        });
-      }
-      if (url === "http://localhost:3000/api/export-experiment/exp-1") {
-        return okJson({ error: "bad single export" }, false);
-      }
-      return okJson({ success: true });
+    saveExportedZip().mockResolvedValueOnce({
+      success: false,
+      error: "bad single export",
     });
 
     fireEvent.click(screen.getByText("Export selected..."));
     fireEvent.click(screen.getByLabelText("Memory Task"));
     fireEvent.click(screen.getByText("Export (1)"));
 
-    expect(await screen.findByText("Export failed")).toBeInTheDocument();
+    expect(await screen.findByText("bad single export")).toBeInTheDocument();
 
-    (window as any).electron.saveZipFile.mockResolvedValueOnce({
+    saveExportedZip().mockResolvedValueOnce({
       success: false,
       error: "save cancelled by disk",
-    });
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [
-            { experimentID: "exp-1", name: "Memory Task" },
-            { experimentID: "exp-2", name: "Visual Search" },
-          ],
-        });
-      }
-      return okJson({ success: true });
     });
 
     fireEvent.click(screen.getByText("Export selected..."));
@@ -68,42 +50,18 @@ describe("Settings shell", () => {
       await screen.findByText("save cancelled by disk"),
     ).toBeInTheDocument();
 
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [
-            { experimentID: "exp-1", name: "Memory Task" },
-            { experimentID: "exp-2", name: "Visual Search" },
-          ],
-        });
-      }
-      if (
-        url ===
-        "http://localhost:3000/api/export-all-experiments?ids=exp-1%2Cexp-2"
-      ) {
-        return okJson({ error: "bad multi export" }, false);
-      }
-      return okJson({ success: true });
+    saveExportedZip().mockResolvedValueOnce({
+      success: false,
+      error: "bad multi export",
     });
 
     fireEvent.click(screen.getByText("Export selected..."));
     fireEvent.click(screen.getByLabelText("Select all (2)"));
     fireEvent.click(screen.getByText("Export (2)"));
 
-    expect(await screen.findByText("Export failed")).toBeInTheDocument();
+    expect(await screen.findByText("bad multi export")).toBeInTheDocument();
 
-    fetchMock().mockImplementation(async (url: string) => {
-      if (url === "http://localhost:3000/api/load-experiments") {
-        return okJson({
-          experiments: [
-            { experimentID: "exp-1", name: "Memory Task" },
-            { experimentID: "exp-2", name: "Visual Search" },
-          ],
-        });
-      }
-      return okJson({ success: true });
-    });
-    (window as any).electron.saveZipFile.mockResolvedValueOnce({
+    saveExportedZip().mockResolvedValueOnce({
       success: false,
       error: "multi disk full",
     });
@@ -127,8 +85,8 @@ describe("Settings shell", () => {
       }
       return okJson({ success: true });
     });
-    const saveZipFile = (window as any).electron.saveZipFile;
-    saveZipFile
+    const save = saveExportedZip();
+    save
       .mockResolvedValueOnce({ success: false, error: "Cancelled" })
       .mockResolvedValueOnce({ success: false })
       .mockResolvedValueOnce({ success: false, error: "Cancelled" })
@@ -140,7 +98,7 @@ describe("Settings shell", () => {
     await screen.findByText(/2 experiments available/);
 
     fireEvent.click(screen.getByText("Export all"));
-    await waitFor(() => expect(saveZipFile).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(screen.queryByText("Export failed")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Export all"));
@@ -150,9 +108,9 @@ describe("Settings shell", () => {
     fireEvent.click(screen.getByText("Export selected..."));
     fireEvent.click(screen.getByLabelText("exp-plain"));
     fireEvent.click(screen.getByText("Export (1)"));
-    await waitFor(() => expect(saveZipFile).toHaveBeenCalledTimes(3));
-    expect(saveZipFile).toHaveBeenLastCalledWith(
-      [1, 2, 3],
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(3));
+    expect(save).toHaveBeenLastCalledWith(
+      "/api/export-experiment/exp-plain",
       "exp-plain-backup.zip",
     );
     expect(screen.queryByText("Export failed")).not.toBeInTheDocument();
@@ -166,7 +124,7 @@ describe("Settings shell", () => {
     fireEvent.click(screen.getByText("Export selected..."));
     fireEvent.click(screen.getByLabelText("Select all (2)"));
     fireEvent.click(screen.getByText("Export (2)"));
-    await waitFor(() => expect(saveZipFile).toHaveBeenCalledTimes(5));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(5));
     expect(screen.queryByText("Export failed")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Export selected..."));
@@ -175,12 +133,12 @@ describe("Settings shell", () => {
     expect(await screen.findByText("Export failed")).toBeInTheDocument();
     fireEvent.click(screen.getByText("×"));
 
-    fetchMock().mockRejectedValueOnce({});
+    save.mockRejectedValueOnce({});
     fireEvent.click(screen.getByText("Export all"));
     expect(await screen.findByText("Export failed")).toBeInTheDocument();
     fireEvent.click(screen.getByText("×"));
 
-    fetchMock().mockRejectedValueOnce({});
+    save.mockRejectedValueOnce({});
     fireEvent.click(screen.getByText("Export selected..."));
     fireEvent.click(screen.getByLabelText("exp-plain"));
     fireEvent.click(screen.getByText("Export (1)"));
